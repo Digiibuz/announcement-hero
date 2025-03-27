@@ -47,8 +47,11 @@ export const useWordPressCategories = () => {
         hasAppPassword: !!wpConfig.app_password
       });
 
+      // Normaliser l'URL (supprimer les doubles slashes)
+      const siteUrl = wpConfig.site_url.replace(/([^:]\/)\/+/g, "$1");
+
       // Construct the WordPress API URL
-      const apiUrl = `${wpConfig.site_url}/wp-json/wp/v2/categories`;
+      const apiUrl = `${siteUrl}/wp-json/wp/v2/categories`;
       
       // Prepare headers
       const headers: Record<string, string> = {
@@ -68,28 +71,55 @@ export const useWordPressCategories = () => {
       }
       
       console.log("Fetching categories from:", apiUrl);
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: headers
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("WordPress API error:", response.status, errorText);
-        
-        if (response.status === 401 || response.status === 403) {
-          throw new Error("Identifiants incorrects ou autorisations insuffisantes");
+      
+      // Ajouter un délai d'expiration à la requête
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes de timeout
+      
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: headers,
+          signal: controller.signal
+        });
+  
+        clearTimeout(timeoutId);
+  
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("WordPress API error:", response.status, errorText);
+          
+          if (response.status === 401 || response.status === 403) {
+            throw new Error("Identifiants incorrects ou autorisations insuffisantes");
+          }
+          
+          throw new Error(`Failed to fetch categories: ${response.statusText}`);
         }
-        
-        throw new Error(`Failed to fetch categories: ${response.statusText}`);
+  
+        const categoriesData = await response.json();
+        console.log("Categories fetched successfully:", categoriesData.length);
+        setCategories(categoriesData);
+      } catch (fetchError: any) {
+        if (fetchError.name === 'AbortError') {
+          throw new Error("Le délai d'attente a expiré lors de la récupération des catégories");
+        }
+        throw fetchError;
       }
-
-      const categoriesData = await response.json();
-      console.log("Categories fetched successfully:", categoriesData.length);
-      setCategories(categoriesData);
     } catch (err: any) {
       console.error("Error fetching WordPress categories:", err);
-      setError(err.message || "Failed to fetch WordPress categories");
+      
+      let errorMessage = err.message || "Failed to fetch WordPress categories";
+      
+      // Améliorer les messages d'erreur
+      if (err.message.includes("Failed to fetch")) {
+        errorMessage = "Erreur réseau: impossible d'accéder au site WordPress";
+      } else if (err.message.includes("NetworkError")) {
+        errorMessage = "Erreur réseau: problème de connectivité";
+      } else if (err.message.includes("CORS")) {
+        errorMessage = "Erreur CORS: le site n'autorise pas les requêtes depuis cette origine";
+      }
+      
+      setError(errorMessage);
       toast.error("Erreur lors de la récupération des catégories WordPress");
     } finally {
       setIsLoading(false);

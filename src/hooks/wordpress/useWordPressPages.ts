@@ -70,8 +70,11 @@ export const useWordPressPages = () => {
         hasAppPassword: !!wpConfig.app_password
       });
 
+      // Normaliser l'URL (supprimer les doubles slashes)
+      const siteUrl = wpConfig.site_url.replace(/([^:]\/)\/+/g, "$1");
+
       // Construct the WordPress API URL
-      const apiUrl = `${wpConfig.site_url}/wp-json/wp/v2/pages`;
+      const apiUrl = `${siteUrl}/wp-json/wp/v2/pages`;
       
       // Prepare headers
       const headers: Record<string, string> = {
@@ -91,28 +94,55 @@ export const useWordPressPages = () => {
       }
       
       console.log("Fetching pages from:", apiUrl);
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: headers
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("WordPress API error:", response.status, errorText);
-        
-        if (response.status === 401 || response.status === 403) {
-          throw new Error("Identifiants incorrects ou autorisations insuffisantes");
+      
+      // Ajouter un délai d'expiration à la requête
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes de timeout
+      
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: headers,
+          signal: controller.signal
+        });
+  
+        clearTimeout(timeoutId);
+  
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("WordPress API error:", response.status, errorText);
+          
+          if (response.status === 401 || response.status === 403) {
+            throw new Error("Identifiants incorrects ou autorisations insuffisantes");
+          }
+          
+          throw new Error(`Failed to fetch pages: ${response.statusText}`);
         }
-        
-        throw new Error(`Failed to fetch pages: ${response.statusText}`);
+  
+        const pagesData = await response.json();
+        console.log("Pages fetched successfully:", pagesData.length);
+        setPages(pagesData);
+      } catch (fetchError: any) {
+        if (fetchError.name === 'AbortError') {
+          throw new Error("Le délai d'attente a expiré lors de la récupération des pages");
+        }
+        throw fetchError;
       }
-
-      const pagesData = await response.json();
-      console.log("Pages fetched successfully:", pagesData.length);
-      setPages(pagesData);
     } catch (err: any) {
       console.error("Error fetching WordPress pages:", err);
-      setError(err.message || "Failed to fetch WordPress pages");
+      
+      let errorMessage = err.message || "Failed to fetch WordPress pages";
+      
+      // Améliorer les messages d'erreur
+      if (err.message.includes("Failed to fetch")) {
+        errorMessage = "Erreur réseau: impossible d'accéder au site WordPress";
+      } else if (err.message.includes("NetworkError")) {
+        errorMessage = "Erreur réseau: problème de connectivité";
+      } else if (err.message.includes("CORS")) {
+        errorMessage = "Erreur CORS: le site n'autorise pas les requêtes depuis cette origine";
+      }
+      
+      setError(errorMessage);
       toast.error("Erreur lors de la récupération des pages WordPress");
     } finally {
       setIsLoading(false);
