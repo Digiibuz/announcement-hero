@@ -7,6 +7,7 @@ import { WordPressConfig } from "@/types/wordpress";
 import WordPressConfigItem from "./WordPressConfigItem";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/context/AuthContext";
+import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
 
 interface WordPressConfigListProps {
   configs: WordPressConfig[];
@@ -26,19 +27,40 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
   readOnly = false
 }) => {
   const { user, isAdmin } = useAuth();
+  const { clientConfigs } = useWordPressConfigs();
   
-  // Filter configs for editors to only show their assigned config
+  // Filter configs for editors to show their assigned config AND configs associated with their client
   const filteredConfigs = React.useMemo(() => {
     if (isAdmin) {
       return configs;
     }
     
+    const userConfigs = [];
+    
+    // Add directly assigned WordPress config if exists
     if (user?.wordpressConfigId) {
-      return configs.filter(config => config.id === user.wordpressConfigId);
+      const directConfig = configs.find(config => config.id === user.wordpressConfigId);
+      if (directConfig) {
+        userConfigs.push(directConfig);
+      }
     }
     
-    return [];
-  }, [configs, user, isAdmin]);
+    // Add configs associated with user's client
+    if (user?.clientId) {
+      const clientConfigIds = clientConfigs
+        .filter(cc => cc.client_id === user.clientId)
+        .map(cc => cc.wordpress_config_id);
+      
+      // Add client configs if not already added
+      for (const config of configs) {
+        if (clientConfigIds.includes(config.id) && !userConfigs.some(c => c.id === config.id)) {
+          userConfigs.push(config);
+        }
+      }
+    }
+    
+    return userConfigs;
+  }, [configs, user, isAdmin, clientConfigs]);
 
   if (isLoading) {
     return (
@@ -61,9 +83,9 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
         <AlertDescription>
           {isAdmin 
             ? "Aucune configuration WordPress n'a été trouvée. Cliquez sur \"Ajouter une configuration\" pour en créer une nouvelle."
-            : user?.wordpressConfigId 
-              ? "La configuration WordPress associée à votre compte n'est pas disponible."
-              : "Aucune configuration WordPress n'est associée à votre compte. Contactez un administrateur pour en configurer une."
+            : user?.wordpressConfigId || user?.clientId
+              ? "La configuration WordPress associée à votre compte ou à votre client n'est pas disponible."
+              : "Aucune configuration WordPress n'est associée à votre compte ou à votre client. Contactez un administrateur pour en configurer une."
           }
         </AlertDescription>
       </Alert>
@@ -77,7 +99,9 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
         <CardDescription>
           {isAdmin 
             ? "Liste des configurations WordPress disponibles" 
-            : "Configuration WordPress associée à votre compte"}
+            : filteredConfigs.length > 1
+              ? "Configurations WordPress associées à votre compte et à votre client"
+              : "Configuration WordPress associée à votre compte"}
         </CardDescription>
       </CardHeader>
       <CardContent>

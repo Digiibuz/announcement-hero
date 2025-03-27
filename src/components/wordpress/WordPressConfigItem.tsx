@@ -91,12 +91,11 @@ const WordPressConfigItem: React.FC<WordPressConfigItemProps> = ({
                 config={config}
                 onSubmit={(data) => onUpdate(config.id, data)}
                 buttonText="Modifier"
-                buttonVariant="outline"
-                buttonSize="sm"
                 buttonIcon={<Edit className="mr-2 h-4 w-4" />}
                 dialogTitle="Modifier la configuration WordPress"
                 dialogDescription="Modifiez les détails de cette configuration WordPress."
                 isSubmitting={isSubmitting}
+                buttonSize="sm"
               />
 
               <AlertDialog>
