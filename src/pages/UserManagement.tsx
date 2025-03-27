@@ -1,12 +1,11 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Header from "@/components/ui/layout/Header";
 import Sidebar from "@/components/ui/layout/Sidebar";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { 
   Table,
   TableBody,
@@ -44,18 +43,24 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
-import { User, UserPlus, Lock } from "lucide-react";
+import { User, UserPlus, Lock, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  clientId?: string;
+}
 
 const UserManagement = () => {
   const { user, isAdmin } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { impersonateUser } = useAuth();
   
-  // Mock users data - would be fetched from Supabase in a real implementation
-  const [users, setUsers] = useState([
-    { id: "1", email: "client1@example.com", name: "Client 1", role: "editor", clientId: "client1" },
-    { id: "3", email: "client2@example.com", name: "Client 2", role: "editor", clientId: "client2" },
-  ]);
-
   const formSchema = z.object({
     email: z.string().email({ message: "Email invalide" }),
     name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères" }),
@@ -77,39 +82,90 @@ const UserManagement = () => {
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const fetchUsers = async () => {
     try {
-      // This would be the Supabase call in the real implementation
-      console.log("Creating user:", values);
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*');
       
-      // Mock create user
-      const newUser = {
-        id: String(users.length + 1),
-        email: values.email,
-        name: values.name,
-        role: values.role,
-        clientId: values.clientId || `client${users.length + 1}`,
-      };
+      if (error) {
+        throw error;
+      }
       
-      setUsers([...users, newUser]);
-      setIsDialogOpen(false);
-      form.reset();
-      toast.success("Utilisateur créé avec succès");
+      setUsers(data as UserProfile[]);
     } catch (error) {
-      console.error("Error creating user:", error);
-      toast.error("Erreur lors de la création de l'utilisateur");
+      console.error('Error fetching users:', error);
+      toast.error("Erreur lors de la récupération des utilisateurs");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleResetPassword = (userId: string) => {
-    // Mock password reset
-    console.log("Resetting password for user:", userId);
-    toast.success("Un email de réinitialisation a été envoyé");
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+      setIsDialogOpen(false);
+      toast.loading("Création de l'utilisateur en cours...");
+      
+      // 1. Create auth user
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: values.email,
+        password: values.password,
+        email_confirm: true,
+        user_metadata: {
+          name: values.name,
+        },
+      });
+      
+      if (authError) {
+        throw authError;
+      }
+      
+      if (!authData.user) {
+        throw new Error("Erreur lors de la création de l'utilisateur");
+      }
+      
+      // 2. Update profile (role and clientId)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          role: values.role,
+          clientId: values.role === 'editor' ? values.clientId : null,
+        })
+        .eq('id', authData.user.id);
+      
+      if (profileError) {
+        throw profileError;
+      }
+      
+      toast.dismiss();
+      toast.success("Utilisateur créé avec succès");
+      form.reset();
+      fetchUsers();
+    } catch (error: any) {
+      toast.dismiss();
+      console.error("Error creating user:", error);
+      toast.error(error.message || "Erreur lors de la création de l'utilisateur");
+    }
   };
 
-  const handleImpersonateUser = (user: any) => {
-    console.log("Impersonating user:", user);
-    toast.success(`Vous êtes maintenant connecté en tant que ${user.name}`);
+  const handleResetPassword = async (userId: string) => {
+    try {
+      // In a real implementation, this would generate a password reset link
+      toast.success("Un email de réinitialisation a été envoyé");
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      toast.error("Erreur lors de la réinitialisation du mot de passe");
+    }
+  };
+
+  const handleImpersonateUser = (userToImpersonate: UserProfile) => {
+    impersonateUser(userToImpersonate as any);
+    toast.success(`Vous êtes maintenant connecté en tant que ${userToImpersonate.name}`);
   };
 
   if (!isAdmin) {
@@ -268,38 +324,55 @@ const UserManagement = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {users.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.name}</TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            user.role === "admin" ? "bg-primary/10 text-primary" : "bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400"
-                          }`}>
-                            {user.role === "admin" ? "Administrateur" : "Éditeur"}
-                          </span>
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center">
+                          <div className="flex justify-center items-center">
+                            <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                            Chargement des utilisateurs...
+                          </div>
                         </TableCell>
-                        <TableCell>{user.clientId || "-"}</TableCell>
-                        <TableCell className="text-right space-x-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleResetPassword(user.id)}
-                          >
-                            Réinitialiser MDP
-                          </Button>
-                          {user.role === "editor" && (
+                      </TableRow>
+                    ) : users.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center">
+                          Aucun utilisateur trouvé
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      users.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell className="font-medium">{user.name}</TableCell>
+                          <TableCell>{user.email}</TableCell>
+                          <TableCell>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              user.role === "admin" ? "bg-primary/10 text-primary" : "bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400"
+                            }`}>
+                              {user.role === "admin" ? "Administrateur" : "Éditeur"}
+                            </span>
+                          </TableCell>
+                          <TableCell>{user.clientId || "-"}</TableCell>
+                          <TableCell className="text-right space-x-2">
                             <Button 
                               variant="outline" 
                               size="sm"
-                              onClick={() => handleImpersonateUser(user)}
+                              onClick={() => handleResetPassword(user.id)}
                             >
-                              Se connecter en tant que
+                              Réinitialiser MDP
                             </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                            {user.role === "editor" && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleImpersonateUser(user)}
+                              >
+                                Se connecter en tant que
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </div>

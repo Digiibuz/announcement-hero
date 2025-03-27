@@ -9,12 +9,15 @@ import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Eye, EyeOff, Lock, LogIn, UserPlus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [name, setName] = useState("");
   const { login, isAuthenticated, isImpersonating, stopImpersonating, originalUser } = useAuth();
   const navigate = useNavigate();
 
@@ -30,11 +33,31 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      await login(email, password);
-      toast.success("Connexion réussie");
-      navigate("/dashboard");
-    } catch (error) {
-      toast.error("Identifiants invalides");
+      if (isSignUp) {
+        // Sign up process
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              name: name,
+            }
+          }
+        });
+
+        if (error) throw error;
+        
+        toast.success("Compte créé avec succès");
+        setIsSignUp(false); // Switch back to login view
+      } else {
+        // Login process
+        await login(email, password);
+        toast.success("Connexion réussie");
+        navigate("/dashboard");
+      }
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Une erreur est survenue");
     } finally {
       setIsLoading(false);
     }
@@ -42,6 +65,10 @@ const Login = () => {
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
+  };
+
+  const toggleSignUp = () => {
+    setIsSignUp(!isSignUp);
   };
 
   return (
@@ -69,14 +96,31 @@ const Login = () => {
           <CardHeader className="space-y-1 text-center">
             <CardTitle className="text-2xl flex items-center justify-center gap-2">
               <Lock className="h-6 w-6" />
-              Connexion
+              {isSignUp ? "Créer un compte" : "Connexion"}
             </CardTitle>
             <CardDescription>
-              Entrez vos identifiants pour accéder à votre compte
+              {isSignUp 
+                ? "Entrez vos informations pour créer un compte" 
+                : "Entrez vos identifiants pour accéder à votre compte"}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {isSignUp && (
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nom</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Votre nom"
+                    required={isSignUp}
+                    autoComplete="name"
+                  />
+                </div>
+              )}
+              
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -92,9 +136,11 @@ const Login = () => {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Mot de passe</Label>
-                  <Button variant="link" className="p-0 h-auto text-xs">
-                    Mot de passe oublié ?
-                  </Button>
+                  {!isSignUp && (
+                    <Button variant="link" className="p-0 h-auto text-xs">
+                      Mot de passe oublié ?
+                    </Button>
+                  )}
                 </div>
                 <div className="relative">
                   <Input
@@ -104,7 +150,7 @@ const Login = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     required
-                    autoComplete="current-password"
+                    autoComplete={isSignUp ? "new-password" : "current-password"}
                   />
                   <Button
                     type="button"
@@ -117,38 +163,26 @@ const Login = () => {
                   </Button>
                 </div>
               </div>
+              
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
-                  "Connexion en cours..."
+                  isSignUp ? "Création en cours..." : "Connexion en cours..."
                 ) : (
                   <>
-                    <LogIn className="mr-2 h-4 w-4" />
-                    Se connecter
+                    {isSignUp ? (
+                      <>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Créer un compte
+                      </>
+                    ) : (
+                      <>
+                        <LogIn className="mr-2 h-4 w-4" />
+                        Se connecter
+                      </>
+                    )}
                   </>
                 )}
               </Button>
-
-              <div className="relative my-4">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">
-                    Comptes de démonstration
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid gap-2 text-sm text-muted-foreground">
-                <div className="flex justify-between p-2 rounded bg-muted/50">
-                  <span>Admin:</span>
-                  <span className="font-mono">admin@example.com / admin123</span>
-                </div>
-                <div className="flex justify-between p-2 rounded bg-muted/50">
-                  <span>Éditeur:</span>
-                  <span className="font-mono">editor@example.com / editor123</span>
-                </div>
-              </div>
             </form>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
@@ -163,9 +197,15 @@ const Login = () => {
               </div>
             </div>
             
-            <Button variant="outline" className="w-full" disabled>
-              <UserPlus className="mr-2 h-4 w-4" />
-              Contactez nous pour créer un compte
+            <Button variant="outline" className="w-full" onClick={toggleSignUp}>
+              {isSignUp ? (
+                <>Déjà un compte ? Se connecter</>
+              ) : (
+                <>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Créer un nouveau compte
+                </>
+              )}
             </Button>
             
             <p className="text-xs text-center text-muted-foreground">
