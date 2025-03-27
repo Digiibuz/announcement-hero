@@ -37,47 +37,79 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error('Error fetching user profile:', error);
+      // Utiliser directement le service auth de Supabase pour obtenir les métadonnées utilisateur
+      const { data: authUser } = await supabase.auth.getUser();
+      
+      if (!authUser.user) {
         return null;
       }
-
-      return data as UserProfile;
+      
+      // Créer un profil basé sur les métadonnées utilisateur
+      const userProfile: UserProfile = {
+        id: authUser.user.id,
+        email: authUser.user.email || '',
+        name: authUser.user.user_metadata?.name || authUser.user.email || '',
+        role: (authUser.user.user_metadata?.role as Role) || 'editor',
+        clientId: authUser.user.user_metadata?.clientId,
+      };
+      
+      // En second plan (setTimeout pour éviter les boucles de récursion), 
+      // essayer de récupérer le profil complet depuis la base de données
+      setTimeout(async () => {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+          
+          if (data && !error) {
+            // Mettre à jour le profil avec les données complètes
+            setUser({
+              id: data.id,
+              email: data.email,
+              name: data.name,
+              role: data.role as Role,
+              clientId: data.client_id,
+            });
+          }
+        } catch (error) {
+          console.error('Erreur lors de la récupération du profil utilisateur en arrière-plan:', error);
+        }
+      }, 500);
+      
+      return userProfile;
     } catch (error) {
-      console.error('Error in fetchUserProfile:', error);
+      console.error('Erreur dans fetchUserProfile:', error);
       return null;
     }
   };
 
   useEffect(() => {
-    // Check if there's an impersonation session
+    // Vérifier s'il y a une session d'usurpation d'identité
     const storedOriginalUser = localStorage.getItem("originalUser");
     if (storedOriginalUser) {
       setOriginalUser(JSON.parse(storedOriginalUser));
     }
     
-    // Set up auth state listener
+    // Configurer l'écouteur d'état d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setIsLoading(true);
         
         if (session?.user) {
+          // Utiliser d'abord les métadonnées de l'utilisateur
           const userProfile = await fetchUserProfile(session.user.id);
           if (userProfile) {
             setUser(userProfile);
           } else {
-            // If profile doesn't exist but user is authenticated
+            // Si le profil n'existe pas mais que l'utilisateur est authentifié
             setUser({
               id: session.user.id,
               email: session.user.email || '',
-              name: session.user.user_metadata.name || session.user.email || '',
+              name: session.user.user_metadata?.name || session.user.email || '',
               role: 'editor',
+              clientId: null,
             });
           }
         } else {
@@ -88,7 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    // Get initial session
+    // Obtenir la session initiale
     const initializeAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -97,12 +129,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (userProfile) {
           setUser(userProfile);
         } else {
-          // If profile doesn't exist but user is authenticated
+          // Si le profil n'existe pas mais que l'utilisateur est authentifié
           setUser({
             id: session.user.id,
             email: session.user.email || '',
-            name: session.user.user_metadata.name || session.user.email || '',
+            name: session.user.user_metadata?.name || session.user.email || '',
             role: 'editor',
+            clientId: null,
           });
         }
       }
@@ -130,7 +163,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
       
-      // User profile will be set by the onAuthStateChange listener
+      // Le profil utilisateur sera défini par l'écouteur onAuthStateChange
     } catch (error: any) {
       setIsLoading(false);
       throw new Error(error.message || "Erreur de connexion");
@@ -148,26 +181,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Admin impersonation functionality
+  // Fonctionnalité d'usurpation d'identité administrateur
   const impersonateUser = (userToImpersonate: UserProfile) => {
-    // Only allow admins to impersonate
+    // Autoriser uniquement les administrateurs à usurper l'identité
     if (!user || user.role !== "admin") return;
     
-    // Store original user
+    // Stocker l'utilisateur original
     setOriginalUser(user);
     localStorage.setItem("originalUser", JSON.stringify(user));
     
-    // Set the impersonated user
+    // Définir l'utilisateur usurpé
     setUser(userToImpersonate);
   };
 
   const stopImpersonating = () => {
     if (!originalUser) return;
     
-    // Restore original user
+    // Restaurer l'utilisateur original
     setUser(originalUser);
     
-    // Clear impersonation state
+    // Effacer l'état d'usurpation d'identité
     setOriginalUser(null);
     localStorage.removeItem("originalUser");
   };
