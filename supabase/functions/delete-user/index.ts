@@ -40,8 +40,20 @@ serve(async (req) => {
       );
     }
 
-    // Supprimer l'utilisateur
-    console.log("Suppression de l'utilisateur:", userId);
+    // 1. Supprimer d'abord l'entrée dans la table profiles
+    console.log("Suppression du profil pour l'utilisateur:", userId);
+    const { error: profileDeleteError } = await supabaseAdmin
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+
+    if (profileDeleteError) {
+      console.log("Erreur lors de la suppression du profil:", profileDeleteError.message);
+      throw profileDeleteError;
+    }
+
+    // 2. Supprimer l'utilisateur de l'authentification Supabase
+    console.log("Suppression de l'utilisateur dans auth:", userId);
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(
       userId
     );
