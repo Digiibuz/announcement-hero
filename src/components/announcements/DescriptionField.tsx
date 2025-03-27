@@ -4,12 +4,18 @@ import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/f
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Mic, MicOff, Loader2, Sparkles } from "lucide-react";
+import { Mic, MicOff, Loader2, Sparkles, Bold, Italic, Underline, Strikethrough } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UseFormReturn } from "react-hook-form";
 import useVoiceRecognition from "@/hooks/useVoiceRecognition";
 import { toast } from "sonner";
 import { AnnouncementFormData } from "./AnnouncementForm";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface DescriptionFieldProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -51,6 +57,45 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const applyFormatting = (format: string) => {
+    const textarea = document.getElementById('description') as HTMLTextAreaElement;
+    if (!textarea) return;
+    
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = textarea.value.substring(start, end);
+    const beforeText = textarea.value.substring(0, start);
+    const afterText = textarea.value.substring(end);
+    
+    let formattedText = '';
+    
+    switch (format) {
+      case 'bold':
+        formattedText = `<strong>${selectedText}</strong>`;
+        break;
+      case 'italic':
+        formattedText = `<em>${selectedText}</em>`;
+        break;
+      case 'underline':
+        formattedText = `<u>${selectedText}</u>`;
+        break;
+      case 'strikethrough':
+        formattedText = `<s>${selectedText}</s>`;
+        break;
+      default:
+        formattedText = selectedText;
+    }
+    
+    form.setValue('description', beforeText + formattedText + afterText);
+    
+    // Reset selection to after the inserted text
+    setTimeout(() => {
+      textarea.focus();
+      const newCursorPos = beforeText.length + formattedText.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
   };
 
   return (
@@ -100,6 +145,85 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
           </Button>
         </div>
       </div>
+      
+      <div className="flex gap-1 mb-2">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="icon" 
+                className="h-8 w-8" 
+                onClick={() => applyFormatting('bold')}
+              >
+                <Bold size={16} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Gras</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="icon" 
+                className="h-8 w-8" 
+                onClick={() => applyFormatting('italic')}
+              >
+                <Italic size={16} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Italique</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="icon" 
+                className="h-8 w-8" 
+                onClick={() => applyFormatting('underline')}
+              >
+                <Underline size={16} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Souligné</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="icon" 
+                className="h-8 w-8" 
+                onClick={() => applyFormatting('strikethrough')}
+              >
+                <Strikethrough size={16} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Barré</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+      
       <FormField
         control={form.control}
         name="description"
@@ -107,6 +231,7 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
           <FormItem>
             <FormControl>
               <Textarea
+                id="description"
                 placeholder="Entrez la description de l'annonce ou utilisez la dictée vocale"
                 className={cn(
                   "min-h-32",
