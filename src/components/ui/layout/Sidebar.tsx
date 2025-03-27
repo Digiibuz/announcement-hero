@@ -1,5 +1,5 @@
 
-import React, { useEffect } from "react";
+import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -20,14 +20,6 @@ const Sidebar = () => {
   const isMobile = useIsMobile();
   const { pathname } = useLocation();
   const { user, logout, isLoading, isAuthenticated, isAdmin, isImpersonating, stopImpersonating, originalUser } = useAuth();
-
-  // Debug: Pour vérifier les données de l'utilisateur et sa configuration WordPress
-  useEffect(() => {
-    if (user) {
-      console.log("User data in Sidebar:", user);
-      console.log("WordPress config:", user.wordpressConfig);
-    }
-  }, [user]);
 
   if (isMobile || !isAuthenticated) return null;
 
@@ -67,23 +59,12 @@ const Sidebar = () => {
     },
   ];
 
-  // Determine what text to display in the sidebar header
-  let headerText = "DiviAnnounce";
-  
-  // For editors with a WordPress site configured, show the WordPress site name
-  if (user?.wordpressConfig?.name) {
-    headerText = user.wordpressConfig.name;
-  }
-
-  console.log("Header text:", headerText);
-  console.log("User role:", isAdmin ? "admin" : "editor");
-
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 transform border-r border-border bg-card shadow-sm transition-transform md:translate-x-0">
       <div className="flex h-16 items-center px-6 border-b border-border">
         <Link to="/dashboard" className="flex items-center">
-          <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70 truncate">
-            {headerText}
+          <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">
+            DiviAnnounce
           </span>
         </Link>
       </div>
