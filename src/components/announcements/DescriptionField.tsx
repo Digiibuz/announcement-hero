@@ -4,12 +4,11 @@ import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/f
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { 
-  Mic, MicOff, Loader2, Sparkles, Bold, Italic, 
+  Loader2, Sparkles, Bold, Italic, 
   Underline, Strikethrough, List, ListOrdered, Link
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UseFormReturn } from "react-hook-form";
-import useVoiceRecognition from "@/hooks/useVoiceRecognition";
 import { toast } from "sonner";
 import { AnnouncementFormData } from "./AnnouncementForm";
 import {
@@ -35,11 +34,6 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
   const [linkUrl, setLinkUrl] = useState("");
   const [linkText, setLinkText] = useState("");
   const editorRef = useRef<HTMLDivElement>(null);
-  
-  const { isRecording, isListening, toggleVoiceRecording, isSupported } = useVoiceRecognition({
-    fieldName: 'description',
-    form
-  });
 
   const updateFormValue = () => {
     if (editorRef.current) {
@@ -128,7 +122,7 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
   }, []);
 
   React.useEffect(() => {
-    // Add an input event listener to catch speech recognition updates
+    // Add an input event listener to catch updates
     const editorElement = editorRef.current;
     
     if (editorElement) {
@@ -153,31 +147,10 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
           <Button
             type="button"
             size="sm"
-            variant={isRecording ? "destructive" : "default"}
-            className="flex items-center gap-1"
-            onClick={toggleVoiceRecording}
-            disabled={isGenerating || !isSupported}
-          >
-            {isRecording ? (
-              <>
-                <MicOff size={16} />
-                <span>Arrêter la dictée</span>
-              </>
-            ) : (
-              <>
-                <Mic size={16} />
-                <span>Dictée vocale</span>
-              </>
-            )}
-          </Button>
-          
-          <Button
-            type="button"
-            size="sm"
             variant="secondary"
             className="flex items-center gap-1"
             onClick={generateImprovedContent}
-            disabled={isRecording || isGenerating}
+            disabled={isGenerating}
           >
             {isGenerating ? (
               <>
@@ -381,24 +354,13 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
                 ref={editorRef}
                 id="description"
                 contentEditable
-                className={cn(
-                  "flex min-h-32 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 overflow-auto",
-                  isRecording && "border-primary ring-2 ring-primary/20",
-                  isListening && "border-green-500 ring-2 ring-green-500/20",
-                  "rich-text-editor"
-                )}
+                className="flex min-h-32 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 overflow-auto rich-text-editor"
                 onInput={updateFormValue}
                 onPaste={handlePaste}
                 onBlur={updateFormValue}
               />
             </FormControl>
             <FormMessage />
-            {isRecording && (
-              <div className="recording-indicator">
-                <div className={`dot ${isListening ? "listening" : "waiting"}`}></div>
-                <span>{isListening ? "Parole détectée - continuez à parler..." : "Microphone actif - commencez à parler..."}</span>
-              </div>
-            )}
           </FormItem>
         )}
       />
