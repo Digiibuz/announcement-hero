@@ -2,7 +2,7 @@
 import React from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { FormLabel } from "@/components/ui/label";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Mic, MicOff, Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -56,7 +56,7 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
   return (
     <div className="space-y-2">
       <div className="flex justify-between items-center">
-        <FormLabel>Description</FormLabel>
+        <Label>Description</Label>
         <div className="flex gap-2">
           <Button
             type="button"

@@ -2,7 +2,7 @@
 import React from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FormLabel } from "@/components/ui/label";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -27,7 +27,7 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
         name="wordpressCategory"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Catégorie WordPress</FormLabel>
+            <Label>Catégorie WordPress</Label>
             <Select
               onValueChange={field.onChange}
               defaultValue={field.value}
@@ -67,7 +67,7 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
         name="status"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Statut de publication</FormLabel>
+            <Label>Statut de publication</Label>
             <Select
               onValueChange={field.onChange}
               defaultValue={field.value}
@@ -94,7 +94,7 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
           name="publishDate"
           render={({ field }) => (
             <FormItem className="flex flex-col">
-              <FormLabel>Date de publication</FormLabel>
+              <Label>Date de publication</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <FormControl>
