@@ -120,6 +120,8 @@ export type Database = {
       }
       wordpress_configs: {
         Row: {
+          app_password: string | null
+          app_username: string | null
           created_at: string
           id: string
           name: string
@@ -130,6 +132,8 @@ export type Database = {
           username: string | null
         }
         Insert: {
+          app_password?: string | null
+          app_username?: string | null
           created_at?: string
           id?: string
           name: string
@@ -140,6 +144,8 @@ export type Database = {
           username?: string | null
         }
         Update: {
+          app_password?: string | null
+          app_username?: string | null
           created_at?: string
           id?: string
           name?: string

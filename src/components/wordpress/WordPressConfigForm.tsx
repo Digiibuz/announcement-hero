@@ -36,6 +36,8 @@ interface WordPressConfigFormProps {
   dialogTitle?: string;
   dialogDescription?: string;
   isSubmitting?: boolean;
+  trigger?: React.ReactNode;
+  config?: WordPressConfig;
 }
 
 const WordPressConfigForm: React.FC<WordPressConfigFormProps> = ({
@@ -44,20 +46,22 @@ const WordPressConfigForm: React.FC<WordPressConfigFormProps> = ({
   buttonText = "Ajouter",
   dialogTitle = "Ajouter une configuration WordPress",
   dialogDescription = "Entrez les détails de votre site WordPress",
-  isSubmitting = false
+  isSubmitting = false,
+  trigger,
+  config
 }) => {
   const [open, setOpen] = React.useState(false);
   
   const form = useForm<WordPressConfigFormValues>({
     resolver: zodResolver(wordpressConfigSchema),
     defaultValues: {
-      name: defaultValues.name || "",
-      site_url: defaultValues.site_url || "",
-      rest_api_key: defaultValues.rest_api_key || "",
-      app_username: defaultValues.app_username || "",
-      app_password: defaultValues.app_password || "",
-      username: defaultValues.username || "",
-      password: defaultValues.password || "",
+      name: config?.name || defaultValues.name || "",
+      site_url: config?.site_url || defaultValues.site_url || "",
+      rest_api_key: config?.rest_api_key || defaultValues.rest_api_key || "",
+      app_username: config?.app_username || defaultValues.app_username || "",
+      app_password: config?.app_password || defaultValues.app_password || "",
+      username: config?.username || defaultValues.username || "",
+      password: config?.password || defaultValues.password || "",
     }
   });
 
@@ -74,7 +78,7 @@ const WordPressConfigForm: React.FC<WordPressConfigFormProps> = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">{buttonText}</Button>
+        {trigger || <Button variant="outline">{buttonText}</Button>}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
