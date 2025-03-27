@@ -13,9 +13,18 @@ export const useWordPressConfigCrud = (onConfigsChange?: () => void) => {
   const createConfig = async (config: Omit<WordPressConfig, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       setIsSubmitting(true);
+      
+      // Préparer les données avec des valeurs null pour les champs supprimés
+      const configData = {
+        ...config,
+        rest_api_key: null,
+        username: null,
+        password: null
+      };
+      
       const { data, error } = await supabase
         .from('wordpress_configs')
-        .insert([config])
+        .insert([configData])
         .select()
         .single();
       

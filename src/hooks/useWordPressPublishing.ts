@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -6,7 +5,7 @@ import { Announcement } from "@/types/announcement";
 
 interface PublishToWordPressResult {
   success: boolean;
-  message: string; // Changed from optional to required
+  message: string;
   wordpressPostId?: number;
 }
 
@@ -50,7 +49,7 @@ export const useWordPressPublishing = () => {
       // Get WordPress config
       const { data: wpConfig, error: wpConfigError } = await supabase
         .from('wordpress_configs')
-        .select('site_url, username, password, rest_api_key, app_username, app_password')
+        .select('site_url, app_username, app_password')
         .eq('id', userProfile.wordpress_config_id)
         .single();
 
@@ -67,7 +66,6 @@ export const useWordPressPublishing = () => {
       console.log("Configuration WordPress récupérée:", {
         site_url: wpConfig.site_url,
         hasAppCredentials: !!(wpConfig.app_username && wpConfig.app_password),
-        hasRestApiKey: !!wpConfig.rest_api_key,
       });
 
       // Ensure site_url has proper format
@@ -111,21 +109,14 @@ export const useWordPressPublishing = () => {
         'Content-Type': 'application/json',
       };
       
-      // Priorité d'authentification: Application Password > REST API Key > Basic Auth
+      // Vérifier que nous avons des identifiants d'application
       if (wpConfig.app_username && wpConfig.app_password) {
         // Application Password Format: "Basic base64(username:password)"
         const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
         headers['Authorization'] = `Basic ${basicAuth}`;
         console.log("Utilisation de l'authentification par Application Password");
-      } else if (wpConfig.rest_api_key) {
-        headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
-        console.log("Utilisation de l'authentification par clé API REST");
-      } else if (wpConfig.username && wpConfig.password) {
-        const basicAuth = btoa(`${wpConfig.username}:${wpConfig.password}`);
-        headers['Authorization'] = `Basic ${basicAuth}`;
-        console.log("Utilisation de l'authentification basique (déconseillée)");
       } else {
-        throw new Error("Aucune méthode d'authentification disponible pour WordPress");
+        throw new Error("Aucune méthode d'authentification disponible pour WordPress. Veuillez configurer les identifiants d'Application Password.");
       }
       
       console.log("Envoi de la requête à WordPress...");

@@ -20,11 +20,8 @@ import { WordPressConfig } from "@/types/wordpress";
 const wordpressConfigSchema = z.object({
   name: z.string().min(1, "Le nom est requis"),
   site_url: z.string().url("L'URL doit être valide").min(1, "L'URL du site est requise"),
-  rest_api_key: z.string().optional(),
   app_username: z.string().optional(),
   app_password: z.string().optional(),
-  username: z.string().optional(),
-  password: z.string().optional(),
 });
 
 type WordPressConfigFormValues = z.infer<typeof wordpressConfigSchema>;
@@ -57,11 +54,8 @@ const WordPressConfigForm: React.FC<WordPressConfigFormProps> = ({
     defaultValues: {
       name: config?.name || defaultValues.name || "",
       site_url: config?.site_url || defaultValues.site_url || "",
-      rest_api_key: config?.rest_api_key || defaultValues.rest_api_key || "",
       app_username: config?.app_username || defaultValues.app_username || "",
       app_password: config?.app_password || defaultValues.app_password || "",
-      username: config?.username || defaultValues.username || "",
-      password: config?.password || defaultValues.password || "",
     }
   });
 
@@ -124,7 +118,7 @@ const WordPressConfigForm: React.FC<WordPressConfigFormProps> = ({
             <div className="my-2">
               <h3 className="text-sm font-medium mb-2">Méthode d'authentification</h3>
               <p className="text-xs text-muted-foreground mb-4">
-                Veuillez fournir au moins une méthode d'authentification. L'Application Password est recommandée.
+                Veuillez fournir les identifiants d'Application Password pour vous connecter à WordPress.
               </p>
             </div>
 
@@ -150,43 +144,6 @@ const WordPressConfigForm: React.FC<WordPressConfigFormProps> = ({
                 placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"
                 className="col-span-3"
                 {...form.register("app_password")}
-              />
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="rest_api_key" className="text-right">
-                Clé API REST
-              </Label>
-              <Input
-                id="rest_api_key"
-                placeholder="Clé API WordPress"
-                className="col-span-3"
-                {...form.register("rest_api_key")}
-              />
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="username" className="text-right">
-                Nom d'utilisateur
-              </Label>
-              <Input
-                id="username"
-                placeholder="Nom d'utilisateur WordPress"
-                className="col-span-3"
-                {...form.register("username")}
-              />
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="password" className="text-right">
-                Mot de passe
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Mot de passe WordPress"
-                className="col-span-3"
-                {...form.register("password")}
               />
             </div>
           </div>
