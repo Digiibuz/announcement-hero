@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useRef, useState } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import "@/styles/editor.css";
 
 interface DescriptionFieldProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -23,11 +24,30 @@ interface DescriptionFieldProps {
 
 const DescriptionField = ({ form }: DescriptionFieldProps) => {
   const [isGenerating, setIsGenerating] = React.useState(false);
+  const editorRef = useRef<HTMLDivElement>(null);
   
   const { isRecording, toggleVoiceRecording } = useVoiceRecognition({
     fieldName: 'description',
     form
   });
+
+  // Update the form value when the editable div content changes
+  const updateFormValue = () => {
+    if (editorRef.current) {
+      // Get the HTML content from the editable div
+      const htmlContent = editorRef.current.innerHTML;
+      // Set it to the form
+      form.setValue('description', htmlContent);
+    }
+  };
+
+  // Handle paste to strip formatting
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    document.execCommand('insertText', false, text);
+    updateFormValue();
+  };
 
   const generateImprovedContent = async () => {
     const currentDescription = form.getValues('description');
@@ -49,7 +69,11 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
         .join(' ')
       }\n\nCette version a été optimisée pour améliorer sa visibilité dans les moteurs de recherche.`;
       
-      form.setValue('description', enhancedText);
+      if (editorRef.current) {
+        editorRef.current.innerHTML = enhancedText;
+        updateFormValue();
+      }
+      
       toast.success("Contenu amélioré avec succès");
     } catch (error: any) {
       console.error("Error generating content:", error);
@@ -60,43 +84,17 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
   };
 
   const applyFormatting = (format: string) => {
-    const textarea = document.getElementById('description') as HTMLTextAreaElement;
-    if (!textarea) return;
-    
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = textarea.value.substring(start, end);
-    const beforeText = textarea.value.substring(0, start);
-    const afterText = textarea.value.substring(end);
-    
-    let formattedText = '';
-    
-    switch (format) {
-      case 'bold':
-        formattedText = `<strong>${selectedText}</strong>`;
-        break;
-      case 'italic':
-        formattedText = `<em>${selectedText}</em>`;
-        break;
-      case 'underline':
-        formattedText = `<u>${selectedText}</u>`;
-        break;
-      case 'strikethrough':
-        formattedText = `<s>${selectedText}</s>`;
-        break;
-      default:
-        formattedText = selectedText;
-    }
-    
-    form.setValue('description', beforeText + formattedText + afterText);
-    
-    // Reset selection to after the inserted text
-    setTimeout(() => {
-      textarea.focus();
-      const newCursorPos = beforeText.length + formattedText.length;
-      textarea.setSelectionRange(newCursorPos, newCursorPos);
-    }, 0);
+    document.execCommand(format, false);
+    updateFormValue();
   };
+
+  React.useEffect(() => {
+    // Initialize the editor content from form value
+    const description = form.getValues('description') || '';
+    if (editorRef.current && description) {
+      editorRef.current.innerHTML = description;
+    }
+  }, []);
 
   return (
     <div className="space-y-2">
@@ -230,14 +228,18 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
         render={({ field }) => (
           <FormItem>
             <FormControl>
-              <Textarea
+              <div
+                ref={editorRef}
                 id="description"
-                placeholder="Entrez la description de l'annonce ou utilisez la dictée vocale"
+                contentEditable
                 className={cn(
-                  "min-h-32",
-                  isRecording && "border-primary ring-2 ring-primary/20"
+                  "flex min-h-32 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 overflow-auto",
+                  isRecording && "border-primary ring-2 ring-primary/20",
+                  "rich-text-editor"
                 )}
-                {...field}
+                onInput={updateFormValue}
+                onPaste={handlePaste}
+                onBlur={updateFormValue}
               />
             </FormControl>
             <FormMessage />

@@ -1,0 +1,36 @@
+
+/* Rich Text Editor Styles */
+.rich-text-editor {
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.rich-text-editor:focus {
+  outline: none;
+}
+
+.rich-text-editor strong {
+  font-weight: bold;
+}
+
+.rich-text-editor em {
+  font-style: italic;
+}
+
+.rich-text-editor u {
+  text-decoration: underline;
+}
+
+.rich-text-editor s {
+  text-decoration: line-through;
+}
+
+.rich-text-editor p {
+  margin-bottom: 0.75rem;
+}
+
+.rich-text-editor:empty:before {
+  content: "Entrez la description de l'annonce ou utilisez la dictée vocale";
+  color: #9ca3af;
+  pointer-events: none;
+}
