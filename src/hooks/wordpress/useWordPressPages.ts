@@ -3,7 +3,30 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { WordPressPage } from "@/types/announcement";
+
+export interface WordPressPage {
+  id: number;
+  date: string;
+  modified: string;
+  slug: string;
+  status: string;
+  type: string;
+  link: string;
+  title: {
+    rendered: string;
+  };
+  content: {
+    rendered: string;
+    protected: boolean;
+  };
+  author: number;
+  featured_media: number;
+  parent: number;
+  menu_order: number;
+  comment_status: string;
+  ping_status: string;
+  template: string;
+}
 
 export const useWordPressPages = () => {
   const [pages, setPages] = useState<WordPressPage[]>([]);
@@ -51,14 +74,14 @@ export const useWordPressPages = () => {
       const siteUrl = wpConfig.site_url.replace(/([^:]\/)\/+/g, "$1");
 
       // Construct the WordPress API URL
-      const apiUrl = `${siteUrl}/wp-json/wp/v2/pages?per_page=100`;
+      const apiUrl = `${siteUrl}/wp-json/wp/v2/pages`;
       
       // Prepare headers
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       };
       
-      // Prioritize Application Password authentication 
+      // Prioritize Application Password authentication
       if (wpConfig.app_username && wpConfig.app_password) {
         console.log("Using Application Password authentication");
         const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
@@ -67,21 +90,20 @@ export const useWordPressPages = () => {
         console.log("Using REST API Key authentication");
         headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
       } else {
-        console.warn("No authentication credentials provided for WordPress");
+        console.log("No authentication credentials provided");
       }
       
       console.log("Fetching pages from:", apiUrl);
       
       // Ajouter un délai d'expiration à la requête
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 secondes de timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes de timeout
       
       try {
         const response = await fetch(apiUrl, {
           method: 'GET',
           headers: headers,
-          signal: controller.signal,
-          credentials: 'omit' // Disable sending cookies for CORS requests
+          signal: controller.signal
         });
   
         clearTimeout(timeoutId);
@@ -91,7 +113,7 @@ export const useWordPressPages = () => {
           console.error("WordPress API error:", response.status, errorText);
           
           if (response.status === 401 || response.status === 403) {
-            throw new Error("Identifiants incorrects ou autorisations insuffisantes. Vérifiez les autorisations WordPress.");
+            throw new Error("Identifiants incorrects ou autorisations insuffisantes");
           }
           
           throw new Error(`Failed to fetch pages: ${response.statusText}`);
@@ -121,11 +143,7 @@ export const useWordPressPages = () => {
       }
       
       setError(errorMessage);
-      
-      // Don't show toast for permission issues to avoid confusion
-      if (!errorMessage.includes("permissions") && !errorMessage.includes("autorisations")) {
-        toast.error("Erreur lors de la récupération des pages WordPress");
-      }
+      toast.error("Erreur lors de la récupération des pages WordPress");
     } finally {
       setIsLoading(false);
     }

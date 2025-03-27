@@ -19,7 +19,7 @@ import {
 const Sidebar = () => {
   const isMobile = useIsMobile();
   const { pathname } = useLocation();
-  const { user, logout, isLoading, isAuthenticated, isAdmin, isEditor, isImpersonating, stopImpersonating, originalUser } = useAuth();
+  const { user, logout, isLoading, isAuthenticated, isAdmin, isImpersonating, stopImpersonating, originalUser } = useAuth();
 
   if (isMobile || !isAuthenticated) return null;
 
@@ -44,22 +44,18 @@ const Sidebar = () => {
     },
   ];
 
-  // Ajouter le menu WordPress en fonction du rôle
-  if (isAdmin || (isEditor && user?.wordpressConfigId)) {
-    navItems.push({
-      name: "Gestion WordPress",
-      href: isAdmin ? "/wordpress" : "/editor-wordpress",
-      icon: <Globe className="h-5 w-5" />,
-      isActive: pathname === (isAdmin ? "/wordpress" : "/editor-wordpress"),
-    });
-  }
-
   const adminItems = [
     {
       name: "Gestion utilisateurs",
       href: "/users",
       icon: <UserCog className="h-5 w-5" />,
       isActive: pathname === "/users",
+    },
+    {
+      name: "Gestion WordPress",
+      href: "/wordpress",
+      icon: <Globe className="h-5 w-5" />,
+      isActive: pathname === "/wordpress",
     },
   ];
 

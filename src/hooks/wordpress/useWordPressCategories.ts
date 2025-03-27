@@ -51,7 +51,7 @@ export const useWordPressCategories = () => {
       const siteUrl = wpConfig.site_url.replace(/([^:]\/)\/+/g, "$1");
 
       // Construct the WordPress API URL
-      const apiUrl = `${siteUrl}/wp-json/wp/v2/categories?per_page=100`;
+      const apiUrl = `${siteUrl}/wp-json/wp/v2/categories`;
       
       // Prepare headers
       const headers: Record<string, string> = {
@@ -67,21 +67,20 @@ export const useWordPressCategories = () => {
         console.log("Using REST API Key authentication");
         headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
       } else {
-        console.warn("No authentication credentials provided for WordPress");
+        console.log("No authentication credentials provided");
       }
       
       console.log("Fetching categories from:", apiUrl);
       
       // Ajouter un délai d'expiration à la requête
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 secondes de timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes de timeout
       
       try {
         const response = await fetch(apiUrl, {
           method: 'GET',
           headers: headers,
-          signal: controller.signal,
-          credentials: 'omit' // Disable sending cookies for CORS requests
+          signal: controller.signal
         });
   
         clearTimeout(timeoutId);
@@ -91,7 +90,7 @@ export const useWordPressCategories = () => {
           console.error("WordPress API error:", response.status, errorText);
           
           if (response.status === 401 || response.status === 403) {
-            throw new Error("Identifiants incorrects ou autorisations insuffisantes. Vérifiez les autorisations WordPress.");
+            throw new Error("Identifiants incorrects ou autorisations insuffisantes");
           }
           
           throw new Error(`Failed to fetch categories: ${response.statusText}`);
@@ -121,11 +120,7 @@ export const useWordPressCategories = () => {
       }
       
       setError(errorMessage);
-      
-      // Don't show toast for permission issues to avoid confusion
-      if (!errorMessage.includes("permissions") && !errorMessage.includes("autorisations")) {
-        toast.error("Erreur lors de la récupération des catégories WordPress");
-      }
+      toast.error("Erreur lors de la récupération des catégories WordPress");
     } finally {
       setIsLoading(false);
     }
