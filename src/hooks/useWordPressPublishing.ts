@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -88,17 +89,17 @@ export const useWordPressPublishing = () => {
         status = 'future';
       }
       
-      // Prepare post data with Yoast SEO meta fields format
+      // Prepare post data with Yoast SEO meta fields based on correct API fields
+      // Using the fields from the provided image: wpseo_title and wpseo_metadesc
       const postData: any = {
         title: announcement.title,
         content: content,
         status: status,
         categories: [parseInt(wpCategoryId)],
         date: announcement.status === 'scheduled' ? announcement.publish_date : undefined,
-        // Format for Yoast SEO meta fields - using correct keys that Yoast recognizes
         meta: {
-          _yoast_wpseo_title: announcement.seo_title || announcement.title,
-          _yoast_wpseo_metadesc: announcement.seo_description || "",
+          // Using the filter/field names from the provided image
+          wpseo_title: announcement.seo_title || announcement.title,
           wpseo_metadesc: announcement.seo_description || "",
           _yoast_wpseo_focuskw: announcement.title,
         },
@@ -111,9 +112,8 @@ export const useWordPressPublishing = () => {
         status: postData.status,
         categoryId: wpCategoryId,
         hasDate: !!postData.date,
-        seoTitle: postData.meta._yoast_wpseo_title,
-        seoDescription: postData.meta._yoast_wpseo_metadesc,
-        wpseoMetadesc: postData.meta.wpseo_metadesc,
+        seoTitle: postData.meta.wpseo_title,
+        seoDescription: postData.meta.wpseo_metadesc,
         slug: postData.slug
       });
       
