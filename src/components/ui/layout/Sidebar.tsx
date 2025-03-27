@@ -59,12 +59,20 @@ const Sidebar = () => {
     },
   ];
 
+  // Determine what text to display in the sidebar header
+  let headerText = "DiviAnnounce";
+  
+  // For editors with a WordPress site configured, show the WordPress site name
+  if (!isAdmin && user?.wordpressConfig?.name) {
+    headerText = user.wordpressConfig.name;
+  }
+
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 transform border-r border-border bg-card shadow-sm transition-transform md:translate-x-0">
       <div className="flex h-16 items-center px-6 border-b border-border">
         <Link to="/dashboard" className="flex items-center">
-          <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">
-            DiviAnnounce
+          <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70 truncate">
+            {headerText}
           </span>
         </Link>
       </div>
