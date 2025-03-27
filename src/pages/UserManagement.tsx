@@ -59,6 +59,7 @@ const UserManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { impersonateUser } = useAuth();
   
   const formSchema = z.object({
@@ -108,38 +109,33 @@ const UserManagement = () => {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
+      setIsSubmitting(true);
       setIsDialogOpen(false);
+      
+      // Récupérer le token d'accès de l'utilisateur actuel
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      
+      if (!token) {
+        throw new Error("Vous devez être connecté pour effectuer cette action");
+      }
+      
       toast.loading("Création de l'utilisateur en cours...");
       
-      // 1. Create auth user
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: values.email,
-        password: values.password,
-        email_confirm: true,
-        user_metadata: {
-          name: values.name,
+      // Appeler la fonction Edge pour créer l'utilisateur
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
         },
+        body: JSON.stringify(values),
       });
       
-      if (authError) {
-        throw authError;
-      }
+      const result = await response.json();
       
-      if (!authData.user) {
-        throw new Error("Erreur lors de la création de l'utilisateur");
-      }
-      
-      // 2. Update profile (role and clientId)
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          role: values.role,
-          clientId: values.role === 'editor' ? values.clientId : null,
-        })
-        .eq('id', authData.user.id);
-      
-      if (profileError) {
-        throw profileError;
+      if (!response.ok) {
+        throw new Error(result.error || "Erreur lors de la création de l'utilisateur");
       }
       
       toast.dismiss();
@@ -150,6 +146,8 @@ const UserManagement = () => {
       toast.dismiss();
       console.error("Error creating user:", error);
       toast.error(error.message || "Erreur lors de la création de l'utilisateur");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -304,7 +302,16 @@ const UserManagement = () => {
                         )}
                         
                         <DialogFooter>
-                          <Button type="submit">Créer l'utilisateur</Button>
+                          <Button type="submit" disabled={isSubmitting}>
+                            {isSubmitting ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Création...
+                              </>
+                            ) : (
+                              "Créer l'utilisateur"
+                            )}
+                          </Button>
                         </DialogFooter>
                       </form>
                     </Form>
