@@ -90,7 +90,7 @@ export const useWordPressPublishing = () => {
       }
       
       // Prepare post data
-      const postData = {
+      const postData: any = {
         title: announcement.title,
         content: content,
         status: status,
@@ -129,6 +129,60 @@ export const useWordPressPublishing = () => {
         console.log("Utilisation de l'authentification par Application Password");
       } else {
         throw new Error("Aucune méthode d'authentification disponible pour WordPress. Veuillez configurer les identifiants d'Application Password.");
+      }
+      
+      // Handle featured image (if available)
+      if (announcement.images && announcement.images.length > 0) {
+        // Get the first image URL as the featured image
+        const featuredImageUrl = announcement.images[0];
+        console.log("Image mise en avant URL:", featuredImageUrl);
+        
+        // First, create the media item in WordPress
+        try {
+          console.log("Téléchargement de l'image mise en avant vers WordPress...");
+          
+          // Fetch the image file from the URL
+          const imageResponse = await fetch(featuredImageUrl);
+          if (!imageResponse.ok) {
+            throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
+          }
+          
+          const imageBlob = await imageResponse.blob();
+          
+          // Extract the filename from the URL
+          const urlParts = featuredImageUrl.split('/');
+          const fileName = urlParts[urlParts.length - 1];
+          
+          // Create a new FormData object and append the image
+          const formData = new FormData();
+          formData.append('file', imageBlob, fileName);
+          
+          // POST the image to WordPress media endpoint
+          const mediaResponse = await fetch(`${siteUrl}/wp-json/wp/v2/media`, {
+            method: 'POST',
+            headers: {
+              'Authorization': headers['Authorization'],
+              // Content-Type is set automatically by the browser with FormData
+            },
+            body: formData
+          });
+          
+          if (!mediaResponse.ok) {
+            const errorText = await mediaResponse.text();
+            console.error("Erreur lors du téléversement de l'image:", errorText);
+            throw new Error(`Failed to upload featured image: ${mediaResponse.status} ${mediaResponse.statusText}`);
+          }
+          
+          const mediaData = await mediaResponse.json();
+          console.log("Image téléversée avec succès sur WordPress, ID:", mediaData.id);
+          
+          // Set the featured image ID in the post data
+          postData.featured_media = mediaData.id;
+        } catch (mediaError: any) {
+          console.error("Erreur lors de la gestion de l'image mise en avant:", mediaError);
+          // Continue with post creation even if image upload fails
+          console.log("Continuation de la création de l'article sans image mise en avant");
+        }
       }
       
       console.log("Envoi de la requête à WordPress...");
