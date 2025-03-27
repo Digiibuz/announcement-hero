@@ -9,6 +9,35 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      client_wordpress_configs: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          wordpress_config_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          wordpress_config_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          wordpress_config_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_wordpress_configs_wordpress_config_id_fkey"
+            columns: ["wordpress_config_id"]
+            isOneToOne: false
+            referencedRelation: "wordpress_configs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           client_id: string | null
@@ -36,6 +65,39 @@ export type Database = {
           name?: string
           role?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      wordpress_configs: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          password: string | null
+          rest_api_key: string
+          site_url: string
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          password?: string | null
+          rest_api_key: string
+          site_url: string
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          password?: string | null
+          rest_api_key?: string
+          site_url?: string
+          updated_at?: string
+          username?: string | null
         }
         Relationships: []
       }

@@ -1,104 +1,129 @@
 
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
-import {
-  LayoutDashboard,
-  FileText,
-  PlusCircle,
-  Users,
-  Archive,
-  Settings,
-  ChevronRight,
-} from "lucide-react";
-
-interface SidebarItemProps {
-  to: string;
-  icon: React.ReactNode;
-  label: string;
-  active?: boolean;
-  adminOnly?: boolean;
-}
-
-const SidebarItem = ({ 
-  to, 
-  icon, 
-  label, 
-  active = false,
-  adminOnly = false
-}: SidebarItemProps) => {
-  const { isAdmin } = useAuth();
-  
-  if (adminOnly && !isAdmin) return null;
-  
-  return (
-    <Link
-      to={to}
-      className={cn(
-        "flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-sidebar-accent transition-colors duration-200",
-        active 
-          ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" 
-          : "text-sidebar-foreground"
-      )}
-    >
-      {icon}
-      <span>{label}</span>
-      {active && <ChevronRight size={16} className="ml-auto" />}
-    </Link>
-  );
-};
+import { useMediaQuery } from "@/hooks/use-mobile";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { Loader2, UserCog, LogOut, LayoutDashboard, Newspaper, AlertTriangle, Globe } from "lucide-react";
 
 const Sidebar = () => {
-  const location = useLocation();
-  const { isAuthenticated } = useAuth();
+  const isMobile = useMediaQuery("(max-width: 768px)");
+  const { pathname } = useLocation();
+  const { user, logout, isLoading, isAuthenticated, isAdmin, isImpersonating, stopImpersonating, originalUser } = useAuth();
 
-  if (!isAuthenticated) return null;
+  if (isMobile || !isAuthenticated) return null;
+
+  const navItems = [
+    {
+      name: "Tableau de bord",
+      href: "/dashboard",
+      icon: <LayoutDashboard className="h-5 w-5" />,
+      isActive: pathname === "/dashboard",
+    },
+    {
+      name: "Créer une annonce",
+      href: "/create",
+      icon: <Newspaper className="h-5 w-5" />,
+      isActive: pathname === "/create",
+    },
+  ];
+
+  const adminItems = [
+    {
+      name: "Gestion utilisateurs",
+      href: "/users",
+      icon: <UserCog className="h-5 w-5" />,
+      isActive: pathname === "/users",
+    },
+    {
+      name: "Gestion WordPress",
+      href: "/wordpress",
+      icon: <Globe className="h-5 w-5" />,
+      isActive: pathname === "/wordpress",
+    },
+  ];
 
   return (
-    <aside className="fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 border-r border-border bg-sidebar hidden md:block">
-      <div className="flex flex-col h-full p-4">
-        <div className="space-y-1">
-          <SidebarItem
-            to="/dashboard"
-            icon={<LayoutDashboard size={18} />}
-            label="Dashboard"
-            active={location.pathname === "/dashboard"}
-          />
-          <SidebarItem
-            to="/announcements"
-            icon={<FileText size={18} />}
-            label="Announcements"
-            active={location.pathname === "/announcements"}
-          />
-          <SidebarItem
-            to="/create"
-            icon={<PlusCircle size={18} />}
-            label="Create New"
-            active={location.pathname === "/create"}
-          />
-          <SidebarItem
-            to="/archived"
-            icon={<Archive size={18} />}
-            label="Archived"
-            active={location.pathname === "/archived"}
-          />
-          <SidebarItem
-            to="/users"
-            icon={<Users size={18} />}
-            label="User Management"
-            active={location.pathname === "/users"}
-            adminOnly
-          />
-        </div>
+    <aside className="fixed left-0 top-0 z-40 h-screen w-64 transform border-r border-border bg-card pt-16 shadow-sm transition-transform md:translate-x-0">
+      <div className="h-full overflow-y-auto px-3 py-4">
+        <ul className="space-y-2">
+          {navItems.map((item) => (
+            <li key={item.href}>
+              <Link to={item.href}>
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start",
+                    item.isActive && "bg-accent text-accent-foreground"
+                  )}
+                >
+                  {item.icon}
+                  <span className="ml-3">{item.name}</span>
+                </Button>
+              </Link>
+            </li>
+          ))}
 
-        <div className="mt-auto">
-          <SidebarItem
-            to="/settings"
-            icon={<Settings size={18} />}
-            label="Settings"
-            active={location.pathname === "/settings"}
-          />
+          {isAdmin && (
+            <>
+              <li className="pt-5">
+                <h3 className="px-3 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+                  Administration
+                </h3>
+              </li>
+              {adminItems.map((item) => (
+                <li key={item.href}>
+                  <Link to={item.href}>
+                    <Button
+                      variant="ghost"
+                      className={cn(
+                        "w-full justify-start",
+                        item.isActive && "bg-accent text-accent-foreground"
+                      )}
+                    >
+                      {item.icon}
+                      <span className="ml-3">{item.name}</span>
+                    </Button>
+                  </Link>
+                </li>
+              ))}
+            </>
+          )}
+        </ul>
+
+        <div className="mt-auto pt-4 absolute bottom-4 left-0 right-0 px-3">
+          {isImpersonating && (
+            <div className="mb-4 p-3 rounded-md bg-yellow-100 dark:bg-yellow-900/30 text-sm">
+              <div className="flex items-center mb-1">
+                <AlertTriangle className="h-4 w-4 text-yellow-800 dark:text-yellow-400 mr-1" />
+                <p className="text-yellow-800 dark:text-yellow-400 font-medium">Mode d'emprunt d'identité</p>
+              </div>
+              <p className="text-yellow-700 dark:text-yellow-500 text-xs mb-2">
+                Vous êtes connecté en tant que {user?.name}
+              </p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full border-yellow-500 hover:bg-yellow-200 dark:hover:bg-yellow-800/40"
+                onClick={stopImpersonating}
+              >
+                Retour à {originalUser?.name}
+              </Button>
+            </div>
+          )}
+
+          <div className="border-t border-border pt-4">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{user?.name}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
+              </div>
+              <Button onClick={logout} variant="ghost" size="icon" aria-label="Déconnexion">
+                {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5" />}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </aside>

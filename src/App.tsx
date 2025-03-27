@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import CreateAnnouncement from "./pages/CreateAnnouncement";
 import UserManagement from "./pages/UserManagement";
+import WordPressManagement from "./pages/WordPressManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -78,6 +79,14 @@ const AppRoutes = () => {
         element={
           <AdminRoute>
             <UserManagement />
+          </AdminRoute>
+        } 
+      />
+      <Route 
+        path="/wordpress" 
+        element={
+          <AdminRoute>
+            <WordPressManagement />
           </AdminRoute>
         } 
       />
