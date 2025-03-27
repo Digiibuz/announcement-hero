@@ -1,13 +1,14 @@
+
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { useMediaQuery } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Loader2, UserCog, LogOut, LayoutDashboard, Newspaper, AlertTriangle, Globe } from "lucide-react";
 
 const Sidebar = () => {
-  const isMobile = useMediaQuery("(max-width: 768px)");
+  const isMobile = useIsMobile();
   const { pathname } = useLocation();
   const { user, logout, isLoading, isAuthenticated, isAdmin, isImpersonating, stopImpersonating, originalUser } = useAuth();
 

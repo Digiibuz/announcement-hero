@@ -4,11 +4,11 @@ import Header from "@/components/ui/layout/Header";
 import Sidebar from "@/components/ui/layout/Sidebar";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { useAuth } from "@/context/AuthContext";
-import { toast } from "sonner";
 import WordPressConfigForm from "@/components/wordpress/WordPressConfigForm";
 import WordPressConfigList from "@/components/wordpress/WordPressConfigList";
 import AccessDenied from "@/components/users/AccessDenied";
 import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
+import type { WordPressConfig } from "@/types/wordpress";
 
 const WordPressManagement = () => {
   const { isAdmin } = useAuth();
@@ -79,4 +79,3 @@ const WordPressManagement = () => {
 };
 
 export default WordPressManagement;
-
