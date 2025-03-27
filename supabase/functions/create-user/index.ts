@@ -16,14 +16,12 @@ serve(async (req) => {
   try {
     console.log("Démarrage de la fonction create-user");
     
-    console.log("Headers reçus:", JSON.stringify(req.headers, null, 2));
-    
     // Créer un client Supabase avec la clé de service
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
-    
+
     // Récupérer les données de la requête
     const requestData = await req.json();
     console.log("Données reçues:", JSON.stringify(requestData));
@@ -32,10 +30,32 @@ serve(async (req) => {
 
     // Vérifier les données requises
     if (!email || !password || !name || !role) {
+      console.log("Données requises manquantes");
       return new Response(
-        JSON.stringify({
-          error: "Données manquantes. Email, mot de passe, nom et rôle sont requis."
-        }),
+        JSON.stringify({ error: "Données requises manquantes" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
+    }
+
+    // Vérifier si l'utilisateur existe déjà
+    const { data: existingUsers, error: searchError } = await supabaseAdmin.auth.admin.listUsers({
+      filter: {
+        email: email,
+      },
+    });
+
+    if (searchError) {
+      console.log("Erreur lors de la recherche d'utilisateurs existants:", searchError.message);
+      throw searchError;
+    }
+
+    if (existingUsers && existingUsers.users.length > 0) {
+      console.log("L'utilisateur existe déjà:", email);
+      return new Response(
+        JSON.stringify({ error: "L'utilisateur existe déjà" }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 400,
@@ -45,7 +65,7 @@ serve(async (req) => {
 
     // Créer l'utilisateur
     console.log("Création de l'utilisateur:", email);
-    const { data: authUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
+    const { data: newUserData, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
@@ -57,82 +77,45 @@ serve(async (req) => {
       },
     });
 
-    if (createUserError) {
-      console.log("Erreur lors de la création de l'utilisateur:", createUserError.message);
-      throw createUserError;
+    if (createError) {
+      console.log("Erreur lors de la création de l'utilisateur:", createError.message);
+      throw createError;
     }
 
-    console.log("Utilisateur créé avec succès:", authUser.user.id);
+    // Après avoir créé l'utilisateur dans Auth, créer son profil
+    const { error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .insert({
+        id: newUserData.user.id,
+        email: email,
+        name: name,
+        role: role,
+        client_id: role === "editor" ? clientId : null,
+        wordpress_config_id: role === "editor" ? wordpressConfigId : null,
+      })
+      .select()
+      .single();
 
-    // Vérifier si un profil existe déjà pour cet utilisateur
-    console.log("Vérification si un profil existe déjà pour:", authUser.user.id);
-    const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
-      .from("profiles")
-      .select("*")
-      .eq("id", authUser.user.id)
-      .maybeSingle();
-
-    if (profileCheckError) {
-      console.log("Erreur lors de la vérification du profil:", profileCheckError.message);
-      throw profileCheckError;
+    if (profileError) {
+      console.log("Erreur lors de la création du profil:", profileError.message);
+      
+      // Si la création du profil échoue, supprimer l'utilisateur pour éviter les incohérences
+      await supabaseAdmin.auth.admin.deleteUser(newUserData.user.id);
+      
+      throw profileError;
     }
 
-    if (existingProfile) {
-      // Mettre à jour le profil existant
-      console.log("Profil existant trouvé, mise à jour pour:", authUser.user.id);
-      const { error: updateError } = await supabaseAdmin
-        .from("profiles")
-        .update({
-          name,
-          email,
-          role,
-          client_id: role === "editor" ? clientId : null,
-          wordpress_config_id: role === "editor" ? wordpressConfigId : null,
-        })
-        .eq("id", authUser.user.id);
-
-      if (updateError) {
-        console.log("Erreur lors de la mise à jour du profil:", updateError.message);
-        throw updateError;
-      }
-      console.log("Profil mis à jour avec succès");
-    } else {
-      // Créer un nouveau profil
-      console.log("Insertion dans la table profiles pour:", authUser.user.id);
-      const { error: insertError } = await supabaseAdmin
-        .from("profiles")
-        .insert({
-          id: authUser.user.id,
-          name,
-          email,
-          role,
-          client_id: role === "editor" ? clientId : null,
-          wordpress_config_id: role === "editor" ? wordpressConfigId : null,
-        });
-
-      if (insertError) {
-        console.log("Erreur lors de l'insertion dans profiles:", insertError.message);
-        throw insertError;
-      }
-      console.log("Profil créé avec succès");
-    }
+    console.log("Utilisateur créé avec succès:", newUserData.user.id);
 
     return new Response(
-      JSON.stringify({
-        user: {
-          id: authUser.user.id,
-          email: authUser.user.email,
-          role,
-          name,
-        },
-      }),
+      JSON.stringify({ success: true, user: newUserData.user }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       }
     );
   } catch (error) {
-    console.error("Erreur:", error.message);
+    console.error("Erreur:", error.message, error.stack);
     return new Response(
       JSON.stringify({ error: error.message || "Une erreur est survenue" }),
       {

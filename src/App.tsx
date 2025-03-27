@@ -33,7 +33,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Admin only route component
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading, isAdmin } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin, isClient } = useAuth();
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -43,7 +43,8 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (!isAdmin) {
+  // Autoriser l'accès aux utilisateurs admin et client
+  if (!isAdmin && !isClient) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -82,7 +83,7 @@ const AppRoutes = () => {
         } 
       />
       
-      {/* Admin only routes */}
+      {/* Admin/Client only routes */}
       <Route 
         path="/users" 
         element={

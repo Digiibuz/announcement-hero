@@ -28,7 +28,7 @@ import { WordPressConfig } from "@/types/wordpress";
 export const formSchema = z.object({
   email: z.string().email({ message: "Email invalide" }),
   name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères" }),
-  role: z.enum(["admin", "editor"], {
+  role: z.enum(["admin", "editor", "client"], {
     required_error: "Veuillez sélectionner un rôle",
   }),
   clientId: z.string().optional(),
@@ -103,6 +103,7 @@ const FormFields: React.FC<FormFieldsProps> = ({
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="admin">Administrateur</SelectItem>
+                  <SelectItem value="client">Client</SelectItem>
                   <SelectItem value="editor">Éditeur</SelectItem>
                 </SelectContent>
               </Select>

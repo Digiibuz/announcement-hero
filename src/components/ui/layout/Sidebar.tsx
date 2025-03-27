@@ -19,7 +19,7 @@ import {
 const Sidebar = () => {
   const isMobile = useIsMobile();
   const { pathname } = useLocation();
-  const { user, logout, isLoading, isAuthenticated, isAdmin, isImpersonating, stopImpersonating, originalUser } = useAuth();
+  const { user, logout, isLoading, isAuthenticated, isAdmin, isClient, isImpersonating, stopImpersonating, originalUser } = useAuth();
 
   if (isMobile || !isAuthenticated) return null;
 
@@ -87,7 +87,7 @@ const Sidebar = () => {
             </li>
           ))}
 
-          {isAdmin && (
+          {(isAdmin || isClient) && (
             <>
               <li className="pt-5">
                 <h3 className="px-3 text-xs font-semibold uppercase text-muted-foreground tracking-wider">

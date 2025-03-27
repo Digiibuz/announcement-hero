@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -66,6 +67,24 @@ const UserList: React.FC<UserListProps> = ({
     return "-";
   };
 
+  const getRoleDisplayName = (role: string) => {
+    switch (role) {
+      case 'admin': return 'Administrateur';
+      case 'client': return 'Client';
+      case 'editor': return 'Éditeur';
+      default: return role;
+    }
+  };
+
+  const getRoleClass = (role: string) => {
+    switch (role) {
+      case 'admin': return 'bg-primary/10 text-primary';
+      case 'client': return 'bg-blue-100 text-blue-800 dark:bg-blue-800/20 dark:text-blue-400';
+      case 'editor': return 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400';
+      default: return '';
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-border">
       <Table>
@@ -101,10 +120,8 @@ const UserList: React.FC<UserListProps> = ({
                 <TableCell className="font-medium">{user.name}</TableCell>
                 <TableCell>{user.email}</TableCell>
                 <TableCell>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    user.role === "admin" ? "bg-primary/10 text-primary" : "bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400"
-                  }`}>
-                    {user.role === "admin" ? "Administrateur" : "Éditeur"}
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleClass(user.role)}`}>
+                    {getRoleDisplayName(user.role)}
                   </span>
                 </TableCell>
                 <TableCell>{user.clientId || "-"}</TableCell>

@@ -42,7 +42,7 @@ const formSchema = z.object({
   email: z.string().email({ message: "Email invalide" }),
   name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères" }),
   password: z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères" }),
-  role: z.enum(["admin", "editor"], {
+  role: z.enum(["admin", "editor", "client"], {
     required_error: "Veuillez sélectionner un rôle",
   }),
   clientId: z.string().optional(),
@@ -77,7 +77,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
   // Reset the wpConfigIds field when the role changes
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
-      if (name === "role" && value.role === "admin") {
+      if (name === "role" && (value.role === "admin" || value.role === "client")) {
         form.setValue("wpConfigIds", []);
         form.setValue("wordpressConfigId", "");
       }
@@ -94,6 +94,9 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       
       console.log("Envoi des données:", values);
       
+      // Mise à jour pour gérer le rôle client de la même manière que le rôle admin
+      const needsClientId = values.role === "editor";
+      
       // Appel de la fonction Edge avec une meilleure gestion des erreurs
       const { data, error } = await supabase.functions.invoke("create-user", {
         body: {
@@ -101,8 +104,8 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
           name: values.name,
           password: values.password,
           role: values.role,
-          clientId: values.role === "editor" ? values.clientId : null,
-          wordpressConfigId: values.role === "editor" ? values.wordpressConfigId : null,
+          clientId: needsClientId ? values.clientId : null,
+          wordpressConfigId: needsClientId ? values.wordpressConfigId : null,
         },
       });
       
@@ -233,6 +236,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="admin">Administrateur</SelectItem>
+                      <SelectItem value="client">Client</SelectItem>
                       <SelectItem value="editor">Éditeur</SelectItem>
                     </SelectContent>
                   </Select>
