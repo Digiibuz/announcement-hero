@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useWordPressConnection } from "@/hooks/wordpress/useWordPressConnection";
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
 import { useWordPressPages } from "@/hooks/wordpress/useWordPressPages";
-import { CheckCircle, XCircle, AlertCircle, RefreshCw, Loader2, HelpCircle } from "lucide-react";
+import { CheckCircle, XCircle, AlertCircle, RefreshCw, Loader2, HelpCircle, Globe, ShieldCheck, Network, ServerOff } from "lucide-react";
 import { toast } from "sonner";
 import {
   Tooltip,
@@ -30,6 +30,8 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface WordPressConnectionStatusProps {
   configId?: string;
@@ -46,6 +48,7 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
   const { status, isChecking, errorDetails, checkConnection } = useWordPressConnection();
   const [configDetails, setConfigDetails] = useState<{name?: string, site_url?: string}>({});
   const [showTroubleshootDialog, setShowTroubleshootDialog] = useState(false);
+  const [lastCheckTime, setLastCheckTime] = useState<Date | null>(null);
   
   const { 
     categories, 
@@ -103,6 +106,7 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
         return;
       }
       
+      setLastCheckTime(new Date());
       const result = await checkConnection(effectiveConfigId);
       
       if (result.success) {
@@ -173,6 +177,11 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
             {errorDetails && (
               <p className="text-xs text-red-500 mt-1">{errorDetails}</p>
             )}
+            {lastCheckTime && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Dernière vérification: {lastCheckTime.toLocaleTimeString()}
+              </p>
+            )}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -199,7 +208,7 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
               <HelpCircle className="h-4 w-4 text-muted-foreground" />
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>Dépannage de la connexion WordPress</DialogTitle>
               <DialogDescription>
@@ -207,40 +216,179 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
               </DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-4 my-4">
-              <h3 className="font-medium">Erreur détectée: {errorDetails}</h3>
+            <Tabs defaultValue="issues">
+              <TabsList className="grid grid-cols-3 mb-4">
+                <TabsTrigger value="issues">Diagnostic</TabsTrigger>
+                <TabsTrigger value="solutions">Solutions</TabsTrigger>
+                <TabsTrigger value="tools">Outils</TabsTrigger>
+              </TabsList>
               
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm">Solutions possibles:</h4>
-                <ul className="list-disc pl-5 space-y-1 text-sm">
-                  <li>Vérifiez que l'URL du site est correcte et accessible depuis l'extérieur</li>
-                  <li>Assurez-vous que l'API REST WordPress est activée sur votre site</li>
-                  <li>Vérifiez que vos identifiants WordPress sont corrects</li>
-                  <li>Vérifiez que le site WordPress n'est pas bloqué par un pare-feu</li>
-                  <li>Assurez-vous que la configuration CORS permet les requêtes depuis cette application</li>
-                  <li>Si vous utilisez un certificat SSL, vérifiez qu'il est valide et à jour</li>
-                </ul>
-              </div>
-              
-              {configDetails.site_url && (
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm">Tests à effectuer:</h4>
-                  <p className="text-sm">Vérifiez si l'API REST WordPress est accessible en ouvrant cette URL dans votre navigateur:</p>
-                  <code className="bg-muted p-2 rounded text-xs block">
-                    {configDetails.site_url.replace(/\/$/, '')}/wp-json
-                  </code>
-                  <p className="text-sm mt-2">Vous devriez voir une réponse JSON si l'API est active.</p>
+              <TabsContent value="issues">
+                <div className="space-y-4">
+                  <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                    <h3 className="font-medium flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-2 text-red-500" />
+                      Erreur détectée: {errorDetails}
+                    </h3>
+                  </div>
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center">
+                        <ServerOff className="h-4 w-4 mr-2" />
+                        Diagnostic du problème
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium">Erreur de type "Failed to fetch" ou "Erreur réseau"</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Cette erreur indique généralement un des problèmes suivants:
+                        </p>
+                        <ul className="list-disc pl-5 space-y-1 text-sm">
+                          <li>Problème de connexion internet</li>
+                          <li>Restrictions CORS (Cross-Origin Resource Sharing)</li>
+                          <li>Le site WordPress est inaccessible ou l'URL est incorrecte</li>
+                          <li>Un pare-feu bloque les requêtes</li>
+                          <li>L'API REST de WordPress n'est pas activée</li>
+                        </ul>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
-              )}
-            </div>
+              </TabsContent>
+              
+              <TabsContent value="solutions">
+                <div className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center">
+                        <Globe className="h-4 w-4 mr-2" />
+                        Étapes de résolution
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <ol className="list-decimal pl-5 space-y-2 text-sm">
+                        <li>
+                          <strong>Vérifiez l'URL du site WordPress</strong>
+                          <p className="text-muted-foreground">
+                            Assurez-vous que l'URL est correcte et accessible depuis votre navigateur.
+                            <br />URL actuelle: <code className="bg-muted p-1 rounded">{configDetails.site_url}</code>
+                          </p>
+                        </li>
+                        <li>
+                          <strong>Vérifiez que l'API REST WordPress est activée</strong>
+                          <p className="text-muted-foreground">
+                            Dans l'admin WordPress: Réglages → Permaliens → Vérifiez que les permaliens ne sont pas réglés sur "Simple".
+                          </p>
+                        </li>
+                        <li>
+                          <strong>Configuration CORS</strong>
+                          <p className="text-muted-foreground">
+                            Installez et configurez un plugin CORS sur votre site WordPress:
+                            <br />- Plugin recommandé: "WP CORS" ou "Enable CORS"
+                            <br />- Ajoutez cette application (<code className="bg-muted p-1 rounded">{window.location.origin}</code>) aux domaines autorisés
+                          </p>
+                        </li>
+                        <li>
+                          <strong>Vérifiez les identifiants WordPress</strong>
+                          <p className="text-muted-foreground">
+                            Assurez-vous que les identifiants de l'Application Password sont corrects.
+                          </p>
+                        </li>
+                      </ol>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="tools">
+                <div className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center">
+                        <Network className="h-4 w-4 mr-2" />
+                        Tests de connectivité
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {configDetails.site_url && (
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-medium">URLs à tester dans votre navigateur:</h4>
+                          
+                          <div className="space-y-1">
+                            <p className="text-xs">Site principal:</p>
+                            <code className="bg-muted p-2 rounded text-xs block truncate">
+                              {configDetails.site_url.replace(/\/$/, '')}
+                            </code>
+                          </div>
+                          
+                          <div className="space-y-1">
+                            <p className="text-xs">Point d'entrée API REST:</p>
+                            <code className="bg-muted p-2 rounded text-xs block truncate">
+                              {configDetails.site_url.replace(/\/$/, '')}/wp-json
+                            </code>
+                          </div>
+                          
+                          <div className="space-y-1">
+                            <p className="text-xs">API Catégories:</p>
+                            <code className="bg-muted p-2 rounded text-xs block truncate">
+                              {configDetails.site_url.replace(/\/$/, '')}/wp-json/wp/v2/categories
+                            </code>
+                          </div>
+                          
+                          <p className="text-sm mt-4">
+                            Si vous pouvez accéder à ces URLs dans votre navigateur mais pas depuis cette application,
+                            c'est très probablement un problème de CORS.
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center">
+                        <ShieldCheck className="h-4 w-4 mr-2" />
+                        Configuration de sécurité WordPress
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm mb-2">Plugins recommandés pour résoudre les problèmes CORS:</p>
+                      <ul className="list-disc pl-5 space-y-1 text-sm">
+                        <li>WP CORS</li>
+                        <li>Enable CORS</li>
+                        <li>CORS Enabler</li>
+                      </ul>
+                      
+                      <p className="text-sm mt-4">
+                        Si vous utilisez un pare-feu comme Wordfence, vérifiez qu'il n'est pas configuré pour bloquer les
+                        requêtes API.
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+            </Tabs>
             
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline">Fermer</Button>
-              </DialogClose>
-              <Button onClick={handleSync}>
-                Réessayer la connexion
+            <DialogFooter className="flex justify-between items-center mt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => window.open(configDetails.site_url, '_blank')}
+              >
+                <Globe className="h-4 w-4 mr-2" />
+                Visiter le site
               </Button>
+              
+              <div className="flex space-x-2">
+                <DialogClose asChild>
+                  <Button variant="outline">Fermer</Button>
+                </DialogClose>
+                <Button onClick={handleSync}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Réessayer
+                </Button>
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>

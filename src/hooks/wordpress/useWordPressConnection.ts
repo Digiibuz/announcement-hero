@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -11,6 +10,29 @@ export const useWordPressConnection = () => {
   const [isChecking, setIsChecking] = useState(false);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const { user } = useAuth();
+
+  // Function to test URL accessibility with timeout
+  const testUrl = async (url: string, headers: Record<string, string> = {}, timeout = 10000): Promise<boolean> => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      
+      console.log(`Testing URL accessibility: ${url}`);
+      const response = await fetch(url, {
+        method: 'HEAD', // Use HEAD method to minimize data transfer
+        headers,
+        signal: controller.signal,
+        mode: 'no-cors', // Try with no-cors first to bypass CORS issues
+        cache: 'no-cache'
+      });
+      
+      clearTimeout(timeoutId);
+      return true;
+    } catch (error) {
+      console.log(`URL test failed for ${url}:`, error);
+      return false;
+    }
+  };
 
   const checkConnection = async (configId?: string) => {
     const wordpressConfigId = configId || user?.wordpressConfigId;
@@ -48,6 +70,7 @@ export const useWordPressConnection = () => {
 
       // Ensure the site URL is properly formatted
       let siteUrl = wpConfig.site_url;
+      // Normalize URL: remove trailing slashes and add http:// if missing
       if (!siteUrl.startsWith("http")) {
         siteUrl = "https://" + siteUrl;
       }
@@ -55,12 +78,26 @@ export const useWordPressConnection = () => {
         siteUrl = siteUrl.slice(0, -1);
       }
 
+      // Try to check if the domain is accessible first (without any API paths)
+      const domain = new URL(siteUrl).origin;
+      const domainAccessible = await testUrl(domain);
+      
+      if (!domainAccessible) {
+        setStatus("disconnected");
+        setErrorDetails(`Le domaine ${domain} semble inaccessible. Vérifiez l'URL et votre connexion réseau.`);
+        return { 
+          success: false, 
+          message: `Le domaine ${domain} semble inaccessible. Vérifiez l'URL et votre connexion réseau.` 
+        };
+      }
+      
       // Try to fetch the WordPress site info as a connection test
       const infoUrl = `${siteUrl}/wp-json`;
       
       // Préparer les en-têtes d'authentification
       const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
       };
       
       let authenticationUsed = false;
@@ -80,21 +117,49 @@ export const useWordPressConnection = () => {
       console.log("Tentative de connexion à WordPress:", infoUrl);
 
       try {
-        const response = await fetch(infoUrl, {
+        // Try multiple approaches to deal with CORS and network issues
+        const options = {
           method: 'GET',
           headers: headers,
-          // Add a reasonable timeout
-          signal: AbortSignal.timeout(15000)
-        });
-
-        if (!response.ok) {
-          console.error("WordPress connection test failed:", response.statusText);
-          let errorMsg = `Échec de connexion: ${response.status} ${response.statusText}`;
+          signal: AbortSignal.timeout(15000),
+          mode: 'cors' as RequestMode,
+          credentials: 'same-origin' as RequestCredentials,
+          cache: 'no-cache' as RequestCache,
+        };
+        
+        // First try with standard CORS approach
+        let response: Response | null = null;
+        let errorMessage = "";
+        
+        try {
+          response = await fetch(infoUrl, options);
+        } catch (error: any) {
+          console.log("First fetch attempt failed:", error);
+          errorMessage = error.message;
           
-          if (response.status === 401 || response.status === 403) {
+          // If CORS issue detected, try alternative approach
+          if (error.message.includes("CORS") || error.message === "Failed to fetch") {
+            try {
+              // Try with different credentials mode
+              const altOptions = {...options, credentials: 'omit' as RequestCredentials};
+              response = await fetch(infoUrl, altOptions);
+            } catch (altError: any) {
+              console.log("Alternative fetch attempt failed:", altError);
+              // Keep original error if both failed
+            }
+          }
+        }
+
+        if (!response || !response.ok) {
+          console.error("WordPress connection test failed:", response?.statusText || errorMessage);
+          let errorMsg = `Échec de connexion: ${response?.status || ''} ${response?.statusText || errorMessage}`;
+          
+          if (response?.status === 401 || response?.status === 403) {
             errorMsg = "Identifiants incorrects ou autorisations insuffisantes";
-          } else if (response.status === 404) {
+          } else if (response?.status === 404) {
             errorMsg = "API REST WordPress introuvable. Vérifiez que le plugin REST API est activé.";
+          } else if (!response || errorMessage === "Failed to fetch") {
+            errorMsg = "Erreur réseau: impossible d'accéder au site WordPress. Vérifiez l'URL, votre connexion réseau et les paramètres CORS.";
           }
           
           setStatus("disconnected");
@@ -102,78 +167,18 @@ export const useWordPressConnection = () => {
           return { success: false, message: errorMsg };
         }
 
-        // Si l'authentification est utilisée, essayons d'accéder à un point d'extrémité
-        // qui nécessite des autorisations pour valider les identifiants
-        if (authenticationUsed) {
-          try {
-            // Essayons de récupérer les catégories, ce qui nécessite généralement une authentification
-            const categoriesUrl = `${siteUrl}/wp-json/wp/v2/categories`;
-            console.log("Test d'authentification avec les catégories:", categoriesUrl);
-            
-            const categoriesResponse = await fetch(categoriesUrl, {
-              method: 'GET',
-              headers: headers,
-              signal: AbortSignal.timeout(15000)
-            });
-            
-            if (!categoriesResponse.ok) {
-              console.warn("Categories test failed:", categoriesResponse.statusText);
-              if (categoriesResponse.status === 401 || categoriesResponse.status === 403) {
-                setStatus("disconnected");
-                setErrorDetails("Identifiants incorrects ou autorisations insuffisantes");
-                return { 
-                  success: false, 
-                  message: "Identifiants incorrects ou autorisations insuffisantes pour accéder aux catégories" 
-                };
-              }
-            } else {
-              // Test successful
-              console.log("Catégories récupérées avec succès");
-            }
-
-            // Essayons également avec les pages
-            const pagesUrl = `${siteUrl}/wp-json/wp/v2/pages`;
-            console.log("Test d'authentification avec les pages:", pagesUrl);
-            
-            const pagesResponse = await fetch(pagesUrl, {
-              method: 'GET',
-              headers: headers,
-              signal: AbortSignal.timeout(15000)
-            });
-
-            if (!pagesResponse.ok) {
-              console.warn("Pages test failed:", pagesResponse.statusText);
-              if (pagesResponse.status === 401 || pagesResponse.status === 403) {
-                setStatus("disconnected");
-                setErrorDetails("Identifiants incorrects ou autorisations insuffisantes pour accéder aux pages");
-                return { 
-                  success: false, 
-                  message: "Identifiants incorrects ou autorisations insuffisantes pour accéder aux pages" 
-                };
-              }
-            } else {
-              // Test successful
-              console.log("Pages récupérées avec succès");
-            }
-          } catch (authError: any) {
-            console.error("Authentication test error:", authError);
-            
-            // Detect network errors
-            if (authError.name === 'TypeError' && authError.message === 'Failed to fetch') {
-              setStatus("disconnected");
-              setErrorDetails("Erreur réseau: impossible d'accéder au site WordPress");
-              return { 
-                success: false, 
-                message: "Erreur réseau: impossible d'accéder au site WordPress" 
-              };
-            }
-            
-            // Ne pas échouer complètement si ce test échoue, car cela pourrait être dû
-            // à une configuration différente sur le site WordPress
-          }
-        }
-
+        // Additional validation to ensure it's actually a WordPress API response
         const data = await response.json();
+        
+        if (!data || !data.namespaces || !data.namespaces.includes('wp/v2')) {
+          setStatus("disconnected");
+          setErrorDetails("Le point d'accès API ne semble pas être une API WordPress valide");
+          return { 
+            success: false, 
+            message: "Le point d'accès API ne semble pas être une API WordPress valide" 
+          };
+        }
+        
         setStatus("connected");
         setErrorDetails(null);
         return { success: true, message: "Connexion établie avec succès", data };
@@ -194,7 +199,7 @@ export const useWordPressConnection = () => {
         // Network errors (CORS, DNS, etc.)
         if (fetchError.name === 'TypeError' && fetchError.message === 'Failed to fetch') {
           setStatus("disconnected");
-          setErrorDetails("Erreur réseau: impossible d'accéder au site WordPress. Vérifiez l'URL et les paramètres CORS.");
+          setErrorDetails("Erreur réseau: impossible d'accéder au site WordPress. Vérifiez l'URL, votre connexion réseau et les paramètres CORS.");
           return { 
             success: false, 
             message: "Erreur réseau: impossible d'accéder au site WordPress" 

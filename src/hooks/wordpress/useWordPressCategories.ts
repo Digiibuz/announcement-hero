@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -61,7 +60,9 @@ export const useWordPressCategories = () => {
       
       // Prepare headers
       const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache'
       };
       
       // Prioritize Application Password authentication
@@ -79,11 +80,40 @@ export const useWordPressCategories = () => {
       console.log("Fetching categories from:", apiUrl);
       
       try {
-        const response = await fetch(apiUrl, {
-          method: 'GET',
-          headers: headers,
-          signal: AbortSignal.timeout(15000) // Add a reasonable timeout
-        });
+        // Try different fetch approaches to handle potential CORS issues
+        let response: Response | null = null;
+        let error: any = null;
+        
+        try {
+          // First attempt with standard credentials
+          response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: headers,
+            signal: AbortSignal.timeout(15000),
+            credentials: 'same-origin'
+          });
+        } catch (err) {
+          error = err;
+          console.log("First categories fetch attempt failed:", err);
+          
+          try {
+            // Second attempt with no credentials (helps with some CORS scenarios)
+            response = await fetch(apiUrl, {
+              method: 'GET',
+              headers: headers,
+              signal: AbortSignal.timeout(15000),
+              credentials: 'omit'
+            });
+            error = null; // Clear error if second attempt succeeds
+          } catch (err2) {
+            console.log("Second categories fetch attempt also failed:", err2);
+            // Keep original error
+          }
+        }
+        
+        if (!response) {
+          throw error || new Error("Failed to fetch categories - network error");
+        }
 
         if (!response.ok) {
           const errorText = await response.text();
