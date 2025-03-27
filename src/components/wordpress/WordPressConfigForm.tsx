@@ -38,6 +38,7 @@ interface WordPressConfigFormProps {
   isSubmitting?: boolean;
   trigger?: React.ReactNode;
   config?: WordPressConfig;
+  buttonSize?: "default" | "sm" | "lg" | "icon"; // Add buttonSize prop
 }
 
 const WordPressConfigForm: React.FC<WordPressConfigFormProps> = ({
@@ -48,7 +49,8 @@ const WordPressConfigForm: React.FC<WordPressConfigFormProps> = ({
   dialogDescription = "Entrez les détails de votre site WordPress",
   isSubmitting = false,
   trigger,
-  config
+  config,
+  buttonSize = "default" // Set default value
 }) => {
   const [open, setOpen] = React.useState(false);
   
@@ -78,7 +80,7 @@ const WordPressConfigForm: React.FC<WordPressConfigFormProps> = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {trigger || <Button variant="outline">{buttonText}</Button>}
+        {trigger || <Button variant="outline" size={buttonSize}>{buttonText}</Button>}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
