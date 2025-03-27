@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
@@ -45,7 +44,7 @@ const Announcements = () => {
         return [];
       }
       
-      // Map WordPress category IDs to names (still needed for other parts of the app)
+      // Map WordPress category IDs to names
       return data.map(announcement => {
         if (announcement.wordpress_category_id && categories) {
           const category = categories.find(
