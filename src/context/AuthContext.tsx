@@ -19,6 +19,10 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
   isEditor: boolean;
+  impersonateUser: (user: User) => void;
+  stopImpersonating: () => void;
+  originalUser: User | null;
+  isImpersonating: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -44,6 +48,7 @@ const MOCK_USERS = [
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [originalUser, setOriginalUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -52,6 +57,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
+    
+    // Check if there's an impersonation session
+    const storedOriginalUser = localStorage.getItem("originalUser");
+    if (storedOriginalUser) {
+      setOriginalUser(JSON.parse(storedOriginalUser));
+    }
+    
     setIsLoading(false);
   }, []);
 
@@ -81,7 +93,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     setUser(null);
+    setOriginalUser(null);
     localStorage.removeItem("user");
+    localStorage.removeItem("originalUser");
+  };
+
+  // Admin impersonation functionality
+  const impersonateUser = (userToImpersonate: User) => {
+    // Only allow admins to impersonate
+    if (!user || user.role !== "admin") return;
+    
+    // Store original user
+    setOriginalUser(user);
+    localStorage.setItem("originalUser", JSON.stringify(user));
+    
+    // Set the impersonated user
+    setUser(userToImpersonate);
+    localStorage.setItem("user", JSON.stringify(userToImpersonate));
+  };
+
+  const stopImpersonating = () => {
+    if (!originalUser) return;
+    
+    // Restore original user
+    setUser(originalUser);
+    localStorage.setItem("user", JSON.stringify(originalUser));
+    
+    // Clear impersonation state
+    setOriginalUser(null);
+    localStorage.removeItem("originalUser");
   };
 
   const value = {
@@ -92,6 +132,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isAuthenticated: !!user,
     isAdmin: user?.role === "admin",
     isEditor: user?.role === "editor",
+    impersonateUser,
+    stopImpersonating,
+    originalUser,
+    isImpersonating: !!originalUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import CreateAnnouncement from "./pages/CreateAnnouncement";
+import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,25 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+// Admin only route component
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isLoading, isAdmin } = useAuth();
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
@@ -49,6 +69,16 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <CreateAnnouncement />
           </ProtectedRoute>
+        } 
+      />
+      
+      {/* Admin only routes */}
+      <Route 
+        path="/users" 
+        element={
+          <AdminRoute>
+            <UserManagement />
+          </AdminRoute>
         } 
       />
       
