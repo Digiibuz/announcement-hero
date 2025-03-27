@@ -105,12 +105,10 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
           <CardContent className="pt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <h4 className="text-sm font-medium mb-1">Identifiants API</h4>
+                <h4 className="text-sm font-medium mb-1">Nom d'utilisateur (App)</h4>
                 <div className="text-sm text-muted-foreground">
-                  {config.rest_api_key ? (
-                    <Badge variant="outline" className="font-mono">
-                      {config.rest_api_key.substring(0, 8)}...
-                    </Badge>
+                  {config.app_username ? (
+                    <span>{config.app_username}</span>
                   ) : (
                     <span>Non défini</span>
                   )}
@@ -118,10 +116,12 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
               </div>
               
               <div>
-                <h4 className="text-sm font-medium mb-1">Identifiants</h4>
+                <h4 className="text-sm font-medium mb-1">Mot de passe (App)</h4>
                 <div className="text-sm text-muted-foreground">
-                  {config.username ? (
-                    <span>{config.username}</span>
+                  {config.app_password ? (
+                    <Badge variant="outline" className="font-mono">
+                      {"••••••••••••"}
+                    </Badge>
                   ) : (
                     <span>Non défini</span>
                   )}

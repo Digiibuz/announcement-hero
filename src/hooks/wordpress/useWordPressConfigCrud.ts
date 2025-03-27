@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -14,7 +13,7 @@ export const useWordPressConfigCrud = (onConfigsChange?: () => void) => {
     try {
       setIsSubmitting(true);
       
-      // Préparer les données avec des valeurs null pour les champs supprimés
+      // Assurons-nous que les anciens champs sont définis comme null
       const configData = {
         ...config,
         rest_api_key: null,
