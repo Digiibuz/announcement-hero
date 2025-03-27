@@ -29,6 +29,33 @@
   margin-bottom: 0.75rem;
 }
 
+.rich-text-editor ul, 
+.rich-text-editor ol {
+  margin-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.rich-text-editor ul {
+  list-style-type: disc;
+}
+
+.rich-text-editor ol {
+  list-style-type: decimal;
+}
+
+.rich-text-editor li {
+  margin-bottom: 0.25rem;
+}
+
+.rich-text-editor a {
+  color: #0066cc;
+  text-decoration: underline;
+}
+
+.rich-text-editor a:hover {
+  text-decoration: none;
+}
+
 .rich-text-editor:empty:before {
   content: "Entrez la description de l'annonce ou utilisez la dictée vocale";
   color: #9ca3af;
