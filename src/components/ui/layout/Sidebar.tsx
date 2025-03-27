@@ -46,7 +46,7 @@ const Sidebar = () => {
       name: "Gestion WordPress",
       href: isAdmin ? "/wordpress" : "/editor-wordpress",
       icon: <Globe className="h-5 w-5" />,
-      isActive: isAdmin ? pathname === "/wordpress" : pathname === "/editor-wordpress",
+      isActive: pathname === (isAdmin ? "/wordpress" : "/editor-wordpress"),
     },
   ];
 

@@ -8,16 +8,19 @@ import { useAuth } from "@/context/AuthContext";
 import WordPressConnectionStatus from "@/components/wordpress/WordPressConnectionStatus";
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
 import { useWordPressPages } from "@/hooks/wordpress/useWordPressPages";
-import { Loader2, AlertCircle, Globe } from "lucide-react";
+import { Loader2, AlertCircle, Globe, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const EditorWordPressManagement = () => {
   const { user, isEditor } = useAuth();
   const navigate = useNavigate();
   const [wordpressInfo, setWordpressInfo] = useState<{name: string, site_url: string} | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Redirect admin users to the full WordPress management page
   useEffect(() => {
@@ -51,6 +54,27 @@ const EditorWordPressManagement = () => {
     error: pagesError,
     refetch: refetchPages
   } = useWordPressPages();
+
+  const handleRefreshData = async () => {
+    if (isRefreshing) return;
+    
+    try {
+      setIsRefreshing(true);
+      toast.info("Actualisation des données WordPress en cours...");
+      
+      await Promise.all([
+        refetchCategories(),
+        refetchPages()
+      ]);
+      
+      toast.success("Données WordPress actualisées avec succès");
+    } catch (error) {
+      console.error("Error refreshing WordPress data:", error);
+      toast.error("Erreur lors de l'actualisation des données");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
   
   const renderContentError = (error: string | null) => {
     if (!error) return null;
@@ -60,7 +84,11 @@ const EditorWordPressManagement = () => {
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>Erreur de connexion</AlertTitle>
         <AlertDescription>
-          {error}. Vérifiez les informations d'identification et réessayez.
+          {error}
+          <div className="mt-2 text-sm">
+            <strong>Résolution:</strong> L'utilisateur WordPress associé à votre compte pourrait ne pas avoir les permissions nécessaires.
+            Assurez-vous que le rôle "Éditeur" possède bien les capacités <code>manage_categories</code> et <code>edit_terms</code>.
+          </div>
         </AlertDescription>
       </Alert>
     );
@@ -142,6 +170,22 @@ const EditorWordPressManagement = () => {
                   {renderEmptyState()}
                   {renderContentError(categoriesError || pagesError)}
                   
+                  <div className="flex justify-end mb-4">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleRefreshData}
+                      disabled={isRefreshing || isCategoriesLoading || isPagesLoading}
+                    >
+                      {isRefreshing ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                      )}
+                      Actualiser les données
+                    </Button>
+                  </div>
+                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <Card>
                       <CardHeader>
@@ -159,9 +203,13 @@ const EditorWordPressManagement = () => {
                           <div className="flex items-center justify-center py-4">
                             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                           </div>
+                        ) : categoriesError ? (
+                          <p className="text-sm text-red-500">
+                            Impossible de récupérer les catégories
+                          </p>
                         ) : !hasCategories ? (
                           <p className="text-sm text-muted-foreground">
-                            Aucune catégorie trouvée
+                            Aucune catégorie trouvée ou l'utilisateur n'a pas les permissions nécessaires
                           </p>
                         ) : (
                           <ul className="space-y-1 text-sm">
@@ -194,9 +242,13 @@ const EditorWordPressManagement = () => {
                           <div className="flex items-center justify-center py-4">
                             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                           </div>
+                        ) : pagesError ? (
+                          <p className="text-sm text-red-500">
+                            Impossible de récupérer les pages
+                          </p>
                         ) : !hasPages ? (
                           <p className="text-sm text-muted-foreground">
-                            Aucune page trouvée
+                            Aucune page trouvée ou l'utilisateur n'a pas les permissions nécessaires
                           </p>
                         ) : (
                           <ul className="space-y-1 text-sm">
