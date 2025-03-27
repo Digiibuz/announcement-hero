@@ -15,7 +15,7 @@ export const useUserManagement = () => {
       setIsLoading(true);
       const { data, error } = await supabase
         .from('profiles')
-        .select('*');
+        .select('*, wordpress_configs(name, site_url)');
       
       if (error) {
         throw error;
@@ -28,6 +28,10 @@ export const useUserManagement = () => {
         role: profile.role as Role,
         clientId: profile.client_id,
         wordpressConfigId: profile.wordpress_config_id || null,
+        wordpressConfig: profile.wordpress_configs ? {
+          name: profile.wordpress_configs.name,
+          site_url: profile.wordpress_configs.site_url
+        } : null
       }));
       
       setUsers(processedUsers);

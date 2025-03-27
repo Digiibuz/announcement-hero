@@ -47,6 +47,7 @@ export type Database = {
           name: string
           role: string
           updated_at: string
+          wordpress_config_id: string | null
         }
         Insert: {
           client_id?: string | null
@@ -56,6 +57,7 @@ export type Database = {
           name: string
           role?: string
           updated_at?: string
+          wordpress_config_id?: string | null
         }
         Update: {
           client_id?: string | null
@@ -65,8 +67,17 @@ export type Database = {
           name?: string
           role?: string
           updated_at?: string
+          wordpress_config_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_wordpress_config_id_fkey"
+            columns: ["wordpress_config_id"]
+            isOneToOne: false
+            referencedRelation: "wordpress_configs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       wordpress_configs: {
         Row: {

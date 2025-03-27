@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -9,11 +8,9 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
-import { Loader2, AlertTriangle, Trash2, UserCog, UserMinus } from "lucide-react";
-import { toast } from "sonner";
+import { Loader2, AlertTriangle, UserMinus } from "lucide-react";
 import { UserProfile } from "@/types/auth";
 import UserEditForm from "./UserEditForm";
-import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +20,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
 interface UserListProps {
@@ -49,7 +45,6 @@ const UserList: React.FC<UserListProps> = ({
 }) => {
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const { configs } = useWordPressConfigs();
 
   const handleDeleteClick = (userId: string) => {
     setUserToDelete(userId);
@@ -64,10 +59,11 @@ const UserList: React.FC<UserListProps> = ({
     }
   };
 
-  const getWordPressConfigName = (configId: string | undefined) => {
-    if (!configId) return "-";
-    const config = configs.find(c => c.id === configId);
-    return config ? config.name : "-";
+  const getWordPressConfigName = (user: UserProfile) => {
+    if (user.wordpressConfig) {
+      return `${user.wordpressConfig.name} (${user.wordpressConfig.site_url})`;
+    }
+    return "-";
   };
 
   return (
@@ -112,7 +108,7 @@ const UserList: React.FC<UserListProps> = ({
                   </span>
                 </TableCell>
                 <TableCell>{user.clientId || "-"}</TableCell>
-                <TableCell>{getWordPressConfigName(user.wordpressConfigId)}</TableCell>
+                <TableCell>{getWordPressConfigName(user)}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <UserEditForm 

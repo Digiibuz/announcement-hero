@@ -27,7 +27,7 @@ export const useUserProfile = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, wordpress_configs(name, site_url)')
         .eq('id', userId)
         .maybeSingle();
       
@@ -38,7 +38,11 @@ export const useUserProfile = () => {
           name: data.name,
           role: data.role as Role,
           clientId: data.client_id,
-          wordpressConfigId: data.wordpress_config_id || null,
+          wordpressConfigId: data.wordpress_config_id,
+          wordpressConfig: data.wordpress_configs ? {
+            name: data.wordpress_configs.name,
+            site_url: data.wordpress_configs.site_url
+          } : null
         });
         return true;
       } else if (error) {
