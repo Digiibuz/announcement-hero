@@ -108,7 +108,9 @@ const UserList: React.FC<UserListProps> = ({
                     <UserEditForm 
                       user={user} 
                       onUserUpdated={onUpdateUser}
+                      onDeleteUser={onDeleteUser}
                       isUpdating={isUpdating}
+                      isDeleting={isDeleting}
                     />
                     
                     <Button 
