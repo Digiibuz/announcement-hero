@@ -15,30 +15,36 @@ export type Database = {
           description: string | null
           id: string
           images: string[] | null
+          publish_date: string | null
           status: Database["public"]["Enums"]["announcement_status"]
           title: string
           updated_at: string
           user_id: string
+          wordpress_category_id: string | null
         }
         Insert: {
           created_at?: string
           description?: string | null
           id?: string
           images?: string[] | null
+          publish_date?: string | null
           status?: Database["public"]["Enums"]["announcement_status"]
           title: string
           updated_at?: string
           user_id: string
+          wordpress_category_id?: string | null
         }
         Update: {
           created_at?: string
           description?: string | null
           id?: string
           images?: string[] | null
+          publish_date?: string | null
           status?: Database["public"]["Enums"]["announcement_status"]
           title?: string
           updated_at?: string
           user_id?: string
+          wordpress_category_id?: string | null
         }
         Relationships: []
       }
