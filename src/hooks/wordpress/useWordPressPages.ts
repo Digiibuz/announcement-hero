@@ -70,17 +70,8 @@ export const useWordPressPages = () => {
         hasAppPassword: !!wpConfig.app_password
       });
 
-      // Ensure the site URL is properly formatted
-      let siteUrl = wpConfig.site_url;
-      if (!siteUrl.startsWith("http")) {
-        siteUrl = "https://" + siteUrl;
-      }
-      if (siteUrl.endsWith("/")) {
-        siteUrl = siteUrl.slice(0, -1);
-      }
-
       // Construct the WordPress API URL
-      const apiUrl = `${siteUrl}/wp-json/wp/v2/pages`;
+      const apiUrl = `${wpConfig.site_url}/wp-json/wp/v2/pages`;
       
       // Prepare headers
       const headers: Record<string, string> = {
@@ -100,45 +91,25 @@ export const useWordPressPages = () => {
       }
       
       console.log("Fetching pages from:", apiUrl);
-      
-      try {
-        const response = await fetch(apiUrl, {
-          method: 'GET',
-          headers: headers,
-          signal: AbortSignal.timeout(15000) // Add a reasonable timeout
-        });
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: headers
+      });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error("WordPress API error:", response.status, errorText);
-          
-          if (response.status === 401 || response.status === 403) {
-            throw new Error("Identifiants incorrects ou autorisations insuffisantes");
-          } else if (response.status === 404) {
-            throw new Error("API REST WordPress introuvable. Vérifiez que le plugin REST API est activé.");
-          }
-          
-          throw new Error(`Failed to fetch pages: ${response.statusText}`);
-        }
-
-        const pagesData = await response.json();
-        console.log("Pages fetched successfully:", pagesData.length);
-        setPages(pagesData);
-      } catch (fetchError: any) {
-        console.error("Fetch error:", fetchError);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("WordPress API error:", response.status, errorText);
         
-        // Check for timeout
-        if (fetchError.name === 'TimeoutError' || fetchError.name === 'AbortError') {
-          throw new Error("Délai d'attente dépassé lors de la récupération des pages");
+        if (response.status === 401 || response.status === 403) {
+          throw new Error("Identifiants incorrects ou autorisations insuffisantes");
         }
         
-        // Network errors
-        if (fetchError.name === 'TypeError' && fetchError.message === 'Failed to fetch') {
-          throw new Error("Erreur réseau: impossible d'accéder au site WordPress. Vérifiez l'URL et les paramètres CORS.");
-        }
-        
-        throw fetchError;
+        throw new Error(`Failed to fetch pages: ${response.statusText}`);
       }
+
+      const pagesData = await response.json();
+      console.log("Pages fetched successfully:", pagesData.length);
+      setPages(pagesData);
     } catch (err: any) {
       console.error("Error fetching WordPress pages:", err);
       setError(err.message || "Failed to fetch WordPress pages");
