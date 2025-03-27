@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useState, useRef, useEffect } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -24,11 +25,19 @@ interface DescriptionFieldProps {
 const DescriptionField = ({ form }: DescriptionFieldProps) => {
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [showPreview, setShowPreview] = useState(true);
+  const [previewContent, setPreviewContent] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   
   const { isRecording, toggleVoiceRecording } = useVoiceRecognition({
     fieldName: 'description',
     form
   });
+
+  // Update preview content whenever description changes
+  useEffect(() => {
+    const content = form.getValues('description') || '';
+    setPreviewContent(content);
+  }, [form.watch('description')]);
 
   const generateImprovedContent = async () => {
     const currentDescription = form.getValues('description');
@@ -51,6 +60,7 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
       }\n\nCette version a été optimisée pour améliorer sa visibilité dans les moteurs de recherche.`;
       
       form.setValue('description', enhancedText);
+      setPreviewContent(enhancedText);
       toast.success("Contenu amélioré avec succès");
     } catch (error: any) {
       console.error("Error generating content:", error);
@@ -61,9 +71,9 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
   };
 
   const applyFormatting = (format: string) => {
-    const textarea = document.getElementById('description') as HTMLTextAreaElement;
-    if (!textarea) return;
+    if (!textareaRef.current) return;
     
+    const textarea = textareaRef.current;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const selectedText = textarea.value.substring(start, end);
@@ -118,8 +128,6 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
       }} />
     );
   };
-
-  const description = form.watch('description');
 
   return (
     <div className="space-y-2">
@@ -280,6 +288,12 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
                   isRecording && "border-primary ring-2 ring-primary/20"
                 )}
                 {...field}
+                ref={(e) => {
+                  textareaRef.current = e;
+                  if (typeof field.ref === 'function') {
+                    field.ref(e);
+                  }
+                }}
               />
             </FormControl>
             <FormMessage />
@@ -293,14 +307,14 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
         )}
       />
       
-      {showPreview && description && (
+      {showPreview && (form.watch('description') || '').trim() !== '' && (
         <Card className="p-4 mt-4">
           <div className="flex items-center gap-2 mb-2">
             <Eye size={16} className="text-muted-foreground" />
             <h3 className="text-sm font-medium">Prévisualisation</h3>
           </div>
           <div className="prose prose-sm max-w-none border-t pt-3">
-            {renderFormattedText(description)}
+            {renderFormattedText(form.watch('description') || '')}
           </div>
         </Card>
       )}
