@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
 import { useWordPressPages } from "@/hooks/wordpress/useWordPressPages";
-import { Loader2, AlertCircle, Lock } from "lucide-react";
+import { Loader2, AlertCircle, Lock, ExternalLink } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -148,9 +148,23 @@ const WordPressManagement = () => {
             <AnimatedContainer>
               <div className="max-w-5xl mx-auto">
                 <div className="flex justify-between items-center mb-6">
-                  <h1 className="text-2xl font-bold">
-                    {isClient ? "Mon site WordPress" : "Gestion des configurations WordPress"}
-                  </h1>
+                  {isClient && clientConfig ? (
+                    <h1 className="text-2xl font-bold flex items-center">
+                      <a 
+                        href={clientConfig.site_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="hover:text-primary flex items-center"
+                      >
+                        {clientConfig.site_url}
+                        <ExternalLink className="h-4 w-4 ml-2" />
+                      </a>
+                    </h1>
+                  ) : (
+                    <h1 className="text-2xl font-bold">
+                      Gestion des configurations WordPress
+                    </h1>
+                  )}
                   <div className="flex items-center gap-3">
                     {user?.wordpressConfigId && (
                       <WordPressConnectionStatus 
