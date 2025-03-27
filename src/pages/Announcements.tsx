@@ -22,7 +22,8 @@ const Announcements = () => {
     search: "",
     status: "all",
   });
-  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+  // Changer la vue par défaut en "grid" au lieu de "table"
+  const [viewMode, setViewMode] = useState<"table" | "grid">("grid");
   
   // Get WordPress categories
   const { categories } = useWordPressCategories();
@@ -127,7 +128,8 @@ const Announcements = () => {
                   setFilter={setFilter} 
                 />
               </div>
-              <div className="ml-auto">
+              {/* Corriger l'alignement du switcher de vue */}
+              <div className="flex items-center justify-end">
                 <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as "table" | "grid")}>
                   <ToggleGroupItem value="table" aria-label="Vue tableau">
                     <TableIcon className="h-4 w-4" />
