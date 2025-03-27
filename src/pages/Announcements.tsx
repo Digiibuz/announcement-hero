@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
@@ -61,9 +62,10 @@ const Announcements = () => {
       
       // Map WordPress category IDs to names and strip HTML from descriptions
       return data.map(announcement => {
-        let processed = { ...announcement };
+        // Create a new object with all properties from announcement
+        const processed: Announcement = { ...announcement } as Announcement;
         
-        // Strip HTML tags from description
+        // Strip HTML tags from description for the list view
         if (processed.description) {
           processed.description = stripHtmlTags(processed.description);
         }
@@ -80,7 +82,7 @@ const Announcements = () => {
         }
         
         return processed;
-      }) as Announcement[];
+      });
     },
     enabled: !!user,
   });

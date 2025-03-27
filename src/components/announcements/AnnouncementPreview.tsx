@@ -93,14 +93,9 @@ const AnnouncementPreview = ({ data }: AnnouncementPreviewProps) => {
 
         <CardContent>
           {data.description ? (
-            <div className="prose prose-sm max-w-none">
-              {data.description.includes('<') ? 
-                // In preview mode, still render HTML properly
-                <div dangerouslySetInnerHTML={{ __html: data.description }} />
-                : 
-                // Plain text
-                data.description
-              }
+            <div className="prose prose-sm max-w-none rich-text-editor">
+              {/* Always render description with HTML formatting */}
+              <div dangerouslySetInnerHTML={{ __html: data.description }} />
             </div>
           ) : (
             <div className="text-muted-foreground italic">
