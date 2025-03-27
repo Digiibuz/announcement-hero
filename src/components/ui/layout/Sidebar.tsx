@@ -5,7 +5,16 @@ import { useAuth } from "@/context/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Loader2, UserCog, LogOut, LayoutDashboard, Newspaper, AlertTriangle, Globe } from "lucide-react";
+import { 
+  Loader2, 
+  UserCog, 
+  LogOut, 
+  LayoutDashboard, 
+  Newspaper, 
+  AlertTriangle, 
+  Globe,
+  FileText
+} from "lucide-react";
 
 const Sidebar = () => {
   const isMobile = useIsMobile();
@@ -20,6 +29,12 @@ const Sidebar = () => {
       href: "/dashboard",
       icon: <LayoutDashboard className="h-5 w-5" />,
       isActive: pathname === "/dashboard",
+    },
+    {
+      name: "Annonces",
+      href: "/announcements",
+      icon: <FileText className="h-5 w-5" />,
+      isActive: pathname === "/announcements",
     },
     {
       name: "Créer une annonce",
@@ -45,8 +60,15 @@ const Sidebar = () => {
   ];
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 transform border-r border-border bg-card pt-16 shadow-sm transition-transform md:translate-x-0">
-      <div className="h-full overflow-y-auto px-3 py-4">
+    <aside className="fixed left-0 top-0 z-40 h-screen w-64 transform border-r border-border bg-card shadow-sm transition-transform md:translate-x-0">
+      <div className="flex h-16 items-center px-6 border-b border-border">
+        <Link to="/dashboard" className="flex items-center">
+          <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">
+            DiviAnnounce
+          </span>
+        </Link>
+      </div>
+      <div className="h-[calc(100vh-4rem)] overflow-y-auto px-3 py-4">
         <ul className="space-y-2">
           {navItems.map((item) => (
             <li key={item.href}>

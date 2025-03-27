@@ -8,8 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { 
   FileText, 
-  BarChart2, 
-  Archive, 
   Clock,
   AlertCircle,
   ChevronRight
@@ -45,7 +43,7 @@ const Dashboard = () => {
       <Header />
       <Sidebar />
 
-      <main className="pt-16 md:pl-64">
+      <main className="pt-0 md:pl-64">
         <div className="container px-4 py-8">
           <AnimatedContainer delay={100}>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
@@ -86,7 +84,7 @@ const Dashboard = () => {
               />
               <DashboardCard
                 title="Archived"
-                icon={<Archive size={20} />}
+                icon={<FileText size={20} />}
                 value={8}
                 description="Inactive announcements"
                 to="/archived"
