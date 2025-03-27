@@ -7,6 +7,7 @@ import Header from "@/components/ui/layout/Header";
 import Sidebar from "@/components/ui/layout/Sidebar";
 import AnnouncementForm from "@/components/announcements/AnnouncementForm";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
+import SiteConnectionStatus from "@/components/wordpress/SiteConnectionStatus";
 import { toast } from "sonner";
 import { Announcement } from "@/types/announcement";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
@@ -81,6 +82,9 @@ const CreateAnnouncement = () => {
         <div className="container px-4 py-8">
           <AnimatedContainer>
             <div className="max-w-4xl mx-auto">
+              {/* Ajout du composant de statut de connexion WordPress */}
+              <SiteConnectionStatus />
+              
               <AnnouncementForm 
                 onSubmit={handleSubmit} 
                 isSubmitting={isSubmitting || isPublishing} 
