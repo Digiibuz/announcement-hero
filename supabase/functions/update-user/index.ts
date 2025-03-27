@@ -26,7 +26,7 @@ serve(async (req) => {
     const requestData = await req.json();
     console.log("Données reçues:", JSON.stringify(requestData));
     
-    const { userId, email, name, role, clientId, wordpressConfigId } = requestData;
+    const { userId, email, name, role, clientId } = requestData;
 
     // Vérifier les données requises
     if (!userId) {
@@ -52,7 +52,6 @@ serve(async (req) => {
             name,
             role,
             clientId: role === "editor" ? clientId : null,
-            wordpressConfigId: role === "editor" ? wordpressConfigId : null,
           }
         }
       );
@@ -72,7 +71,6 @@ serve(async (req) => {
             name,
             role,
             clientId: role === "editor" ? clientId : null,
-            wordpressConfigId: role === "editor" ? wordpressConfigId : null,
           }
         }
       );
@@ -84,25 +82,6 @@ serve(async (req) => {
 
       console.log("Métadonnées utilisateur mises à jour avec succès");
     }
-
-    // Mise à jour du profil dans la table profiles
-    const { error: profileUpdateError } = await supabaseAdmin
-      .from('profiles')
-      .update({
-        name,
-        email,
-        role,
-        client_id: role === "editor" ? clientId : null,
-        wordpress_config_id: role === "editor" ? wordpressConfigId : null
-      })
-      .eq('id', userId);
-    
-    if (profileUpdateError) {
-      console.log("Erreur lors de la mise à jour du profil:", profileUpdateError.message);
-      throw profileUpdateError;
-    }
-
-    console.log("Profil mis à jour avec succès");
 
     return new Response(
       JSON.stringify({ success: true }),

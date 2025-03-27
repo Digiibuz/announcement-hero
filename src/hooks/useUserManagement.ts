@@ -21,15 +21,7 @@ export const useUserManagement = () => {
         throw error;
       }
       
-      setUsers(data.map(profile => ({
-        id: profile.id,
-        email: profile.email,
-        name: profile.name,
-        role: profile.role,
-        clientId: profile.client_id,
-        // Ensuring we handle the case where wordpress_config_id doesn't exist in the returned data
-        wordpressConfigId: profile.wordpress_config_id || null
-      })) as UserProfile[]);
+      setUsers(data as UserProfile[]);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error("Erreur lors de la récupération des utilisateurs");
@@ -66,8 +58,7 @@ export const useUserManagement = () => {
           name: userData.name,
           email: userData.email,
           role: userData.role,
-          client_id: userData.role === 'editor' ? userData.clientId : null,
-          wordpress_config_id: userData.role === 'editor' ? userData.wordpressConfigId : null
+          client_id: userData.role === 'editor' ? userData.clientId : null
         })
         .eq('id', userId);
       
@@ -76,23 +67,24 @@ export const useUserManagement = () => {
       }
       
       // Si l'email a changé, nous devons utiliser la fonction Edge pour mettre à jour l'email dans auth
-      const { data, error } = await supabase.functions.invoke('update-user', {
-        body: { 
-          userId, 
-          email: userData.email,
-          name: userData.name,
-          role: userData.role,
-          clientId: userData.clientId,
-          wordpressConfigId: userData.wordpressConfigId
+      if (userData.email) {
+        const { data, error } = await supabase.functions.invoke('update-user', {
+          body: { 
+            userId, 
+            email: userData.email,
+            name: userData.name,
+            role: userData.role,
+            clientId: userData.clientId
+          }
+        });
+        
+        if (error) {
+          throw new Error(error.message);
         }
-      });
-      
-      if (error) {
-        throw new Error(error.message);
-      }
-      
-      if (data && (data as any).error) {
-        throw new Error((data as any).error);
+        
+        if (data && (data as any).error) {
+          throw new Error((data as any).error);
+        }
       }
       
       toast.success("Utilisateur mis à jour avec succès");

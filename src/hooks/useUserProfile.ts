@@ -14,7 +14,6 @@ export const createProfileFromMetadata = (authUser: User | null): UserProfile | 
     name: authUser.user_metadata?.name || authUser.email || '',
     role: (authUser.user_metadata?.role as Role) || 'editor',
     clientId: authUser.user_metadata?.clientId,
-    wordpressConfigId: authUser.user_metadata?.wordpressConfigId,
   };
 };
 
@@ -38,8 +37,6 @@ export const useUserProfile = () => {
           name: data.name,
           role: data.role as Role,
           clientId: data.client_id,
-          // Ensuring we handle the case where wordpress_config_id doesn't exist in the returned data
-          wordpressConfigId: data.wordpress_config_id || null,
         });
         return true;
       } else if (error) {

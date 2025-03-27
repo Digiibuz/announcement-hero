@@ -34,6 +34,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Checkbox
+} from "@/components/ui/checkbox";
 import { UserProfile } from "@/types/auth";
 import {
   AlertDialog,
@@ -54,7 +57,7 @@ const formSchema = z.object({
     required_error: "Veuillez sélectionner un rôle",
   }),
   clientId: z.string().optional(),
-  wordpressConfigId: z.string().optional(),
+  wpConfigIds: z.array(z.string()).optional(),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -76,7 +79,9 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
 }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const { configs } = useWordPressConfigs();
+  const [isLoadingConfigs, setIsLoadingConfigs] = useState(false);
+  const [selectedConfigIds, setSelectedConfigIds] = useState<string[]>([]);
+  const { configs, clientConfigs, associateClientToConfig, removeClientConfigAssociation } = useWordPressConfigs();
 
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
@@ -85,9 +90,39 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
       name: user.name || "",
       role: user.role || "editor",
       clientId: user.clientId || "",
-      wordpressConfigId: user.wordpressConfigId || "",
+      wpConfigIds: [],
     },
   });
+
+  // Fetch current WordPress config associations for this client
+  useEffect(() => {
+    const fetchClientConfigurations = async () => {
+      if (user.clientId && user.role === "editor") {
+        setIsLoadingConfigs(true);
+        try {
+          const { data, error } = await supabase
+            .from('client_wordpress_configs')
+            .select('wordpress_config_id')
+            .eq('client_id', user.clientId);
+          
+          if (error) {
+            throw error;
+          }
+          
+          const configIds = data.map(item => item.wordpress_config_id);
+          setSelectedConfigIds(configIds);
+          form.setValue("wpConfigIds", configIds);
+        } catch (error) {
+          console.error("Error fetching client WordPress configs:", error);
+          toast.error("Erreur lors de la récupération des configurations WordPress du client");
+        } finally {
+          setIsLoadingConfigs(false);
+        }
+      }
+    };
+    
+    fetchClientConfigurations();
+  }, [user, form]);
 
   // Update form values when user changes
   useEffect(() => {
@@ -96,15 +131,15 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
       name: user.name || "",
       role: user.role || "editor",
       clientId: user.clientId || "",
-      wordpressConfigId: user.wordpressConfigId || "",
+      wpConfigIds: selectedConfigIds,
     });
-  }, [user, form]);
+  }, [user, form, selectedConfigIds]);
 
-  // Reset the wordpressConfigId field when the role changes
+  // Reset the wpConfigIds field when the role changes
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === "role" && value.role === "admin") {
-        form.setValue("wordpressConfigId", "");
+        form.setValue("wpConfigIds", []);
       }
     });
     return () => subscription.unsubscribe();
@@ -117,9 +152,32 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
         email: values.email,
         name: values.name,
         role: values.role,
-        clientId: values.role === "editor" ? values.clientId : undefined,
-        wordpressConfigId: values.role === "editor" ? values.wordpressConfigId : undefined
+        clientId: values.role === "editor" ? values.clientId : undefined
       });
+      
+      // Si c'est un éditeur avec un ID client, gérer les associations WordPress
+      if (values.role === "editor" && values.clientId) {
+        const newConfigIds = values.wpConfigIds || [];
+        
+        // Supprimer les associations qui ne sont plus présentes
+        const associationsToRemove = clientConfigs
+          .filter(cc => cc.client_id === values.clientId && !newConfigIds.includes(cc.wordpress_config_id));
+        
+        for (const assoc of associationsToRemove) {
+          await removeClientConfigAssociation(assoc.id);
+        }
+        
+        // Ajouter les nouvelles associations
+        for (const configId of newConfigIds) {
+          const existingAssoc = clientConfigs.find(
+            cc => cc.client_id === values.clientId && cc.wordpress_config_id === configId
+          );
+          
+          if (!existingAssoc) {
+            await associateClientToConfig(values.clientId, configId);
+          }
+        }
+      }
       
       setIsDialogOpen(false);
     } catch (error) {
@@ -229,30 +287,55 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
                 {configs.length > 0 && (
                   <FormField
                     control={form.control}
-                    name="wordpressConfigId"
-                    render={({ field }) => (
+                    name="wpConfigIds"
+                    render={() => (
                       <FormItem>
-                        <FormLabel>Configuration WordPress</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          value={field.value || ""}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Sélectionner une configuration WordPress" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {configs.map((config) => (
-                              <SelectItem key={config.id} value={config.id}>
-                                {config.name} ({config.site_url})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>
-                          Configuration WordPress attribuée à l'utilisateur
-                        </FormDescription>
+                        <div className="mb-4">
+                          <FormLabel>Configurations WordPress</FormLabel>
+                          <FormDescription>
+                            Sélectionnez les configurations WordPress à associer à ce client
+                          </FormDescription>
+                        </div>
+                        {isLoadingConfigs ? (
+                          <div className="flex items-center justify-center py-2">
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Chargement des configurations...
+                          </div>
+                        ) : (
+                          configs.map((config) => (
+                            <FormField
+                              key={config.id}
+                              control={form.control}
+                              name="wpConfigIds"
+                              render={({ field }) => {
+                                return (
+                                  <FormItem
+                                    key={config.id}
+                                    className="flex flex-row items-start space-x-3 space-y-0 mb-2"
+                                  >
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value?.includes(config.id)}
+                                        onCheckedChange={(checked) => {
+                                          return checked
+                                            ? field.onChange([...field.value || [], config.id])
+                                            : field.onChange(
+                                                field.value?.filter(
+                                                  (value) => value !== config.id
+                                                )
+                                              )
+                                        }}
+                                      />
+                                    </FormControl>
+                                    <FormLabel className="font-normal">
+                                      {config.name} ({config.site_url})
+                                    </FormLabel>
+                                  </FormItem>
+                                )
+                              }}
+                            />
+                          ))
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}

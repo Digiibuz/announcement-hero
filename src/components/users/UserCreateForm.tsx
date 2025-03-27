@@ -34,6 +34,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Checkbox
+} from "@/components/ui/checkbox";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Email invalide" }),
@@ -43,7 +46,7 @@ const formSchema = z.object({
     required_error: "Veuillez sélectionner un rôle",
   }),
   clientId: z.string().optional(),
-  wordpressConfigId: z.string().optional(),
+  wpConfigIds: z.array(z.string()).optional(),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -65,15 +68,15 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       password: "",
       role: "editor",
       clientId: "",
-      wordpressConfigId: "",
+      wpConfigIds: [],
     },
   });
 
-  // Reset the wordpressConfigId field when the role changes
+  // Reset the wpConfigIds field when the role changes
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === "role" && value.role === "admin") {
-        form.setValue("wordpressConfigId", "");
+        form.setValue("wpConfigIds", []);
       }
     });
     return () => subscription.unsubscribe();
@@ -96,7 +99,6 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
           password: values.password,
           role: values.role,
           clientId: values.role === "editor" ? values.clientId : null,
-          wordpressConfigId: values.role === "editor" ? values.wordpressConfigId : null,
         },
       });
       
@@ -110,6 +112,21 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       if (!data || (data as any).error) {
         const errorMessage = (data as any)?.error || "Erreur lors de la création de l'utilisateur";
         throw new Error(errorMessage);
+      }
+      
+      // Si l'utilisateur est un éditeur et qu'il a des configurations WordPress sélectionnées
+      if (values.role === "editor" && values.clientId && values.wpConfigIds && values.wpConfigIds.length > 0) {
+        // Associer chaque configuration WordPress au client
+        for (const configId of values.wpConfigIds) {
+          const { error: associationError } = await supabase
+            .from('client_wordpress_configs')
+            .insert([{ client_id: values.clientId, wordpress_config_id: configId }]);
+          
+          if (associationError) {
+            console.error("Erreur lors de l'association du client aux configurations WordPress:", associationError);
+            toast.error("Erreur lors de l'association du client aux configurations WordPress");
+          }
+        }
       }
       
       toast.dismiss(toastId);
@@ -242,30 +259,48 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
                 {configs.length > 0 && (
                   <FormField
                     control={form.control}
-                    name="wordpressConfigId"
-                    render={({ field }) => (
+                    name="wpConfigIds"
+                    render={() => (
                       <FormItem>
-                        <FormLabel>Configuration WordPress</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Sélectionner une configuration WordPress" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {configs.map((config) => (
-                              <SelectItem key={config.id} value={config.id}>
-                                {config.name} ({config.site_url})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>
-                          Configuration WordPress attribuée à l'utilisateur
-                        </FormDescription>
+                        <div className="mb-4">
+                          <FormLabel>Configurations WordPress</FormLabel>
+                          <FormDescription>
+                            Sélectionnez les configurations WordPress à associer à ce client
+                          </FormDescription>
+                        </div>
+                        {configs.map((config) => (
+                          <FormField
+                            key={config.id}
+                            control={form.control}
+                            name="wpConfigIds"
+                            render={({ field }) => {
+                              return (
+                                <FormItem
+                                  key={config.id}
+                                  className="flex flex-row items-start space-x-3 space-y-0 mb-2"
+                                >
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value?.includes(config.id)}
+                                      onCheckedChange={(checked) => {
+                                        return checked
+                                          ? field.onChange([...field.value || [], config.id])
+                                          : field.onChange(
+                                              field.value?.filter(
+                                                (value) => value !== config.id
+                                              )
+                                            )
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormLabel className="font-normal">
+                                    {config.name} ({config.site_url})
+                                  </FormLabel>
+                                </FormItem>
+                              )
+                            }}
+                          />
+                        ))}
                         <FormMessage />
                       </FormItem>
                     )}
