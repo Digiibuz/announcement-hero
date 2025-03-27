@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
-import { Loader2, AlertTriangle, Trash2 } from "lucide-react";
+import { Loader2, AlertTriangle, Trash2, UserCog, UserMinus } from "lucide-react";
 import { toast } from "sonner";
 import { UserProfile } from "@/types/auth";
 import UserEditForm from "./UserEditForm";
@@ -103,39 +103,42 @@ const UserList: React.FC<UserListProps> = ({
                   </span>
                 </TableCell>
                 <TableCell>{user.clientId || "-"}</TableCell>
-                <TableCell className="text-right space-x-2">
-                  <UserEditForm 
-                    user={user} 
-                    onUserUpdated={onUpdateUser}
-                    isUpdating={isUpdating}
-                  />
-                  
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => onResetPassword(user.email)}
-                  >
-                    Réinitialiser MDP
-                  </Button>
-                  
-                  {user.role === "editor" && (
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <UserEditForm 
+                      user={user} 
+                      onUserUpdated={onUpdateUser}
+                      isUpdating={isUpdating}
+                    />
+                    
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => onImpersonateUser(user)}
+                      onClick={() => onResetPassword(user.email)}
                     >
-                      Se connecter en tant que
+                      Réinitialiser MDP
                     </Button>
-                  )}
-                  
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleDeleteClick(user.id)}
-                    className="text-destructive hover:bg-destructive/10"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                    
+                    {user.role === "editor" && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => onImpersonateUser(user)}
+                      >
+                        Se connecter en tant que
+                      </Button>
+                    )}
+                    
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      onClick={() => handleDeleteClick(user.id)}
+                      disabled={isDeleting}
+                    >
+                      <UserMinus className="h-4 w-4 mr-1" />
+                      Supprimer
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))
