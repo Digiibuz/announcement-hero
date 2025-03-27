@@ -10,6 +10,7 @@ export interface Announcement {
   updated_at: string;
   publish_date?: string;
   wordpress_category_id?: string;
+  wordpress_category_name?: string;
 }
 
 export interface WordPressCategory {

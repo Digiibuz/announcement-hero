@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Announcement } from "@/types/announcement";
+import { useWordPressCategories } from "@/hooks/useWordPressCategories";
 
 const Announcements = () => {
   const { isAdmin, user } = useAuth();
@@ -20,6 +21,9 @@ const Announcements = () => {
     search: "",
     status: "all",
   });
+  
+  // Get WordPress categories
+  const { categories } = useWordPressCategories();
 
   // Fetch announcements from Supabase
   const { data: announcements, isLoading, refetch } = useQuery({
@@ -41,8 +45,26 @@ const Announcements = () => {
         return [];
       }
       
-      return data as Announcement[];
-    }
+      // Map WordPress category IDs to names
+      return data.map(announcement => {
+        // Find category by ID in the categories array
+        if (announcement.wordpress_category_id && categories) {
+          const category = categories.find(
+            c => c.id.toString() === announcement.wordpress_category_id
+          );
+          
+          if (category) {
+            return {
+              ...announcement,
+              wordpress_category_name: category.name
+            };
+          }
+        }
+        
+        return announcement;
+      }) as Announcement[];
+    },
+    enabled: true,
   });
 
   // Filter announcements based on search and status

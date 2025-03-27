@@ -16,7 +16,9 @@ import {
   Pencil, 
   Trash2, 
   Image as ImageIcon,
-  Eye
+  Eye,
+  Calendar,
+  CalendarClock
 } from "lucide-react";
 import { Announcement } from "@/types/announcement";
 import { Link } from "react-router-dom";
@@ -93,11 +95,11 @@ const AnnouncementList = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[300px]">Titre</TableHead>
-            <TableHead>Description</TableHead>
+            <TableHead className="w-[300px]">Annonce</TableHead>
+            <TableHead>Catégorie</TableHead>
             <TableHead>Statut</TableHead>
             <TableHead>Date de création</TableHead>
-            <TableHead>Dernière modification</TableHead>
+            <TableHead>Date de publication</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -112,15 +114,25 @@ const AnnouncementList = ({
                   </span>
                 )}
               </TableCell>
-              <TableCell className="max-w-[200px] truncate">
-                {announcement.description || "—"}
+              <TableCell>
+                {announcement.wordpress_category_id ? 
+                  announcement.wordpress_category_name || announcement.wordpress_category_id : 
+                  "—"}
               </TableCell>
               <TableCell>{getStatusBadge(announcement.status)}</TableCell>
               <TableCell>
-                {format(new Date(announcement.created_at), "dd MMM yyyy", { locale: fr })}
+                <div className="flex items-center">
+                  <Calendar className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                  {format(new Date(announcement.created_at), "dd MMM yyyy", { locale: fr })}
+                </div>
               </TableCell>
               <TableCell>
-                {format(new Date(announcement.updated_at), "dd MMM yyyy HH:mm", { locale: fr })}
+                <div className="flex items-center">
+                  <CalendarClock className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                  {announcement.publish_date 
+                    ? format(new Date(announcement.publish_date), "dd MMM yyyy", { locale: fr })
+                    : "—"}
+                </div>
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-2">
