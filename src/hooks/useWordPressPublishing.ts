@@ -96,10 +96,11 @@ export const useWordPressPublishing = () => {
         status: status,
         categories: [parseInt(wpCategoryId)],
         date: announcement.status === 'scheduled' ? announcement.publish_date : undefined,
-        // Add SEO metadata
+        // Add SEO metadata - fix for Yoast SEO format
         meta: {
           _yoast_wpseo_title: announcement.seo_title || announcement.title,
           _yoast_wpseo_metadesc: announcement.seo_description || "",
+          _yoast_wpseo_metadesc_value: announcement.seo_description || "", // Additional format for meta description
           _yoast_wpseo_focuskw: announcement.title
         },
         // Add slug if available
@@ -113,6 +114,7 @@ export const useWordPressPublishing = () => {
         hasDate: !!postData.date,
         seoTitle: postData.meta._yoast_wpseo_title,
         seoDescription: postData.meta._yoast_wpseo_metadesc,
+        seoDescriptionValue: postData.meta._yoast_wpseo_metadesc_value,
         slug: postData.slug
       });
       
