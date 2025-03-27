@@ -99,11 +99,8 @@ export const useWordPressPublishing = () => {
         meta: {
           _yoast_wpseo_title: announcement.seo_title || announcement.title,
           _yoast_wpseo_metadesc: announcement.seo_description || "",
-          _yoast_wpseo_metadesc_value: announcement.seo_description || "",
+          wpseo_metadesc: announcement.seo_description || "",
           _yoast_wpseo_focuskw: announcement.title,
-          // Additional Yoast SEO meta fields that might help - use quotes for properties with hyphens
-          "_yoast_wpseo_meta-description": announcement.seo_description || "",
-          "yoast_wpseo_metadesc": announcement.seo_description || ""
         },
         // Add slug if available
         slug: announcement.seo_slug || undefined
@@ -116,9 +113,7 @@ export const useWordPressPublishing = () => {
         hasDate: !!postData.date,
         seoTitle: postData.meta._yoast_wpseo_title,
         seoDescription: postData.meta._yoast_wpseo_metadesc,
-        seoMetaDescriptionWithHyphen: postData.meta["_yoast_wpseo_meta-description"],
-        yoastMetadesc: postData.meta.yoast_wpseo_metadesc,
-        seoDescriptionValue: postData.meta._yoast_wpseo_metadesc_value,
+        wpseoMetadesc: postData.meta.wpseo_metadesc,
         slug: postData.slug
       });
       
