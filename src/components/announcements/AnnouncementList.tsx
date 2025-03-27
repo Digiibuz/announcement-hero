@@ -37,6 +37,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 interface AnnouncementListProps {
   announcements: Announcement[];
@@ -66,6 +67,13 @@ const AnnouncementList = ({
 
   // Function to get the public URL for an image
   const getImageUrl = (imagePath: string) => {
+    if (!imagePath) return null;
+    
+    // Handle both full URLs and storage paths
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+    
     const { data } = supabase.storage.from('images').getPublicUrl(imagePath);
     return data.publicUrl;
   };
@@ -225,19 +233,26 @@ const AnnouncementList = ({
       {announcements.map((announcement) => (
         <Card key={announcement.id} className="overflow-hidden h-full flex flex-col transition-all hover:shadow-md">
           {/* Image section */}
-          {announcement.images && announcement.images.length > 0 ? (
-            <div className="relative w-full aspect-video bg-muted overflow-hidden">
-              <img 
-                src={getImageUrl(announcement.images[0])} 
-                alt={announcement.title}
-                className="object-cover w-full h-full hover:scale-105 transition-transform"
-              />
-            </div>
-          ) : (
-            <div className="flex items-center justify-center w-full aspect-video bg-muted/40">
-              <ImageIcon className="h-12 w-12 text-muted/50" />
-            </div>
-          )}
+          <div className="w-full">
+            <AspectRatio ratio={16/9}>
+              {announcement.images && announcement.images.length > 0 ? (
+                <img 
+                  src={getImageUrl(announcement.images[0])} 
+                  alt={announcement.title}
+                  className="object-cover w-full h-full hover:scale-105 transition-transform duration-300"
+                  onError={(e) => {
+                    console.error("Image loading error:", e);
+                    // Replace with placeholder on error
+                    (e.target as HTMLImageElement).src = "/placeholder.svg";
+                  }}
+                />
+              ) : (
+                <div className="flex items-center justify-center w-full h-full bg-muted/40">
+                  <ImageIcon className="h-12 w-12 text-muted/50" />
+                </div>
+              )}
+            </AspectRatio>
+          </div>
           
           <CardHeader className="pb-2">
             <div className="flex justify-between items-start">
@@ -247,6 +262,7 @@ const AnnouncementList = ({
               {getStatusBadge(announcement.status)}
             </div>
           </CardHeader>
+          
           <CardContent className="pb-0 flex-grow">
             {announcement.wordpress_category_name && (
               <div className="flex items-center mb-2 text-sm text-muted-foreground">
@@ -270,6 +286,7 @@ const AnnouncementList = ({
               <p className="mt-2 text-sm line-clamp-2 text-muted-foreground">{announcement.description}</p>
             )}
           </CardContent>
+          
           <CardFooter className="flex justify-end gap-2 pt-4">
             <Button variant="ghost" size="sm" asChild>
               <Link to={`/announcements/${announcement.id}`}>
