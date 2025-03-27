@@ -13,13 +13,13 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { 
-  Pencil, 
   Trash2, 
-  Image as ImageIcon,
+  ImageIcon,
   Eye,
   Calendar,
   CalendarClock,
-  Tag
+  Tag,
+  MessageSquareText
 } from "lucide-react";
 import { Announcement } from "@/types/announcement";
 import { Link } from "react-router-dom";
@@ -76,6 +76,12 @@ const AnnouncementList = ({
     
     const { data } = supabase.storage.from('images').getPublicUrl(imagePath);
     return data.publicUrl;
+  };
+
+  // Function to count words in a text
+  const countWords = (text: string | null): number => {
+    if (!text) return 0;
+    return text.trim().split(/\s+/).filter(word => word.length > 0).length;
   };
 
   if (isLoading) {
@@ -139,6 +145,7 @@ const AnnouncementList = ({
               <TableHead>Statut</TableHead>
               <TableHead>Date de création</TableHead>
               <TableHead>Date de publication</TableHead>
+              <TableHead>Mots</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -178,18 +185,18 @@ const AnnouncementList = ({
                       : "—"}
                   </div>
                 </TableCell>
+                <TableCell>
+                  <div className="flex items-center">
+                    <MessageSquareText className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                    {countWords(announcement.description)}
+                  </div>
+                </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Button variant="ghost" size="icon" asChild>
                       <Link to={`/announcements/${announcement.id}`}>
                         <Eye className="h-4 w-4" />
                         <span className="sr-only">Voir</span>
-                      </Link>
-                    </Button>
-                    <Button variant="ghost" size="icon" asChild>
-                      <Link to={`/announcements/${announcement.id}/edit`}>
-                        <Pencil className="h-4 w-4" />
-                        <span className="sr-only">Modifier</span>
                       </Link>
                     </Button>
                     <AlertDialog>
@@ -281,6 +288,10 @@ const AnnouncementList = ({
                   {format(new Date(announcement.publish_date), "dd MMM yyyy", { locale: fr })}
                 </div>
               )}
+              <div className="flex items-center">
+                <MessageSquareText className="h-3.5 w-3.5 mr-2" />
+                {countWords(announcement.description)} mots
+              </div>
             </div>
             {announcement.description && (
               <p className="mt-2 text-sm line-clamp-2 text-muted-foreground">{announcement.description}</p>
@@ -292,12 +303,6 @@ const AnnouncementList = ({
               <Link to={`/announcements/${announcement.id}`}>
                 <Eye className="h-4 w-4 mr-1" />
                 Voir
-              </Link>
-            </Button>
-            <Button variant="ghost" size="sm" asChild>
-              <Link to={`/announcements/${announcement.id}/edit`}>
-                <Pencil className="h-4 w-4 mr-1" />
-                Modifier
               </Link>
             </Button>
             <AlertDialog>
