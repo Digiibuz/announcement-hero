@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -61,18 +60,21 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormPr
   const { watch, setValue } = form;
   const title = watch("title");
 
-  // Generate slug from title
+  // Generate slug from title with improved accent handling
   useEffect(() => {
     if (title) {
-      const slug = title
+      // Normalize accents and convert to lowercase
+      const normalizedTitle = title
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Remove accents
         .toLowerCase()
         .replace(/[^\w\s-]/g, "") // Remove special characters
         .replace(/\s+/g, "-") // Replace spaces with hyphens
         .replace(/-+/g, "-"); // Replace multiple hyphens with a single one
       
-      setValue("seoSlug", slug);
+      setValue("seoSlug", normalizedTitle);
       
-      // Only set SEO title if it's empty
+      // For SEO title, keep the original title with proper capitalization
       if (!form.getValues("seoTitle")) {
         setValue("seoTitle", title);
       }
