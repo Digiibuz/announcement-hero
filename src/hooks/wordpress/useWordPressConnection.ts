@@ -79,8 +79,8 @@ export const useWordPressConnection = () => {
       if (authenticationUsed) {
         try {
           // Essayons de récupérer les publications, ce qui nécessite généralement une authentification
-          const postsUrl = `${wpConfig.site_url}/wp-json/wp/v2/posts?context=edit`;
-          const authTest = await fetch(postsUrl, {
+          const authTestUrl = `${wpConfig.site_url}/wp-json/wp/v2/categories`;
+          const authTest = await fetch(authTestUrl, {
             method: 'GET',
             headers: headers
           });
@@ -95,6 +95,17 @@ export const useWordPressConnection = () => {
                 message: "Identifiants incorrects ou autorisations insuffisantes" 
               };
             }
+          }
+
+          // Essayons également avec les pages
+          const pagesTestUrl = `${wpConfig.site_url}/wp-json/wp/v2/pages`;
+          const pagesTest = await fetch(pagesTestUrl, {
+            method: 'GET',
+            headers: headers
+          });
+
+          if (!pagesTest.ok) {
+            console.warn("Pages test failed:", pagesTest.statusText);
           }
         } catch (authError) {
           console.error("Authentication test error:", authError);
