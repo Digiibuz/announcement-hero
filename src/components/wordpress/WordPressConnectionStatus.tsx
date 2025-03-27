@@ -1,5 +1,5 @@
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useWordPressConnection } from "@/hooks/wordpress/useWordPressConnection";
@@ -18,6 +18,8 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 interface WordPressConnectionStatusProps {
   configId?: string;
@@ -30,20 +32,48 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
   showDetails = false,
   className
 }) => {
+  const { user } = useAuth();
   const { status, isChecking, checkConnection } = useWordPressConnection();
+  const [configDetails, setConfigDetails] = useState<{name?: string, site_url?: string}>({});
   const { 
     categories, 
     isLoading: isCategoriesLoading, 
     refetch: refetchCategories,
-    hasCategories
+    hasCategories,
+    error: categoriesError
   } = useWordPressCategories();
   
   const { 
     pages, 
     isLoading: isPagesLoading, 
     refetch: refetchPages,
-    hasPages
+    hasPages,
+    error: pagesError
   } = useWordPressPages();
+
+  useEffect(() => {
+    // Fetch WordPress config details for additional info
+    const fetchConfigDetails = async () => {
+      const id = configId || user?.wordpressConfigId;
+      if (id) {
+        try {
+          const { data, error } = await supabase
+            .from('wordpress_configs')
+            .select('name, site_url')
+            .eq('id', id)
+            .single();
+          
+          if (!error && data) {
+            setConfigDetails(data);
+          }
+        } catch (err) {
+          console.error("Error fetching WordPress config details:", err);
+        }
+      }
+    };
+    
+    fetchConfigDetails();
+  }, [configId, user?.wordpressConfigId]);
 
   // Vérifier la connexion au chargement du composant
   useEffect(() => {
@@ -54,7 +84,14 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
 
   const handleSync = async () => {
     try {
-      const result = await checkConnection(configId);
+      const effectiveConfigId = configId || user?.wordpressConfigId;
+      
+      if (!effectiveConfigId) {
+        toast.error("Aucune configuration WordPress associée");
+        return;
+      }
+      
+      const result = await checkConnection(effectiveConfigId);
       
       if (result.success) {
         toast.success("Connexion WordPress établie avec succès");
@@ -65,6 +102,7 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
         toast.error(`Échec de connexion: ${result.message}`);
       }
     } catch (error) {
+      console.error("Sync error:", error);
       toast.error("Erreur lors de la synchronisation");
     }
   };
@@ -114,7 +152,7 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
             </div>
           </TooltipTrigger>
           <TooltipContent>
-            <p>État de la connexion WordPress</p>
+            <p>État de la connexion WordPress{configDetails.name ? ` (${configDetails.name})` : ''}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -144,20 +182,38 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
           <HoverCardContent className="w-80">
             <div className="space-y-2">
               <h4 className="text-sm font-semibold">Données WordPress</h4>
-              <div className="text-xs space-y-1">
-                <div className="flex justify-between">
-                  <span>Catégories:</span>
-                  <Badge variant={hasCategories ? "secondary" : "outline"}>
-                    {hasCategories ? categories.length : 'Aucune'}
-                  </Badge>
+              {categoriesError || pagesError ? (
+                <div className="text-xs text-red-500">
+                  {categoriesError || pagesError}
                 </div>
-                <div className="flex justify-between">
-                  <span>Pages:</span>
-                  <Badge variant={hasPages ? "secondary" : "outline"}>
-                    {hasPages ? pages.length : 'Aucune'}
-                  </Badge>
+              ) : (
+                <div className="text-xs space-y-1">
+                  <div className="flex justify-between">
+                    <span>Catégories:</span>
+                    <Badge variant={hasCategories ? "secondary" : "outline"}>
+                      {hasCategories ? categories.length : 'Aucune'}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Pages:</span>
+                    <Badge variant={hasPages ? "secondary" : "outline"}>
+                      {hasPages ? pages.length : 'Aucune'}
+                    </Badge>
+                  </div>
+                  {configDetails.site_url && (
+                    <div className="mt-2 pt-2 border-t border-border">
+                      <a 
+                        href={configDetails.site_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-500 hover:underline"
+                      >
+                        {configDetails.site_url}
+                      </a>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
           </HoverCardContent>
         </HoverCard>

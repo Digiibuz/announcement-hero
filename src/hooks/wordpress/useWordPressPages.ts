@@ -36,6 +36,7 @@ export const useWordPressPages = () => {
 
   const fetchPages = async () => {
     if (!user?.wordpressConfigId) {
+      console.error("No WordPress configuration ID found for user", user);
       setError("No WordPress configuration found for this user");
       return;
     }
@@ -43,6 +44,7 @@ export const useWordPressPages = () => {
     try {
       setIsLoading(true);
       setError(null);
+      console.log("Fetching pages for WordPress config ID:", user.wordpressConfigId);
 
       // First get the WordPress config for the user
       const { data: wpConfig, error: wpConfigError } = await supabase
@@ -51,8 +53,22 @@ export const useWordPressPages = () => {
         .eq('id', user.wordpressConfigId)
         .single();
 
-      if (wpConfigError) throw wpConfigError;
-      if (!wpConfig) throw new Error("WordPress configuration not found");
+      if (wpConfigError) {
+        console.error("Error fetching WordPress config:", wpConfigError);
+        throw wpConfigError;
+      }
+      
+      if (!wpConfig) {
+        console.error("WordPress configuration not found");
+        throw new Error("WordPress configuration not found");
+      }
+
+      console.log("WordPress config found:", {
+        site_url: wpConfig.site_url,
+        hasRestApiKey: !!wpConfig.rest_api_key,
+        hasAppUsername: !!wpConfig.app_username,
+        hasAppPassword: !!wpConfig.app_password
+      });
 
       // Construct the WordPress API URL
       const apiUrl = `${wpConfig.site_url}/wp-json/wp/v2/pages`;
@@ -64,12 +80,17 @@ export const useWordPressPages = () => {
       
       // Prioritize Application Password authentication
       if (wpConfig.app_username && wpConfig.app_password) {
+        console.log("Using Application Password authentication");
         const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
         headers['Authorization'] = `Basic ${basicAuth}`;
       } else if (wpConfig.rest_api_key) {
+        console.log("Using REST API Key authentication");
         headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
+      } else {
+        console.log("No authentication credentials provided");
       }
       
+      console.log("Fetching pages from:", apiUrl);
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: headers
@@ -87,6 +108,7 @@ export const useWordPressPages = () => {
       }
 
       const pagesData = await response.json();
+      console.log("Pages fetched successfully:", pagesData.length);
       setPages(pagesData);
     } catch (err: any) {
       console.error("Error fetching WordPress pages:", err);
@@ -98,6 +120,7 @@ export const useWordPressPages = () => {
   };
 
   useEffect(() => {
+    console.log("useWordPressPages effect running, user:", user?.id, "wordpressConfigId:", user?.wordpressConfigId);
     if (user?.wordpressConfigId) {
       fetchPages();
     }
