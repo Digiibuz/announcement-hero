@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -94,14 +95,25 @@ export const useWordPressPublishing = () => {
         content: content,
         status: status,
         categories: [parseInt(wpCategoryId)],
-        date: announcement.status === 'scheduled' ? announcement.publish_date : undefined
+        date: announcement.status === 'scheduled' ? announcement.publish_date : undefined,
+        // Add SEO metadata
+        meta: {
+          _yoast_wpseo_title: announcement.seo_title || announcement.title,
+          _yoast_wpseo_metadesc: announcement.seo_description || "",
+          _yoast_wpseo_focuskw: announcement.title
+        },
+        // Add slug if available
+        slug: announcement.seo_slug || undefined
       };
       
       console.log("Données de la publication:", {
         title: postData.title,
         status: postData.status,
         categoryId: wpCategoryId,
-        hasDate: !!postData.date
+        hasDate: !!postData.date,
+        seoTitle: postData.meta._yoast_wpseo_title,
+        seoDescription: postData.meta._yoast_wpseo_metadesc,
+        slug: postData.slug
       });
       
       // Prepare headers with authentication

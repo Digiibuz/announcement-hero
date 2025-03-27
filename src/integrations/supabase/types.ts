@@ -16,6 +16,9 @@ export type Database = {
           id: string
           images: string[] | null
           publish_date: string | null
+          seo_description: string | null
+          seo_slug: string | null
+          seo_title: string | null
           status: Database["public"]["Enums"]["announcement_status"]
           title: string
           updated_at: string
@@ -28,6 +31,9 @@ export type Database = {
           id?: string
           images?: string[] | null
           publish_date?: string | null
+          seo_description?: string | null
+          seo_slug?: string | null
+          seo_title?: string | null
           status?: Database["public"]["Enums"]["announcement_status"]
           title: string
           updated_at?: string
@@ -40,6 +46,9 @@ export type Database = {
           id?: string
           images?: string[] | null
           publish_date?: string | null
+          seo_description?: string | null
+          seo_slug?: string | null
+          seo_title?: string | null
           status?: Database["public"]["Enums"]["announcement_status"]
           title?: string
           updated_at?: string
