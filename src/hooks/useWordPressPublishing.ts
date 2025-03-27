@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -89,7 +88,7 @@ export const useWordPressPublishing = () => {
         status = 'future';
       }
       
-      // Prepare post data with corrected Yoast SEO meta fields format
+      // Prepare post data with Yoast SEO meta fields format
       const postData: any = {
         title: announcement.title,
         content: content,
@@ -99,13 +98,12 @@ export const useWordPressPublishing = () => {
         // Format for Yoast SEO meta fields - using correct keys that Yoast recognizes
         meta: {
           _yoast_wpseo_title: announcement.seo_title || announcement.title,
-          // Use both formats to ensure compatibility with different Yoast SEO versions
           _yoast_wpseo_metadesc: announcement.seo_description || "",
           _yoast_wpseo_metadesc_value: announcement.seo_description || "",
           _yoast_wpseo_focuskw: announcement.title,
           // Additional Yoast SEO meta fields that might help - use quotes for properties with hyphens
           "_yoast_wpseo_meta-description": announcement.seo_description || "",
-          yoast_wpseo_metadesc: announcement.seo_description || ""
+          "yoast_wpseo_metadesc": announcement.seo_description || ""
         },
         // Add slug if available
         slug: announcement.seo_slug || undefined
