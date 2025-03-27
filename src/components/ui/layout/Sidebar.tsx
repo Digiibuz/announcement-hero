@@ -2,8 +2,9 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-media-query";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { 
   Loader2, 
@@ -13,15 +14,17 @@ import {
   Newspaper, 
   AlertTriangle, 
   Globe,
-  FileText
+  FileText,
+  Menu
 } from "lucide-react";
 
 const Sidebar = () => {
   const isMobile = useIsMobile();
   const { pathname } = useLocation();
   const { user, logout, isLoading, isAuthenticated, isAdmin, isClient, isImpersonating, stopImpersonating, originalUser } = useAuth();
+  const [isOpen, setIsOpen] = React.useState(false);
 
-  if (isMobile || !isAuthenticated) return null;
+  if (!isAuthenticated) return null;
 
   const navItems = [
     {
@@ -59,8 +62,8 @@ const Sidebar = () => {
     },
   ];
 
-  return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 transform border-r border-border bg-card shadow-sm transition-transform md:translate-x-0">
+  const SidebarContent = () => (
+    <>
       <div className="flex h-16 items-center px-6 border-b border-border">
         <Link to="/dashboard" className="flex items-center">
           <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">
@@ -68,11 +71,11 @@ const Sidebar = () => {
           </span>
         </Link>
       </div>
-      <div className="h-[calc(100vh-4rem)] overflow-y-auto px-3 py-4">
+      <div className={`h-[calc(100vh-4rem)] overflow-y-auto px-3 py-4 ${isMobile ? "" : "relative"}`}>
         <ul className="space-y-2">
           {navItems.map((item) => (
             <li key={item.href}>
-              <Link to={item.href}>
+              <Link to={item.href} onClick={() => isMobile && setIsOpen(false)}>
                 <Button
                   variant="ghost"
                   className={cn(
@@ -96,7 +99,7 @@ const Sidebar = () => {
               </li>
               {adminItems.map((item) => (
                 <li key={item.href}>
-                  <Link to={item.href}>
+                  <Link to={item.href} onClick={() => isMobile && setIsOpen(false)}>
                     <Button
                       variant="ghost"
                       className={cn(
@@ -114,7 +117,7 @@ const Sidebar = () => {
           )}
         </ul>
 
-        <div className="mt-auto pt-4 absolute bottom-4 left-0 right-0 px-3">
+        <div className={`mt-auto pt-4 ${isMobile ? "pb-4" : "absolute bottom-4 left-0 right-0"} px-3`}>
           {isImpersonating && (
             <div className="mb-4 p-3 rounded-md bg-yellow-100 dark:bg-yellow-900/30 text-sm">
               <div className="flex items-center mb-1">
@@ -148,6 +151,42 @@ const Sidebar = () => {
           </div>
         </div>
       </div>
+    </>
+  );
+
+  // Mobile sidebar with Sheet component
+  if (isMobile) {
+    return (
+      <>
+        <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between h-16 px-4 bg-background/90 backdrop-blur-sm border-b border-border">
+          <Link to="/dashboard" className="flex items-center">
+            <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">
+              DiviAnnounce
+            </span>
+          </Link>
+          
+          <Sheet open={isOpen} onOpenChange={setIsOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-72">
+              <SidebarContent />
+            </SheetContent>
+          </Sheet>
+        </div>
+        
+        {/* Add padding for fixed header */}
+        <div className="h-16" />
+      </>
+    );
+  }
+
+  // Desktop sidebar
+  return (
+    <aside className="fixed left-0 top-0 z-40 h-screen w-64 transform border-r border-border bg-card shadow-sm transition-transform md:translate-x-0">
+      <SidebarContent />
     </aside>
   );
 };

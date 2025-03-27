@@ -147,25 +147,25 @@ const WordPressManagement = () => {
           ) : (
             <AnimatedContainer>
               <div className="max-w-5xl mx-auto">
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 sm:gap-0">
                   {isClient && clientConfig ? (
-                    <h1 className="text-2xl font-bold flex items-center">
+                    <h1 className="text-xl sm:text-2xl font-bold flex items-center">
                       <a 
                         href={clientConfig.site_url} 
                         target="_blank" 
                         rel="noopener noreferrer" 
-                        className="hover:text-primary flex items-center"
+                        className="hover:text-primary flex items-center break-all"
                       >
                         {clientConfig.site_url}
-                        <ExternalLink className="h-4 w-4 ml-2" />
+                        <ExternalLink className="h-4 w-4 ml-2 flex-shrink-0" />
                       </a>
                     </h1>
                   ) : (
-                    <h1 className="text-2xl font-bold">
+                    <h1 className="text-xl sm:text-2xl font-bold">
                       Gestion des configurations WordPress
                     </h1>
                   )}
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 self-end sm:self-auto">
                     {user?.wordpressConfigId && (
                       <WordPressConnectionStatus 
                         configId={user.wordpressConfigId} 
@@ -195,9 +195,9 @@ const WordPressManagement = () => {
                   </div>
                 ) : (
                   <Tabs defaultValue={isClient ? "content" : "configs"} className="space-y-6">
-                    <TabsList>
-                      {!isClient && <TabsTrigger value="configs">Configurations</TabsTrigger>}
-                      <TabsTrigger value="content">Contenu WordPress</TabsTrigger>
+                    <TabsList className="w-full sm:w-auto flex">
+                      {!isClient && <TabsTrigger value="configs" className="flex-1 sm:flex-initial">Configurations</TabsTrigger>}
+                      <TabsTrigger value="content" className="flex-1 sm:flex-initial">Contenu WordPress</TabsTrigger>
                     </TabsList>
 
                     {!isClient && (
@@ -216,7 +216,7 @@ const WordPressManagement = () => {
                       {renderEmptyState()}
                       {renderContentError(categoriesError || pagesError)}
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <Card>
                           <CardHeader>
                             <CardTitle>Catégories WordPress</CardTitle>
@@ -238,11 +238,11 @@ const WordPressManagement = () => {
                                 Aucune catégorie trouvée
                               </p>
                             ) : (
-                              <ul className="space-y-1 text-sm">
+                              <ul className="space-y-1 text-sm max-h-[300px] overflow-y-auto">
                                 {categories.map(category => (
                                   <li key={category.id} className="flex items-center justify-between">
-                                    <span>{category.name}</span>
-                                    <span className="text-xs text-muted-foreground">
+                                    <span className="truncate mr-2">{category.name}</span>
+                                    <span className="text-xs text-muted-foreground shrink-0">
                                       ID: {category.id}
                                     </span>
                                   </li>
@@ -273,11 +273,11 @@ const WordPressManagement = () => {
                                 Aucune page trouvée
                               </p>
                             ) : (
-                              <ul className="space-y-1 text-sm">
+                              <ul className="space-y-1 text-sm max-h-[300px] overflow-y-auto">
                                 {pages.map(page => (
                                   <li key={page.id} className="flex items-center justify-between">
-                                    <span>{page.title.rendered}</span>
-                                    <span className="text-xs text-muted-foreground">
+                                    <span className="truncate mr-2">{page.title.rendered}</span>
+                                    <span className="text-xs text-muted-foreground shrink-0">
                                       {page.status}
                                     </span>
                                   </li>

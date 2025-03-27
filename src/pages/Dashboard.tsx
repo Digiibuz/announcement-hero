@@ -43,11 +43,11 @@ const Dashboard = () => {
       <Header />
       <Sidebar />
 
-      <main className="pt-0 md:pl-64">
+      <main className="pt-16 md:pl-64">
         <div className="container px-4 py-8">
           <AnimatedContainer delay={100}>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
-              <h1 className="text-3xl font-bold">Dashboard</h1>
+              <h1 className="text-2xl md:text-3xl font-bold mb-2 sm:mb-0">Dashboard</h1>
               <p className="text-muted-foreground">
                 Welcome back, {user?.name}
               </p>
@@ -96,7 +96,7 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <AnimatedContainer delay={300} className="lg:col-span-2">
               <Card className="h-full card-shadow">
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
                   <CardTitle className="text-lg font-medium">
                     Recent Announcements
                   </CardTitle>
@@ -115,12 +115,12 @@ const Dashboard = () => {
                         key={announcement.id}
                         className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
                           <div className="flex-shrink-0">
                             <FileText size={18} className="text-muted-foreground" />
                           </div>
-                          <div>
-                            <div className="font-medium">{announcement.title}</div>
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">{announcement.title}</div>
                             <div className="text-sm text-muted-foreground">
                               {new Date(announcement.date).toLocaleDateString()}
                             </div>
