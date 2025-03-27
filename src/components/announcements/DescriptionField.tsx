@@ -138,43 +138,46 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
     <div className="space-y-2">
       <div className="flex justify-between items-center">
         <Label>Description</Label>
+        
+        {/* Déplacé et mis en valeur les boutons de dictée vocale et optimisation SEO */}
         <div className="flex gap-2">
           <Button
             type="button"
             size="sm"
-            variant="ghost"
-            className="flex items-center gap-1 text-xs"
+            variant={isRecording ? "destructive" : "default"}
+            className="flex items-center gap-1"
             onClick={toggleVoiceRecording}
             disabled={isGenerating}
           >
             {isRecording ? (
               <>
-                <MicOff size={14} className="text-destructive" />
-                <span className="text-destructive">Arrêter</span>
+                <MicOff size={16} />
+                <span>Arrêter la dictée</span>
               </>
             ) : (
               <>
-                <Mic size={14} />
+                <Mic size={16} />
                 <span>Dictée vocale</span>
               </>
             )}
           </Button>
+          
           <Button
             type="button"
             size="sm"
-            variant="ghost"
-            className="flex items-center gap-1 text-xs"
+            variant="secondary"
+            className="flex items-center gap-1"
             onClick={generateImprovedContent}
             disabled={isRecording || isGenerating}
           >
             {isGenerating ? (
               <>
-                <Loader2 size={14} className="animate-spin" />
+                <Loader2 size={16} className="animate-spin" />
                 <span>Optimisation...</span>
               </>
             ) : (
               <>
-                <Sparkles size={14} />
+                <Sparkles size={16} />
                 <span>Optimiser SEO</span>
               </>
             )}
@@ -381,7 +384,7 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
             </FormControl>
             <FormMessage />
             {isRecording && (
-              <div className="flex items-center gap-2 text-primary text-sm font-medium">
+              <div className="flex items-center gap-2 text-primary text-sm font-medium mt-2">
                 <span className="h-2 w-2 rounded-full bg-primary animate-pulse"></span>
                 Enregistrement en cours...
               </div>
