@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AnnouncementListProps {
   announcements: Announcement[];
@@ -61,6 +62,12 @@ const AnnouncementList = ({
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
+  };
+
+  // Function to get the public URL for an image
+  const getImageUrl = (imagePath: string) => {
+    const { data } = supabase.storage.from('images').getPublicUrl(imagePath);
+    return data.publicUrl;
   };
 
   if (isLoading) {
@@ -217,15 +224,25 @@ const AnnouncementList = ({
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {announcements.map((announcement) => (
         <Card key={announcement.id} className="overflow-hidden h-full flex flex-col transition-all hover:shadow-md">
+          {/* Image section */}
+          {announcement.images && announcement.images.length > 0 ? (
+            <div className="relative w-full aspect-video bg-muted overflow-hidden">
+              <img 
+                src={getImageUrl(announcement.images[0])} 
+                alt={announcement.title}
+                className="object-cover w-full h-full hover:scale-105 transition-transform"
+              />
+            </div>
+          ) : (
+            <div className="flex items-center justify-center w-full aspect-video bg-muted/40">
+              <ImageIcon className="h-12 w-12 text-muted/50" />
+            </div>
+          )}
+          
           <CardHeader className="pb-2">
             <div className="flex justify-between items-start">
               <CardTitle className="text-lg line-clamp-2">
                 {announcement.title}
-                {announcement.images?.length > 0 && (
-                  <span className="ml-1">
-                    <ImageIcon size={14} className="inline text-muted-foreground" />
-                  </span>
-                )}
               </CardTitle>
               {getStatusBadge(announcement.status)}
             </div>
