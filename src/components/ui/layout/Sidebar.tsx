@@ -19,7 +19,7 @@ import {
 const Sidebar = () => {
   const isMobile = useIsMobile();
   const { pathname } = useLocation();
-  const { user, logout, isLoading, isAuthenticated, isAdmin, isImpersonating, stopImpersonating, originalUser } = useAuth();
+  const { user, logout, isLoading, isAuthenticated, isAdmin, isEditor, isImpersonating, stopImpersonating, originalUser } = useAuth();
 
   if (isMobile || !isAuthenticated) return null;
 
@@ -42,6 +42,14 @@ const Sidebar = () => {
       icon: <Newspaper className="h-5 w-5" />,
       isActive: pathname === "/create",
     },
+    // Ajout de la gestion WordPress pour les éditeurs
+    {
+      name: "Gestion WordPress",
+      href: "/wordpress",
+      icon: <Globe className="h-5 w-5" />,
+      isActive: pathname === "/wordpress",
+      showFor: ["admin", "editor"], // Visible pour admin et éditeur
+    },
   ];
 
   const adminItems = [
@@ -50,12 +58,6 @@ const Sidebar = () => {
       href: "/users",
       icon: <UserCog className="h-5 w-5" />,
       isActive: pathname === "/users",
-    },
-    {
-      name: "Gestion WordPress",
-      href: "/wordpress",
-      icon: <Globe className="h-5 w-5" />,
-      isActive: pathname === "/wordpress",
     },
   ];
 
@@ -70,22 +72,24 @@ const Sidebar = () => {
       </div>
       <div className="h-[calc(100vh-4rem)] overflow-y-auto px-3 py-4">
         <ul className="space-y-2">
-          {navItems.map((item) => (
-            <li key={item.href}>
-              <Link to={item.href}>
-                <Button
-                  variant="ghost"
-                  className={cn(
-                    "w-full justify-start",
-                    item.isActive && "bg-accent text-accent-foreground"
-                  )}
-                >
-                  {item.icon}
-                  <span className="ml-3">{item.name}</span>
-                </Button>
-              </Link>
-            </li>
-          ))}
+          {navItems
+            .filter(item => !item.showFor || (item.showFor.includes("admin") && isAdmin) || (item.showFor.includes("editor") && isEditor))
+            .map((item) => (
+              <li key={item.href}>
+                <Link to={item.href}>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "w-full justify-start",
+                      item.isActive && "bg-accent text-accent-foreground"
+                    )}
+                  >
+                    {item.icon}
+                    <span className="ml-3">{item.name}</span>
+                  </Button>
+                </Link>
+              </li>
+            ))}
 
           {isAdmin && (
             <>

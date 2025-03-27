@@ -4,41 +4,51 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { WordPressCategory } from "@/types/announcement";
-import { useWordPressConfigsList } from "./useWordPressConfigsList";
 
 export const useWordPressCategories = () => {
   const [categories, setCategories] = useState<WordPressCategory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
-  const { getUserConfigs } = useWordPressConfigsList();
 
   const fetchCategories = async () => {
-    if (!user) {
-      setError("Utilisateur non connecté");
+    if (!user?.wordpressConfigId) {
+      console.error("No WordPress configuration ID found for user", user);
+      setError("No WordPress configuration found for this user");
       return;
     }
-
-    // Récupérer les configurations WordPress de l'utilisateur
-    const userConfigs = getUserConfigs();
-    console.log("User WordPress configs in categories hook:", userConfigs);
-    
-    if (userConfigs.length === 0) {
-      console.error("Aucune configuration WordPress trouvée pour l'utilisateur", user);
-      setError("Aucune configuration WordPress trouvée pour cet utilisateur");
-      return;
-    }
-
-    // Utiliser la première configuration disponible (on pourrait ensuite ajouter un sélecteur)
-    const configToUse = userConfigs[0];
-    console.log("Using WordPress config:", configToUse.name, configToUse.id);
 
     try {
       setIsLoading(true);
       setError(null);
+      console.log("Fetching categories for WordPress config ID:", user.wordpressConfigId);
+
+      // First get the WordPress config for the user
+      const { data: wpConfig, error: wpConfigError } = await supabase
+        .from('wordpress_configs')
+        .select('site_url, rest_api_key, app_username, app_password')
+        .eq('id', user.wordpressConfigId)
+        .single();
+
+      if (wpConfigError) {
+        console.error("Error fetching WordPress config:", wpConfigError);
+        throw wpConfigError;
+      }
+      
+      if (!wpConfig) {
+        console.error("WordPress configuration not found");
+        throw new Error("WordPress configuration not found");
+      }
+
+      console.log("WordPress config found:", {
+        site_url: wpConfig.site_url,
+        hasRestApiKey: !!wpConfig.rest_api_key,
+        hasAppUsername: !!wpConfig.app_username,
+        hasAppPassword: !!wpConfig.app_password
+      });
 
       // Normaliser l'URL (supprimer les doubles slashes)
-      const siteUrl = configToUse.site_url.replace(/([^:]\/)\/+/g, "$1");
+      const siteUrl = wpConfig.site_url.replace(/([^:]\/)\/+/g, "$1");
 
       // Construct the WordPress API URL
       const apiUrl = `${siteUrl}/wp-json/wp/v2/categories`;
@@ -49,13 +59,13 @@ export const useWordPressCategories = () => {
       };
       
       // Prioritize Application Password authentication
-      if (configToUse.app_username && configToUse.app_password) {
+      if (wpConfig.app_username && wpConfig.app_password) {
         console.log("Using Application Password authentication");
-        const basicAuth = btoa(`${configToUse.app_username}:${configToUse.app_password}`);
+        const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
         headers['Authorization'] = `Basic ${basicAuth}`;
-      } else if (configToUse.rest_api_key) {
+      } else if (wpConfig.rest_api_key) {
         console.log("Using REST API Key authentication");
-        headers['Authorization'] = `Bearer ${configToUse.rest_api_key}`;
+        headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
       } else {
         console.log("No authentication credentials provided");
       }
@@ -117,11 +127,11 @@ export const useWordPressCategories = () => {
   };
 
   useEffect(() => {
-    console.log("useWordPressCategories effect running, user:", user?.id);
-    if (user) {
+    console.log("useWordPressCategories effect running, user:", user?.id, "wordpressConfigId:", user?.wordpressConfigId);
+    if (user?.wordpressConfigId) {
       fetchCategories();
     }
-  }, [user]);
+  }, [user?.wordpressConfigId]);
 
   return { 
     categories, 
