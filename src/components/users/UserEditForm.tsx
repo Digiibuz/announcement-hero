@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -96,7 +95,6 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
     },
   });
 
-  // Fetch current WordPress config associations for this client
   useEffect(() => {
     const fetchClientConfigurations = async () => {
       if (user.clientId && user.role === "editor") {
@@ -126,7 +124,6 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
     fetchClientConfigurations();
   }, [user, form]);
 
-  // Update form values when user changes
   useEffect(() => {
     form.reset({
       email: user.email || "",
@@ -138,7 +135,6 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
     });
   }, [user, form, selectedConfigIds]);
 
-  // Reset the wpConfigIds field when the role changes
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === "role" && value.role === "admin") {
@@ -151,7 +147,6 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
 
   const onSubmit = async (values: FormSchema) => {
     try {
-      // Mise à jour des informations de l'utilisateur
       await onUserUpdated(user.id, {
         email: values.email,
         name: values.name,
@@ -160,11 +155,9 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
         wordpressConfigId: values.role === "editor" ? values.wordpressConfigId : undefined
       });
       
-      // Si c'est un éditeur avec un ID client, gérer les associations WordPress
       if (values.role === "editor" && values.clientId) {
         const newConfigIds = values.wpConfigIds || [];
         
-        // Supprimer les associations qui ne sont plus présentes
         const associationsToRemove = clientConfigs
           .filter(cc => cc.client_id === values.clientId && !newConfigIds.includes(cc.wordpress_config_id));
         
@@ -172,7 +165,6 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
           await removeClientConfigAssociation(assoc.id);
         }
         
-        // Ajouter les nouvelles associations
         for (const configId of newConfigIds) {
           const existingAssoc = clientConfigs.find(
             cc => cc.client_id === values.clientId && cc.wordpress_config_id === configId
@@ -297,7 +289,7 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
                       <FormLabel>Configuration WordPress</FormLabel>
                       <Select 
                         onValueChange={field.onChange} 
-                        value={field.value || ""}
+                        value={field.value || "none"}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -305,7 +297,7 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Aucune configuration</SelectItem>
+                          <SelectItem value="none">Aucune configuration</SelectItem>
                           {configs.map((config) => (
                             <SelectItem key={config.id} value={config.id}>
                               {config.name} ({config.site_url})

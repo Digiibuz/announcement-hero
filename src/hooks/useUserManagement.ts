@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { UserProfile } from "@/types/auth";
+import { UserProfile, Role } from "@/types/auth";
 
 export const useUserManagement = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -21,14 +21,16 @@ export const useUserManagement = () => {
         throw error;
       }
       
-      setUsers(data.map(profile => ({
+      const processedUsers: UserProfile[] = data.map(profile => ({
         id: profile.id,
         email: profile.email,
         name: profile.name,
-        role: profile.role,
+        role: profile.role as Role,
         clientId: profile.client_id,
         wordpressConfigId: profile.wordpress_config_id || null,
-      })));
+      }));
+      
+      setUsers(processedUsers);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error("Erreur lors de la récupération des utilisateurs");

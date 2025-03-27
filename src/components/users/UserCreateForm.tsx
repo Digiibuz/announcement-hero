@@ -268,7 +268,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
                       <FormLabel>Configuration WordPress</FormLabel>
                       <Select 
                         onValueChange={field.onChange} 
-                        value={field.value || ""}
+                        value={field.value || "none"}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -276,7 +276,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Aucune configuration</SelectItem>
+                          <SelectItem value="none">Aucune configuration</SelectItem>
                           {configs.map((config) => (
                             <SelectItem key={config.id} value={config.id}>
                               {config.name} ({config.site_url})
