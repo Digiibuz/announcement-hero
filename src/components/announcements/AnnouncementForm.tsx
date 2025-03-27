@@ -180,6 +180,24 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormPr
               </Card>
               
               <Card>
+                <CardHeader>
+                  <CardTitle>Images</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ImageUploader form={form} />
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Options de publication</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <PublishingOptions form={form} />
+                </CardContent>
+              </Card>
+              
+              <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle>Optimisation pour les moteurs de recherche</CardTitle>
                   <Badge variant="outline" className="ml-2">
@@ -266,24 +284,6 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormPr
                       {form.getValues('seoDescription') || "Ajoutez une méta description pour qu'elle apparaisse ici. Sans cela, Google pourrait utiliser un extrait du contenu de votre page."}
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Images</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ImageUploader form={form} />
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Options de publication</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <PublishingOptions form={form} />
                 </CardContent>
               </Card>
             </div>
