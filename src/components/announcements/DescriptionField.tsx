@@ -1,10 +1,10 @@
 
-import React, { useState, useRef, useEffect } from "react";
+import React from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Mic, MicOff, Loader2, Sparkles, Bold, Italic, Underline, Strikethrough, Eye, EyeOff } from "lucide-react";
+import { Mic, MicOff, Loader2, Sparkles, Bold, Italic, Underline, Strikethrough } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UseFormReturn } from "react-hook-form";
 import useVoiceRecognition from "@/hooks/useVoiceRecognition";
@@ -16,7 +16,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Card } from "@/components/ui/card";
 
 interface DescriptionFieldProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -24,20 +23,11 @@ interface DescriptionFieldProps {
 
 const DescriptionField = ({ form }: DescriptionFieldProps) => {
   const [isGenerating, setIsGenerating] = React.useState(false);
-  const [showPreview, setShowPreview] = useState(true);
-  const [previewContent, setPreviewContent] = useState("");
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   
   const { isRecording, toggleVoiceRecording } = useVoiceRecognition({
     fieldName: 'description',
     form
   });
-
-  // Update preview content whenever description changes
-  useEffect(() => {
-    const content = form.getValues('description') || '';
-    setPreviewContent(content);
-  }, [form.watch('description')]);
 
   const generateImprovedContent = async () => {
     const currentDescription = form.getValues('description');
@@ -60,7 +50,6 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
       }\n\nCette version a été optimisée pour améliorer sa visibilité dans les moteurs de recherche.`;
       
       form.setValue('description', enhancedText);
-      setPreviewContent(enhancedText);
       toast.success("Contenu amélioré avec succès");
     } catch (error: any) {
       console.error("Error generating content:", error);
@@ -71,9 +60,9 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
   };
 
   const applyFormatting = (format: string) => {
-    if (!textareaRef.current) return;
+    const textarea = document.getElementById('description') as HTMLTextAreaElement;
+    if (!textarea) return;
     
-    const textarea = textareaRef.current;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const selectedText = textarea.value.substring(start, end);
@@ -107,26 +96,6 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
       const newCursorPos = beforeText.length + formattedText.length;
       textarea.setSelectionRange(newCursorPos, newCursorPos);
     }, 0);
-  };
-
-  const renderFormattedText = (content: string) => {
-    if (!content) return <p className="text-muted-foreground italic">La prévisualisation apparaîtra ici...</p>;
-    
-    return (
-      <div dangerouslySetInnerHTML={{ 
-        __html: content
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#039;')
-          .replace(/&lt;strong&gt;(.*?)&lt;\/strong&gt;/g, '<strong>$1</strong>')
-          .replace(/&lt;em&gt;(.*?)&lt;\/em&gt;/g, '<em>$1</em>')
-          .replace(/&lt;u&gt;(.*?)&lt;\/u&gt;/g, '<u>$1</u>')
-          .replace(/&lt;s&gt;(.*?)&lt;\/s&gt;/g, '<s>$1</s>')
-          .replace(/\n/g, '<br/>')
-      }} />
-    );
   };
 
   return (
@@ -171,25 +140,6 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
               <>
                 <Sparkles size={14} />
                 <span>Optimiser SEO</span>
-              </>
-            )}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="flex items-center gap-1 text-xs"
-            onClick={() => setShowPreview(!showPreview)}
-          >
-            {showPreview ? (
-              <>
-                <EyeOff size={14} />
-                <span>Masquer aperçu</span>
-              </>
-            ) : (
-              <>
-                <Eye size={14} />
-                <span>Afficher aperçu</span>
               </>
             )}
           </Button>
@@ -288,12 +238,6 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
                   isRecording && "border-primary ring-2 ring-primary/20"
                 )}
                 {...field}
-                ref={(e) => {
-                  textareaRef.current = e;
-                  if (typeof field.ref === 'function') {
-                    field.ref(e);
-                  }
-                }}
               />
             </FormControl>
             <FormMessage />
@@ -306,18 +250,6 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
           </FormItem>
         )}
       />
-      
-      {showPreview && (form.watch('description') || '').trim() !== '' && (
-        <Card className="p-4 mt-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Eye size={16} className="text-muted-foreground" />
-            <h3 className="text-sm font-medium">Prévisualisation</h3>
-          </div>
-          <div className="prose prose-sm max-w-none border-t pt-3">
-            {renderFormattedText(form.watch('description') || '')}
-          </div>
-        </Card>
-      )}
     </div>
   );
 };
