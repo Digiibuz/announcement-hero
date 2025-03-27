@@ -47,18 +47,17 @@ export const useWordPressCategories = () => {
         hasAppPassword: !!wpConfig.app_password
       });
 
-      // Normalize URL (remove double slashes)
+      // Normaliser l'URL (supprimer les doubles slashes)
       const siteUrl = wpConfig.site_url.replace(/([^:]\/)\/+/g, "$1");
 
-      // Construct the WordPress API URL with params to get all categories (per_page=100)
-      const apiUrl = `${siteUrl}/wp-json/wp/v2/categories?per_page=100`;
+      // Construct the WordPress API URL
+      const apiUrl = `${siteUrl}/wp-json/wp/v2/categories`;
       
       // Prepare headers
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       };
       
-      // IMPORTANT: Always use WordPress authentication regardless of app role
       // Prioritize Application Password authentication
       if (wpConfig.app_username && wpConfig.app_password) {
         console.log("Using Application Password authentication");
@@ -73,16 +72,15 @@ export const useWordPressCategories = () => {
       
       console.log("Fetching categories from:", apiUrl);
       
-      // Add request timeout
+      // Ajouter un délai d'expiration à la requête
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes de timeout
       
       try {
         const response = await fetch(apiUrl, {
           method: 'GET',
           headers: headers,
-          signal: controller.signal,
-          credentials: 'omit' // Don't send cookies to avoid CORS issues
+          signal: controller.signal
         });
   
         clearTimeout(timeoutId);
@@ -92,7 +90,7 @@ export const useWordPressCategories = () => {
           console.error("WordPress API error:", response.status, errorText);
           
           if (response.status === 401 || response.status === 403) {
-            throw new Error(`WordPress authentication failed. Please check that your WordPress account has sufficient permissions (Editor or Administrator role).`);
+            throw new Error("Identifiants incorrects ou autorisations insuffisantes");
           }
           
           throw new Error(`Failed to fetch categories: ${response.statusText}`);
@@ -103,7 +101,7 @@ export const useWordPressCategories = () => {
         setCategories(categoriesData);
       } catch (fetchError: any) {
         if (fetchError.name === 'AbortError') {
-          throw new Error("Request timed out when fetching categories. The WordPress site may be slow or unreachable.");
+          throw new Error("Le délai d'attente a expiré lors de la récupération des catégories");
         }
         throw fetchError;
       }
@@ -112,19 +110,17 @@ export const useWordPressCategories = () => {
       
       let errorMessage = err.message || "Failed to fetch WordPress categories";
       
-      // Improve error messages
+      // Améliorer les messages d'erreur
       if (err.message.includes("Failed to fetch")) {
-        errorMessage = "Network error: unable to connect to WordPress site";
+        errorMessage = "Erreur réseau: impossible d'accéder au site WordPress";
       } else if (err.message.includes("NetworkError")) {
-        errorMessage = "Network error: connectivity problem";
+        errorMessage = "Erreur réseau: problème de connectivité";
       } else if (err.message.includes("CORS")) {
-        errorMessage = "CORS error: the site does not allow requests from this origin";
-      } else if (err.message.includes("rest_forbidden")) {
-        errorMessage = "WordPress permissions error: your WordPress account does not have sufficient permissions to access categories";
+        errorMessage = "Erreur CORS: le site n'autorise pas les requêtes depuis cette origine";
       }
       
       setError(errorMessage);
-      toast.error(errorMessage);
+      toast.error("Erreur lors de la récupération des catégories WordPress");
     } finally {
       setIsLoading(false);
     }
