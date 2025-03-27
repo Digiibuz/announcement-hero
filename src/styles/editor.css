@@ -61,3 +61,42 @@
   color: #9ca3af;
   pointer-events: none;
 }
+
+/* Added styles for audio detection indicators */
+.recording-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.recording-indicator .dot {
+  height: 0.5rem;
+  width: 0.5rem;
+  border-radius: 9999px;
+}
+
+.recording-indicator .dot.listening {
+  background-color: #22c55e;
+  animation: pulse 1.5s infinite;
+}
+
+.recording-indicator .dot.waiting {
+  background-color: #f97316;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

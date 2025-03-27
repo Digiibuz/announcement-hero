@@ -1,7 +1,6 @@
 
 import React, { useRef, useState } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { 
@@ -37,7 +36,7 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
   const [linkText, setLinkText] = useState("");
   const editorRef = useRef<HTMLDivElement>(null);
   
-  const { isRecording, toggleVoiceRecording } = useVoiceRecognition({
+  const { isRecording, isListening, toggleVoiceRecognition } = useVoiceRecognition({
     fieldName: 'description',
     form
   });
@@ -146,7 +145,7 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
             size="sm"
             variant={isRecording ? "destructive" : "default"}
             className="flex items-center gap-1"
-            onClick={toggleVoiceRecording}
+            onClick={toggleVoiceRecognition}
             disabled={isGenerating}
           >
             {isRecording ? (
@@ -375,6 +374,7 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
                 className={cn(
                   "flex min-h-32 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 overflow-auto",
                   isRecording && "border-primary ring-2 ring-primary/20",
+                  isListening && "border-green-500 ring-2 ring-green-500/20",
                   "rich-text-editor"
                 )}
                 onInput={updateFormValue}
@@ -385,8 +385,8 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
             <FormMessage />
             {isRecording && (
               <div className="flex items-center gap-2 text-primary text-sm font-medium mt-2">
-                <span className="h-2 w-2 rounded-full bg-primary animate-pulse"></span>
-                Enregistrement en cours...
+                <span className={`h-2 w-2 rounded-full ${isListening ? "bg-green-500" : "bg-primary"} ${isListening ? "animate-pulse" : ""}`}></span>
+                {isListening ? "Parole détectée - continuez à parler..." : "Microphone actif - commencez à parler..."}
               </div>
             )}
           </FormItem>
