@@ -14,13 +14,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
 import { useWordPressPages } from "@/hooks/wordpress/useWordPressPages";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, Lock } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const WordPressManagement = () => {
-  const { isAdmin, user } = useAuth();
+  const { isAdmin, isClient, user } = useAuth();
   const { 
     configs, 
     isLoading, 
@@ -48,10 +48,10 @@ const WordPressManagement = () => {
   
   // Vérifie que la configuration WordPress de l'utilisateur est correctement définie
   useEffect(() => {
-    if (user && !user.wordpressConfigId && configs.length > 0) {
+    if (user && !user.wordpressConfigId && configs.length > 0 && isAdmin && !isClient) {
       console.log("User has no WordPress config assigned but configs exist. Suggesting to set a config.");
     }
-  }, [user, configs]);
+  }, [user, configs, isAdmin, isClient]);
 
   const handleCreateConfig = async (data: { 
     name?: string; 
@@ -112,7 +112,10 @@ const WordPressManagement = () => {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Aucune configuration WordPress associée</AlertTitle>
           <AlertDescription>
-            Sélectionnez ou créez une configuration WordPress et associez-la à votre compte.
+            {isClient 
+              ? "Aucun site WordPress n'est associé à votre compte. Veuillez contacter un administrateur."
+              : "Sélectionnez ou créez une configuration WordPress et associez-la à votre compte."
+            }
           </AlertDescription>
         </Alert>
       );
@@ -121,6 +124,17 @@ const WordPressManagement = () => {
     return null;
   };
 
+  // Filtrer la configuration pour le client
+  const clientConfig = user?.wordpressConfigId 
+    ? configs.find(config => config.id === user.wordpressConfigId)
+    : null;
+
+  // Pour les clients, on affiche uniquement leur configuration WordPress
+  const displayConfigs = isClient && clientConfig ? [clientConfig] : configs;
+
+  // Vérifier si l'utilisateur client a une configuration WordPress associée
+  const hasClientWordPressAccess = isClient && user?.wordpressConfigId;
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -128,13 +142,15 @@ const WordPressManagement = () => {
 
       <main className="pt-16 md:pl-64">
         <div className="container px-4 py-8">
-          {!isAdmin ? (
+          {!isAdmin && !isClient ? (
             <AccessDenied />
           ) : (
             <AnimatedContainer>
               <div className="max-w-5xl mx-auto">
                 <div className="flex justify-between items-center mb-6">
-                  <h1 className="text-2xl font-bold">Gestion des configurations WordPress</h1>
+                  <h1 className="text-2xl font-bold">
+                    {isClient ? "Mon site WordPress" : "Gestion des configurations WordPress"}
+                  </h1>
                   <div className="flex items-center gap-3">
                     {user?.wordpressConfigId && (
                       <WordPressConnectionStatus 
@@ -142,109 +158,124 @@ const WordPressManagement = () => {
                         showDetails={true}
                       />
                     )}
-                    <WordPressConfigForm 
-                      onSubmit={handleCreateConfig}
-                      buttonText="Ajouter une configuration"
-                      dialogTitle="Ajouter une nouvelle configuration WordPress"
-                      dialogDescription="Créez une nouvelle configuration pour un site WordPress."
-                      isSubmitting={isSubmitting}
-                    />
+                    {!isClient && (
+                      <WordPressConfigForm 
+                        onSubmit={handleCreateConfig}
+                        buttonText="Ajouter une configuration"
+                        dialogTitle="Ajouter une nouvelle configuration WordPress"
+                        dialogDescription="Créez une nouvelle configuration pour un site WordPress."
+                        isSubmitting={isSubmitting}
+                      />
+                    )}
                   </div>
                 </div>
 
-                <Tabs defaultValue="configs" className="space-y-6">
-                  <TabsList>
-                    <TabsTrigger value="configs">Configurations</TabsTrigger>
-                    <TabsTrigger value="content">Contenu WordPress</TabsTrigger>
-                  </TabsList>
+                {isClient && !hasClientWordPressAccess ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Lock className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h2 className="text-xl font-bold mb-2">Aucun site WordPress associé</h2>
+                    <p className="text-muted-foreground text-center max-w-md">
+                      Votre compte n'est pas associé à un site WordPress. 
+                      Veuillez contacter un administrateur pour obtenir un accès.
+                    </p>
+                  </div>
+                ) : (
+                  <Tabs defaultValue={isClient ? "content" : "configs"} className="space-y-6">
+                    <TabsList>
+                      {!isClient && <TabsTrigger value="configs">Configurations</TabsTrigger>}
+                      <TabsTrigger value="content">Contenu WordPress</TabsTrigger>
+                    </TabsList>
 
-                  <TabsContent value="configs" className="space-y-4">
-                    <WordPressConfigList 
-                      configs={configs}
-                      isLoading={isLoading}
-                      isSubmitting={isSubmitting}
-                      onUpdateConfig={handleUpdateConfig}
-                      onDeleteConfig={deleteConfig}
-                    />
-                  </TabsContent>
+                    {!isClient && (
+                      <TabsContent value="configs" className="space-y-4">
+                        <WordPressConfigList 
+                          configs={displayConfigs}
+                          isLoading={isLoading}
+                          isSubmitting={isSubmitting}
+                          onUpdateConfig={handleUpdateConfig}
+                          onDeleteConfig={deleteConfig}
+                        />
+                      </TabsContent>
+                    )}
 
-                  <TabsContent value="content" className="space-y-4">
-                    {renderEmptyState()}
-                    {renderContentError(categoriesError || pagesError)}
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Catégories WordPress</CardTitle>
-                          <CardDescription>
-                            Catégories disponibles sur votre site WordPress
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          {!user?.wordpressConfigId ? (
-                            <p className="text-sm text-muted-foreground">
-                              Aucune configuration WordPress associée
-                            </p>
-                          ) : isCategoriesLoading ? (
-                            <div className="flex items-center justify-center py-4">
-                              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                            </div>
-                          ) : !hasCategories ? (
-                            <p className="text-sm text-muted-foreground">
-                              Aucune catégorie trouvée
-                            </p>
-                          ) : (
-                            <ul className="space-y-1 text-sm">
-                              {categories.map(category => (
-                                <li key={category.id} className="flex items-center justify-between">
-                                  <span>{category.name}</span>
-                                  <span className="text-xs text-muted-foreground">
-                                    ID: {category.id}
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </CardContent>
-                      </Card>
+                    <TabsContent value="content" className="space-y-4">
+                      {renderEmptyState()}
+                      {renderContentError(categoriesError || pagesError)}
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>Catégories WordPress</CardTitle>
+                            <CardDescription>
+                              Catégories disponibles sur votre site WordPress
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            {!user?.wordpressConfigId ? (
+                              <p className="text-sm text-muted-foreground">
+                                Aucune configuration WordPress associée
+                              </p>
+                            ) : isCategoriesLoading ? (
+                              <div className="flex items-center justify-center py-4">
+                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                              </div>
+                            ) : !hasCategories ? (
+                              <p className="text-sm text-muted-foreground">
+                                Aucune catégorie trouvée
+                              </p>
+                            ) : (
+                              <ul className="space-y-1 text-sm">
+                                {categories.map(category => (
+                                  <li key={category.id} className="flex items-center justify-between">
+                                    <span>{category.name}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      ID: {category.id}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </CardContent>
+                        </Card>
 
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Pages WordPress</CardTitle>
-                          <CardDescription>
-                            Pages disponibles sur votre site WordPress
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          {!user?.wordpressConfigId ? (
-                            <p className="text-sm text-muted-foreground">
-                              Aucune configuration WordPress associée
-                            </p>
-                          ) : isPagesLoading ? (
-                            <div className="flex items-center justify-center py-4">
-                              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                            </div>
-                          ) : !hasPages ? (
-                            <p className="text-sm text-muted-foreground">
-                              Aucune page trouvée
-                            </p>
-                          ) : (
-                            <ul className="space-y-1 text-sm">
-                              {pages.map(page => (
-                                <li key={page.id} className="flex items-center justify-between">
-                                  <span>{page.title.rendered}</span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {page.status}
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </TabsContent>
-                </Tabs>
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>Pages WordPress</CardTitle>
+                            <CardDescription>
+                              Pages disponibles sur votre site WordPress
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            {!user?.wordpressConfigId ? (
+                              <p className="text-sm text-muted-foreground">
+                                Aucune configuration WordPress associée
+                              </p>
+                            ) : isPagesLoading ? (
+                              <div className="flex items-center justify-center py-4">
+                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                              </div>
+                            ) : !hasPages ? (
+                              <p className="text-sm text-muted-foreground">
+                                Aucune page trouvée
+                              </p>
+                            ) : (
+                              <ul className="space-y-1 text-sm">
+                                {pages.map(page => (
+                                  <li key={page.id} className="flex items-center justify-between">
+                                    <span>{page.title.rendered}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {page.status}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                )}
               </div>
             </AnimatedContainer>
           )}
