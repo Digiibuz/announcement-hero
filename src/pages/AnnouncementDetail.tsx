@@ -44,18 +44,20 @@ const AnnouncementDetail = () => {
     queryFn: async () => {
       if (!id) return null;
 
+      // Utilisez le filtre where correctement
       let query = supabase
         .from("announcements")
-        .select("*")
-        .eq("id", id)
-        .single();
+        .select("*");
+      
+      // Apply id filter  
+      query = query.filter("id", "eq", id);
       
       // If not admin, only allow viewing own announcements
-      if (!isAdmin) {
-        query = query.eq("user_id", user?.id);
+      if (!isAdmin && user?.id) {
+        query = query.filter("user_id", "eq", user.id);
       }
       
-      const { data, error } = await query;
+      const { data, error } = await query.single();
       
       if (error) {
         if (error.code === 'PGRST116') {
@@ -131,12 +133,12 @@ const AnnouncementDetail = () => {
       <Sidebar />
 
       <main className="pt-16 md:pl-64">
-        <div className="container px-4 py-8">
+        <div className="container px-4 py-6">
           <AnimatedContainer>
             <Button 
               variant="ghost" 
               onClick={handleGoBack} 
-              className="mb-6"
+              className="mb-4"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Retour aux annonces
@@ -152,7 +154,7 @@ const AnnouncementDetail = () => {
                 <Skeleton className="h-4 w-1/3" />
               </div>
             ) : announcement ? (
-              <div className="space-y-6">
+              <div className="space-y-5">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <h1 className="text-3xl font-bold">{announcement.title}</h1>
                   {getStatusBadge(announcement.status)}

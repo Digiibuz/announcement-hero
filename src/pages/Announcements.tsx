@@ -44,7 +44,7 @@ const Announcements = () => {
       
       // If not admin, only show own announcements
       if (!isAdmin) {
-        query = query.eq("user_id", user?.id);
+        query = query.filter("user_id", "eq", user?.id);
       }
       
       const { data, error } = await query;
@@ -105,7 +105,7 @@ const Announcements = () => {
       const { error } = await supabase
         .from("announcements")
         .delete()
-        .eq("id", id);
+        .filter("id", "eq", id);
       
       if (error) throw error;
       
@@ -122,9 +122,9 @@ const Announcements = () => {
       <Sidebar />
 
       <main className="pt-16 md:pl-64">
-        <div className="container px-4 py-8">
+        <div className="container px-4 py-6">
           <AnimatedContainer>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
               <h1 className="text-3xl font-bold">Annonces</h1>
               <Link to="/create">
                 <Button className="mt-4 sm:mt-0">
