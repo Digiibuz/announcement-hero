@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -18,10 +17,13 @@ const CreateAnnouncement = () => {
   const publishToWordPress = async (announcement: any, wpCategoryId: string) => {
     if (!user?.wordpressConfigId) {
       console.error("No WordPress configuration found for this user");
+      toast.error("Configuration WordPress introuvable pour cet utilisateur");
       return false;
     }
 
     try {
+      console.log("Récupération de la configuration WordPress...");
+      
       // Get WordPress config
       const { data: wpConfig, error: wpConfigError } = await supabase
         .from('wordpress_configs')
@@ -29,39 +31,103 @@ const CreateAnnouncement = () => {
         .eq('id', user.wordpressConfigId)
         .single();
 
-      if (wpConfigError) throw wpConfigError;
-      if (!wpConfig) throw new Error("WordPress configuration not found");
+      if (wpConfigError) {
+        console.error("Erreur lors de la récupération de la configuration WordPress:", wpConfigError);
+        throw wpConfigError;
+      }
+      
+      if (!wpConfig) {
+        console.error("Configuration WordPress non trouvée");
+        throw new Error("WordPress configuration not found");
+      }
 
+      console.log("Configuration WordPress récupérée:", {
+        site_url: wpConfig.site_url,
+        hasRestApiKey: !!wpConfig.rest_api_key,
+      });
+
+      // Ensure site_url has proper format
+      const siteUrl = wpConfig.site_url.endsWith('/')
+        ? wpConfig.site_url.slice(0, -1)
+        : wpConfig.site_url;
+      
       // Construct the WordPress API URL for posts
-      const apiUrl = `${wpConfig.site_url}/wp-json/wp/v2/posts`;
+      const apiUrl = `${siteUrl}/wp-json/wp/v2/posts`;
+      console.log("URL de l'API WordPress:", apiUrl);
+      
+      // Format the content correctly
+      const content = announcement.description || "";
+      
+      // Determine publication status
+      let status = 'draft';
+      if (announcement.status === 'published') {
+        status = 'publish';
+      } else if (announcement.status === 'scheduled' && announcement.publish_date) {
+        status = 'future';
+      }
       
       // Prepare post data
       const postData = {
         title: announcement.title,
-        content: announcement.description,
-        status: announcement.status === 'published' ? 'publish' : 
-                announcement.status === 'scheduled' ? 'future' : 'draft',
+        content: content,
+        status: status,
         categories: [parseInt(wpCategoryId)],
         date: announcement.status === 'scheduled' ? announcement.publish_date : undefined
       };
       
+      console.log("Données de la publication:", {
+        title: postData.title,
+        status: postData.status,
+        categoryId: wpCategoryId,
+        hasDate: !!postData.date
+      });
+      
+      // Prepare headers with authentication
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Use REST API key if available, otherwise fall back to Basic Auth
+      if (wpConfig.rest_api_key) {
+        headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
+      } else if (wpConfig.username && wpConfig.password) {
+        // Basic auth should be in format: "Basic base64(username:password)"
+        const basicAuth = btoa(`${wpConfig.username}:${wpConfig.password}`);
+        headers['Authorization'] = `Basic ${basicAuth}`;
+      } else {
+        throw new Error("No authentication method available for WordPress");
+      }
+      
+      console.log("Envoi de la requête à WordPress...");
+      
       // Send request to WordPress
       const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${wpConfig.rest_api_key}`,
-          'Content-Type': 'application/json'
-        },
+        headers: headers,
         body: JSON.stringify(postData)
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Failed to publish to WordPress: ${errorData.message || response.statusText}`);
+      console.log("Statut de la réponse:", response.status);
+      
+      const responseText = await response.text();
+      console.log("Réponse texte:", responseText);
+      
+      // Try to parse as JSON if possible
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (e) {
+        // Not JSON, keep as text
+        responseData = responseText;
       }
 
-      const responseData = await response.json();
-      console.log("Published to WordPress successfully:", responseData);
+      if (!response.ok) {
+        console.error("Erreur de publication WordPress:", responseData);
+        throw new Error(`Failed to publish to WordPress: ${response.status} ${response.statusText}`);
+      }
+
+      console.log("Publication WordPress réussie:", responseData);
+      toast.success("Publication WordPress réussie!");
       return true;
     } catch (error: any) {
       console.error("Error publishing to WordPress:", error);
@@ -85,6 +151,8 @@ const CreateAnnouncement = () => {
         publish_date: data.publishDate ? new Date(data.publishDate).toISOString() : null
       };
       
+      console.log("Enregistrement de l'annonce:", announcementData);
+      
       // Save to Supabase
       const { data: newAnnouncement, error } = await supabase
         .from("announcements")
@@ -94,12 +162,20 @@ const CreateAnnouncement = () => {
       
       if (error) throw error;
       
+      console.log("Annonce enregistrée dans Supabase:", newAnnouncement);
+      
       // If status is published or scheduled, try to publish to WordPress
+      let wordpressSuccess = true;
       if ((data.status === 'published' || data.status === 'scheduled') && data.wordpressCategory) {
-        await publishToWordPress(newAnnouncement, data.wordpressCategory);
+        console.log("Tentative de publication sur WordPress...");
+        wordpressSuccess = await publishToWordPress(newAnnouncement, data.wordpressCategory);
       }
       
-      toast.success("Annonce enregistrée avec succès");
+      if (wordpressSuccess) {
+        toast.success("Annonce enregistrée avec succès");
+      } else {
+        toast.warning("Annonce enregistrée dans la base de données, mais la publication WordPress a échoué");
+      }
       
       // Redirect to the announcements list
       navigate("/announcements");

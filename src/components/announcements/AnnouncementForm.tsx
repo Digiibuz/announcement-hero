@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -63,8 +62,26 @@ export interface AnnouncementFormData {
   images: string[];
 }
 
+interface SpeechRecognition extends EventTarget {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  start(): void;
+  stop(): void;
+  onresult: (event: any) => void;
+  onerror: (event: any) => void;
+}
+
+interface SpeechRecognitionConstructor {
+  new(): SpeechRecognition;
+}
+
+interface Window {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+}
+
 const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormProps) => {
-  // Form state
   const form = useForm<AnnouncementFormData>({
     defaultValues: {
       title: "",
@@ -76,30 +93,25 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormPr
     }
   });
 
-  // Navigation
   const navigate = useNavigate();
 
-  // State
   const [isRecording, setIsRecording] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   
-  // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
   
-  // WordPress categories
   const { categories, isLoading: isCategoriesLoading } = useWordPressCategories();
 
-  // Voice Recognition Setup
   useEffect(() => {
-    // Check if browser supports SpeechRecognition
-    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (SpeechRecognitionAPI) {
+      recognitionRef.current = new SpeechRecognitionAPI();
       recognitionRef.current.lang = 'fr-FR';
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
@@ -131,7 +143,6 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormPr
     };
   }, []);
 
-  // Toggle voice recording
   const toggleVoiceRecording = () => {
     if (!recognitionRef.current) {
       toast.error("La reconnaissance vocale n'est pas supportée par ce navigateur");
@@ -149,7 +160,6 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormPr
     }
   };
 
-  // AI Content Generation
   const generateImprovedContent = async () => {
     const currentDescription = form.getValues('description');
     if (!currentDescription) {
@@ -160,11 +170,8 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormPr
     try {
       setIsGenerating(true);
       
-      // In a real app, this would call an OpenAI API endpoint
-      // For now, we'll simulate a delay and return an enhanced version
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // This is a placeholder for actual OpenAI integration
       const enhancedText = `${currentDescription}\n\n[Version améliorée pour le SEO]\n${currentDescription
         .split(' ')
         .map(word => 
@@ -183,7 +190,6 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormPr
     }
   };
 
-  // Image upload handling
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -201,30 +207,35 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormPr
       toast.error("Erreur lors du téléversement des images: " + error.message);
     } finally {
       setIsUploading(false);
-      // Reset file input
       if (fileInputRef.current) fileInputRef.current.value = '';
       if (cameraInputRef.current) cameraInputRef.current.value = '';
     }
   };
 
-  // Helper function to upload images to Supabase storage
   const uploadImages = async (files: File[]): Promise<string[]> => {
     const uploadPromises = files.map(async (file) => {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       const filePath = `announcements/${fileName}`;
       
-      // Upload file to Supabase storage
+      console.log(`Uploading file ${file.name} to path ${filePath}`);
+      
       const { data, error } = await supabase.storage
         .from('images')
         .upload(filePath, file);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Storage upload error:", error);
+        throw error;
+      }
       
-      // Get public URL
+      console.log("Upload successful, getting public URL");
+      
       const { data: urlData } = supabase.storage
         .from('images')
         .getPublicUrl(filePath);
+      
+      console.log("Public URL obtained:", urlData.publicUrl);
       
       return urlData.publicUrl;
     });
@@ -232,18 +243,15 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormPr
     return Promise.all(uploadPromises);
   };
 
-  // Remove image
   const removeImage = (indexToRemove: number) => {
     setUploadedImages(uploadedImages.filter((_, index) => index !== indexToRemove));
     form.setValue('images', form.getValues('images').filter((_, index) => index !== indexToRemove));
   };
 
-  // Toggle preview
   const togglePreview = () => {
     setShowPreview(!showPreview);
   };
 
-  // Form submission
   const handleFormSubmit = (data: AnnouncementFormData) => {
     if (onSubmit) {
       onSubmit(data);
@@ -252,14 +260,12 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormPr
     }
   };
 
-  // Trigger file input click
   const triggerFileUpload = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
 
-  // Trigger camera input click
   const triggerCameraUpload = () => {
     if (cameraInputRef.current) {
       cameraInputRef.current.click();
@@ -473,7 +479,6 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormPr
                   )}
                 </div>
 
-                {/* Display uploaded images */}
                 {uploadedImages.length > 0 && (
                   <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                     {uploadedImages.map((imageUrl, index) => (

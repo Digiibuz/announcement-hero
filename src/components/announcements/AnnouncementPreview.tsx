@@ -4,10 +4,17 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { CalendarIcon, FolderIcon, Clock } from "lucide-react";
-import type { AnnouncementData } from "./AnnouncementForm";
+import type { AnnouncementFormData } from "./AnnouncementForm";
 
 interface AnnouncementPreviewProps {
-  data: AnnouncementData;
+  data: {
+    title: string;
+    description: string;
+    category: string;
+    publishDate: Date | undefined;
+    status: string;
+    images: string[];
+  };
 }
 
 const AnnouncementPreview = ({ data }: AnnouncementPreviewProps) => {
