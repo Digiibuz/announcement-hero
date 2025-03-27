@@ -34,22 +34,17 @@ export const useWordPressPages = () => {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
-  // Fonction utilitaire pour normaliser les URL WordPress
-  const normalizeUrl = (url: string) => {
-    return url.endsWith('/') ? url.slice(0, -1) : url;
-  };
-
   const fetchPages = async () => {
     if (!user?.wordpressConfigId) {
       console.error("No WordPress configuration ID found for user", user);
-      setError("Aucune configuration WordPress associée");
+      setError("No WordPress configuration found for this user");
       return;
     }
 
     try {
       setIsLoading(true);
       setError(null);
-      console.log("Récupération des pages pour l'ID de config WordPress:", user.wordpressConfigId);
+      console.log("Fetching pages for WordPress config ID:", user.wordpressConfigId);
 
       // First get the WordPress config for the user
       const { data: wpConfig, error: wpConfigError } = await supabase
@@ -59,27 +54,24 @@ export const useWordPressPages = () => {
         .single();
 
       if (wpConfigError) {
-        console.error("Erreur lors de la récupération de la config WordPress:", wpConfigError);
+        console.error("Error fetching WordPress config:", wpConfigError);
         throw wpConfigError;
       }
       
       if (!wpConfig) {
-        console.error("Configuration WordPress introuvable");
-        throw new Error("Configuration WordPress introuvable");
+        console.error("WordPress configuration not found");
+        throw new Error("WordPress configuration not found");
       }
 
-      console.log("Configuration WordPress trouvée:", {
+      console.log("WordPress config found:", {
         site_url: wpConfig.site_url,
         hasRestApiKey: !!wpConfig.rest_api_key,
         hasAppUsername: !!wpConfig.app_username,
         hasAppPassword: !!wpConfig.app_password
       });
 
-      // Normalize the site URL to prevent double slashes
-      const siteUrl = normalizeUrl(wpConfig.site_url);
-      
       // Construct the WordPress API URL
-      const apiUrl = `${siteUrl}/wp-json/wp/v2/pages`;
+      const apiUrl = `${wpConfig.site_url}/wp-json/wp/v2/pages`;
       
       // Prepare headers
       const headers: Record<string, string> = {
@@ -88,50 +80,39 @@ export const useWordPressPages = () => {
       
       // Prioritize Application Password authentication
       if (wpConfig.app_username && wpConfig.app_password) {
-        console.log("Utilisation de l'authentification par Application Password");
+        console.log("Using Application Password authentication");
         const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
         headers['Authorization'] = `Basic ${basicAuth}`;
       } else if (wpConfig.rest_api_key) {
-        console.log("Utilisation de l'authentification par clé API REST");
+        console.log("Using REST API Key authentication");
         headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
       } else {
-        console.log("Aucune méthode d'authentification fournie");
+        console.log("No authentication credentials provided");
       }
       
-      console.log("Récupération des pages depuis:", apiUrl);
-      
-      try {
-        const response = await fetch(apiUrl, {
-          method: 'GET',
-          headers: headers,
-          mode: 'cors'
-        });
+      console.log("Fetching pages from:", apiUrl);
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: headers
+      });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error("Erreur API WordPress:", response.status, errorText);
-          
-          if (response.status === 401 || response.status === 403) {
-            throw new Error("Identifiants incorrects ou autorisations insuffisantes");
-          }
-          
-          throw new Error(`Échec de récupération des pages: ${response.statusText}`);
-        }
-
-        const pagesData = await response.json();
-        console.log("Pages récupérées avec succès:", pagesData.length);
-        setPages(pagesData);
-      } catch (fetchError: any) {
-        console.error("Erreur fetch pages:", fetchError);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("WordPress API error:", response.status, errorText);
         
-        if (fetchError.message === "Failed to fetch") {
-          throw new Error("Échec de connexion: Problème réseau ou CORS. Vérifiez que le site WordPress est accessible.");
+        if (response.status === 401 || response.status === 403) {
+          throw new Error("Identifiants incorrects ou autorisations insuffisantes");
         }
-        throw fetchError;
+        
+        throw new Error(`Failed to fetch pages: ${response.statusText}`);
       }
+
+      const pagesData = await response.json();
+      console.log("Pages fetched successfully:", pagesData.length);
+      setPages(pagesData);
     } catch (err: any) {
-      console.error("Erreur lors de la récupération des pages WordPress:", err);
-      setError(err.message || "Échec de récupération des pages WordPress");
+      console.error("Error fetching WordPress pages:", err);
+      setError(err.message || "Failed to fetch WordPress pages");
       toast.error("Erreur lors de la récupération des pages WordPress");
     } finally {
       setIsLoading(false);
