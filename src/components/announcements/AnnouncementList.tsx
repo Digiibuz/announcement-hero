@@ -1,4 +1,3 @@
-
 import React from "react";
 import { 
   Table, 
@@ -18,8 +17,7 @@ import {
   Image as ImageIcon,
   Eye,
   Calendar,
-  CalendarClock,
-  Tag
+  CalendarClock
 } from "lucide-react";
 import { Announcement } from "@/types/announcement";
 import { Link } from "react-router-dom";
@@ -97,7 +95,6 @@ const AnnouncementList = ({
         <TableHeader>
           <TableRow>
             <TableHead className="w-[300px]">Annonce</TableHead>
-            <TableHead>Catégorie</TableHead>
             <TableHead>Statut</TableHead>
             <TableHead>Date de création</TableHead>
             <TableHead>Date de publication</TableHead>
@@ -113,16 +110,6 @@ const AnnouncementList = ({
                   <span className="ml-2">
                     <ImageIcon size={14} className="inline text-muted-foreground" />
                   </span>
-                )}
-              </TableCell>
-              <TableCell>
-                {announcement.wordpress_category_id ? (
-                  <div className="flex items-center">
-                    <Tag className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
-                    <span>{announcement.wordpress_category_name || announcement.wordpress_category_id}</span>
-                  </div>
-                ) : (
-                  <span className="text-muted-foreground">—</span>
                 )}
               </TableCell>
               <TableCell>{getStatusBadge(announcement.status)}</TableCell>
