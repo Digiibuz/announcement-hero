@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -11,7 +11,7 @@ export const useWordPressCategories = () => {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     if (!user?.wordpressConfigId) {
       console.error("No WordPress configuration ID found for user", user);
       setError("No WordPress configuration found for this user");
@@ -124,14 +124,14 @@ export const useWordPressCategories = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user?.wordpressConfigId]);
 
   useEffect(() => {
     console.log("useWordPressCategories effect running, user:", user?.id, "wordpressConfigId:", user?.wordpressConfigId);
     if (user?.wordpressConfigId) {
       fetchCategories();
     }
-  }, [user?.wordpressConfigId]);
+  }, [user?.wordpressConfigId, fetchCategories]);
 
   return { 
     categories, 

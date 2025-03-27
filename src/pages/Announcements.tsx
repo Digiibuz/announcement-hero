@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,7 +25,14 @@ const Announcements = () => {
   const viewMode = "grid";
   
   // Get WordPress categories
-  const { categories } = useWordPressCategories();
+  const { categories, refetch: refetchCategories } = useWordPressCategories();
+
+  // Initial load of categories
+  useEffect(() => {
+    if (user?.wordpressConfigId) {
+      refetchCategories();
+    }
+  }, [user?.wordpressConfigId, refetchCategories]);
 
   // Fetch announcements from Supabase
   const { data: announcements, isLoading, refetch } = useQuery({
@@ -65,7 +72,7 @@ const Announcements = () => {
         return announcement;
       }) as Announcement[];
     },
-    enabled: true,
+    enabled: !!user,
   });
 
   // Filter announcements based on search and status
@@ -84,6 +91,13 @@ const Announcements = () => {
     
     return matchesSearch && matchesStatus;
   });
+
+  // Refetch data when categories change
+  useEffect(() => {
+    if (categories.length > 0) {
+      refetch();
+    }
+  }, [categories, refetch]);
 
   // Handle announcement deletion
   const handleDelete = async (id: string) => {
