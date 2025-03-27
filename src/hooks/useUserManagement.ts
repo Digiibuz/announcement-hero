@@ -27,7 +27,8 @@ export const useUserManagement = () => {
         name: profile.name,
         role: profile.role,
         clientId: profile.client_id,
-        wordpressConfigId: profile.wordpress_config_id
+        // Ensuring we handle the case where wordpress_config_id doesn't exist in the returned data
+        wordpressConfigId: profile.wordpress_config_id || null
       })) as UserProfile[]);
     } catch (error) {
       console.error('Error fetching users:', error);

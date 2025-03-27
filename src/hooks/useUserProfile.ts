@@ -38,7 +38,8 @@ export const useUserProfile = () => {
           name: data.name,
           role: data.role as Role,
           clientId: data.client_id,
-          wordpressConfigId: data.wordpress_config_id,
+          // Ensuring we handle the case where wordpress_config_id doesn't exist in the returned data
+          wordpressConfigId: data.wordpress_config_id || null,
         });
         return true;
       } else if (error) {
