@@ -80,30 +80,14 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       
       toast.loading("Création de l'utilisateur en cours...");
       
-      // Fix: Use the correct Supabase URL with the Edge Function
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const response = await fetch(`${supabaseUrl}/functions/v1/create-user`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify(values),
+      // Correction: Utiliser directement l'objet supabase pour appeler la fonction Edge
+      const { data, error } = await supabase.functions.invoke("create-user", {
+        body: values,
       });
       
-      if (!response.ok) {
-        let errorMessage = "Erreur lors de la création de l'utilisateur";
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
-        } catch (jsonError) {
-          console.error("Error parsing JSON response:", jsonError);
-          errorMessage = `${errorMessage} (Status: ${response.status})`;
-        }
-        throw new Error(errorMessage);
+      if (error) {
+        throw new Error(error.message || "Erreur lors de la création de l'utilisateur");
       }
-      
-      const result = await response.json();
       
       toast.dismiss();
       toast.success("Utilisateur créé avec succès");

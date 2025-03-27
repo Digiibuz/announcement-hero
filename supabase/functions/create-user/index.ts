@@ -29,9 +29,7 @@ serve(async (req) => {
     const {
       data: { user },
       error: authError,
-    } = await supabaseAdmin.auth.getUser(
-      req.headers.get("Authorization")?.split("Bearer ")[1] ?? ""
-    );
+    } = await supabaseAdmin.auth.getUser();
 
     if (authError || !user) {
       return new Response(
