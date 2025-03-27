@@ -22,63 +22,8 @@ serve(async (req) => {
     // Créer un client Supabase avec la clé de service (possède des privilèges admin)
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization")! },
-        },
-      }
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
-
-    // Vérifier que l'utilisateur est authentifié
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseAdmin.auth.getUser();
-
-    console.log("Résultat de getUser:", user ? "Utilisateur trouvé" : "Utilisateur non trouvé", authError ? `Erreur: ${authError.message}` : "Pas d'erreur");
-
-    if (authError || !user) {
-      console.log("Erreur d'authentification:", authError?.message);
-      return new Response(
-        JSON.stringify({ error: "Non autorisé" }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 401,
-        }
-      );
-    }
-
-    // Vérifier que l'utilisateur est un administrateur
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    console.log("Résultat de la requête du profil:", profile ? `Role: ${profile.role}` : "Profil non trouvé", profileError ? `Erreur: ${profileError.message}` : "Pas d'erreur");
-
-    if (profileError) {
-      console.log("Erreur lors de la récupération du profil:", profileError.message);
-      return new Response(
-        JSON.stringify({ error: "Erreur lors de la récupération du profil" }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500,
-        }
-      );
-    }
-
-    if (profile?.role !== "admin") {
-      console.log("Accès refusé - L'utilisateur n'est pas admin:", profile?.role);
-      return new Response(
-        JSON.stringify({ error: "Accès refusé - Droits administrateur requis" }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 403,
-        }
-      );
-    }
 
     // Récupérer les données de la requête
     const requestData = await req.json();

@@ -86,6 +86,11 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       
       console.log("Réponse de la fonction Edge:", data);
       
+      if (!data || (data as any).error) {
+        const errorMessage = (data as any)?.error || "Erreur lors de la création de l'utilisateur";
+        throw new Error(errorMessage);
+      }
+      
       toast.dismiss(toastId);
       toast.success("Utilisateur créé avec succès");
       form.reset();
@@ -100,6 +105,11 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       // Si l'erreur contient des détails supplémentaires
       if (error.details) {
         errorMessage += ` (${error.details})`;
+      }
+      
+      // Ajouter le statut à l'erreur si disponible
+      if (error.status) {
+        errorMessage += ` (Status: ${error.status})`;
       }
       
       toast.error(errorMessage);
