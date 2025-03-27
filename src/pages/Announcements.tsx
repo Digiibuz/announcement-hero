@@ -10,11 +10,10 @@ import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import AnnouncementList from "@/components/announcements/AnnouncementList";
 import AnnouncementFilter from "@/components/announcements/AnnouncementFilter";
 import { Button } from "@/components/ui/button";
-import { Plus, LayoutGrid, Table as TableIcon } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Announcement } from "@/types/announcement";
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 const Announcements = () => {
   const { isAdmin, user } = useAuth();
@@ -22,8 +21,8 @@ const Announcements = () => {
     search: "",
     status: "all",
   });
-  // Changer la vue par défaut en "grid" au lieu de "table"
-  const [viewMode, setViewMode] = useState<"table" | "grid">("grid");
+  // Grid view is now the only view mode, so no need for state
+  const viewMode = "grid";
   
   // Get WordPress categories
   const { categories } = useWordPressCategories();
@@ -121,24 +120,11 @@ const Announcements = () => {
               </Link>
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
-              <div className="flex-1">
-                <AnnouncementFilter 
-                  filter={filter} 
-                  setFilter={setFilter} 
-                />
-              </div>
-              {/* Corriger l'alignement du switcher de vue */}
-              <div className="flex items-center justify-end">
-                <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as "table" | "grid")}>
-                  <ToggleGroupItem value="table" aria-label="Vue tableau">
-                    <TableIcon className="h-4 w-4" />
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="grid" aria-label="Vue grille">
-                    <LayoutGrid className="h-4 w-4" />
-                  </ToggleGroupItem>
-                </ToggleGroup>
-              </div>
+            <div className="mb-6">
+              <AnnouncementFilter 
+                filter={filter} 
+                setFilter={setFilter} 
+              />
             </div>
 
             <AnnouncementList 
