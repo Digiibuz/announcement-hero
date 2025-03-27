@@ -89,19 +89,23 @@ export const useWordPressPublishing = () => {
         status = 'future';
       }
       
-      // Prepare post data
+      // Prepare post data with corrected Yoast SEO meta fields format
       const postData: any = {
         title: announcement.title,
         content: content,
         status: status,
         categories: [parseInt(wpCategoryId)],
         date: announcement.status === 'scheduled' ? announcement.publish_date : undefined,
-        // Add SEO metadata - fix for Yoast SEO format
+        // Format for Yoast SEO meta fields - using correct keys that Yoast recognizes
         meta: {
           _yoast_wpseo_title: announcement.seo_title || announcement.title,
+          // Use both formats to ensure compatibility with different Yoast SEO versions
           _yoast_wpseo_metadesc: announcement.seo_description || "",
-          _yoast_wpseo_metadesc_value: announcement.seo_description || "", // Additional format for meta description
-          _yoast_wpseo_focuskw: announcement.title
+          _yoast_wpseo_metadesc_value: announcement.seo_description || "",
+          _yoast_wpseo_focuskw: announcement.title,
+          // Additional Yoast SEO meta fields that might help
+          _yoast_wpseo_meta-description: announcement.seo_description || "",
+          yoast_wpseo_metadesc: announcement.seo_description || ""
         },
         // Add slug if available
         slug: announcement.seo_slug || undefined
@@ -114,6 +118,8 @@ export const useWordPressPublishing = () => {
         hasDate: !!postData.date,
         seoTitle: postData.meta._yoast_wpseo_title,
         seoDescription: postData.meta._yoast_wpseo_metadesc,
+        seoMetaDescription: postData.meta['_yoast_wpseo_meta-description'],
+        yoastMetadesc: postData.meta.yoast_wpseo_metadesc,
         seoDescriptionValue: postData.meta._yoast_wpseo_metadesc_value,
         slug: postData.slug
       });
