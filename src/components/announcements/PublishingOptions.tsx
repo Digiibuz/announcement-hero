@@ -10,7 +10,7 @@ import { CalendarIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { UseFormReturn } from "react-hook-form";
-import { useWordPressCategories } from "@/hooks/useWordPressCategories";
+import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
 import { AnnouncementFormData } from "./AnnouncementForm";
 
 interface PublishingOptionsProps {
@@ -18,7 +18,7 @@ interface PublishingOptionsProps {
 }
 
 const PublishingOptions = ({ form }: PublishingOptionsProps) => {
-  const { categories, isLoading: isCategoriesLoading } = useWordPressCategories();
+  const { categories, isLoading: isCategoriesLoading, error: categoriesError, hasCategories } = useWordPressCategories();
   
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -44,7 +44,11 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     <span>Chargement...</span>
                   </div>
-                ) : categories.length > 0 ? (
+                ) : categoriesError ? (
+                  <div className="p-2 text-center text-sm text-muted-foreground">
+                    Erreur: {categoriesError}
+                  </div>
+                ) : hasCategories ? (
                   categories.map(category => (
                     <SelectItem key={category.id} value={String(category.id)}>
                       {category.name}

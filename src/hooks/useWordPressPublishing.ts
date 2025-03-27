@@ -6,7 +6,7 @@ import { Announcement } from "@/types/announcement";
 
 interface PublishToWordPressResult {
   success: boolean;
-  message?: string;
+  message: string; // Changed from optional to required
   wordpressPostId?: number;
 }
 
