@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
@@ -36,22 +35,18 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
   const [linkText, setLinkText] = useState("");
   const editorRef = useRef<HTMLDivElement>(null);
   
-  const { isRecording, isListening, toggleVoiceRecognition } = useVoiceRecognition({
+  const { isRecording, isListening, toggleVoiceRecording, isSupported } = useVoiceRecognition({
     fieldName: 'description',
     form
   });
 
-  // Update the form value when the editable div content changes
   const updateFormValue = () => {
     if (editorRef.current) {
-      // Get the HTML content from the editable div
       const htmlContent = editorRef.current.innerHTML;
-      // Set it to the form
       form.setValue('description', htmlContent);
     }
   };
 
-  // Handle paste to strip formatting
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const text = e.clipboardData.getData('text/plain');
@@ -114,10 +109,8 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
     
     const link = `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`;
     
-    // Insert at cursor position or replace selection
     document.execCommand('insertHTML', false, link);
     
-    // Reset form values
     setLinkUrl("");
     setLinkText("");
     setShowLinkPopover(false);
@@ -126,7 +119,6 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
   };
 
   React.useEffect(() => {
-    // Initialize the editor content from form value
     const description = form.getValues('description') || '';
     if (editorRef.current && description) {
       editorRef.current.innerHTML = description;
@@ -138,15 +130,14 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
       <div className="flex justify-between items-center">
         <Label>Description</Label>
         
-        {/* Déplacé et mis en valeur les boutons de dictée vocale et optimisation SEO */}
         <div className="flex gap-2">
           <Button
             type="button"
             size="sm"
             variant={isRecording ? "destructive" : "default"}
             className="flex items-center gap-1"
-            onClick={toggleVoiceRecognition}
-            disabled={isGenerating}
+            onClick={toggleVoiceRecording}
+            disabled={isGenerating || !isSupported}
           >
             {isRecording ? (
               <>
@@ -384,9 +375,9 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
             </FormControl>
             <FormMessage />
             {isRecording && (
-              <div className="flex items-center gap-2 text-primary text-sm font-medium mt-2">
-                <span className={`h-2 w-2 rounded-full ${isListening ? "bg-green-500" : "bg-primary"} ${isListening ? "animate-pulse" : ""}`}></span>
-                {isListening ? "Parole détectée - continuez à parler..." : "Microphone actif - commencez à parler..."}
+              <div className="recording-indicator">
+                <div className={`dot ${isListening ? "listening" : "waiting"}`}></div>
+                <span>{isListening ? "Parole détectée - continuez à parler..." : "Microphone actif - commencez à parler..."}</span>
               </div>
             )}
           </FormItem>
