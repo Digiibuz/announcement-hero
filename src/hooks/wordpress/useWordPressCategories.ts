@@ -47,8 +47,17 @@ export const useWordPressCategories = () => {
         hasAppPassword: !!wpConfig.app_password
       });
 
+      // Ensure the site URL is properly formatted
+      let siteUrl = wpConfig.site_url;
+      if (!siteUrl.startsWith("http")) {
+        siteUrl = "https://" + siteUrl;
+      }
+      if (siteUrl.endsWith("/")) {
+        siteUrl = siteUrl.slice(0, -1);
+      }
+
       // Construct the WordPress API URL
-      const apiUrl = `${wpConfig.site_url}/wp-json/wp/v2/categories`;
+      const apiUrl = `${siteUrl}/wp-json/wp/v2/categories`;
       
       // Prepare headers
       const headers: Record<string, string> = {
@@ -68,25 +77,45 @@ export const useWordPressCategories = () => {
       }
       
       console.log("Fetching categories from:", apiUrl);
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: headers
-      });
+      
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: headers,
+          signal: AbortSignal.timeout(15000) // Add a reasonable timeout
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("WordPress API error:", response.status, errorText);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("WordPress API error:", response.status, errorText);
+          
+          if (response.status === 401 || response.status === 403) {
+            throw new Error("Identifiants incorrects ou autorisations insuffisantes");
+          } else if (response.status === 404) {
+            throw new Error("API REST WordPress introuvable. Vérifiez que le plugin REST API est activé.");
+          }
+          
+          throw new Error(`Failed to fetch categories: ${response.statusText}`);
+        }
+
+        const categoriesData = await response.json();
+        console.log("Categories fetched successfully:", categoriesData.length);
+        setCategories(categoriesData);
+      } catch (fetchError: any) {
+        console.error("Fetch error:", fetchError);
         
-        if (response.status === 401 || response.status === 403) {
-          throw new Error("Identifiants incorrects ou autorisations insuffisantes");
+        // Check for timeout
+        if (fetchError.name === 'TimeoutError' || fetchError.name === 'AbortError') {
+          throw new Error("Délai d'attente dépassé lors de la récupération des catégories");
         }
         
-        throw new Error(`Failed to fetch categories: ${response.statusText}`);
+        // Network errors
+        if (fetchError.name === 'TypeError' && fetchError.message === 'Failed to fetch') {
+          throw new Error("Erreur réseau: impossible d'accéder au site WordPress. Vérifiez l'URL et les paramètres CORS.");
+        }
+        
+        throw fetchError;
       }
-
-      const categoriesData = await response.json();
-      console.log("Categories fetched successfully:", categoriesData.length);
-      setCategories(categoriesData);
     } catch (err: any) {
       console.error("Error fetching WordPress categories:", err);
       setError(err.message || "Failed to fetch WordPress categories");

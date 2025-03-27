@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useWordPressConnection } from "@/hooks/wordpress/useWordPressConnection";
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
 import { useWordPressPages } from "@/hooks/wordpress/useWordPressPages";
-import { CheckCircle, XCircle, AlertCircle, RefreshCw, Loader2 } from "lucide-react";
+import { CheckCircle, XCircle, AlertCircle, RefreshCw, Loader2, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import {
   Tooltip,
@@ -18,6 +18,16 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -33,8 +43,10 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
   className
 }) => {
   const { user } = useAuth();
-  const { status, isChecking, checkConnection } = useWordPressConnection();
+  const { status, isChecking, errorDetails, checkConnection } = useWordPressConnection();
   const [configDetails, setConfigDetails] = useState<{name?: string, site_url?: string}>({});
+  const [showTroubleshootDialog, setShowTroubleshootDialog] = useState(false);
+  
   const { 
     categories, 
     isLoading: isCategoriesLoading, 
@@ -100,6 +112,11 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
         toast.success("Données WordPress synchronisées avec succès");
       } else {
         toast.error(`Échec de connexion: ${result.message}`);
+        
+        // Si c'est une erreur réseau, afficher le dialog de dépannage
+        if (result.message.includes("réseau") || result.message.includes("Failed to fetch")) {
+          setShowTroubleshootDialog(true);
+        }
       }
     } catch (error) {
       console.error("Sync error:", error);
@@ -153,6 +170,9 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
           </TooltipTrigger>
           <TooltipContent>
             <p>État de la connexion WordPress{configDetails.name ? ` (${configDetails.name})` : ''}</p>
+            {errorDetails && (
+              <p className="text-xs text-red-500 mt-1">{errorDetails}</p>
+            )}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -171,6 +191,60 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
         )}
         <span className="ml-1">Synchroniser</span>
       </Button>
+
+      {errorDetails && (
+        <Dialog open={showTroubleshootDialog} onOpenChange={setShowTroubleshootDialog}>
+          <DialogTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
+              <HelpCircle className="h-4 w-4 text-muted-foreground" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Dépannage de la connexion WordPress</DialogTitle>
+              <DialogDescription>
+                Voici quelques solutions aux problèmes de connexion WordPress courants.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 my-4">
+              <h3 className="font-medium">Erreur détectée: {errorDetails}</h3>
+              
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm">Solutions possibles:</h4>
+                <ul className="list-disc pl-5 space-y-1 text-sm">
+                  <li>Vérifiez que l'URL du site est correcte et accessible depuis l'extérieur</li>
+                  <li>Assurez-vous que l'API REST WordPress est activée sur votre site</li>
+                  <li>Vérifiez que vos identifiants WordPress sont corrects</li>
+                  <li>Vérifiez que le site WordPress n'est pas bloqué par un pare-feu</li>
+                  <li>Assurez-vous que la configuration CORS permet les requêtes depuis cette application</li>
+                  <li>Si vous utilisez un certificat SSL, vérifiez qu'il est valide et à jour</li>
+                </ul>
+              </div>
+              
+              {configDetails.site_url && (
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">Tests à effectuer:</h4>
+                  <p className="text-sm">Vérifiez si l'API REST WordPress est accessible en ouvrant cette URL dans votre navigateur:</p>
+                  <code className="bg-muted p-2 rounded text-xs block">
+                    {configDetails.site_url.replace(/\/$/, '')}/wp-json
+                  </code>
+                  <p className="text-sm mt-2">Vous devriez voir une réponse JSON si l'API est active.</p>
+                </div>
+              )}
+            </div>
+            
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline">Fermer</Button>
+              </DialogClose>
+              <Button onClick={handleSync}>
+                Réessayer la connexion
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {showDetails && status === "connected" && (
         <HoverCard>
