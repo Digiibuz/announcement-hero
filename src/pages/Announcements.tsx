@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Announcement } from "@/types/announcement";
-import { useWordPressCategories } from "@/hooks/useWordPressCategories";
+import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
 
 const Announcements = () => {
   const { isAdmin, user } = useAuth();
@@ -47,7 +47,6 @@ const Announcements = () => {
       
       // Map WordPress category IDs to names
       return data.map(announcement => {
-        // Find category by ID in the categories array
         if (announcement.wordpress_category_id && categories) {
           const category = categories.find(
             c => c.id.toString() === announcement.wordpress_category_id
@@ -73,7 +72,8 @@ const Announcements = () => {
     const matchesSearch = 
       filter.search === "" || 
       announcement.title.toLowerCase().includes(filter.search.toLowerCase()) ||
-      (announcement.description && announcement.description.toLowerCase().includes(filter.search.toLowerCase()));
+      (announcement.description && announcement.description.toLowerCase().includes(filter.search.toLowerCase())) ||
+      (announcement.wordpress_category_name && announcement.wordpress_category_name.toLowerCase().includes(filter.search.toLowerCase()));
     
     // Filter by status
     const matchesStatus = 
