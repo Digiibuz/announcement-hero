@@ -38,7 +38,7 @@ export const useWordPressPages = () => {
       // Récupérer d'abord la configuration WordPress pour l'utilisateur
       const { data: wpConfig, error: wpConfigError } = await supabase
         .from('wordpress_configs')
-        .select('site_url, rest_api_key')
+        .select('site_url, rest_api_key, app_username, app_password')
         .eq('id', user.wordpressConfigId)
         .single();
 
@@ -54,11 +54,23 @@ export const useWordPressPages = () => {
       // Construire l'URL de l'API WordPress
       const apiUrl = `${wpConfig.site_url}/wp-json/wp/v2/pages`;
       
+      // Préparer les en-têtes d'authentification
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      // Utiliser Application Password si disponible
+      if (wpConfig.app_username && wpConfig.app_password) {
+        const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
+        headers['Authorization'] = `Basic ${basicAuth}`;
+      } 
+      // Fallback sur la clé API REST si présente
+      else if (wpConfig.rest_api_key) {
+        headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
+      }
+      
       const response = await fetch(apiUrl, {
-        headers: {
-          'Authorization': `Bearer ${wpConfig.rest_api_key}`,
-          'Content-Type': 'application/json'
-        }
+        headers: headers
       });
 
       if (!response.ok) {

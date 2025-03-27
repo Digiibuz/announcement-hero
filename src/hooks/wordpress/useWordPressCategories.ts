@@ -28,7 +28,7 @@ export const useWordPressCategories = () => {
       // First get the WordPress config for the user
       const { data: wpConfig, error: wpConfigError } = await supabase
         .from('wordpress_configs')
-        .select('site_url, username, password, rest_api_key')
+        .select('site_url, rest_api_key, app_username, app_password')
         .eq('id', user.wordpressConfigId)
         .single();
 
@@ -44,11 +44,23 @@ export const useWordPressCategories = () => {
       // Construct the WordPress API URL
       const apiUrl = `${wpConfig.site_url}/wp-json/wp/v2/categories`;
       
+      // Prepare authentication headers
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      // Use Application Password if available
+      if (wpConfig.app_username && wpConfig.app_password) {
+        const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
+        headers['Authorization'] = `Basic ${basicAuth}`;
+      } 
+      // Fall back to REST API key if present
+      else if (wpConfig.rest_api_key) {
+        headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
+      }
+      
       const response = await fetch(apiUrl, {
-        headers: {
-          'Authorization': `Bearer ${wpConfig.rest_api_key}`,
-          'Content-Type': 'application/json'
-        }
+        headers: headers
       });
 
       if (!response.ok) {

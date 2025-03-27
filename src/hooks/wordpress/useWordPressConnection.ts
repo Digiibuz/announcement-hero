@@ -26,7 +26,7 @@ export const useWordPressConnection = () => {
       // Get the WordPress config
       const { data: wpConfig, error: wpConfigError } = await supabase
         .from('wordpress_configs')
-        .select('site_url, rest_api_key')
+        .select('site_url, rest_api_key, app_username, app_password')
         .eq('id', wordpressConfigId)
         .single();
 
@@ -44,12 +44,24 @@ export const useWordPressConnection = () => {
       // Try to fetch the WordPress site info as a connection test
       const infoUrl = `${wpConfig.site_url}/wp-json`;
       
+      // Préparer les en-têtes d'authentification
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      // Utiliser Application Password si disponible
+      if (wpConfig.app_username && wpConfig.app_password) {
+        const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
+        headers['Authorization'] = `Basic ${basicAuth}`;
+      } 
+      // Fallback sur la clé API REST si présente
+      else if (wpConfig.rest_api_key) {
+        headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
+      }
+      
       const response = await fetch(infoUrl, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${wpConfig.rest_api_key}`
-        }
+        headers: headers
       });
 
       if (!response.ok) {

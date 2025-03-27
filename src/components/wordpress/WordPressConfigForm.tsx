@@ -1,194 +1,197 @@
 
-import React, { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import React from "react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { WordPressConfig } from "@/types/wordpress";
 
-const formSchema = z.object({
-  name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères" }),
-  site_url: z.string().url({ message: "URL invalide" }),
-  rest_api_key: z.string().min(5, { message: "La clé API REST doit contenir au moins 5 caractères" }),
+const wordpressConfigSchema = z.object({
+  name: z.string().min(1, "Le nom est requis"),
+  site_url: z.string().url("L'URL doit être valide").min(1, "L'URL du site est requise"),
+  rest_api_key: z.string().optional(),
+  app_username: z.string().optional(),
+  app_password: z.string().optional(),
   username: z.string().optional(),
   password: z.string().optional(),
 });
 
-type FormSchema = z.infer<typeof formSchema>;
+type WordPressConfigFormValues = z.infer<typeof wordpressConfigSchema>;
 
 interface WordPressConfigFormProps {
-  config?: WordPressConfig;
-  onSubmit: (data: FormSchema) => Promise<void>;
-  buttonText: string;
-  dialogTitle: string;
-  dialogDescription: string;
-  isSubmitting: boolean;
-  trigger?: React.ReactNode;
+  onSubmit: (data: WordPressConfigFormValues) => Promise<void>;
+  defaultValues?: Partial<WordPressConfig>;
+  buttonText?: string;
+  dialogTitle?: string;
+  dialogDescription?: string;
+  isSubmitting?: boolean;
 }
 
 const WordPressConfigForm: React.FC<WordPressConfigFormProps> = ({
-  config,
   onSubmit,
-  buttonText,
-  dialogTitle,
-  dialogDescription,
-  isSubmitting,
-  trigger
+  defaultValues = {},
+  buttonText = "Ajouter",
+  dialogTitle = "Ajouter une configuration WordPress",
+  dialogDescription = "Entrez les détails de votre site WordPress",
+  isSubmitting = false
 }) => {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  const form = useForm<FormSchema>({
-    resolver: zodResolver(formSchema),
+  const [open, setOpen] = React.useState(false);
+  
+  const form = useForm<WordPressConfigFormValues>({
+    resolver: zodResolver(wordpressConfigSchema),
     defaultValues: {
-      name: config?.name || "",
-      site_url: config?.site_url || "",
-      rest_api_key: config?.rest_api_key || "",
-      username: config?.username || "",
-      password: config?.password || "",
-    },
+      name: defaultValues.name || "",
+      site_url: defaultValues.site_url || "",
+      rest_api_key: defaultValues.rest_api_key || "",
+      app_username: defaultValues.app_username || "",
+      app_password: defaultValues.app_password || "",
+      username: defaultValues.username || "",
+      password: defaultValues.password || "",
+    }
   });
 
-  useEffect(() => {
-    if (config) {
-      form.reset({
-        name: config.name,
-        site_url: config.site_url,
-        rest_api_key: config.rest_api_key,
-        username: config.username || "",
-        password: config.password || "",
-      });
-    }
-  }, [config, form]);
-
-  const handleSubmit = async (values: FormSchema) => {
+  const handleSubmit = async (data: WordPressConfigFormValues) => {
     try {
-      await onSubmit(values);
-      setIsDialogOpen(false);
+      await onSubmit(data);
+      setOpen(false);
       form.reset();
     } catch (error) {
-      console.error("Error in form submission:", error);
+      console.error("Error submitting form:", error);
     }
   };
 
   return (
-    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {trigger || (
-          <Button>
-            {buttonText}
-          </Button>
-        )}
+        <Button variant="outline">{buttonText}</Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[525px]">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{dialogTitle}</DialogTitle>
-          <DialogDescription>
-            {dialogDescription}
-          </DialogDescription>
+          <DialogDescription>{dialogDescription}</DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nom</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Mon site WordPress" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+        <form onSubmit={form.handleSubmit(handleSubmit)}>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Nom
+              </Label>
+              <Input
+                id="name"
+                placeholder="Mon site WordPress"
+                className="col-span-3"
+                {...form.register("name")}
+              />
+              {form.formState.errors.name && (
+                <p className="col-span-4 text-sm text-red-500 text-right">
+                  {form.formState.errors.name.message}
+                </p>
               )}
-            />
-            <FormField
-              control={form.control}
-              name="site_url"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>URL du site</FormLabel>
-                  <FormControl>
-                    <Input placeholder="https://example.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="site_url" className="text-right">
+                URL du site
+              </Label>
+              <Input
+                id="site_url"
+                placeholder="https://monsite.com"
+                className="col-span-3"
+                {...form.register("site_url")}
+              />
+              {form.formState.errors.site_url && (
+                <p className="col-span-4 text-sm text-red-500 text-right">
+                  {form.formState.errors.site_url.message}
+                </p>
               )}
-            />
-            <FormField
-              control={form.control}
-              name="rest_api_key"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Clé API REST</FormLabel>
-                  <FormControl>
-                    <Input placeholder="clé-api-rest" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nom d'utilisateur (optionnel)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="admin" {...field} value={field.value || ""} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Mot de passe (optionnel)</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} value={field.value || ""} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <DialogFooter>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Enregistrement...
-                  </>
-                ) : (
-                  "Enregistrer"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+            </div>
+
+            <div className="my-2">
+              <h3 className="text-sm font-medium mb-2">Méthode d'authentification</h3>
+              <p className="text-xs text-muted-foreground mb-4">
+                Veuillez fournir au moins une méthode d'authentification. L'Application Password est recommandée.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="app_username" className="text-right">
+                Nom d'utilisateur (App)
+              </Label>
+              <Input
+                id="app_username"
+                placeholder="admin"
+                className="col-span-3"
+                {...form.register("app_username")}
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="app_password" className="text-right">
+                Mot de passe (App)
+              </Label>
+              <Input
+                id="app_password"
+                type="password"
+                placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"
+                className="col-span-3"
+                {...form.register("app_password")}
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="rest_api_key" className="text-right">
+                Clé API REST
+              </Label>
+              <Input
+                id="rest_api_key"
+                placeholder="Clé API WordPress"
+                className="col-span-3"
+                {...form.register("rest_api_key")}
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="username" className="text-right">
+                Nom d'utilisateur
+              </Label>
+              <Input
+                id="username"
+                placeholder="Nom d'utilisateur WordPress"
+                className="col-span-3"
+                {...form.register("username")}
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="password" className="text-right">
+                Mot de passe
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Mot de passe WordPress"
+                className="col-span-3"
+                {...form.register("password")}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Enregistrement..." : "Enregistrer"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

@@ -50,7 +50,7 @@ export const useWordPressPublishing = () => {
       // Get WordPress config
       const { data: wpConfig, error: wpConfigError } = await supabase
         .from('wordpress_configs')
-        .select('site_url, username, password, rest_api_key')
+        .select('site_url, username, password, rest_api_key, app_username, app_password')
         .eq('id', userProfile.wordpress_config_id)
         .single();
 
@@ -66,6 +66,7 @@ export const useWordPressPublishing = () => {
 
       console.log("Configuration WordPress récupérée:", {
         site_url: wpConfig.site_url,
+        hasAppCredentials: !!(wpConfig.app_username && wpConfig.app_password),
         hasRestApiKey: !!wpConfig.rest_api_key,
       });
 
@@ -110,15 +111,21 @@ export const useWordPressPublishing = () => {
         'Content-Type': 'application/json',
       };
       
-      // Use REST API key if available, otherwise fall back to Basic Auth
-      if (wpConfig.rest_api_key) {
+      // Priorité d'authentification: Application Password > REST API Key > Basic Auth
+      if (wpConfig.app_username && wpConfig.app_password) {
+        // Application Password Format: "Basic base64(username:password)"
+        const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
+        headers['Authorization'] = `Basic ${basicAuth}`;
+        console.log("Utilisation de l'authentification par Application Password");
+      } else if (wpConfig.rest_api_key) {
         headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
+        console.log("Utilisation de l'authentification par clé API REST");
       } else if (wpConfig.username && wpConfig.password) {
-        // Basic auth should be in format: "Basic base64(username:password)"
         const basicAuth = btoa(`${wpConfig.username}:${wpConfig.password}`);
         headers['Authorization'] = `Basic ${basicAuth}`;
+        console.log("Utilisation de l'authentification basique (déconseillée)");
       } else {
-        throw new Error("No authentication method available for WordPress");
+        throw new Error("Aucune méthode d'authentification disponible pour WordPress");
       }
       
       console.log("Envoi de la requête à WordPress...");
