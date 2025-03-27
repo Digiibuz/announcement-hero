@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
@@ -13,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Announcement } from "@/types/announcement";
-import { useWordPressCategories } from "@/hooks/useWordPressCategories";
+import { useWordPressCategories } from "@/hooks/wordpress";
 
 const Announcements = () => {
   const { isAdmin, user } = useAuth();
@@ -27,7 +26,7 @@ const Announcements = () => {
 
   // Fetch announcements from Supabase
   const { data: announcements, isLoading, refetch } = useQuery({
-    queryKey: ["announcements"],
+    queryKey: ["announcements", categories],
     queryFn: async () => {
       let query = supabase
         .from("announcements")
@@ -47,7 +46,6 @@ const Announcements = () => {
       
       // Map WordPress category IDs to names
       return data.map(announcement => {
-        // Find category by ID in the categories array
         if (announcement.wordpress_category_id && categories) {
           const category = categories.find(
             c => c.id.toString() === announcement.wordpress_category_id
@@ -64,7 +62,7 @@ const Announcements = () => {
         return announcement;
       }) as Announcement[];
     },
-    enabled: true,
+    enabled: !!user,
   });
 
   // Filter announcements based on search and status
