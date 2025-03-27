@@ -49,14 +49,18 @@ export const useWordPressConnection = () => {
         'Content-Type': 'application/json'
       };
       
+      let authenticationUsed = false;
+      
       // Utiliser Application Password si disponible
       if (wpConfig.app_username && wpConfig.app_password) {
         const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
         headers['Authorization'] = `Basic ${basicAuth}`;
+        authenticationUsed = true;
       } 
       // Fallback sur la clé API REST si présente
       else if (wpConfig.rest_api_key) {
         headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
+        authenticationUsed = true;
       }
       
       const response = await fetch(infoUrl, {
@@ -68,6 +72,35 @@ export const useWordPressConnection = () => {
         console.error("WordPress connection test failed:", response.statusText);
         setStatus("disconnected");
         return { success: false, message: `Échec de connexion: ${response.statusText}` };
+      }
+
+      // Si l'authentification est utilisée, essayons d'accéder à un point d'extrémité
+      // qui nécessite des autorisations pour valider les identifiants
+      if (authenticationUsed) {
+        try {
+          // Essayons de récupérer les publications, ce qui nécessite généralement une authentification
+          const postsUrl = `${wpConfig.site_url}/wp-json/wp/v2/posts?context=edit`;
+          const authTest = await fetch(postsUrl, {
+            method: 'GET',
+            headers: headers
+          });
+          
+          if (!authTest.ok) {
+            // Si cet appel échoue, les identifiants sont probablement incorrects
+            console.warn("Authentication test failed:", authTest.statusText);
+            if (authTest.status === 401 || authTest.status === 403) {
+              setStatus("disconnected");
+              return { 
+                success: false, 
+                message: "Identifiants incorrects ou autorisations insuffisantes" 
+              };
+            }
+          }
+        } catch (authError) {
+          console.error("Authentication test error:", authError);
+          // Ne pas échouer complètement si ce test échoue, car cela pourrait être dû
+          // à une configuration différente sur le site WordPress
+        }
       }
 
       const data = await response.json();

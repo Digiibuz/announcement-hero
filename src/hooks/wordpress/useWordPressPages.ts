@@ -76,6 +76,13 @@ export const useWordPressPages = () => {
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("WordPress API error:", response.status, errorText);
+        
+        if (response.status === 401 || response.status === 403) {
+          throw new Error("Identifiants incorrects ou autorisations insuffisantes");
+        }
+        
         throw new Error(`Failed to fetch pages: ${response.statusText}`);
       }
 
