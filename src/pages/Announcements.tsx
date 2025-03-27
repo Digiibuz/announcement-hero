@@ -86,20 +86,22 @@ const Announcements = () => {
       <main className="pt-16 md:pl-64">
         <div className="container px-4 py-8">
           <AnimatedContainer>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
-              <h1 className="text-3xl font-bold">Annonces</h1>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+              <h1 className="text-2xl font-bold">Annonces</h1>
               <Link to="/create">
-                <Button className="mt-4 sm:mt-0">
+                <Button className="mt-4 sm:mt-0 whitespace-nowrap">
                   <Plus className="h-4 w-4 mr-2" />
                   Créer une annonce
                 </Button>
               </Link>
             </div>
 
-            <AnnouncementFilter 
-              filter={filter} 
-              setFilter={setFilter} 
-            />
+            <div className="mb-6">
+              <AnnouncementFilter 
+                filter={filter} 
+                setFilter={setFilter} 
+              />
+            </div>
 
             <AnnouncementList 
               announcements={filteredAnnouncements || []} 
