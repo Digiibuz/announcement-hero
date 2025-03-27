@@ -50,6 +50,21 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Nouvelle route pour les utilisateurs authentifiés (admin ou éditeur)
+const AuthenticatedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 const AppRoutes = () => {
   return (
     <Routes>
@@ -82,20 +97,22 @@ const AppRoutes = () => {
         } 
       />
       
+      {/* Modification: WordPress accessible pour les éditeurs et admins */}
+      <Route 
+        path="/wordpress" 
+        element={
+          <AuthenticatedRoute>
+            <WordPressManagement />
+          </AuthenticatedRoute>
+        } 
+      />
+      
       {/* Admin only routes */}
       <Route 
         path="/users" 
         element={
           <AdminRoute>
             <UserManagement />
-          </AdminRoute>
-        } 
-      />
-      <Route 
-        path="/wordpress" 
-        element={
-          <AdminRoute>
-            <WordPressManagement />
           </AdminRoute>
         } 
       />
