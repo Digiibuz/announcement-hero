@@ -10,10 +10,11 @@ import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import AnnouncementList from "@/components/announcements/AnnouncementList";
 import AnnouncementFilter from "@/components/announcements/AnnouncementFilter";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, LayoutGrid, Table as TableIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Announcement } from "@/types/announcement";
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 const Announcements = () => {
   const { isAdmin, user } = useAuth();
@@ -21,6 +22,7 @@ const Announcements = () => {
     search: "",
     status: "all",
   });
+  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   
   // Get WordPress categories
   const { categories } = useWordPressCategories();
@@ -118,15 +120,30 @@ const Announcements = () => {
               </Link>
             </div>
 
-            <AnnouncementFilter 
-              filter={filter} 
-              setFilter={setFilter} 
-            />
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+              <div className="flex-1">
+                <AnnouncementFilter 
+                  filter={filter} 
+                  setFilter={setFilter} 
+                />
+              </div>
+              <div className="ml-auto">
+                <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as "table" | "grid")}>
+                  <ToggleGroupItem value="table" aria-label="Vue tableau">
+                    <TableIcon className="h-4 w-4" />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="grid" aria-label="Vue grille">
+                    <LayoutGrid className="h-4 w-4" />
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+            </div>
 
             <AnnouncementList 
               announcements={filteredAnnouncements || []} 
               isLoading={isLoading}
               onDelete={handleDelete}
+              viewMode={viewMode}
             />
           </AnimatedContainer>
         </div>
