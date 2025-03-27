@@ -1,3 +1,4 @@
+
 import React, { useRef, useState } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
@@ -44,6 +45,7 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
     if (editorRef.current) {
       const htmlContent = editorRef.current.innerHTML;
       form.setValue('description', htmlContent);
+      console.log("Form value updated from editor:", htmlContent);
     }
   };
 
@@ -122,6 +124,23 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
     const description = form.getValues('description') || '';
     if (editorRef.current && description) {
       editorRef.current.innerHTML = description;
+    }
+  }, []);
+
+  React.useEffect(() => {
+    // Add an input event listener to catch speech recognition updates
+    const editorElement = editorRef.current;
+    
+    if (editorElement) {
+      const handleInput = () => {
+        updateFormValue();
+      };
+      
+      editorElement.addEventListener('input', handleInput);
+      
+      return () => {
+        editorElement.removeEventListener('input', handleInput);
+      };
     }
   }, []);
 

@@ -53,7 +53,7 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
       recognitionRef.current.interimResults = true;
       
       recognitionRef.current.onresult = (event: any) => {
-        const currentValue = form.getValues(fieldName);
+        const currentValue = form.getValues(fieldName) || '';
         const resultIndex = event.resultIndex;
         const transcript = event.results[resultIndex][0].transcript;
         
@@ -66,11 +66,39 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
         }
         
         if (event.results[resultIndex].isFinal) {
-          // Apply the final transcript to the form
-          form.setValue(fieldName, currentValue 
-            ? `${currentValue} ${transcript}`
-            : transcript
-          );
+          console.log("Final transcript received:", transcript);
+          
+          // For contentEditable elements, handle differently
+          if (fieldName === 'description') {
+            const element = document.getElementById('description');
+            if (element) {
+              let content = element.innerHTML;
+              
+              // Add space if there's already content
+              if (content && !content.endsWith(' ')) {
+                content += ' ';
+              }
+              
+              // Append the transcript
+              element.innerHTML = content + transcript;
+              
+              // Manually trigger the form update
+              const event = new Event('input', { bubbles: true });
+              element.dispatchEvent(event);
+              
+              console.log("Updated editor content with speech:", element.innerHTML);
+            } else {
+              console.error("Description element not found");
+            }
+          } else {
+            // For regular form fields
+            form.setValue(
+              fieldName, 
+              currentValue ? `${currentValue} ${transcript}` : transcript,
+              { shouldValidate: true, shouldDirty: true }
+            );
+            console.log("Updated form value:", form.getValues(fieldName));
+          }
         }
       };
       
