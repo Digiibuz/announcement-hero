@@ -44,6 +44,28 @@ const AnnouncementPreview = ({ data }: AnnouncementPreviewProps) => {
     }
   };
 
+  // Function to render formatted text with HTML tags
+  const renderFormattedDescription = (content: string) => {
+    if (!content) return <p className="text-muted-foreground italic">No description provided</p>;
+    
+    return (
+      <div dangerouslySetInnerHTML={{ 
+        __html: content
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;')
+          // Replace format tags with actual HTML
+          .replace(/&lt;strong&gt;(.*?)&lt;\/strong&gt;/g, '<strong>$1</strong>')
+          .replace(/&lt;em&gt;(.*?)&lt;\/em&gt;/g, '<em>$1</em>')
+          .replace(/&lt;u&gt;(.*?)&lt;\/u&gt;/g, '<u>$1</u>')
+          .replace(/&lt;s&gt;(.*?)&lt;\/s&gt;/g, '<s>$1</s>')
+          .replace(/\n/g, '<br/>')
+      }} />
+    );
+  };
+
   return (
     <div className="space-y-6">
       <Card className="overflow-hidden shadow-sm">
@@ -89,9 +111,7 @@ const AnnouncementPreview = ({ data }: AnnouncementPreviewProps) => {
         <CardContent>
           {data.description ? (
             <div className="prose prose-sm max-w-none">
-              {data.description.split("\n").map((paragraph, index) => (
-                <p key={index}>{paragraph}</p>
-              ))}
+              {renderFormattedDescription(data.description)}
             </div>
           ) : (
             <div className="text-muted-foreground italic">

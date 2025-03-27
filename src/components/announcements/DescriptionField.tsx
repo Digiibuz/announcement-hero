@@ -1,10 +1,9 @@
-
-import React from "react";
+import React, { useState } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Mic, MicOff, Loader2, Sparkles, Bold, Italic, Underline, Strikethrough } from "lucide-react";
+import { Mic, MicOff, Loader2, Sparkles, Bold, Italic, Underline, Strikethrough, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UseFormReturn } from "react-hook-form";
 import useVoiceRecognition from "@/hooks/useVoiceRecognition";
@@ -16,6 +15,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Card } from "@/components/ui/card";
 
 interface DescriptionFieldProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -23,6 +23,7 @@ interface DescriptionFieldProps {
 
 const DescriptionField = ({ form }: DescriptionFieldProps) => {
   const [isGenerating, setIsGenerating] = React.useState(false);
+  const [showPreview, setShowPreview] = useState(true);
   
   const { isRecording, toggleVoiceRecording } = useVoiceRecognition({
     fieldName: 'description',
@@ -98,6 +99,28 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
     }, 0);
   };
 
+  const renderFormattedText = (content: string) => {
+    if (!content) return <p className="text-muted-foreground italic">La prévisualisation apparaîtra ici...</p>;
+    
+    return (
+      <div dangerouslySetInnerHTML={{ 
+        __html: content
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;')
+          .replace(/&lt;strong&gt;(.*?)&lt;\/strong&gt;/g, '<strong>$1</strong>')
+          .replace(/&lt;em&gt;(.*?)&lt;\/em&gt;/g, '<em>$1</em>')
+          .replace(/&lt;u&gt;(.*?)&lt;\/u&gt;/g, '<u>$1</u>')
+          .replace(/&lt;s&gt;(.*?)&lt;\/s&gt;/g, '<s>$1</s>')
+          .replace(/\n/g, '<br/>')
+      }} />
+    );
+  };
+
+  const description = form.watch('description');
+
   return (
     <div className="space-y-2">
       <div className="flex justify-between items-center">
@@ -140,6 +163,25 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
               <>
                 <Sparkles size={14} />
                 <span>Optimiser SEO</span>
+              </>
+            )}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="flex items-center gap-1 text-xs"
+            onClick={() => setShowPreview(!showPreview)}
+          >
+            {showPreview ? (
+              <>
+                <EyeOff size={14} />
+                <span>Masquer aperçu</span>
+              </>
+            ) : (
+              <>
+                <Eye size={14} />
+                <span>Afficher aperçu</span>
               </>
             )}
           </Button>
@@ -250,6 +292,18 @@ const DescriptionField = ({ form }: DescriptionFieldProps) => {
           </FormItem>
         )}
       />
+      
+      {showPreview && description && (
+        <Card className="p-4 mt-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Eye size={16} className="text-muted-foreground" />
+            <h3 className="text-sm font-medium">Prévisualisation</h3>
+          </div>
+          <div className="prose prose-sm max-w-none border-t pt-3">
+            {renderFormattedText(description)}
+          </div>
+        </Card>
+      )}
     </div>
   );
 };
