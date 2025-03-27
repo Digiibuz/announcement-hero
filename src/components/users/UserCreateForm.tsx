@@ -70,33 +70,39 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       setIsSubmitting(true);
       setIsDialogOpen(false);
       
-      // Récupérer le token d'accès de l'utilisateur actuel
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
+      const toastId = toast.loading("Création de l'utilisateur en cours...");
       
-      if (!token) {
-        throw new Error("Vous devez être connecté pour effectuer cette action");
-      }
+      console.log("Envoi des données:", values);
       
-      toast.loading("Création de l'utilisateur en cours...");
-      
-      // Correction: Utiliser directement l'objet supabase pour appeler la fonction Edge
+      // Appel de la fonction Edge avec une meilleure gestion des erreurs
       const { data, error } = await supabase.functions.invoke("create-user", {
         body: values,
       });
       
       if (error) {
+        console.error("Erreur renvoyée par la fonction Edge:", error);
         throw new Error(error.message || "Erreur lors de la création de l'utilisateur");
       }
       
-      toast.dismiss();
+      console.log("Réponse de la fonction Edge:", data);
+      
+      toast.dismiss(toastId);
       toast.success("Utilisateur créé avec succès");
       form.reset();
       onUserCreated();
     } catch (error: any) {
       toast.dismiss();
       console.error("Error creating user:", error);
-      toast.error(error.message || "Erreur lors de la création de l'utilisateur");
+      
+      // Message d'erreur plus détaillé pour aider au débogage
+      let errorMessage = error.message || "Erreur lors de la création de l'utilisateur";
+      
+      // Si l'erreur contient des détails supplémentaires
+      if (error.details) {
+        errorMessage += ` (${error.details})`;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

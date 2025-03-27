@@ -14,6 +14,11 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Démarrage de la fonction create-user");
+    
+    // Afficher les en-têtes pour débogage
+    console.log("Headers reçus:", Object.fromEntries(req.headers.entries()));
+    
     // Créer un client Supabase avec la clé de service (possède des privilèges admin)
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -25,13 +30,16 @@ serve(async (req) => {
       }
     );
 
-    // Vérifier que l'utilisateur est administrateur
+    // Vérifier que l'utilisateur est authentifié
     const {
       data: { user },
       error: authError,
     } = await supabaseAdmin.auth.getUser();
 
+    console.log("Résultat de getUser:", user ? "Utilisateur trouvé" : "Utilisateur non trouvé", authError ? `Erreur: ${authError.message}` : "Pas d'erreur");
+
     if (authError || !user) {
+      console.log("Erreur d'authentification:", authError?.message);
       return new Response(
         JSON.stringify({ error: "Non autorisé" }),
         {
@@ -48,7 +56,21 @@ serve(async (req) => {
       .eq("id", user.id)
       .single();
 
-    if (profileError || profile?.role !== "admin") {
+    console.log("Résultat de la requête du profil:", profile ? `Role: ${profile.role}` : "Profil non trouvé", profileError ? `Erreur: ${profileError.message}` : "Pas d'erreur");
+
+    if (profileError) {
+      console.log("Erreur lors de la récupération du profil:", profileError.message);
+      return new Response(
+        JSON.stringify({ error: "Erreur lors de la récupération du profil" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
+    }
+
+    if (profile?.role !== "admin") {
+      console.log("Accès refusé - L'utilisateur n'est pas admin:", profile?.role);
       return new Response(
         JSON.stringify({ error: "Accès refusé - Droits administrateur requis" }),
         {
@@ -59,9 +81,25 @@ serve(async (req) => {
     }
 
     // Récupérer les données de la requête
-    const { email, name, password, role, clientId } = await req.json();
+    const requestData = await req.json();
+    console.log("Données reçues:", JSON.stringify(requestData));
+    
+    const { email, name, password, role, clientId } = requestData;
+
+    // Vérifier les données requises
+    if (!email || !name || !password || !role) {
+      console.log("Données manquantes");
+      return new Response(
+        JSON.stringify({ error: "Données manquantes: email, nom, mot de passe et rôle sont requis" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
+    }
 
     // Créer l'utilisateur
+    console.log("Création de l'utilisateur:", email);
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -74,22 +112,31 @@ serve(async (req) => {
     });
 
     if (createError) {
+      console.log("Erreur lors de la création de l'utilisateur:", createError.message);
       throw createError;
     }
 
+    console.log("Utilisateur créé avec succès:", newUser.user?.id);
+
     // Mettre à jour le profil pour définir le rôle et l'identifiant client
     if (newUser.user) {
+      console.log("Mise à jour du profil pour:", newUser.user.id);
       const { error: updateError } = await supabaseAdmin
         .from("profiles")
         .update({
           role: role,
           client_id: role === "editor" ? clientId : null,
+          name: name,
+          email: email
         })
         .eq("id", newUser.user.id);
 
       if (updateError) {
+        console.log("Erreur lors de la mise à jour du profil:", updateError.message);
         throw updateError;
       }
+      
+      console.log("Profil mis à jour avec succès");
     }
 
     return new Response(
@@ -100,7 +147,7 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Erreur:", error);
+    console.error("Erreur:", error.message, error.stack);
     return new Response(
       JSON.stringify({ error: error.message || "Une erreur est survenue" }),
       {
