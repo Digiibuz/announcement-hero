@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
@@ -14,6 +13,12 @@ import { Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Announcement } from "@/types/announcement";
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
+
+// Helper function to strip HTML tags
+const stripHtmlTags = (html: string): string => {
+  if (!html) return '';
+  return html.replace(/<[^>]*>/g, '');
+};
 
 const Announcements = () => {
   const { isAdmin, user } = useAuth();
@@ -54,22 +59,27 @@ const Announcements = () => {
         return [];
       }
       
-      // Map WordPress category IDs to names
+      // Map WordPress category IDs to names and strip HTML from descriptions
       return data.map(announcement => {
+        let processed = { ...announcement };
+        
+        // Strip HTML tags from description
+        if (processed.description) {
+          processed.description = stripHtmlTags(processed.description);
+        }
+        
+        // Add WordPress category name if available
         if (announcement.wordpress_category_id && categories) {
           const category = categories.find(
             c => c.id.toString() === announcement.wordpress_category_id
           );
           
           if (category) {
-            return {
-              ...announcement,
-              wordpress_category_name: category.name
-            };
+            processed.wordpress_category_name = category.name;
           }
         }
         
-        return announcement;
+        return processed;
       }) as Announcement[];
     },
     enabled: !!user,

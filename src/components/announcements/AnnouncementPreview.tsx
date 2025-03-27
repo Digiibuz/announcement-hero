@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +19,11 @@ interface AnnouncementPreviewProps {
     seoSlug?: string;
   };
 }
+
+// Helper function to strip HTML tags
+const stripHtmlTags = (html: string): string => {
+  return html.replace(/<[^>]*>/g, '');
+};
 
 const AnnouncementPreview = ({ data }: AnnouncementPreviewProps) => {
   const getCategoryName = (categoryId: string) => {
@@ -87,10 +93,15 @@ const AnnouncementPreview = ({ data }: AnnouncementPreviewProps) => {
 
         <CardContent>
           {data.description ? (
-            <div 
-              className="prose prose-sm max-w-none rich-text-editor"
-              dangerouslySetInnerHTML={{ __html: data.description }}
-            />
+            <div className="prose prose-sm max-w-none">
+              {data.description.includes('<') ? 
+                // In preview mode, still render HTML properly
+                <div dangerouslySetInnerHTML={{ __html: data.description }} />
+                : 
+                // Plain text
+                data.description
+              }
+            </div>
           ) : (
             <div className="text-muted-foreground italic">
               No description provided
