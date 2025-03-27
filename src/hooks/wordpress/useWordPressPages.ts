@@ -3,30 +3,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-export interface WordPressPage {
-  id: number;
-  date: string;
-  modified: string;
-  slug: string;
-  status: string;
-  type: string;
-  link: string;
-  title: {
-    rendered: string;
-  };
-  content: {
-    rendered: string;
-    protected: boolean;
-  };
-  author: number;
-  featured_media: number;
-  parent: number;
-  menu_order: number;
-  comment_status: string;
-  ping_status: string;
-  template: string;
-}
+import { WordPressPage } from "@/types/wordpress";
 
 export const useWordPressPages = () => {
   const [pages, setPages] = useState<WordPressPage[]>([]);
@@ -70,17 +47,18 @@ export const useWordPressPages = () => {
         hasAppPassword: !!wpConfig.app_password
       });
 
-      // Normaliser l'URL (supprimer les doubles slashes)
+      // Normalize URL (remove double slashes)
       const siteUrl = wpConfig.site_url.replace(/([^:]\/)\/+/g, "$1");
 
-      // Construct the WordPress API URL
-      const apiUrl = `${siteUrl}/wp-json/wp/v2/pages`;
+      // Construct the WordPress API URL with params to get all pages (per_page=100)
+      const apiUrl = `${siteUrl}/wp-json/wp/v2/pages?per_page=100`;
       
       // Prepare headers
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       };
       
+      // IMPORTANT: Always use WordPress authentication regardless of app role
       // Prioritize Application Password authentication
       if (wpConfig.app_username && wpConfig.app_password) {
         console.log("Using Application Password authentication");
@@ -95,15 +73,16 @@ export const useWordPressPages = () => {
       
       console.log("Fetching pages from:", apiUrl);
       
-      // Ajouter un délai d'expiration à la requête
+      // Add request timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes de timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds timeout
       
       try {
         const response = await fetch(apiUrl, {
           method: 'GET',
           headers: headers,
-          signal: controller.signal
+          signal: controller.signal,
+          credentials: 'omit' // Don't send cookies to avoid CORS issues
         });
   
         clearTimeout(timeoutId);
@@ -113,7 +92,7 @@ export const useWordPressPages = () => {
           console.error("WordPress API error:", response.status, errorText);
           
           if (response.status === 401 || response.status === 403) {
-            throw new Error("Identifiants incorrects ou autorisations insuffisantes");
+            throw new Error(`WordPress authentication failed. Please check that your WordPress account has sufficient permissions (Editor or Administrator role).`);
           }
           
           throw new Error(`Failed to fetch pages: ${response.statusText}`);
@@ -124,7 +103,7 @@ export const useWordPressPages = () => {
         setPages(pagesData);
       } catch (fetchError: any) {
         if (fetchError.name === 'AbortError') {
-          throw new Error("Le délai d'attente a expiré lors de la récupération des pages");
+          throw new Error("Request timed out when fetching pages. The WordPress site may be slow or unreachable.");
         }
         throw fetchError;
       }
@@ -133,17 +112,19 @@ export const useWordPressPages = () => {
       
       let errorMessage = err.message || "Failed to fetch WordPress pages";
       
-      // Améliorer les messages d'erreur
+      // Improve error messages
       if (err.message.includes("Failed to fetch")) {
-        errorMessage = "Erreur réseau: impossible d'accéder au site WordPress";
+        errorMessage = "Network error: unable to connect to WordPress site";
       } else if (err.message.includes("NetworkError")) {
-        errorMessage = "Erreur réseau: problème de connectivité";
+        errorMessage = "Network error: connectivity problem";
       } else if (err.message.includes("CORS")) {
-        errorMessage = "Erreur CORS: le site n'autorise pas les requêtes depuis cette origine";
+        errorMessage = "CORS error: the site does not allow requests from this origin";
+      } else if (err.message.includes("rest_forbidden")) {
+        errorMessage = "WordPress permissions error: your WordPress account does not have sufficient permissions to access pages";
       }
       
       setError(errorMessage);
-      toast.error("Erreur lors de la récupération des pages WordPress");
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
