@@ -69,9 +69,11 @@ export const useUserEditForm = (
 
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
-      if (name === "role" && value.role === "admin") {
-        form.setValue("wpConfigIds", []);
-        form.setValue("wordpressConfigId", "");
+      if (name === "role") {
+        if (value.role === "admin") {
+          form.setValue("wpConfigIds", []);
+          form.setValue("wordpressConfigId", "");
+        }
       }
     });
     return () => subscription.unsubscribe();
@@ -83,7 +85,7 @@ export const useUserEditForm = (
       name: values.name,
       role: values.role,
       clientId: values.role === "editor" ? values.clientId : undefined,
-      wordpressConfigId: values.role === "editor" ? values.wordpressConfigId : undefined
+      wordpressConfigId: (values.role === "editor" || values.role === "client") ? values.wordpressConfigId : undefined
     });
     setIsDialogOpen(false);
   };

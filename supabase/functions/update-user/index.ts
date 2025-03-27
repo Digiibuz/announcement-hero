@@ -42,6 +42,7 @@ serve(async (req) => {
 
     // Déterminer si clientId et wordpressConfigId doivent être utilisés
     const needsClientInfo = role === "editor";
+    const needsWordPressConfig = role === "editor" || role === "client";
 
     // Mettre à jour l'utilisateur dans auth si email est fourni
     if (email) {
@@ -55,7 +56,7 @@ serve(async (req) => {
             name,
             role,
             clientId: needsClientInfo ? clientId : null,
-            wordpressConfigId: needsClientInfo ? wordpressConfigId : null,
+            wordpressConfigId: needsWordPressConfig ? wordpressConfigId : null,
           }
         }
       );
@@ -75,7 +76,7 @@ serve(async (req) => {
             name,
             role,
             clientId: needsClientInfo ? clientId : null,
-            wordpressConfigId: needsClientInfo ? wordpressConfigId : null,
+            wordpressConfigId: needsWordPressConfig ? wordpressConfigId : null,
           }
         }
       );

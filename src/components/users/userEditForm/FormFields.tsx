@@ -223,6 +223,41 @@ const FormFields: React.FC<FormFieldsProps> = ({
           </>
         )}
         
+        {/* Ajouter la sélection de configuration WordPress pour les clients */}
+        {form.watch("role") === "client" && (
+          <FormField
+            control={form.control}
+            name="wordpressConfigId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Site WordPress</FormLabel>
+                <Select 
+                  onValueChange={field.onChange} 
+                  value={field.value || "none"}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un site WordPress" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="none">Aucun site</SelectItem>
+                    {configs.map((config) => (
+                      <SelectItem key={config.id} value={config.id}>
+                        {config.name} ({config.site_url})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription>
+                  Site WordPress associé à ce client
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+        
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onCancel} type="button">
             Annuler
