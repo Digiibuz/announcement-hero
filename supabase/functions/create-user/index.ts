@@ -69,29 +69,63 @@ serve(async (req) => {
       throw new Error("Erreur lors de la création de l'utilisateur: données utilisateur manquantes");
     }
 
-    // Insérer directement dans la table profiles
-    console.log("Insertion dans la table profiles pour:", newUser.user.id);
-    const { error: insertError } = await supabaseAdmin
+    // Vérifier si un profil existe déjà pour cet utilisateur
+    console.log("Vérification si un profil existe déjà pour:", newUser.user.id);
+    const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
       .from("profiles")
-      .insert({
-        id: newUser.user.id,
-        role: role,
-        client_id: role === "editor" ? clientId : null,
-        name: name,
-        email: email
-      });
-
-    if (insertError) {
-      console.log("Erreur lors de l'insertion dans profiles:", insertError.message);
-      // Si l'insertion échoue, on supprime l'utilisateur créé pour éviter les incohérences
-      const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
-      if (deleteError) {
-        console.log("Erreur lors de la suppression de l'utilisateur après échec d'insertion:", deleteError.message);
-      }
-      throw insertError;
+      .select("*")
+      .eq("id", newUser.user.id)
+      .maybeSingle();
+    
+    if (profileCheckError) {
+      console.log("Erreur lors de la vérification du profil existant:", profileCheckError.message);
+      // Continuons le processus malgré l'erreur de vérification
     }
     
-    console.log("Profil inséré avec succès");
+    if (existingProfile) {
+      // Si le profil existe déjà, le mettre à jour
+      console.log("Profil existant trouvé, mise à jour pour:", newUser.user.id);
+      const { error: updateError } = await supabaseAdmin
+        .from("profiles")
+        .update({
+          role: role,
+          client_id: role === "editor" ? clientId : null,
+          name: name,
+          email: email
+        })
+        .eq("id", newUser.user.id);
+
+      if (updateError) {
+        console.log("Erreur lors de la mise à jour du profil:", updateError.message);
+        throw updateError;
+      }
+      
+      console.log("Profil mis à jour avec succès");
+    } else {
+      // Si le profil n'existe pas, l'insérer
+      console.log("Aucun profil trouvé, insertion dans la table profiles pour:", newUser.user.id);
+      const { error: insertError } = await supabaseAdmin
+        .from("profiles")
+        .insert({
+          id: newUser.user.id,
+          role: role,
+          client_id: role === "editor" ? clientId : null,
+          name: name,
+          email: email
+        });
+
+      if (insertError) {
+        console.log("Erreur lors de l'insertion dans profiles:", insertError.message);
+        // Si l'insertion échoue, on supprime l'utilisateur créé pour éviter les incohérences
+        const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
+        if (deleteError) {
+          console.log("Erreur lors de la suppression de l'utilisateur après échec d'insertion:", deleteError.message);
+        }
+        throw insertError;
+      }
+      
+      console.log("Profil inséré avec succès");
+    }
 
     return new Response(
       JSON.stringify({ success: true, user: newUser.user }),
