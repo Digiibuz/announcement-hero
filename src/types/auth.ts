@@ -7,6 +7,7 @@ export interface UserProfile {
   name: string;
   role: Role;
   clientId?: string;
+  wordpressConfigId?: string;
 }
 
 export interface AuthContextType {

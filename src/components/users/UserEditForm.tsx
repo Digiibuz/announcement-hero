@@ -57,6 +57,7 @@ const formSchema = z.object({
     required_error: "Veuillez sélectionner un rôle",
   }),
   clientId: z.string().optional(),
+  wordpressConfigId: z.string().optional(),
   wpConfigIds: z.array(z.string()).optional(),
 });
 
@@ -90,6 +91,7 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
       name: user.name || "",
       role: user.role || "editor",
       clientId: user.clientId || "",
+      wordpressConfigId: user.wordpressConfigId || "",
       wpConfigIds: [],
     },
   });
@@ -131,6 +133,7 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
       name: user.name || "",
       role: user.role || "editor",
       clientId: user.clientId || "",
+      wordpressConfigId: user.wordpressConfigId || "",
       wpConfigIds: selectedConfigIds,
     });
   }, [user, form, selectedConfigIds]);
@@ -140,6 +143,7 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
     const subscription = form.watch((value, { name }) => {
       if (name === "role" && value.role === "admin") {
         form.setValue("wpConfigIds", []);
+        form.setValue("wordpressConfigId", "");
       }
     });
     return () => subscription.unsubscribe();
@@ -152,7 +156,8 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
         email: values.email,
         name: values.name,
         role: values.role,
-        clientId: values.role === "editor" ? values.clientId : undefined
+        clientId: values.role === "editor" ? values.clientId : undefined,
+        wordpressConfigId: values.role === "editor" ? values.wordpressConfigId : undefined
       });
       
       // Si c'est un éditeur avec un ID client, gérer les associations WordPress
@@ -284,6 +289,38 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
                   )}
                 />
 
+                <FormField
+                  control={form.control}
+                  name="wordpressConfigId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Configuration WordPress</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value || ""}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sélectionner une configuration" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="">Aucune configuration</SelectItem>
+                          {configs.map((config) => (
+                            <SelectItem key={config.id} value={config.id}>
+                              {config.name} ({config.site_url})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Configuration WordPress principale de l'utilisateur
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 {configs.length > 0 && (
                   <FormField
                     control={form.control}
@@ -291,7 +328,7 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
                     render={() => (
                       <FormItem>
                         <div className="mb-4">
-                          <FormLabel>Configurations WordPress</FormLabel>
+                          <FormLabel>Configurations WordPress additionnelles</FormLabel>
                           <FormDescription>
                             Sélectionnez les configurations WordPress à associer à ce client
                           </FormDescription>

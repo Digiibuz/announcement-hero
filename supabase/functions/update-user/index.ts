@@ -26,7 +26,7 @@ serve(async (req) => {
     const requestData = await req.json();
     console.log("Données reçues:", JSON.stringify(requestData));
     
-    const { userId, email, name, role, clientId } = requestData;
+    const { userId, email, name, role, clientId, wordpressConfigId } = requestData;
 
     // Vérifier les données requises
     if (!userId) {
@@ -52,6 +52,7 @@ serve(async (req) => {
             name,
             role,
             clientId: role === "editor" ? clientId : null,
+            wordpressConfigId: role === "editor" ? wordpressConfigId : null,
           }
         }
       );
@@ -71,6 +72,7 @@ serve(async (req) => {
             name,
             role,
             clientId: role === "editor" ? clientId : null,
+            wordpressConfigId: role === "editor" ? wordpressConfigId : null,
           }
         }
       );

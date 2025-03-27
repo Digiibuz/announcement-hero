@@ -46,6 +46,7 @@ const formSchema = z.object({
     required_error: "Veuillez sélectionner un rôle",
   }),
   clientId: z.string().optional(),
+  wordpressConfigId: z.string().optional(),
   wpConfigIds: z.array(z.string()).optional(),
 });
 
@@ -68,6 +69,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       password: "",
       role: "editor",
       clientId: "",
+      wordpressConfigId: "",
       wpConfigIds: [],
     },
   });
@@ -77,6 +79,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
     const subscription = form.watch((value, { name }) => {
       if (name === "role" && value.role === "admin") {
         form.setValue("wpConfigIds", []);
+        form.setValue("wordpressConfigId", "");
       }
     });
     return () => subscription.unsubscribe();
@@ -99,6 +102,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
           password: values.password,
           role: values.role,
           clientId: values.role === "editor" ? values.clientId : null,
+          wordpressConfigId: values.role === "editor" ? values.wordpressConfigId : null,
         },
       });
       
@@ -256,6 +260,38 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
                   )}
                 />
 
+                <FormField
+                  control={form.control}
+                  name="wordpressConfigId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Configuration WordPress</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value || ""}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sélectionner une configuration" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="">Aucune configuration</SelectItem>
+                          {configs.map((config) => (
+                            <SelectItem key={config.id} value={config.id}>
+                              {config.name} ({config.site_url})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Configuration WordPress principale de l'utilisateur
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 {configs.length > 0 && (
                   <FormField
                     control={form.control}
@@ -263,7 +299,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
                     render={() => (
                       <FormItem>
                         <div className="mb-4">
-                          <FormLabel>Configurations WordPress</FormLabel>
+                          <FormLabel>Configurations WordPress additionnelles</FormLabel>
                           <FormDescription>
                             Sélectionnez les configurations WordPress à associer à ce client
                           </FormDescription>

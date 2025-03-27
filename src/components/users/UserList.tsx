@@ -13,6 +13,7 @@ import { Loader2, AlertTriangle, Trash2, UserCog, UserMinus } from "lucide-react
 import { toast } from "sonner";
 import { UserProfile } from "@/types/auth";
 import UserEditForm from "./UserEditForm";
+import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,6 +49,7 @@ const UserList: React.FC<UserListProps> = ({
 }) => {
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const { configs } = useWordPressConfigs();
 
   const handleDeleteClick = (userId: string) => {
     setUserToDelete(userId);
@@ -62,6 +64,12 @@ const UserList: React.FC<UserListProps> = ({
     }
   };
 
+  const getWordPressConfigName = (configId: string | undefined) => {
+    if (!configId) return "-";
+    const config = configs.find(c => c.id === configId);
+    return config ? config.name : "-";
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-border">
       <Table>
@@ -70,14 +78,15 @@ const UserList: React.FC<UserListProps> = ({
             <TableHead>Nom</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Rôle</TableHead>
-            <TableHead>Espace client</TableHead>
+            <TableHead>ID Client</TableHead>
+            <TableHead>WordPress</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {isLoading ? (
             <TableRow>
-              <TableCell colSpan={5} className="h-24 text-center">
+              <TableCell colSpan={6} className="h-24 text-center">
                 <div className="flex justify-center items-center">
                   <Loader2 className="h-6 w-6 animate-spin mr-2" />
                   Chargement des utilisateurs...
@@ -86,7 +95,7 @@ const UserList: React.FC<UserListProps> = ({
             </TableRow>
           ) : users.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="h-24 text-center">
+              <TableCell colSpan={6} className="h-24 text-center">
                 Aucun utilisateur trouvé
               </TableCell>
             </TableRow>
@@ -103,6 +112,7 @@ const UserList: React.FC<UserListProps> = ({
                   </span>
                 </TableCell>
                 <TableCell>{user.clientId || "-"}</TableCell>
+                <TableCell>{getWordPressConfigName(user.wordpressConfigId)}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <UserEditForm 
