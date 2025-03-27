@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import CreateAnnouncement from "./pages/CreateAnnouncement";
 import Announcements from "./pages/Announcements";
+import AnnouncementDetail from "./pages/AnnouncementDetail";
 import UserManagement from "./pages/UserManagement";
 import WordPressManagement from "./pages/WordPressManagement";
 import NotFound from "./pages/NotFound";
@@ -71,6 +72,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Announcements />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/announcements/:id" 
+        element={
+          <ProtectedRoute>
+            <AnnouncementDetail />
           </ProtectedRoute>
         } 
       />
