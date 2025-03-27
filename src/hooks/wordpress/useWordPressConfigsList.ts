@@ -43,6 +43,7 @@ export const useWordPressConfigsList = () => {
         throw error;
       }
       
+      console.log("Client WordPress associations:", data);
       setClientConfigs(data as ClientWordPressConfig[]);
     } catch (error) {
       console.error('Error fetching client WordPress configs:', error);

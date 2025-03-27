@@ -47,9 +47,14 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
     
     // Add configs associated with user's client
     if (user?.clientId) {
+      console.log("User clientId:", user.clientId);
+      console.log("All client configs:", clientConfigs);
+      
       const clientConfigIds = clientConfigs
         .filter(cc => cc.client_id === user.clientId)
         .map(cc => cc.wordpress_config_id);
+      
+      console.log("Client config IDs for user's client:", clientConfigIds);
       
       // Add client configs if not already added
       for (const config of configs) {
@@ -59,6 +64,7 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
       }
     }
     
+    console.log("Filtered configs for user:", userConfigs);
     return userConfigs;
   }, [configs, user, isAdmin, clientConfigs]);
 
