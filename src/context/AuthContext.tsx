@@ -35,53 +35,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [originalUser, setOriginalUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchUserProfile = async (userId: string) => {
+  // Fonction séparée pour créer un profil à partir des métadonnées utilisateur
+  const createProfileFromMetadata = (authUser: User | null): UserProfile | null => {
+    if (!authUser) return null;
+    
+    return {
+      id: authUser.id,
+      email: authUser.email || '',
+      name: authUser.user_metadata?.name || authUser.email || '',
+      role: (authUser.user_metadata?.role as Role) || 'editor',
+      clientId: authUser.user_metadata?.clientId,
+    };
+  };
+
+  // Fonction pour récupérer le profil complet depuis la base de données
+  const fetchFullProfile = async (userId: string) => {
     try {
-      // Utiliser directement le service auth de Supabase pour obtenir les métadonnées utilisateur
-      const { data: authUser } = await supabase.auth.getUser();
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
       
-      if (!authUser.user) {
-        return null;
+      if (data && !error) {
+        setUser({
+          id: data.id,
+          email: data.email,
+          name: data.name,
+          role: data.role as Role,
+          clientId: data.client_id,
+        });
+      } else if (error) {
+        console.error('Erreur lors de la récupération du profil complet:', error);
+        // Ne pas modifier l'état de l'utilisateur en cas d'erreur
+        // pour ne pas supprimer les métadonnées que nous avons déjà
       }
-      
-      // Créer un profil basé sur les métadonnées utilisateur
-      const userProfile: UserProfile = {
-        id: authUser.user.id,
-        email: authUser.user.email || '',
-        name: authUser.user.user_metadata?.name || authUser.user.email || '',
-        role: (authUser.user.user_metadata?.role as Role) || 'editor',
-        clientId: authUser.user.user_metadata?.clientId,
-      };
-      
-      // En second plan (setTimeout pour éviter les boucles de récursion), 
-      // essayer de récupérer le profil complet depuis la base de données
-      setTimeout(async () => {
-        try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', userId)
-            .single();
-          
-          if (data && !error) {
-            // Mettre à jour le profil avec les données complètes
-            setUser({
-              id: data.id,
-              email: data.email,
-              name: data.name,
-              role: data.role as Role,
-              clientId: data.client_id,
-            });
-          }
-        } catch (error) {
-          console.error('Erreur lors de la récupération du profil utilisateur en arrière-plan:', error);
-        }
-      }, 500);
-      
-      return userProfile;
     } catch (error) {
-      console.error('Erreur dans fetchUserProfile:', error);
-      return null;
+      console.error('Exception lors de la récupération du profil:', error);
     }
   };
 
@@ -98,20 +88,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsLoading(true);
         
         if (session?.user) {
-          // Utiliser d'abord les métadonnées de l'utilisateur
-          const userProfile = await fetchUserProfile(session.user.id);
-          if (userProfile) {
-            setUser(userProfile);
-          } else {
-            // Si le profil n'existe pas mais que l'utilisateur est authentifié
-            setUser({
-              id: session.user.id,
-              email: session.user.email || '',
-              name: session.user.user_metadata?.name || session.user.email || '',
-              role: 'editor',
-              clientId: null,
-            });
-          }
+          // D'abord définir l'utilisateur à partir des métadonnées
+          const initialProfile = createProfileFromMetadata(session.user);
+          setUser(initialProfile);
+          
+          // Ensuite, tenter de récupérer le profil complet de manière asynchrone
+          // sans bloquer le flux principal
+          setTimeout(() => {
+            fetchFullProfile(session.user.id);
+          }, 100);
         } else {
           setUser(null);
         }
@@ -125,19 +110,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
-        const userProfile = await fetchUserProfile(session.user.id);
-        if (userProfile) {
-          setUser(userProfile);
-        } else {
-          // Si le profil n'existe pas mais que l'utilisateur est authentifié
-          setUser({
-            id: session.user.id,
-            email: session.user.email || '',
-            name: session.user.user_metadata?.name || session.user.email || '',
-            role: 'editor',
-            clientId: null,
-          });
-        }
+        // D'abord définir l'utilisateur à partir des métadonnées
+        const initialProfile = createProfileFromMetadata(session.user);
+        setUser(initialProfile);
+        
+        // Ensuite, tenter de récupérer le profil complet de manière asynchrone
+        setTimeout(() => {
+          fetchFullProfile(session.user.id);
+        }, 100);
       }
       
       setIsLoading(false);

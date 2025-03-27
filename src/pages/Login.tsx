@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Eye, EyeOff, Lock, LogIn, UserPlus } from "lucide-react";
+import { Eye, EyeOff, Lock, LogIn, UserPlus, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
@@ -51,12 +51,17 @@ const Login = () => {
         setIsSignUp(false); // Switch back to login view
       } else {
         // Login process
-        await login(email, password);
-        toast.success("Connexion réussie");
-        navigate("/dashboard");
+        try {
+          await login(email, password);
+          toast.success("Connexion réussie");
+          navigate("/dashboard");
+        } catch (error: any) {
+          console.error("Erreur de connexion:", error);
+          toast.error(error.message || "Échec de la connexion");
+        }
       }
     } catch (error: any) {
-      console.error(error);
+      console.error("Erreur d'authentification:", error);
       toast.error(error.message || "Une erreur est survenue");
     } finally {
       setIsLoading(false);
@@ -117,6 +122,7 @@ const Login = () => {
                     placeholder="Votre nom"
                     required={isSignUp}
                     autoComplete="name"
+                    disabled={isLoading}
                   />
                 </div>
               )}
@@ -131,13 +137,14 @@ const Login = () => {
                   placeholder="email@example.com"
                   required
                   autoComplete="email"
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Mot de passe</Label>
                   {!isSignUp && (
-                    <Button variant="link" className="p-0 h-auto text-xs">
+                    <Button variant="link" className="p-0 h-auto text-xs" type="button" disabled={isLoading}>
                       Mot de passe oublié ?
                     </Button>
                   )}
@@ -151,6 +158,7 @@ const Login = () => {
                     placeholder="••••••••"
                     required
                     autoComplete={isSignUp ? "new-password" : "current-password"}
+                    disabled={isLoading}
                   />
                   <Button
                     type="button"
@@ -158,6 +166,7 @@ const Login = () => {
                     size="icon"
                     className="absolute right-0 top-0 h-full px-3"
                     onClick={togglePasswordVisibility}
+                    disabled={isLoading}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
@@ -166,7 +175,10 @@ const Login = () => {
               
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
-                  isSignUp ? "Création en cours..." : "Connexion en cours..."
+                  <div className="flex items-center">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {isSignUp ? "Création en cours..." : "Connexion en cours..."}
+                  </div>
                 ) : (
                   <>
                     {isSignUp ? (
@@ -197,7 +209,7 @@ const Login = () => {
               </div>
             </div>
             
-            <Button variant="outline" className="w-full" onClick={toggleSignUp}>
+            <Button variant="outline" className="w-full" onClick={toggleSignUp} disabled={isLoading}>
               {isSignUp ? (
                 <>Déjà un compte ? Se connecter</>
               ) : (
