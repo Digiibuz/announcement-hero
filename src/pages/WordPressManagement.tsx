@@ -21,6 +21,24 @@ const WordPressManagement = () => {
     deleteConfig
   } = useWordPressConfigs();
   
+  // Fonction wrapper pour adapter le type de retour
+  const handleCreateConfig = async (data: { 
+    name?: string; 
+    site_url?: string; 
+    rest_api_key?: string; 
+    username?: string; 
+    password?: string; 
+  }) => {
+    await createConfig(data as Omit<WordPressConfig, "id" | "created_at" | "updated_at">);
+    return;
+  };
+
+  // Fonction wrapper pour adapter le type de retour
+  const handleUpdateConfig = async (id: string, data: Partial<WordPressConfig>) => {
+    await updateConfig(id, data);
+    return;
+  };
+  
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -36,7 +54,7 @@ const WordPressManagement = () => {
                 <div className="flex justify-between items-center mb-6">
                   <h1 className="text-2xl font-bold">Gestion des configurations WordPress</h1>
                   <WordPressConfigForm 
-                    onSubmit={createConfig}
+                    onSubmit={handleCreateConfig}
                     buttonText="Ajouter une configuration"
                     dialogTitle="Ajouter une nouvelle configuration WordPress"
                     dialogDescription="Créez une nouvelle configuration pour un site WordPress."
@@ -48,7 +66,7 @@ const WordPressManagement = () => {
                   configs={configs}
                   isLoading={isLoading}
                   isSubmitting={isSubmitting}
-                  onUpdateConfig={updateConfig}
+                  onUpdateConfig={handleUpdateConfig}
                   onDeleteConfig={deleteConfig}
                 />
               </div>
@@ -61,3 +79,4 @@ const WordPressManagement = () => {
 };
 
 export default WordPressManagement;
+
