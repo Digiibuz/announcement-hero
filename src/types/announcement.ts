@@ -11,6 +11,9 @@ export interface Announcement {
   publish_date?: string;
   wordpress_category_id?: string;
   wordpress_category_name?: string;
+  seo_title?: string;
+  seo_description?: string;
+  seo_slug?: string;
 }
 
 export interface WordPressCategory {

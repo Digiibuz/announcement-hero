@@ -3,7 +3,7 @@ import React from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { CalendarIcon, FolderIcon, Clock } from "lucide-react";
+import { CalendarIcon, FolderIcon, Clock, Search, Link } from "lucide-react";
 import type { AnnouncementFormData } from "./AnnouncementForm";
 
 interface AnnouncementPreviewProps {
@@ -14,6 +14,9 @@ interface AnnouncementPreviewProps {
     publishDate: Date | undefined;
     status: string;
     images: string[];
+    seoTitle?: string;
+    seoDescription?: string;
+    seoSlug?: string;
   };
 }
 
@@ -73,6 +76,13 @@ const AnnouncementPreview = ({ data }: AnnouncementPreviewProps) => {
               <Clock size={14} />
               <span>{format(new Date(), "h:mm a")}</span>
             </div>
+            
+            {data.seoSlug && (
+              <div className="flex items-center gap-1">
+                <Link size={14} />
+                <span className="truncate max-w-[180px]">{data.seoSlug}</span>
+              </div>
+            )}
           </div>
         </CardHeader>
 
@@ -103,6 +113,26 @@ const AnnouncementPreview = ({ data }: AnnouncementPreviewProps) => {
           ) : (
             <div className="mt-6 p-8 border border-dashed rounded-md text-center text-muted-foreground">
               No images attached
+            </div>
+          )}
+          
+          {/* SEO Preview */}
+          {(data.seoTitle || data.seoDescription) && (
+            <div className="mt-6 border rounded-md p-4 bg-slate-50">
+              <div className="flex items-center gap-2 mb-2 text-sm font-medium text-slate-600">
+                <Search size={16} />
+                <span>SEO Preview</span>
+              </div>
+              
+              <div className="text-blue-600 text-lg font-medium truncate">
+                {data.seoTitle || data.title}
+              </div>
+              <div className="text-green-700 text-sm mb-1">
+                yoursite.com/annonces/{data.seoSlug || "url-de-lannonce"}
+              </div>
+              <div className="text-slate-700 text-sm line-clamp-2">
+                {data.seoDescription || "No meta description provided"}
+              </div>
             </div>
           )}
         </CardContent>

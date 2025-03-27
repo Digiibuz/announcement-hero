@@ -29,7 +29,10 @@ const CreateAnnouncement = () => {
         status: data.status || "draft",
         images: data.images || [],
         wordpress_category_id: data.wordpressCategory,
-        publish_date: data.publishDate ? new Date(data.publishDate).toISOString() : null
+        publish_date: data.publishDate ? new Date(data.publishDate).toISOString() : null,
+        seo_title: data.seoTitle || null,
+        seo_description: data.seoDescription || null,
+        seo_slug: data.seoSlug || null
       };
       
       console.log("Enregistrement de l'annonce:", announcementData);
@@ -78,9 +81,9 @@ const CreateAnnouncement = () => {
       <Sidebar />
 
       <main className="pt-16 md:pl-64">
-        <div className="container px-4 py-8">
+        <div className="container px-4 py-6">
           <AnimatedContainer>
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-5xl mx-auto">
               <AnnouncementForm 
                 onSubmit={handleSubmit} 
                 isSubmitting={isSubmitting || isPublishing} 

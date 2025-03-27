@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,13 +10,19 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
-import { Loader2, ArrowLeft, Save } from "lucide-react";
+import { Loader2, ArrowLeft, Save, ExternalLink } from "lucide-react";
 import AnnouncementPreview from "./AnnouncementPreview";
 import { useNavigate } from "react-router-dom";
 import ImageUploader from "./ImageUploader";
 import DescriptionField from "./DescriptionField";
 import PublishingOptions from "./PublishingOptions";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface AnnouncementFormProps {
   onSubmit?: (data: AnnouncementFormData) => void;
@@ -30,6 +36,9 @@ export interface AnnouncementFormData {
   publishDate: Date | undefined;
   status: "draft" | "published" | "scheduled";
   images: string[];
+  seoTitle: string;
+  seoDescription: string;
+  seoSlug: string;
 }
 
 const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormProps) => {
@@ -41,11 +50,34 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormPr
       publishDate: undefined,
       status: "draft",
       images: [],
+      seoTitle: "",
+      seoDescription: "",
+      seoSlug: "",
     }
   });
 
   const navigate = useNavigate();
   const [showPreview, setShowPreview] = useState(false);
+  const { watch, setValue } = form;
+  const title = watch("title");
+
+  // Generate slug from title
+  useEffect(() => {
+    if (title) {
+      const slug = title
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, "") // Remove special characters
+        .replace(/\s+/g, "-") // Replace spaces with hyphens
+        .replace(/-+/g, "-"); // Replace multiple hyphens with a single one
+      
+      setValue("seoSlug", slug);
+      
+      // Only set SEO title if it's empty
+      if (!form.getValues("seoTitle")) {
+        setValue("seoTitle", title);
+      }
+    }
+  }, [title, setValue]);
 
   const togglePreview = () => {
     setShowPreview(!showPreview);
@@ -91,6 +123,9 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormPr
             publishDate: form.getValues('publishDate'),
             status: form.getValues('status'),
             images: form.getValues('images'),
+            seoTitle: form.getValues('seoTitle'),
+            seoDescription: form.getValues('seoDescription'),
+            seoSlug: form.getValues('seoSlug'),
           }} />
           <div className="mt-6 flex justify-end">
             <Button 
@@ -117,28 +152,157 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormPr
       ) : (
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6 animate-fade-in">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Titre</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="Entrez le titre de l'annonce" 
-                      {...field}
+            <Tabs defaultValue="content" className="w-full">
+              <TabsList className="grid grid-cols-2 mb-6">
+                <TabsTrigger value="content">Contenu</TabsTrigger>
+                <TabsTrigger value="seo">Optimisation SEO</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="content" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Informations de base</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <FormField
+                      control={form.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Titre</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Entrez le titre de l'annonce" 
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
-            <DescriptionField form={form} />
-            
-            <ImageUploader form={form} />
-            
-            <PublishingOptions form={form} />
+                    <DescriptionField form={form} />
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Images</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ImageUploader form={form} />
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Options de publication</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <PublishingOptions form={form} />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="seo" className="space-y-6">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle>Optimisation pour les moteurs de recherche</CardTitle>
+                    <Badge variant="outline" className="ml-2">
+                      SEO
+                    </Badge>
+                  </CardHeader>
+                  <CardContent className="space-y-6 pt-4">
+                    <div className="text-sm text-muted-foreground mb-4">
+                      Ces informations aideront à améliorer la visibilité de votre annonce dans les résultats de recherche Google.
+                    </div>
+                    
+                    <FormField
+                      control={form.control}
+                      name="seoTitle"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Titre SEO</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Titre optimisé pour les moteurs de recherche" 
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Idéalement entre 50 et 60 caractères. Si vide, le titre principal sera utilisé.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="seoDescription"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Méta description</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Description courte qui apparaîtra dans les résultats de recherche" 
+                              className="resize-none min-h-[100px]"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Idéalement entre 120 et 158 caractères. Décrivez votre annonce de manière attrayante pour les utilisateurs.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="seoSlug"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>URL Slug</FormLabel>
+                          <FormControl>
+                            <div className="flex items-center">
+                              <span className="text-sm text-muted-foreground mr-2 hidden sm:inline">yoursite.com/annonces/</span>
+                              <Input 
+                                placeholder="slug-de-url" 
+                                {...field}
+                              />
+                            </div>
+                          </FormControl>
+                          <FormDescription>
+                            L'URL qui sera utilisée pour accéder à cette annonce. Générée automatiquement à partir du titre.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Aperçu des résultats de recherche</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="border rounded-md p-4">
+                      <div className="text-blue-600 text-xl font-medium truncate">
+                        {form.getValues('seoTitle') || form.getValues('title') || "Titre de votre annonce"}
+                      </div>
+                      <div className="text-green-700 text-sm mb-1">
+                        yoursite.com/annonces/{form.getValues('seoSlug') || "url-de-lannonce"}
+                      </div>
+                      <div className="text-slate-700 text-sm line-clamp-2">
+                        {form.getValues('seoDescription') || "Ajoutez une méta description pour qu'elle apparaisse ici. Sans cela, Google pourrait utiliser un extrait du contenu de votre page."}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
 
             <div className="flex justify-end gap-2 pt-4">
               <Button
