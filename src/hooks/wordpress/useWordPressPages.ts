@@ -3,30 +3,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-export interface WordPressPage {
-  id: number;
-  date: string;
-  modified: string;
-  slug: string;
-  status: string;
-  type: string;
-  link: string;
-  title: {
-    rendered: string;
-  };
-  content: {
-    rendered: string;
-    protected: boolean;
-  };
-  author: number;
-  featured_media: number;
-  parent: number;
-  menu_order: number;
-  comment_status: string;
-  ping_status: string;
-  template: string;
-}
+import { WordPressPage } from "@/types/announcement";
 
 export const useWordPressPages = () => {
   const [pages, setPages] = useState<WordPressPage[]>([]);
@@ -81,7 +58,7 @@ export const useWordPressPages = () => {
         'Content-Type': 'application/json'
       };
       
-      // Prioritize Application Password authentication
+      // Prioritize Application Password authentication 
       if (wpConfig.app_username && wpConfig.app_password) {
         console.log("Using Application Password authentication");
         const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
@@ -90,7 +67,7 @@ export const useWordPressPages = () => {
         console.log("Using REST API Key authentication");
         headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
       } else {
-        console.log("No authentication credentials provided");
+        console.warn("No authentication credentials provided for WordPress");
       }
       
       console.log("Fetching pages from:", apiUrl);
@@ -114,7 +91,7 @@ export const useWordPressPages = () => {
           console.error("WordPress API error:", response.status, errorText);
           
           if (response.status === 401 || response.status === 403) {
-            throw new Error("Identifiants incorrects ou autorisations insuffisantes. Vérifiez les permissions WordPress de l'utilisateur (edit_pages)");
+            throw new Error("Identifiants incorrects ou autorisations insuffisantes. Vérifiez les autorisations WordPress.");
           }
           
           throw new Error(`Failed to fetch pages: ${response.statusText}`);
@@ -141,8 +118,6 @@ export const useWordPressPages = () => {
         errorMessage = "Erreur réseau: problème de connectivité";
       } else if (err.message.includes("CORS")) {
         errorMessage = "Erreur CORS: le site n'autorise pas les requêtes depuis cette origine";
-      } else if (err.message.includes("permissions") || err.message.includes("autorisations")) {
-        errorMessage = "Erreur de permissions: vérifiez que l'utilisateur WordPress a les droits nécessaires";
       }
       
       setError(errorMessage);

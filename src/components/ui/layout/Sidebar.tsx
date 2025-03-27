@@ -42,13 +42,17 @@ const Sidebar = () => {
       icon: <Newspaper className="h-5 w-5" />,
       isActive: pathname === "/create",
     },
-    {
+  ];
+
+  // Ajouter le menu WordPress en fonction du rôle
+  if (isAdmin || (isEditor && user?.wordpressConfigId)) {
+    navItems.push({
       name: "Gestion WordPress",
       href: isAdmin ? "/wordpress" : "/editor-wordpress",
       icon: <Globe className="h-5 w-5" />,
       isActive: pathname === (isAdmin ? "/wordpress" : "/editor-wordpress"),
-    },
-  ];
+    });
+  }
 
   const adminItems = [
     {

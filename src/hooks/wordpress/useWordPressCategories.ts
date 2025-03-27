@@ -67,7 +67,7 @@ export const useWordPressCategories = () => {
         console.log("Using REST API Key authentication");
         headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
       } else {
-        console.log("No authentication credentials provided");
+        console.warn("No authentication credentials provided for WordPress");
       }
       
       console.log("Fetching categories from:", apiUrl);
@@ -91,7 +91,7 @@ export const useWordPressCategories = () => {
           console.error("WordPress API error:", response.status, errorText);
           
           if (response.status === 401 || response.status === 403) {
-            throw new Error("Identifiants incorrects ou autorisations insuffisantes. Vérifiez les permissions WordPress de l'utilisateur (manage_categories, edit_terms)");
+            throw new Error("Identifiants incorrects ou autorisations insuffisantes. Vérifiez les autorisations WordPress.");
           }
           
           throw new Error(`Failed to fetch categories: ${response.statusText}`);
@@ -118,8 +118,6 @@ export const useWordPressCategories = () => {
         errorMessage = "Erreur réseau: problème de connectivité";
       } else if (err.message.includes("CORS")) {
         errorMessage = "Erreur CORS: le site n'autorise pas les requêtes depuis cette origine";
-      } else if (err.message.includes("permissions") || err.message.includes("autorisations")) {
-        errorMessage = "Erreur de permissions: vérifiez que l'utilisateur WordPress a les droits nécessaires";
       }
       
       setError(errorMessage);
