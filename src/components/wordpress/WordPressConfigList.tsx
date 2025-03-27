@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { WordPressConfig } from "@/types/wordpress";
 import WordPressConfigItem from "./WordPressConfigItem";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAuth } from "@/context/AuthContext";
 
 interface WordPressConfigListProps {
   configs: WordPressConfig[];
@@ -24,6 +25,21 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
   onDeleteConfig,
   readOnly = false
 }) => {
+  const { user, isAdmin } = useAuth();
+  
+  // Filter configs for editors to only show their assigned config
+  const filteredConfigs = React.useMemo(() => {
+    if (isAdmin) {
+      return configs;
+    }
+    
+    if (user?.wordpressConfigId) {
+      return configs.filter(config => config.id === user.wordpressConfigId);
+    }
+    
+    return [];
+  }, [configs, user, isAdmin]);
+
   if (isLoading) {
     return (
       <Card>
@@ -37,13 +53,18 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
     );
   }
 
-  if (configs.length === 0) {
+  if (filteredConfigs.length === 0) {
     return (
       <Alert variant="default">
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>Aucune configuration</AlertTitle>
         <AlertDescription>
-          Aucune configuration WordPress n'a été trouvée. Cliquez sur "Ajouter une configuration" pour en créer une nouvelle.
+          {isAdmin 
+            ? "Aucune configuration WordPress n'a été trouvée. Cliquez sur \"Ajouter une configuration\" pour en créer une nouvelle."
+            : user?.wordpressConfigId 
+              ? "La configuration WordPress associée à votre compte n'est pas disponible."
+              : "Aucune configuration WordPress n'est associée à votre compte. Contactez un administrateur pour en configurer une."
+          }
         </AlertDescription>
       </Alert>
     );
@@ -54,13 +75,15 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
       <CardHeader>
         <CardTitle>Configurations disponibles</CardTitle>
         <CardDescription>
-          Liste des configurations WordPress disponibles
+          {isAdmin 
+            ? "Liste des configurations WordPress disponibles" 
+            : "Configuration WordPress associée à votre compte"}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[500px] pr-4">
           <div className="space-y-4">
-            {configs.map((config) => (
+            {filteredConfigs.map((config) => (
               <WordPressConfigItem
                 key={config.id}
                 config={config}
