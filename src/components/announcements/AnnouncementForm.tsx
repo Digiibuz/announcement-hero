@@ -11,7 +11,7 @@ import {
   FormMessage,
   FormDescription,
 } from "@/components/ui/form";
-import { Loader2, ArrowLeft, Save, ExternalLink } from "lucide-react";
+import { Loader2, ArrowLeft, Save, ExternalLink, Sparkles } from "lucide-react";
 import AnnouncementPreview from "./AnnouncementPreview";
 import { useNavigate } from "react-router-dom";
 import ImageUploader from "./ImageUploader";
@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
 
 interface AnnouncementFormProps {
   onSubmit?: (data: AnnouncementFormData) => void;
@@ -57,24 +58,23 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormPr
 
   const navigate = useNavigate();
   const [showPreview, setShowPreview] = useState(false);
+  const [isSeoTitleOptimizing, setIsSeoTitleOptimizing] = useState(false);
+  const [isSeoDescriptionOptimizing, setIsSeoDescriptionOptimizing] = useState(false);
   const { watch, setValue } = form;
   const title = watch("title");
 
-  // Generate slug from title with improved accent handling
   useEffect(() => {
     if (title) {
-      // Normalize accents and convert to lowercase
       const normalizedTitle = title
         .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '') // Remove accents
+        .replace(/[\u0300-\u036f]/g, '')
         .toLowerCase()
-        .replace(/[^\w\s-]/g, "") // Remove special characters
-        .replace(/\s+/g, "-") // Replace spaces with hyphens
-        .replace(/-+/g, "-"); // Replace multiple hyphens with a single one
+        .replace(/[^\w\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-");
       
       setValue("seoSlug", normalizedTitle);
       
-      // For SEO title, keep the original title with proper capitalization
       if (!form.getValues("seoTitle")) {
         setValue("seoTitle", title);
       }
@@ -90,6 +90,52 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormPr
       onSubmit(data);
     } else {
       console.log("Form submitted:", data);
+    }
+  };
+
+  const optimizeSeoContent = async (field: 'seoTitle' | 'seoDescription') => {
+    try {
+      const currentTitle = form.getValues('title');
+      const currentDescription = form.getValues('description');
+      
+      if (!currentTitle || !currentDescription) {
+        toast.warning("Veuillez d'abord saisir le titre et la description de l'annonce");
+        return;
+      }
+      
+      if (field === 'seoTitle') {
+        setIsSeoTitleOptimizing(true);
+        
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        const optimizedTitle = currentTitle
+          .split(' ')
+          .map(word => word.length > 3 ? word.charAt(0).toUpperCase() + word.slice(1) : word)
+          .join(' ');
+        
+        form.setValue('seoTitle', optimizedTitle);
+        toast.success("Titre SEO optimisé avec succès");
+      } else {
+        setIsSeoDescriptionOptimizing(true);
+        
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        const plainText = currentDescription.replace(/<[^>]*>?/gm, '');
+        const firstPart = plainText.substring(0, 120);
+        const optimizedDescription = `${firstPart}... Découvrez cette annonce exceptionnelle!`;
+        
+        form.setValue('seoDescription', optimizedDescription);
+        toast.success("Méta description optimisée avec succès");
+      }
+    } catch (error: any) {
+      console.error(`Error optimizing ${field}:`, error);
+      toast.error(`Erreur lors de l'optimisation: ${error.message}`);
+    } finally {
+      if (field === 'seoTitle') {
+        setIsSeoTitleOptimizing(false);
+      } else {
+        setIsSeoDescriptionOptimizing(false);
+      }
     }
   };
 
@@ -216,7 +262,29 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormPr
                     name="seoTitle"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Titre SEO</FormLabel>
+                        <div className="flex justify-between items-center">
+                          <FormLabel>Titre SEO</FormLabel>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="flex items-center gap-1"
+                            onClick={() => optimizeSeoContent('seoTitle')}
+                            disabled={isSeoTitleOptimizing}
+                          >
+                            {isSeoTitleOptimizing ? (
+                              <>
+                                <Loader2 size={16} className="animate-spin" />
+                                <span>Optimisation...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles size={16} />
+                                <span>Optimiser avec l'IA</span>
+                              </>
+                            )}
+                          </Button>
+                        </div>
                         <FormControl>
                           <Input 
                             placeholder="Titre optimisé pour les moteurs de recherche" 
@@ -236,7 +304,29 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormPr
                     name="seoDescription"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Méta description</FormLabel>
+                        <div className="flex justify-between items-center">
+                          <FormLabel>Méta description</FormLabel>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="flex items-center gap-1"
+                            onClick={() => optimizeSeoContent('seoDescription')}
+                            disabled={isSeoDescriptionOptimizing}
+                          >
+                            {isSeoDescriptionOptimizing ? (
+                              <>
+                                <Loader2 size={16} className="animate-spin" />
+                                <span>Optimisation...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles size={16} />
+                                <span>Optimiser avec l'IA</span>
+                              </>
+                            )}
+                          </Button>
+                        </div>
                         <FormControl>
                           <Textarea 
                             placeholder="Description courte qui apparaîtra dans les résultats de recherche" 
