@@ -7,6 +7,7 @@ export interface UserProfile {
   name: string;
   role: Role;
   clientId?: string;
+  wordpressConfigId?: string; // New field to associate a WordPress config with user
 }
 
 export interface AuthContextType {

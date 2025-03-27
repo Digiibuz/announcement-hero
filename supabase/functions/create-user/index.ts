@@ -29,7 +29,7 @@ serve(async (req) => {
     const requestData = await req.json();
     console.log("Données reçues:", JSON.stringify(requestData));
     
-    const { email, name, password, role, clientId } = requestData;
+    const { email, name, password, role, clientId, wordpressConfigId } = requestData;
 
     // Vérifier les données requises
     if (!email || !name || !password || !role) {
@@ -53,6 +53,7 @@ serve(async (req) => {
         name,
         role,
         clientId: role === "editor" ? clientId : null,
+        wordpressConfigId: role === "editor" ? wordpressConfigId : null,
       },
     });
 
@@ -90,6 +91,7 @@ serve(async (req) => {
         .update({
           role: role,
           client_id: role === "editor" ? clientId : null,
+          wordpress_config_id: role === "editor" ? wordpressConfigId : null,
           name: name,
           email: email
         })
@@ -110,6 +112,7 @@ serve(async (req) => {
           id: newUser.user.id,
           role: role,
           client_id: role === "editor" ? clientId : null,
+          wordpress_config_id: role === "editor" ? wordpressConfigId : null,
           name: name,
           email: email
         });
