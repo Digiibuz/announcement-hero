@@ -13,7 +13,16 @@ import { UserProfile } from "@/types/auth";
 
 const UserManagement = () => {
   const { user, isAdmin, impersonateUser } = useAuth();
-  const { users, isLoading, fetchUsers, handleResetPassword } = useUserManagement();
+  const { 
+    users, 
+    isLoading, 
+    isDeleting,
+    isUpdating,
+    fetchUsers, 
+    handleResetPassword,
+    updateUser,
+    deleteUser
+  } = useUserManagement();
   
   const handleImpersonateUser = (userToImpersonate: UserProfile) => {
     impersonateUser(userToImpersonate);
@@ -40,8 +49,12 @@ const UserManagement = () => {
                 <UserList 
                   users={users}
                   isLoading={isLoading}
+                  isDeleting={isDeleting}
+                  isUpdating={isUpdating}
                   onResetPassword={handleResetPassword}
                   onImpersonateUser={handleImpersonateUser}
+                  onUpdateUser={updateUser}
+                  onDeleteUser={deleteUser}
                 />
               </div>
             </AnimatedContainer>

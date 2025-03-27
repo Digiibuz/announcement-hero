@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   Table,
@@ -9,23 +9,59 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { UserProfile } from "@/types/auth";
+import UserEditForm from "./UserEditForm";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface UserListProps {
   users: UserProfile[];
   isLoading: boolean;
-  onResetPassword: (userId: string) => void;
+  isDeleting: boolean;
+  isUpdating: boolean;
+  onResetPassword: (email: string) => void;
   onImpersonateUser: (user: UserProfile) => void;
+  onUpdateUser: (userId: string, userData: Partial<UserProfile>) => Promise<void>;
+  onDeleteUser: (userId: string) => Promise<void>;
 }
 
 const UserList: React.FC<UserListProps> = ({ 
   users, 
-  isLoading, 
+  isLoading,
+  isDeleting,
+  isUpdating,
   onResetPassword, 
-  onImpersonateUser 
+  onImpersonateUser,
+  onUpdateUser,
+  onDeleteUser
 }) => {
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const handleDeleteClick = (userId: string) => {
+    setUserToDelete(userId);
+    setConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (userToDelete) {
+      await onDeleteUser(userToDelete);
+      setConfirmOpen(false);
+      setUserToDelete(null);
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-border">
       <Table>
@@ -68,13 +104,20 @@ const UserList: React.FC<UserListProps> = ({
                 </TableCell>
                 <TableCell>{user.clientId || "-"}</TableCell>
                 <TableCell className="text-right space-x-2">
+                  <UserEditForm 
+                    user={user} 
+                    onUserUpdated={onUpdateUser}
+                    isUpdating={isUpdating}
+                  />
+                  
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => onResetPassword(user.id)}
+                    onClick={() => onResetPassword(user.email)}
                   >
                     Réinitialiser MDP
                   </Button>
+                  
                   {user.role === "editor" && (
                     <Button 
                       variant="outline" 
@@ -84,12 +127,52 @@ const UserList: React.FC<UserListProps> = ({
                       Se connecter en tant que
                     </Button>
                   )}
+                  
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleDeleteClick(user.id)}
+                    className="text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </TableCell>
               </TableRow>
             ))
           )}
         </TableBody>
       </Table>
+      
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center">
+              <AlertTriangle className="h-5 w-5 text-destructive mr-2" />
+              Confirmation de suppression
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={confirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Suppression...
+                </>
+              ) : (
+                "Supprimer"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
