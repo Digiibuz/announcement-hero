@@ -46,7 +46,7 @@ const CreateAnnouncement = () => {
       console.log("Annonce enregistrée dans Supabase:", newAnnouncement);
       
       // If status is published or scheduled, try to publish to WordPress
-      let wordpressResult = { success: true };
+      let wordpressResult = { success: true, message: "" };
       if ((data.status === 'published' || data.status === 'scheduled') && data.wordpressCategory && user?.id) {
         console.log("Tentative de publication sur WordPress...");
         wordpressResult = await publishToWordPress(
@@ -59,7 +59,7 @@ const CreateAnnouncement = () => {
       if (wordpressResult.success) {
         toast.success("Annonce enregistrée avec succès");
       } else {
-        toast.warning("Annonce enregistrée dans la base de données, mais la publication WordPress a échoué: " + wordpressResult.message);
+        toast.warning("Annonce enregistrée dans la base de données, mais la publication WordPress a échoué: " + (wordpressResult.message || "Erreur inconnue"));
       }
       
       // Redirect to the announcements list

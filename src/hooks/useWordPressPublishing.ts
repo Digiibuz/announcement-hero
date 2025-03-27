@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -29,19 +30,19 @@ export const useWordPressPublishing = () => {
       setIsPublishing(true);
       console.log("Récupération de la configuration WordPress...");
       
-      // Get WordPress config
-      const { data: user, error: userError } = await supabase
-        .from('users')
+      // Get WordPress config from the user's profile
+      const { data: userProfile, error: profileError } = await supabase
+        .from('profiles')
         .select('wordpress_config_id')
         .eq('id', userId)
         .single();
 
-      if (userError) {
-        console.error("Erreur lors de la récupération de l'utilisateur:", userError);
-        throw new Error("Utilisateur non trouvé");
+      if (profileError) {
+        console.error("Erreur lors de la récupération du profil utilisateur:", profileError);
+        throw new Error("Profil utilisateur non trouvé");
       }
 
-      if (!user?.wordpress_config_id) {
+      if (!userProfile?.wordpress_config_id) {
         console.error("Configuration WordPress introuvable pour cet utilisateur");
         throw new Error("Configuration WordPress introuvable");
       }
@@ -50,7 +51,7 @@ export const useWordPressPublishing = () => {
       const { data: wpConfig, error: wpConfigError } = await supabase
         .from('wordpress_configs')
         .select('site_url, username, password, rest_api_key')
-        .eq('id', user.wordpress_config_id)
+        .eq('id', userProfile.wordpress_config_id)
         .single();
 
       if (wpConfigError) {
