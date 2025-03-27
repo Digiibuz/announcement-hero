@@ -60,12 +60,12 @@ const Announcements = () => {
         return [];
       }
       
-      // Map WordPress category IDs to names and strip HTML from descriptions
+      // Map WordPress category IDs to names and strip HTML from descriptions for list view only
       return data.map(announcement => {
         // Create a new object with all properties from announcement
         const processed: Announcement = { ...announcement } as Announcement;
         
-        // Strip HTML tags from description for the list view
+        // Strip HTML tags from description for the list view only
         if (processed.description) {
           processed.description = stripHtmlTags(processed.description);
         }
