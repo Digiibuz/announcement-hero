@@ -63,26 +63,35 @@ serve(async (req) => {
 
     console.log("Utilisateur créé avec succès:", newUser.user?.id);
 
-    // Mettre à jour le profil pour définir le rôle et l'identifiant client
-    if (newUser.user) {
-      console.log("Mise à jour du profil pour:", newUser.user.id);
-      const { error: updateError } = await supabaseAdmin
-        .from("profiles")
-        .update({
-          role: role,
-          client_id: role === "editor" ? clientId : null,
-          name: name,
-          email: email
-        })
-        .eq("id", newUser.user.id);
-
-      if (updateError) {
-        console.log("Erreur lors de la mise à jour du profil:", updateError.message);
-        throw updateError;
-      }
-      
-      console.log("Profil mis à jour avec succès");
+    // Vérifier que l'utilisateur a bien été créé
+    if (!newUser.user) {
+      console.log("Erreur: L'utilisateur a été créé mais les données utilisateur sont manquantes");
+      throw new Error("Erreur lors de la création de l'utilisateur: données utilisateur manquantes");
     }
+
+    // Insérer directement dans la table profiles
+    console.log("Insertion dans la table profiles pour:", newUser.user.id);
+    const { error: insertError } = await supabaseAdmin
+      .from("profiles")
+      .insert({
+        id: newUser.user.id,
+        role: role,
+        client_id: role === "editor" ? clientId : null,
+        name: name,
+        email: email
+      });
+
+    if (insertError) {
+      console.log("Erreur lors de l'insertion dans profiles:", insertError.message);
+      // Si l'insertion échoue, on supprime l'utilisateur créé pour éviter les incohérences
+      const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
+      if (deleteError) {
+        console.log("Erreur lors de la suppression de l'utilisateur après échec d'insertion:", deleteError.message);
+      }
+      throw insertError;
+    }
+    
+    console.log("Profil inséré avec succès");
 
     return new Response(
       JSON.stringify({ success: true, user: newUser.user }),
