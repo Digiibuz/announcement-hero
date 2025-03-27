@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -19,7 +18,7 @@ import {
 const Sidebar = () => {
   const isMobile = useIsMobile();
   const { pathname } = useLocation();
-  const { user, logout, isLoading, isAuthenticated, isAdmin, isImpersonating, stopImpersonating, originalUser } = useAuth();
+  const { user, logout, isLoading, isAuthenticated, isAdmin, isEditor, isImpersonating, stopImpersonating, originalUser } = useAuth();
 
   if (isMobile || !isAuthenticated) return null;
 
@@ -42,6 +41,12 @@ const Sidebar = () => {
       icon: <Newspaper className="h-5 w-5" />,
       isActive: pathname === "/create",
     },
+    {
+      name: "Gestion WordPress",
+      href: isAdmin ? "/wordpress" : "/editor-wordpress",
+      icon: <Globe className="h-5 w-5" />,
+      isActive: isAdmin ? pathname === "/wordpress" : pathname === "/editor-wordpress",
+    },
   ];
 
   const adminItems = [
@@ -50,12 +55,6 @@ const Sidebar = () => {
       href: "/users",
       icon: <UserCog className="h-5 w-5" />,
       isActive: pathname === "/users",
-    },
-    {
-      name: "Gestion WordPress",
-      href: "/wordpress",
-      icon: <Globe className="h-5 w-5" />,
-      isActive: pathname === "/wordpress",
     },
   ];
 

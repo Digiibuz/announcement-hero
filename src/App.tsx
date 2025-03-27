@@ -12,6 +12,7 @@ import CreateAnnouncement from "./pages/CreateAnnouncement";
 import Announcements from "./pages/Announcements";
 import UserManagement from "./pages/UserManagement";
 import WordPressManagement from "./pages/WordPressManagement";
+import EditorWordPressManagement from "./pages/EditorWordPressManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -78,6 +79,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <CreateAnnouncement />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/editor-wordpress" 
+        element={
+          <ProtectedRoute>
+            <EditorWordPressManagement />
           </ProtectedRoute>
         } 
       />
