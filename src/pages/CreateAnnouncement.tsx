@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -77,25 +78,42 @@ const CreateAnnouncement = () => {
     }
   };
 
-  return <PageLayout title="Créer une nouvelle annonce" titleAction={<Button variant="outline" size="sm" onClick={() => navigate("/announcements")} className="flex items-center gap-2">
+  return (
+    <PageLayout 
+      title="Créer une nouvelle annonce" 
+      titleAction={
+        <Button variant="outline" size="sm" onClick={() => navigate("/announcements")} className="flex items-center gap-2">
           <ArrowLeft className="h-4 w-4" />
           Retour aux annonces
-        </Button>} fullWidthMobile={true}>
+        </Button>
+      } 
+      fullWidthMobile={true}
+      containerClassName="max-w-5xl mx-auto"
+    >
       <AnimatedContainer delay={200} className={isMobile ? "pb-6" : ""}>
-        {!isMobile}
+        {!isMobile && (
+          <div className="mb-4">
+            {/* Empty space for desktop view if needed */}
+          </div>
+        )}
         
-        <div className="max-w-5xl mx-auto">
-          {isMobile && <div className="bg-muted/30 px-4 py-3 mb-4 text-sm text-muted-foreground flex items-center">
+        <div>
+          {isMobile && (
+            <div className="bg-muted/30 px-4 py-3 mb-4 text-sm text-muted-foreground flex items-center">
               <Wand2 className="h-4 w-4 mr-2 flex-shrink-0" />
               <span>Utilisez les boutons <b>Optimiser</b> pour améliorer votre contenu avec l'IA.</span>
-            </div>}
+            </div>
+          )}
           
-          <div className={isMobile ? "" : ""}>
-            <AnnouncementForm onSubmit={handleSubmit} isSubmitting={isSubmitting || isPublishing} isMobile={isMobile} />
-          </div>
+          <AnnouncementForm 
+            onSubmit={handleSubmit} 
+            isSubmitting={isSubmitting || isPublishing} 
+            isMobile={isMobile} 
+          />
         </div>
       </AnimatedContainer>
-    </PageLayout>;
+    </PageLayout>
+  );
 };
 
 export default CreateAnnouncement;
