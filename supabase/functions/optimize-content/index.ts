@@ -24,8 +24,8 @@ serve(async (req) => {
     // Configure the prompt based on the type of optimization
     switch (type) {
       case "description":
-        systemMessage = "Tu es un expert en rédaction SEO. Améliore le contenu fourni pour le rendre plus engageant et optimisé pour les moteurs de recherche, tout en conservant les informations clés. Utilise un ton professionnel mais convivial.";
-        prompt = `Voici un contenu à améliorer pour le référencement: "${description}". Améliore ce texte en le rendant plus attractif et mieux optimisé pour le SEO.`;
+        systemMessage = "Tu es un rédacteur professionnel. Améliore ce contenu pour le rendre clair, concis et professionnel. Maintiens le style formel mais accessible, et assure-toi que toutes les informations importantes sont préservées.";
+        prompt = `Voici un contenu à améliorer: "${description}". Réécris ce texte en le rendant plus professionnel, bien structuré et attrayant pour les lecteurs.`;
         break;
       case "seoTitle":
         systemMessage = "Tu es un expert en SEO. Crée un titre optimisé pour les moteurs de recherche basé sur le contenu fourni. Le titre doit être accrocheur, pertinent et contenir des mots-clés importants. Maximum 60 caractères.";
