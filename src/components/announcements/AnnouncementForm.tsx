@@ -2,15 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-  FormDescription,
-} from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Loader2, ArrowLeft, Save, ExternalLink, Sparkles, PencilLine, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ImageUploader from "./ImageUploader";
@@ -21,14 +13,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
-
 export interface AnnouncementFormProps {
   onSubmit?: (data: AnnouncementFormData) => void;
   isSubmitting?: boolean;
   onCancel?: () => void;
   isMobile?: boolean;
 }
-
 export interface AnnouncementFormData {
   title: string;
   description: string;
@@ -40,8 +30,12 @@ export interface AnnouncementFormData {
   seoDescription: string;
   seoSlug: string;
 }
-
-const AnnouncementForm = ({ onSubmit, isSubmitting = false, onCancel, isMobile = false }: AnnouncementFormProps) => {
+const AnnouncementForm = ({
+  onSubmit,
+  isSubmitting = false,
+  onCancel,
+  isMobile = false
+}: AnnouncementFormProps) => {
   const form = useForm<AnnouncementFormData>({
     defaultValues: {
       title: "",
@@ -52,49 +46,37 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false, onCancel, isMobile =
       images: [],
       seoTitle: "",
       seoDescription: "",
-      seoSlug: "",
+      seoSlug: ""
     }
   });
-
   const navigate = useNavigate();
-  const { optimizeContent, isOptimizing } = useContentOptimization();
-  const { watch, setValue } = form;
+  const {
+    optimizeContent,
+    isOptimizing
+  } = useContentOptimization();
+  const {
+    watch,
+    setValue
+  } = form;
   const title = watch("title");
-
   useEffect(() => {
     if (title) {
-      const normalizedTitle = title
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase()
-        .replace(/[^\w\s-]/g, "")
-        .replace(/\s+/g, "-")
-        .replace(/-+/g, "-");
-      
+      const normalizedTitle = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
       setValue("seoSlug", normalizedTitle);
-      
       if (!form.getValues("seoTitle")) {
         setValue("seoTitle", title);
       }
     }
   }, [title, setValue]);
-
   const optimizeSeoContent = async (field: 'seoTitle' | 'seoDescription') => {
     try {
       const currentTitle = form.getValues('title');
       const currentDescription = form.getValues('description');
-      
       if (!currentTitle || !currentDescription) {
         toast.warning("Veuillez d'abord saisir le titre et la description de l'annonce");
         return;
       }
-      
-      const optimizedContent = await optimizeContent(
-        field, 
-        currentTitle, 
-        currentDescription
-      );
-      
+      const optimizedContent = await optimizeContent(field, currentTitle, currentDescription);
       if (optimizedContent) {
         form.setValue(field, optimizedContent);
       }
@@ -102,7 +84,6 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false, onCancel, isMobile =
       console.error(`Error optimizing ${field}:`, error);
     }
   };
-
   const handleCancel = () => {
     if (onCancel) {
       onCancel();
@@ -110,49 +91,34 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false, onCancel, isMobile =
       navigate('/announcements');
     }
   };
-
   const getCardStyles = (isSectionCard = false) => {
     if (isMobile) {
-      return isSectionCard 
-        ? "border-0 border-b border-border shadow-none rounded-none bg-transparent mb-3 last:border-b-0 last:mb-0" 
-        : "border-0 shadow-none bg-transparent";
+      return isSectionCard ? "border-0 border-b border-border shadow-none rounded-none bg-transparent mb-3 last:border-b-0 last:mb-0" : "border-0 shadow-none bg-transparent";
     }
     return "border shadow-sm";
   };
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit || (() => {}))} className="space-y-6">
           <div className="space-y-6">
             <div className={`${isMobile ? "px-4" : ""}`}>
               <Card className={getCardStyles(true)}>
                 <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"}`}>
-                  <CardTitle className="text-lg font-medium">Informations de base</CardTitle>
-                  {!isMobile && (
-                    <CardDescription>
+                  <CardTitle className="text-lg font-medium">Votre annonce</CardTitle>
+                  {!isMobile && <CardDescription>
                       Les informations essentielles de votre annonce
-                    </CardDescription>
-                  )}
+                    </CardDescription>}
                 </CardHeader>
                 <CardContent className={`space-y-4 ${isMobile ? "px-0 py-3" : ""}`}>
-                  <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="title" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Titre</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="Entrez le titre de l'annonce" 
-                            className="h-11"
-                            {...field}
-                          />
+                          <Input placeholder="Entrez le titre de l'annonce" className="h-11" {...field} />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
 
                   <DescriptionField form={form} />
                 </CardContent>
@@ -163,11 +129,9 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false, onCancel, isMobile =
               <Card className={getCardStyles(true)}>
                 <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"}`}>
                   <CardTitle className="text-lg font-medium">Images</CardTitle>
-                  {!isMobile && (
-                    <CardDescription>
+                  {!isMobile && <CardDescription>
                       Ajoutez des images à votre annonce pour attirer l'attention
-                    </CardDescription>
-                  )}
+                    </CardDescription>}
                 </CardHeader>
                 <CardContent className={`${isMobile ? "px-0 py-3" : ""}`}>
                   <ImageUploader form={form} />
@@ -179,11 +143,9 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false, onCancel, isMobile =
               <Card className={getCardStyles(true)}>
                 <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"}`}>
                   <CardTitle className="text-lg font-medium">Options de publication</CardTitle>
-                  {!isMobile && (
-                    <CardDescription>
+                  {!isMobile && <CardDescription>
                       Paramètres de publication et de diffusion
-                    </CardDescription>
-                  )}
+                    </CardDescription>}
                 </CardHeader>
                 <CardContent className={`${isMobile ? "px-0 py-3" : ""}`}>
                   <PublishingOptions form={form} />
@@ -196,133 +158,84 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false, onCancel, isMobile =
                 <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"} flex flex-row items-center justify-between space-y-0`}>
                   <div>
                     <CardTitle className="text-lg font-medium">SEO</CardTitle>
-                    {!isMobile && (
-                      <CardDescription>
+                    {!isMobile && <CardDescription>
                         Optimisez votre annonce pour les moteurs de recherche
-                      </CardDescription>
-                    )}
+                      </CardDescription>}
                   </div>
                   <Badge variant="outline" className="ml-2">
                     SEO
                   </Badge>
                 </CardHeader>
                 <CardContent className={`space-y-4 ${isMobile ? "px-0 py-3" : ""}`}>
-                  {!isMobile && (
-                    <div className="text-sm text-muted-foreground mb-4">
+                  {!isMobile && <div className="text-sm text-muted-foreground mb-4">
                       Ces informations aideront à améliorer la visibilité de votre annonce dans les résultats de recherche Google.
-                    </div>
-                  )}
+                    </div>}
                   
-                  <FormField
-                    control={form.control}
-                    name="seoTitle"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="seoTitle" render={({
+                  field
+                }) => <FormItem>
                         <div className="flex justify-between items-center">
                           <FormLabel>Titre SEO</FormLabel>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="flex items-center gap-1 h-8"
-                            onClick={() => optimizeSeoContent('seoTitle')}
-                            disabled={isOptimizing.seoTitle}
-                          >
-                            {isOptimizing.seoTitle ? (
-                              <>
+                          <Button type="button" size="sm" variant="outline" className="flex items-center gap-1 h-8" onClick={() => optimizeSeoContent('seoTitle')} disabled={isOptimizing.seoTitle}>
+                            {isOptimizing.seoTitle ? <>
                                 <Loader2 size={14} className="animate-spin" />
                                 <span className="text-xs">Optimisation...</span>
-                              </>
-                            ) : (
-                              <>
+                              </> : <>
                                 <Sparkles size={14} />
                                 <span className="text-xs">Optimiser</span>
-                              </>
-                            )}
+                              </>}
                           </Button>
                         </div>
                         <FormControl>
-                          <Input 
-                            placeholder="Titre optimisé pour les moteurs de recherche" 
-                            {...field}
-                          />
+                          <Input placeholder="Titre optimisé pour les moteurs de recherche" {...field} />
                         </FormControl>
                         <FormDescription>
                           Idéalement entre 50 et 60 caractères.
                         </FormDescription>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
                   
-                  <FormField
-                    control={form.control}
-                    name="seoDescription"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="seoDescription" render={({
+                  field
+                }) => <FormItem>
                         <div className="flex justify-between items-center">
                           <FormLabel>Méta description</FormLabel>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="flex items-center gap-1 h-8"
-                            onClick={() => optimizeSeoContent('seoDescription')}
-                            disabled={isOptimizing.seoDescription}
-                          >
-                            {isOptimizing.seoDescription ? (
-                              <>
+                          <Button type="button" size="sm" variant="outline" className="flex items-center gap-1 h-8" onClick={() => optimizeSeoContent('seoDescription')} disabled={isOptimizing.seoDescription}>
+                            {isOptimizing.seoDescription ? <>
                                 <Loader2 size={14} className="animate-spin" />
                                 <span className="text-xs">Optimisation...</span>
-                              </>
-                            ) : (
-                              <>
+                              </> : <>
                                 <Sparkles size={14} />
                                 <span className="text-xs">Optimiser</span>
-                              </>
-                            )}
+                              </>}
                           </Button>
                         </div>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Description courte qui apparaîtra dans les résultats de recherche" 
-                            className="resize-none min-h-[100px]"
-                            {...field}
-                          />
+                          <Textarea placeholder="Description courte qui apparaîtra dans les résultats de recherche" className="resize-none min-h-[100px]" {...field} />
                         </FormControl>
                         <FormDescription>
                           Idéalement entre 120 et 158 caractères.
                         </FormDescription>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
                   
-                  <FormField
-                    control={form.control}
-                    name="seoSlug"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="seoSlug" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>URL Slug</FormLabel>
                         <FormControl>
                           <div className="flex items-center">
                             <span className="text-sm text-muted-foreground mr-2 hidden sm:inline">yoursite.com/annonces/</span>
-                            <Input 
-                              placeholder="slug-de-url" 
-                              {...field}
-                            />
+                            <Input placeholder="slug-de-url" {...field} />
                           </div>
                         </FormControl>
                         <FormDescription>
                           L'URL qui sera utilisée pour accéder à cette annonce.
                         </FormDescription>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
                   
-                  {!isMobile && (
-                    <Card className="border border-muted mt-4 bg-muted/10">
+                  {!isMobile && <Card className="border border-muted mt-4 bg-muted/10">
                       <CardContent className="p-4">
                         <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
                           <Search className="h-4 w-4" />
@@ -338,44 +251,28 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false, onCancel, isMobile =
                           {form.getValues('seoDescription') || "Ajoutez une méta description pour qu'elle apparaisse ici."}
                         </div>
                       </CardContent>
-                    </Card>
-                  )}
+                    </Card>}
                 </CardContent>
               </Card>
             </div>
           </div>
 
           <div className={`flex justify-end gap-2 pt-4 ${isMobile ? "px-4 sticky bottom-0 bg-background pb-4 border-t border-border mt-4" : ""}`}>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleCancel}
-              className="px-4"
-            >
+            <Button type="button" variant="outline" onClick={handleCancel} className="px-4">
               Annuler
             </Button>
-            <Button 
-              type="submit"
-              disabled={isSubmitting}
-              className="px-4"
-            >
-              {isSubmitting ? (
-                <>
+            <Button type="submit" disabled={isSubmitting} className="px-4">
+              {isSubmitting ? <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Enregistrement...
-                </>
-              ) : (
-                <>
+                </> : <>
                   <Save className="mr-2 h-4 w-4" />
                   Publier
-                </>
-              )}
+                </>}
             </Button>
           </div>
         </form>
       </Form>
-    </div>
-  );
+    </div>;
 };
-
 export default AnnouncementForm;
