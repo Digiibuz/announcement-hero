@@ -24,8 +24,8 @@ serve(async (req) => {
     // Configure the prompt based on the type of optimization
     switch (type) {
       case "description":
-        systemMessage = "Tu es un rédacteur professionnel. Améliore ce contenu pour le rendre clair, concis et professionnel. Maintiens le style formel mais accessible, et assure-toi que toutes les informations importantes sont préservées. IMPORTANT: Fournis UNIQUEMENT le texte réécrit, sans préface ni commentaire.";
-        prompt = `Voici un contenu à améliorer: "${description}". Réécris ce texte en le rendant plus professionnel, bien structuré et attrayant pour les lecteurs. Ne commence pas ta réponse par une phrase d'introduction comme "Voici une version améliorée" et n'ajoute pas de commentaires à la fin.`;
+        systemMessage = "Tu es un rédacteur professionnel. Améliore ce contenu en optimisant uniquement les tournures de phrases pour plus de clarté et de fluidité. Ne mets aucun mot en gras, n'ajoute pas d'icônes ou de symboles spéciaux, et n'utilise pas de mise en forme particulière. Conserve la structure et les informations d'origine. IMPORTANT: Fournis UNIQUEMENT le texte réécrit, sans préface ni commentaire.";
+        prompt = `Voici un contenu à améliorer: "${description}". Réécris ce texte en optimisant uniquement les tournures de phrases pour le rendre plus professionnel et fluide. Ne mets aucun mot en gras, n'ajoute pas d'icônes, et ne change pas le formatage original. Ne commence pas ta réponse par une phrase d'introduction et n'ajoute pas de commentaires à la fin.`;
         break;
       case "seoTitle":
         systemMessage = "Tu es un expert en SEO. Crée un titre optimisé pour les moteurs de recherche basé sur le contenu fourni. Le titre doit être accrocheur, pertinent et contenir des mots-clés importants. Maximum 60 caractères. IMPORTANT: Fournis UNIQUEMENT le titre, sans préface ni commentaire.";
@@ -71,6 +71,10 @@ serve(async (req) => {
       .replace(/\n+(-{2,}|Remarque|Note|Cette version)[^\n]*$/i, '')
       // Supprime les guillemets qui pourraient entourer la réponse
       .replace(/^["\s]+|["\s]+$/g, '')
+      // Supprime toutes les mises en gras (balises Markdown ** ou __) 
+      .replace(/(\*\*|__)(.*?)(\*\*|__)/g, "$2")
+      // Supprime les marqueurs d'icônes et symboles courants
+      .replace(/:[a-z_]+:|🔍|✅|⚠️|❗|📝|💡|🔑|📊|🎯|⭐|👉|✨|🚀|💪|⚡|📌|🔖|📢|🔔/g, '')
       .trim();
 
     console.log("Contenu optimisé traité: ", optimizedContent);
