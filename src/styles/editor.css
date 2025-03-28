@@ -10,20 +10,26 @@
   outline: none;
 }
 
-.rich-text-editor strong {
+.rich-text-editor strong, 
+.rich-text-editor b {
   font-weight: bold;
+  display: inline;
 }
 
-.rich-text-editor em {
+.rich-text-editor em, 
+.rich-text-editor i {
   font-style: italic;
+  display: inline;
 }
 
 .rich-text-editor u {
   text-decoration: underline;
+  display: inline;
 }
 
 .rich-text-editor s {
   text-decoration: line-through;
+  display: inline;
 }
 
 .rich-text-editor p {
@@ -51,6 +57,7 @@
 .rich-text-editor a {
   color: #0066cc;
   text-decoration: underline;
+  display: inline;
 }
 
 .rich-text-editor a:hover {
@@ -64,7 +71,13 @@
 }
 
 /* Fixes for HTML tags in the editor */
-.rich-text-editor b, .rich-text-editor strong {
+.rich-text-editor b, 
+.rich-text-editor strong, 
+.rich-text-editor i, 
+.rich-text-editor em, 
+.rich-text-editor u, 
+.rich-text-editor s,
+.rich-text-editor a {
   display: inline;
   white-space: normal;
 }
