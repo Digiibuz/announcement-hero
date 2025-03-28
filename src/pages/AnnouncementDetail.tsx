@@ -23,15 +23,12 @@ const AnnouncementDetail = () => {
     handleSubmit
   } = useAnnouncementDetail(user?.id);
 
-  const titleAction = (
+  const titleAction = announcement ? (
     <AnnouncementActions
-      announcement={announcement}
-      userId={user?.id}
-      isPublishing={isPublishing}
-      setIsEditing={setIsEditing}
-      fetchAnnouncement={fetchAnnouncement}
+      id={announcement.id}
+      status={announcement.status}
     />
-  );
+  ) : null;
 
   return (
     <PageLayout title={isLoading ? "Chargement..." : announcement?.title} titleAction={titleAction}>
