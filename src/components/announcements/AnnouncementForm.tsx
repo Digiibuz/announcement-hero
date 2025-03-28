@@ -105,7 +105,7 @@ const AnnouncementForm = ({
               <Card className={getCardStyles(true)}>
                 <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"}`}>
                   <CardTitle className="text-lg font-medium">Votre annonce</CardTitle>
-                  {!isMobile && <CardDescription>
+                  {!isMobile && <CardDescription className="text-amber-400">
                       Les informations essentielles de votre annonce
                     </CardDescription>}
                 </CardHeader>
@@ -129,7 +129,7 @@ const AnnouncementForm = ({
               <Card className={getCardStyles(true)}>
                 <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"}`}>
                   <CardTitle className="text-lg font-medium">Images</CardTitle>
-                  {!isMobile && <CardDescription>
+                  {!isMobile && <CardDescription className="text-amber-400">
                       Ajoutez des images à votre annonce pour attirer l'attention
                     </CardDescription>}
                 </CardHeader>
@@ -143,7 +143,7 @@ const AnnouncementForm = ({
               <Card className={getCardStyles(true)}>
                 <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"}`}>
                   <CardTitle className="text-lg font-medium">Options de publication</CardTitle>
-                  {!isMobile && <CardDescription>
+                  {!isMobile && <CardDescription className="text-amber-400">
                       Paramètres de publication et de diffusion
                     </CardDescription>}
                 </CardHeader>
@@ -158,7 +158,7 @@ const AnnouncementForm = ({
                 <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"} flex flex-row items-center justify-between space-y-0`}>
                   <div>
                     <CardTitle className="text-lg font-medium">SEO</CardTitle>
-                    {!isMobile && <CardDescription>
+                    {!isMobile && <CardDescription className="text-amber-400">
                         Optimisez votre annonce pour les moteurs de recherche
                       </CardDescription>}
                   </div>
@@ -167,9 +167,7 @@ const AnnouncementForm = ({
                   </Badge>
                 </CardHeader>
                 <CardContent className={`space-y-4 ${isMobile ? "px-0 py-3" : ""}`}>
-                  {!isMobile && <div className="text-sm text-muted-foreground mb-4">
-                      Ces informations aideront à améliorer la visibilité de votre annonce dans les résultats de recherche Google.
-                    </div>}
+                  {!isMobile}
                   
                   <FormField control={form.control} name="seoTitle" render={({
                   field
@@ -189,7 +187,7 @@ const AnnouncementForm = ({
                         <FormControl>
                           <Input placeholder="Titre optimisé pour les moteurs de recherche" {...field} />
                         </FormControl>
-                        <FormDescription>
+                        <FormDescription className="font-normal">
                           Idéalement entre 50 et 60 caractères.
                         </FormDescription>
                         <FormMessage />
@@ -211,7 +209,7 @@ const AnnouncementForm = ({
                           </Button>
                         </div>
                         <FormControl>
-                          <Textarea placeholder="Description courte qui apparaîtra dans les résultats de recherche" className="resize-none min-h-[100px]" {...field} />
+                          <Textarea placeholder="Description courte qui apparaîtra dans les résultats de recherche" className="resize-none min-h-[100px] bg-slate-100" />
                         </FormControl>
                         <FormDescription>
                           Idéalement entre 120 et 158 caractères.
