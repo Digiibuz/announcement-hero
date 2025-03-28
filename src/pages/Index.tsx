@@ -58,7 +58,7 @@ const Index = () => {
 
             <div className="flex items-center gap-4">
               <Button 
-                variant="ghost" 
+                className="bg-digibuz-navy hover:bg-digibuz-navy/90 text-white dark:bg-digibuz-yellow dark:text-digibuz-navy dark:hover:bg-digibuz-yellow/90"
                 onClick={() => navigate("/login")}
               >
                 Log in
@@ -71,17 +71,17 @@ const Index = () => {
       <main className="pt-16">
         {/* Hero Section */}
         <section className="relative py-16 md:py-24 lg:py-32 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-muted/30 to-background"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-digibuz-light/50 to-background dark:from-digibuz-navy/30 dark:to-background"></div>
           <div className="container px-4 md:px-6 relative">
             <div className="flex flex-col items-center text-center space-y-6 md:space-y-8">
               <AnimatedContainer>
-                <div className="inline-block bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium mb-2">
+                <div className="inline-block bg-digibuz-navy/10 text-digibuz-navy dark:bg-digibuz-yellow/20 dark:text-digibuz-yellow px-3 py-1 rounded-full text-sm font-medium mb-2">
                   Streamline Your WordPress Workflow
                 </div>
               </AnimatedContainer>
               
               <AnimatedContainer delay={100}>
-                <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold leading-tight tracking-tighter md:leading-none max-w-3xl text-balance">
+                <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold leading-tight tracking-tighter md:leading-none max-w-3xl text-balance digiibuz-gradient-text">
                   Manage Your WordPress Announcements with Elegance
                 </h1>
               </AnimatedContainer>
@@ -96,7 +96,7 @@ const Index = () => {
                 <div className="flex flex-col sm:flex-row gap-4 mt-4">
                   <Button 
                     size="lg" 
-                    className="px-6 sm:px-8"
+                    className="bg-digibuz-navy hover:bg-digibuz-navy/90 text-white dark:bg-digibuz-yellow dark:text-digibuz-navy dark:hover:bg-digibuz-yellow/90 px-6 sm:px-8"
                     onClick={() => navigate("/login")}
                   >
                     Get Started
@@ -113,7 +113,7 @@ const Index = () => {
           <div className="container px-4 md:px-6">
             <AnimatedContainer>
               <div className="text-center mb-12">
-                <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight">
+                <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight digiibuz-gradient-text">
                   Powerful Features, Simple Interface
                 </h2>
                 <p className="mt-4 text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -125,8 +125,8 @@ const Index = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 mt-12">
               {features.map((feature, index) => (
                 <AnimatedContainer key={index} delay={100 + index * 100}>
-                  <div className="flex flex-col items-center text-center p-6 rounded-xl bg-card hover-scale card-shadow">
-                    <div className="p-3 rounded-full bg-primary/10 text-primary mb-4">
+                  <div className="digiibuz-card flex flex-col items-center text-center p-6 rounded-xl hover-scale">
+                    <div className="p-3 rounded-full bg-digibuz-navy/10 text-digibuz-navy dark:bg-digibuz-yellow/20 dark:text-digibuz-yellow mb-4">
                       {feature.icon}
                     </div>
                     <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
@@ -139,7 +139,7 @@ const Index = () => {
         </section>
       </main>
 
-      <footer className="border-t py-8 md:py-12">
+      <footer className="border-t py-8 md:py-12 bg-digibuz-light/30 dark:bg-digibuz-navy/30">
         <div className="container px-4 md:px-6">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="text-center md:text-left mb-6 md:mb-0 flex items-center gap-2">

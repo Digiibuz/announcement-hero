@@ -32,7 +32,11 @@ const Header = () => {
 
           <div className="flex items-center gap-4">
             <Link to="/login">
-              <Button variant="ghost">Se connecter</Button>
+              <Button 
+                className="bg-digibuz-navy hover:bg-digibuz-navy/90 text-white dark:bg-digibuz-yellow dark:text-digibuz-navy dark:hover:bg-digibuz-yellow/90"
+              >
+                Se connecter
+              </Button>
             </Link>
           </div>
         </div>
