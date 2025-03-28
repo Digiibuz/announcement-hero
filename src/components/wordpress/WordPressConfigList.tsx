@@ -103,14 +103,27 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
     }
   };
 
-  const toggleCollapsible = (configId: string) => {
-    const newState = !openCollapsibles[configId];
-    setOpenCollapsibles(prev => ({ ...prev, [configId]: newState }));
+  // Fetch client users for all configurations on mount
+  useEffect(() => {
+    const fetchAllClientUsers = async () => {
+      if (configs.length === 0) return;
+      
+      // Initialize loading state for all configs
+      const initialLoadingState: {[key: string]: boolean} = {};
+      configs.forEach(config => {
+        initialLoadingState[config.id] = true;
+      });
+      setLoadingUsers(initialLoadingState);
+      
+      // Fetch client users for each config
+      await Promise.all(configs.map(config => fetchClientUsers(config.id)));
+    };
     
-    // Fetch users when opening the collapsible if not already loaded
-    if (newState && (!clientUsers[configId] || clientUsers[configId]?.length === 0)) {
-      fetchClientUsers(configId);
-    }
+    fetchAllClientUsers();
+  }, [configs]);
+
+  const toggleCollapsible = (configId: string) => {
+    setOpenCollapsibles(prev => ({ ...prev, [configId]: !prev[configId] }));
   };
 
   if (isLoading) {
