@@ -1,22 +1,7 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
-import { 
-  MoreHorizontal, 
-  Pencil, 
-  Trash, 
-  ExternalLink,
-  AlertTriangle
-} from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Trash2, Send, Archive } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,133 +11,123 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Announcement } from "@/types/announcement";
-import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
+import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { 
+  deleteAnnouncement as apiDeleteAnnouncement,
+  publishAnnouncement as apiPublishAnnouncement 
+} from "@/api/announcementApi";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 interface AnnouncementActionsProps {
-  announcement?: Announcement;
-  userId?: string;
-  isPublishing?: boolean;
-  setIsEditing: (isEditing: boolean) => void;
-  fetchAnnouncement: () => void;
+  id: string;
+  status: string;
 }
 
-const AnnouncementActions = ({
-  announcement,
-  userId,
-  isPublishing,
-  setIsEditing,
-  fetchAnnouncement,
-}: AnnouncementActionsProps) => {
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ id, status }) => {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { publishToWordPress } = useWordPressPublishing();
 
-  const handleDelete = async () => {
-    if (!announcement?.id) return;
-    
-    const { error } = await supabase
-      .from("announcements")
-      .delete()
-      .eq("id", announcement.id);
-    
-    if (error) {
+  const deleteAnnouncement = async () => {
+    try {
+      setIsDeleting(true);
+      await apiDeleteAnnouncement(id);
       toast({
-        variant: "destructive",
-        title: "Erreur lors de la suppression",
-        description: error.message,
+        title: "Annonce supprimée",
+        description: "L'annonce a été supprimée avec succès.",
       });
-      return;
+      navigate("/announcements");
+      queryClient.invalidateQueries({ queryKey: ["announcements"] });
+    } catch (error) {
+      console.error("Error deleting announcement:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer l'annonce.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
     }
-    
-    window.location.href = "/announcements";
   };
 
-  const handlePublishToWordPress = async () => {
-    if (!announcement?.id) return;
-    await publishToWordPress(announcement.id);
-    fetchAnnouncement();
+  const publishAnnouncement = async () => {
+    try {
+      setIsPublishing(true);
+      await apiPublishAnnouncement(id);
+      toast({
+        title: "Annonce publiée",
+        description: "L'annonce a été publiée avec succès.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["announcement", id] });
+    } catch (error) {
+      console.error("Error publishing announcement:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de publier l'annonce.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPublishing(false);
+    }
   };
-  
-  // Vérifie si l'annonce est publiée sur WordPress
-  const isPublishedToWordPress = announcement && 
-    // @ts-ignore - Ces propriétés existent dans la base de données mais pas dans le type
-    announcement.wordpress_post_id && 
-    // @ts-ignore
-    announcement.wordpress_site_url;
-
-  // Génère l'URL vers l'article WordPress
-  const wordPressUrl = isPublishedToWordPress ? 
-    // @ts-ignore
-    `${announcement.wordpress_site_url}/wp-admin/post.php?post=${announcement.wordpress_post_id}&action=edit` : 
-    null;
 
   return (
-    <div className="flex items-center gap-2">
-      {announcement?.status === "published" && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handlePublishToWordPress}
+    <div className="flex flex-wrap gap-2 items-center">
+      {status !== "published" && (
+        <Button 
+          onClick={publishAnnouncement}
           disabled={isPublishing}
+          className="bg-green-600 hover:bg-green-700"
         >
           {isPublishing ? (
-            <>Traitement...</>
-          ) : isPublishedToWordPress ? (
-            <>Republier sur WordPress</>
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Publication...
+            </>
           ) : (
-            <>Publier sur WordPress</>
+            <>
+              <Send className="mr-2 h-4 w-4" />
+              Publier
+            </>
           )}
         </Button>
       )}
 
-      {/* Affiche le lien WordPress si l'annonce est publiée sur WordPress */}
-      {isPublishedToWordPress && (
-        <Button variant="outline" size="sm" asChild>
-          <a href={wordPressUrl} target="_blank" rel="noopener noreferrer">
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Voir sur WordPress
-          </a>
-        </Button>
-      )}
-
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setIsEditing(true)}>
-            <Pencil className="h-4 w-4 mr-2" />
-            Modifier
-          </DropdownMenuItem>
-          
-          <DropdownMenuSeparator />
-          
-          <DropdownMenuItem
-            onClick={() => setIsDeleteDialogOpen(true)}
-            className="text-destructive focus:text-destructive"
-          >
-            <Trash className="h-4 w-4 mr-2" />
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="destructive">
+            <Trash2 className="mr-2 h-4 w-4" />
             Supprimer
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          </Button>
+        </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Cette action ne peut pas être annulée. L'annonce sera définitivement supprimée.
+              Cette action ne peut pas être annulée. Cela supprimera définitivement cette annonce.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive">
-              Supprimer
+            <AlertDialogAction 
+              onClick={deleteAnnouncement}
+              className="bg-destructive hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Suppression...
+                </>
+              ) : (
+                "Supprimer"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

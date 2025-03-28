@@ -71,10 +71,11 @@ const WordPressManagement = () => {
         <AccessDenied />
       ) : (
         <AnimatedContainer delay={200}>
-          <div className="max-w-5xl mx-auto">
+          <div className="w-full">
             <WordPressConfigList
               configs={configs}
               isLoading={isLoading}
+              isSubmitting={isSubmitting}
               onUpdateConfig={handleUpdateConfig}
               onDeleteConfig={deleteConfig}
             />

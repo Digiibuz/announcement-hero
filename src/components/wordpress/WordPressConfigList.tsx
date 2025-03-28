@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import WordPressConnectionStatus from "./WordPressConnectionStatus";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 interface WordPressConfigListProps {
   configs: WordPressConfig[];
@@ -43,6 +44,7 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
 }) => {
   const [configToDelete, setConfigToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const isMobile = useMediaQuery("(max-width: 640px)");
 
   const handleDeleteConfirm = async () => {
     if (!configToDelete) return;
@@ -82,10 +84,10 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
       {configs.map((config) => (
         <Card key={config.id} className="overflow-hidden">
           <CardHeader className="bg-muted/20 pb-4">
-            <div className="flex justify-between items-start">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
               <div>
-                <CardTitle>{config.name}</CardTitle>
-                <CardDescription className="mt-1">
+                <CardTitle className="break-words">{config.name}</CardTitle>
+                <CardDescription className="mt-1 break-all">
                   <a 
                     href={config.site_url} 
                     target="_blank" 
@@ -103,7 +105,7 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
           </CardHeader>
           
           <CardContent className="pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <h4 className="text-sm font-medium mb-1">Nom d'utilisateur (App)</h4>
                 <div className="text-sm text-muted-foreground">
@@ -130,7 +132,7 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
             </div>
           </CardContent>
           
-          <CardFooter className="border-t bg-muted/10 pt-4 flex justify-end gap-2">
+          <CardFooter className="border-t bg-muted/10 pt-4 flex flex-col sm:flex-row sm:justify-end gap-2">
             <WordPressConfigForm
               config={config}
               onSubmit={(data) => onUpdateConfig(config.id, data)}
@@ -139,7 +141,7 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
               dialogDescription="Mettez à jour les informations de configuration."
               isSubmitting={isSubmitting}
               trigger={
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className={`${isMobile ? 'w-full' : ''}`}>
                   <Pencil className="h-4 w-4 mr-1" />
                   Modifier
                 </Button>
@@ -148,7 +150,12 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
             
             <AlertDialog open={configToDelete === config.id} onOpenChange={(open) => !open && setConfigToDelete(null)}>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" onClick={() => setConfigToDelete(config.id)}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setConfigToDelete(config.id)}
+                  className={`${isMobile ? 'w-full' : ''}`}
+                >
                   <Trash2 className="h-4 w-4 mr-1" />
                   Supprimer
                 </Button>
@@ -161,11 +168,12 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
                     de nos serveurs.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                  <AlertDialogCancel className={`${isMobile ? 'w-full' : ''}`}>Annuler</AlertDialogCancel>
                   <AlertDialogAction 
                     onClick={handleDeleteConfirm}
                     disabled={isDeleting}
+                    className={`${isMobile ? 'w-full' : ''}`}
                   >
                     {isDeleting ? (
                       <>
