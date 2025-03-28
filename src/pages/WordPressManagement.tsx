@@ -22,14 +22,11 @@ const WordPressManagement = () => {
   const {
     configs,
     isLoading,
-    isCreating,
-    isTesting,
-    isDeleting,
-    error,
+    isSubmitting,
+    error: configError,
     createConfig,
     updateConfig,
     deleteConfig,
-    testConnection,
     fetchConfigs,
   } = useWordPressConfigs();
 
@@ -54,7 +51,7 @@ const WordPressManagement = () => {
         </DialogHeader>
         <WordPressConfigForm
           onSubmit={handleCreateConfig}
-          isLoading={isCreating}
+          isSubmitting={isSubmitting}
           onCancel={() => setIsDialogOpen(false)}
         />
       </DialogContent>
@@ -71,9 +68,6 @@ const WordPressManagement = () => {
             <WordPressConfigList
               configs={configs}
               isLoading={isLoading}
-              isTesting={isTesting}
-              isDeleting={isDeleting}
-              onTestConnection={testConnection}
               onUpdateConfig={updateConfig}
               onDeleteConfig={deleteConfig}
               onConfigCreated={fetchConfigs}

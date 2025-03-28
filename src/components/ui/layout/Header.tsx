@@ -20,7 +20,7 @@ const Header = () => {
           <div className="flex items-center">
             <Link to="/" className="flex items-center">
               <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">
-                DiviAnnounce
+                Announcement Manager
               </span>
             </Link>
           </div>

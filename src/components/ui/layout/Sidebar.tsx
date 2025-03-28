@@ -67,7 +67,7 @@ const Sidebar = () => {
       <div className="flex h-16 items-center px-6 border-b border-border">
         <Link to="/dashboard" className="flex items-center">
           <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">
-            DiviAnnounce
+            Announcement Manager
           </span>
         </Link>
       </div>
@@ -161,7 +161,7 @@ const Sidebar = () => {
         <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between h-16 px-4 bg-background/90 backdrop-blur-sm border-b border-border">
           <Link to="/dashboard" className="flex items-center">
             <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">
-              DiviAnnounce
+              Announcement Manager
             </span>
           </Link>
           
