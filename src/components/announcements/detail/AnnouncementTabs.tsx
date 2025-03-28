@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Pencil } from "lucide-react";
+import { Pencil, FileEdit } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import AnnouncementPreview from "@/components/announcements/AnnouncementPreview";
 import AnnouncementForm from "@/components/announcements/AnnouncementForm";
@@ -26,6 +26,8 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
   setIsEditing,
   handleSubmit,
 }) => {
+  const isDraft = announcement?.status === 'draft';
+  
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab}>
       <TabsList>
@@ -37,17 +39,29 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
       </TabsList>
       <TabsContent value="preview">
         {announcement && (
-          <AnnouncementPreview data={{
-            title: announcement.title,
-            description: announcement.description || "",
-            category: announcement.wordpress_category_id || "",
-            publishDate: announcement.publish_date ? new Date(announcement.publish_date) : undefined,
-            status: announcement.status,
-            images: announcement.images || [],
-            seoTitle: announcement.seo_title,
-            seoDescription: announcement.seo_description,
-            seoSlug: announcement.seo_slug,
-          }} />
+          <>
+            {isDraft && (
+              <Alert className="mb-4 bg-amber-50 border-amber-200">
+                <AlertDescription className="flex items-center gap-2">
+                  <FileEdit className="h-4 w-4" />
+                  <span>
+                    Cette annonce est en mode brouillon. Modifiez-la pour finaliser le contenu avant publication.
+                  </span>
+                </AlertDescription>
+              </Alert>
+            )}
+            <AnnouncementPreview data={{
+              title: announcement.title,
+              description: announcement.description || "",
+              category: announcement.wordpress_category_id || "",
+              publishDate: announcement.publish_date ? new Date(announcement.publish_date) : undefined,
+              status: announcement.status,
+              images: announcement.images || [],
+              seoTitle: announcement.seo_title,
+              seoDescription: announcement.seo_description,
+              seoSlug: announcement.seo_slug,
+            }} />
+          </>
         )}
       </TabsContent>
       <TabsContent value="edit">

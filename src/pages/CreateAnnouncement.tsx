@@ -11,7 +11,6 @@ import { Announcement } from "@/types/announcement";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
 import { ArrowLeft, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useMediaQuery } from "@/hooks/use-media-query";
 
 const CreateAnnouncement = () => {
@@ -56,8 +55,7 @@ const CreateAnnouncement = () => {
       // If status is published or scheduled, try to publish to WordPress
       let wordpressResult = {
         success: true,
-        message: "",
-        wordpressPostId: undefined
+        message: ""
       };
       
       if ((data.status === 'published' || data.status === 'scheduled') && data.wordpressCategory && user?.id) {

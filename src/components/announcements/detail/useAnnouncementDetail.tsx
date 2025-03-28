@@ -25,6 +25,14 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
     fetchAnnouncement();
   }, [id]);
 
+  useEffect(() => {
+    // Automatically switch to edit mode when viewing a draft announcement
+    if (announcement && announcement.status === 'draft' && !isEditing) {
+      setIsEditing(true);
+      setActiveTab("edit");
+    }
+  }, [announcement]);
+
   const fetchAnnouncement = async () => {
     try {
       setIsLoading(true);

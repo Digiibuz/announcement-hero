@@ -4,221 +4,211 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Announcement } from "@/types/announcement";
 
-interface PublishToWordPressResult {
+export interface PublishToWordPressResult {
   success: boolean;
   message: string;
   wordpressPostId?: number;
 }
 
-interface DeleteFromWordPressResult {
-  success: boolean;
-  message: string;
-}
-
 export const useWordPressPublishing = () => {
   const [isPublishing, setIsPublishing] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
-  const publishToWordPress = async (
-    announcement: Announcement, 
-    wpCategoryId: string,
-    userId: string
-  ): Promise<PublishToWordPressResult> => {
-    if (!userId) {
-      console.error("No user ID provided");
-      return { 
-        success: false, 
-        message: "Utilisateur non identifié" 
-      };
-    }
-
+  const getWordPressConfig = async (userId: string, wordpressConfigId?: string) => {
     try {
-      setIsPublishing(true);
-      console.log("Récupération de la configuration WordPress...");
-      
-      // Get WordPress config from the user's profile
-      const { data: userProfile, error: profileError } = await supabase
+      // Get user profile to find related WordPress config
+      const { data: userProfile, error: userError } = await supabase
         .from('profiles')
-        .select('wordpress_config_id')
+        .select('*')
         .eq('id', userId)
         .single();
 
-      if (profileError) {
-        console.error("Erreur lors de la récupération du profil utilisateur:", profileError);
-        throw new Error("Profil utilisateur non trouvé");
+      if (userError) throw userError;
+
+      // Get WordPress configuration ID
+      const configId = wordpressConfigId || userProfile.wordpress_config_id;
+      
+      if (!configId) {
+        throw new Error("Aucune configuration WordPress associée à cet utilisateur");
       }
 
-      if (!userProfile?.wordpress_config_id) {
-        console.error("Configuration WordPress introuvable pour cet utilisateur");
-        throw new Error("Configuration WordPress introuvable");
-      }
-      
-      // Get WordPress config
-      const { data: wpConfig, error: wpConfigError } = await supabase
+      // Get WordPress configuration
+      const { data: wordpressConfig, error: configError } = await supabase
         .from('wordpress_configs')
-        .select('site_url, app_username, app_password')
-        .eq('id', userProfile.wordpress_config_id)
+        .select('*')
+        .eq('id', configId)
         .single();
 
-      if (wpConfigError) {
-        console.error("Erreur lors de la récupération de la configuration WordPress:", wpConfigError);
-        throw wpConfigError;
-      }
+      if (configError) throw configError;
       
-      if (!wpConfig) {
-        console.error("Configuration WordPress non trouvée");
-        throw new Error("WordPress configuration not found");
-      }
+      return wordpressConfig;
+    } catch (error) {
+      console.error("Error getting WordPress config:", error);
+      throw error;
+    }
+  };
 
-      console.log("Configuration WordPress récupérée:", {
-        site_url: wpConfig.site_url,
-        hasAppCredentials: !!(wpConfig.app_username && wpConfig.app_password),
-      });
+  const formatAnnouncementForWordPress = (announcement: Announcement) => {
+    // Format the announcement data for WordPress
+    // Handling the publishing date for scheduled posts
+    let date = undefined;
+    if (announcement.status === 'scheduled' && announcement.publish_date) {
+      date = new Date(announcement.publish_date).toISOString();
+    }
 
-      // Ensure site_url has proper format
-      const siteUrl = wpConfig.site_url.endsWith('/')
-        ? wpConfig.site_url.slice(0, -1)
-        : wpConfig.site_url;
-      
-      // Construct the WordPress API URL for posts
-      const apiUrl = `${siteUrl}/wp-json/wp/v2/posts`;
-      console.log("URL de l'API WordPress:", apiUrl);
-      
-      // Format the content correctly
-      const content = announcement.description || "";
-      
-      // Determine publication status
-      let status = 'draft';
-      if (announcement.status === 'published') {
-        status = 'publish';
-      } else if (announcement.status === 'scheduled' && announcement.publish_date) {
-        status = 'future';
+    const status = announcement.status === 'published' ? 'publish' : 
+                  announcement.status === 'scheduled' ? 'future' : 'draft';
+    
+    // Create basic post data
+    const postData: any = {
+      title: announcement.title,
+      content: announcement.description || "",
+      status: status,
+      categories: [parseInt(announcement.wordpress_category_id || "0")],
+    };
+
+    // Add date for scheduled posts
+    if (date && status === 'future') {
+      postData.date = date;
+    }
+
+    // Add SEO data if available
+    if (announcement.seo_title) {
+      postData.yoast_title = announcement.seo_title;
+    }
+    
+    if (announcement.seo_description) {
+      postData.yoast_meta = announcement.seo_description;
+    }
+    
+    if (announcement.seo_slug) {
+      postData.slug = announcement.seo_slug;
+    }
+    
+    return postData;
+  };
+
+  const attachImagesToWordPress = async (
+    postId: number, 
+    images: string[], 
+    siteUrl: string, 
+    username: string, 
+    password: string
+  ) => {
+    try {
+      if (!images || images.length === 0) {
+        return { success: true, message: "No images to attach" };
       }
       
-      // Prepare post data with Yoast SEO meta fields based on correct API fields
-      // Using the fields from the provided image: wpseo_title and wpseo_metadesc
-      const postData: any = {
-        title: announcement.title,
-        content: content,
-        status: status,
-        categories: [parseInt(wpCategoryId)],
-        date: announcement.status === 'scheduled' ? announcement.publish_date : undefined,
-        meta: {
-          // Using the filter/field names from the provided image
-          wpseo_title: announcement.seo_title || announcement.title,
-          wpseo_metadesc: announcement.seo_description || "",
-          _yoast_wpseo_focuskw: announcement.title,
-        },
-        // Add slug if available
-        slug: announcement.seo_slug || undefined
-      };
-      
-      console.log("Données de la publication:", {
-        title: postData.title,
-        status: postData.status,
-        categoryId: wpCategoryId,
-        hasDate: !!postData.date,
-        seoTitle: postData.meta.wpseo_title,
-        seoDescription: postData.meta.wpseo_metadesc,
-        slug: postData.slug
-      });
-      
-      // Prepare headers with authentication
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      
-      // Vérifier que nous avons des identifiants d'application
-      if (wpConfig.app_username && wpConfig.app_password) {
-        // Application Password Format: "Basic base64(username:password)"
-        const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
-        headers['Authorization'] = `Basic ${basicAuth}`;
-        console.log("Utilisation de l'authentification par Application Password");
-      } else {
-        throw new Error("Aucune méthode d'authentification disponible pour WordPress. Veuillez configurer les identifiants d'Application Password.");
-      }
-      
-      // Handle featured image (if available)
-      if (announcement.images && announcement.images.length > 0) {
-        // Get the first image URL as the featured image
-        const featuredImageUrl = announcement.images[0];
-        console.log("Image mise en avant URL:", featuredImageUrl);
+      // Process each image
+      for (const imageUrl of images) {
+        // Get image data
+        const imageResponse = await fetch(imageUrl);
+        const blob = await imageResponse.blob();
         
-        // First, create the media item in WordPress
-        try {
-          console.log("Téléchargement de l'image mise en avant vers WordPress...");
-          
-          // Fetch the image file from the URL
-          const imageResponse = await fetch(featuredImageUrl);
-          if (!imageResponse.ok) {
-            throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
-          }
-          
-          const imageBlob = await imageResponse.blob();
-          
-          // Extract the filename from the URL
-          const urlParts = featuredImageUrl.split('/');
-          const fileName = urlParts[urlParts.length - 1];
-          
-          // Create a new FormData object and append the image
-          const formData = new FormData();
-          formData.append('file', imageBlob, fileName);
-          
-          // POST the image to WordPress media endpoint
-          const mediaResponse = await fetch(`${siteUrl}/wp-json/wp/v2/media`, {
-            method: 'POST',
-            headers: {
-              'Authorization': headers['Authorization'],
-              // Content-Type is set automatically by the browser with FormData
-            },
-            body: formData
-          });
-          
-          if (!mediaResponse.ok) {
-            const errorText = await mediaResponse.text();
-            console.error("Erreur lors du téléversement de l'image:", errorText);
-            throw new Error(`Failed to upload featured image: ${mediaResponse.status} ${mediaResponse.statusText}`);
-          }
-          
-          const mediaData = await mediaResponse.json();
-          console.log("Image téléversée avec succès sur WordPress, ID:", mediaData.id);
-          
-          // Set the featured image ID in the post data
-          postData.featured_media = mediaData.id;
-        } catch (mediaError: any) {
-          console.error("Erreur lors de la gestion de l'image mise en avant:", mediaError);
-          // Continue with post creation even if image upload fails
-          console.log("Continuation de la création de l'article sans image mise en avant");
+        // Create form data
+        const formData = new FormData();
+        formData.append('file', blob, `image_${Date.now()}.jpg`);
+        
+        // Upload to WordPress
+        const uploadResponse = await fetch(`${siteUrl}/wp-json/wp/v2/media`, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Basic ' + btoa(`${username}:${password}`),
+          },
+          body: formData,
+        });
+        
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text();
+          console.error("Error uploading image:", errorText);
+          continue; // Try the next image
         }
+        
+        const mediaData = await uploadResponse.json();
+        
+        // Attach image to post
+        await fetch(`${siteUrl}/wp-json/wp/v2/posts/${postId}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Basic ' + btoa(`${username}:${password}`),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            featured_media: mediaData.id,
+          }),
+        });
       }
       
-      console.log("Envoi de la requête à WordPress...");
+      return { success: true, message: "Images attached successfully" };
+    } catch (error) {
+      console.error("Error attaching images:", error);
+      return { success: false, message: "Error attaching images" };
+    }
+  };
+  
+  const publishToWordPress = async (
+    announcement: Announcement, 
+    categoryId: string, 
+    userId: string
+  ): Promise<PublishToWordPressResult> => {
+    setIsPublishing(true);
+    
+    try {
+      if (!userId) {
+        return { success: false, message: "User ID is required" };
+      }
       
-      // Send request to WordPress
-      const response = await fetch(apiUrl, {
+      // Ensure the announcement has the WordPress category ID
+      const announcementWithCategory = {
+        ...announcement,
+        wordpress_category_id: categoryId
+      };
+      
+      // Get WordPress configuration
+      const wordpressConfig = await getWordPressConfig(userId);
+      
+      if (!wordpressConfig) {
+        return { success: false, message: "Configuration WordPress introuvable" };
+      }
+      
+      if (!wordpressConfig.site_url || !wordpressConfig.app_username || !wordpressConfig.app_password) {
+        return { 
+          success: false, 
+          message: "Configuration WordPress incomplète (URL du site, nom d'utilisateur ou mot de passe manquant)" 
+        };
+      }
+      
+      // Format the announcement data for WordPress
+      const postData = formatAnnouncementForWordPress(announcementWithCategory);
+      
+      const url = `${wordpressConfig.site_url}/wp-json/wp/v2/posts`;
+      const username = wordpressConfig.app_username;
+      const password = wordpressConfig.app_password;
+      
+      console.log("Publication sur WordPress:", { url, postData });
+      
+      // Send the POST request to WordPress
+      const response = await fetch(url, {
         method: 'POST',
-        headers: headers,
-        body: JSON.stringify(postData)
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Basic ' + btoa(`${username}:${password}`),
+        },
+        body: JSON.stringify(postData),
       });
-
-      console.log("Statut de la réponse:", response.status);
       
-      const responseText = await response.text();
-      console.log("Réponse texte:", responseText);
-      
-      // Try to parse as JSON if possible
-      let responseData;
-      try {
-        responseData = JSON.parse(responseText);
-      } catch (e) {
-        // Not JSON, keep as text
-        responseData = responseText;
-      }
-
+      // Check if the request was successful
       if (!response.ok) {
-        console.error("Erreur de publication WordPress:", responseData);
-        throw new Error(`Failed to publish to WordPress: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        console.error("Error publishing to WordPress:", errorText);
+        return { 
+          success: false, 
+          message: `Erreur de publication WordPress: ${response.status} ${response.statusText}` 
+        };
       }
+      
+      // Get the response data
+      const responseData = await response.json();
 
       console.log("Publication WordPress réussie:", responseData);
       
@@ -241,164 +231,109 @@ export const useWordPressPublishing = () => {
         console.error("Pas d'ID WordPress reçu dans la réponse");
       }
       
+      // Attach images if available
+      if (announcement.images && announcement.images.length > 0 && responseData.id) {
+        await attachImagesToWordPress(
+          responseData.id, 
+          announcement.images, 
+          wordpressConfig.site_url,
+          username,
+          password
+        );
+      }
+      
       return { 
         success: true, 
         message: "Publication WordPress réussie",
-        wordpressPostId: responseData?.id 
+        wordpressPostId: responseData.id
       };
     } catch (error: any) {
       console.error("Error publishing to WordPress:", error);
       return { 
         success: false, 
-        message: `Erreur lors de la publication WordPress: ${error.message}` 
+        message: `Erreur: ${error.message}` 
       };
     } finally {
       setIsPublishing(false);
     }
   };
-
-  const deleteFromWordPress = async (
-    announcementId: string,
-    wordpressPostId: number,
-    userId: string
-  ): Promise<DeleteFromWordPressResult> => {
-    if (!userId) {
-      console.error("No user ID provided");
-      return { 
-        success: false, 
-        message: "Utilisateur non identifié" 
-      };
-    }
-
-    if (!wordpressPostId) {
-      console.error("No WordPress post ID provided", wordpressPostId);
-      return {
-        success: false,
-        message: "Aucun ID de post WordPress fourni"
-      };
-    }
-
+  
+  const deleteFromWordPress = async (userId: string, wordpressPostId?: number | null): Promise<PublishToWordPressResult> => {
     try {
-      setIsDeleting(true);
-      console.log("Récupération de la configuration WordPress...");
-      
-      // Get WordPress config from the user's profile
-      const { data: userProfile, error: profileError } = await supabase
-        .from('profiles')
-        .select('wordpress_config_id')
-        .eq('id', userId)
-        .single();
-
-      if (profileError) {
-        console.error("Erreur lors de la récupération du profil utilisateur:", profileError);
-        throw new Error("Profil utilisateur non trouvé");
+      if (!userId) {
+        return { 
+          success: false, 
+          message: "Utilisateur non identifié" 
+        };
       }
 
-      if (!userProfile?.wordpress_config_id) {
-        console.error("Configuration WordPress introuvable pour cet utilisateur");
-        throw new Error("Configuration WordPress introuvable");
+      if (!wordpressPostId) {
+        console.error("No WordPress post ID provided", wordpressPostId);
+        return {
+          success: false,
+          message: "Aucun ID de post WordPress fourni"
+        };
       }
       
-      // Get WordPress config
-      const { data: wpConfig, error: wpConfigError } = await supabase
-        .from('wordpress_configs')
-        .select('site_url, app_username, app_password')
-        .eq('id', userProfile.wordpress_config_id)
-        .single();
-
-      if (wpConfigError) {
-        console.error("Erreur lors de la récupération de la configuration WordPress:", wpConfigError);
-        throw wpConfigError;
+      // Get WordPress configuration
+      const wordpressConfig = await getWordPressConfig(userId);
+      
+      if (!wordpressConfig) {
+        return { success: false, message: "Configuration WordPress introuvable" };
       }
       
-      if (!wpConfig) {
-        console.error("Configuration WordPress non trouvée");
-        throw new Error("WordPress configuration not found");
-      }
-
-      console.log("Configuration WordPress récupérée:", {
-        site_url: wpConfig.site_url,
-        hasAppCredentials: !!(wpConfig.app_username && wpConfig.app_password),
-      });
-
-      // Ensure site_url has proper format
-      const siteUrl = wpConfig.site_url.endsWith('/')
-        ? wpConfig.site_url.slice(0, -1)
-        : wpConfig.site_url;
-      
-      // Construct the WordPress API URL for posts
-      const apiUrl = `${siteUrl}/wp-json/wp/v2/posts/${wordpressPostId}`;
-      console.log("URL de suppression WordPress:", apiUrl);
-      
-      // Prepare headers with authentication
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      
-      // Vérifier que nous avons des identifiants d'application
-      if (wpConfig.app_username && wpConfig.app_password) {
-        // Application Password Format: "Basic base64(username:password)"
-        const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
-        headers['Authorization'] = `Basic ${basicAuth}`;
-        console.log("Utilisation de l'authentification par Application Password");
-      } else {
-        throw new Error("Aucune méthode d'authentification disponible pour WordPress. Veuillez configurer les identifiants d'Application Password.");
+      if (!wordpressConfig.site_url || !wordpressConfig.app_username || !wordpressConfig.app_password) {
+        return { 
+          success: false, 
+          message: "Configuration WordPress incomplète" 
+        };
       }
       
-      console.log("Envoi de la requête de suppression à WordPress...");
+      const url = `${wordpressConfig.site_url}/wp-json/wp/v2/posts/${wordpressPostId}?force=true`;
+      const username = wordpressConfig.app_username;
+      const password = wordpressConfig.app_password;
       
-      // Send DELETE request to WordPress
-      const response = await fetch(apiUrl, {
+      console.log("Suppression du post WordPress:", { url, wordpressPostId });
+      
+      // Send the DELETE request to WordPress
+      const response = await fetch(url, {
         method: 'DELETE',
-        headers: headers
+        headers: {
+          'Authorization': 'Basic ' + btoa(`${username}:${password}`),
+        },
       });
-
-      console.log("Statut de la réponse de suppression:", response.status);
       
-      const responseText = await response.text();
-      console.log("Réponse texte:", responseText);
-      
-      // Try to parse as JSON if possible
-      let responseData;
-      try {
-        responseData = JSON.parse(responseText);
-      } catch (e) {
-        // Not JSON, keep as text
-        responseData = responseText;
-      }
-
+      // Check if the request was successful
       if (!response.ok) {
-        console.error("Erreur de suppression WordPress:", responseData);
-        throw new Error(`Failed to delete from WordPress: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        console.error("Error deleting WordPress post:", errorText);
+        return { 
+          success: false, 
+          message: `Erreur de suppression WordPress: ${response.status} ${response.statusText}` 
+        };
       }
-
-      console.log("Suppression WordPress réussie:", responseData);
       
-      // Mettre à jour l'annonce dans Supabase pour supprimer l'ID WordPress
-      await supabase
-        .from('announcements')
-        .update({ wordpress_post_id: null })
-        .eq('id', announcementId);
+      // Get the response data
+      const responseData = await response.json();
+      
+      console.log("Suppression WordPress réussie:", responseData);
       
       return { 
         success: true, 
-        message: "Suppression WordPress réussie"
+        message: "Suppression WordPress réussie" 
       };
     } catch (error: any) {
       console.error("Error deleting from WordPress:", error);
       return { 
         success: false, 
-        message: `Erreur lors de la suppression WordPress: ${error.message}` 
+        message: `Erreur: ${error.message}` 
       };
-    } finally {
-      setIsDeleting(false);
     }
   };
 
   return {
     publishToWordPress,
     deleteFromWordPress,
-    isPublishing,
-    isDeleting
+    isPublishing
   };
 };
