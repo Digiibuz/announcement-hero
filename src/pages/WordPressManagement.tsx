@@ -66,8 +66,11 @@ const WordPressManagement = () => {
     </Dialog>
   ) : null;
 
+  // Change page title based on user role
+  const pageTitle = isClient ? "Mon site" : "Gestion WordPress";
+
   return (
-    <PageLayout title="Gestion WordPress" titleAction={titleAction}>
+    <PageLayout title={pageTitle} titleAction={titleAction}>
       {!(isAdmin || isClient) ? (
         <AccessDenied />
       ) : (
