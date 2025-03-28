@@ -5,9 +5,11 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { UseFormReturn } from "react-hook-form";
+
 interface ImageUploaderProps {
   form: UseFormReturn<any>;
 }
+
 const ImageUploader = ({
   form
 }: ImageUploaderProps) => {
@@ -16,7 +18,6 @@ const ImageUploader = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  // Fonction pour compresser et convertir l'image en WebP
   const compressAndConvertToWebp = async (file: File): Promise<File> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -25,10 +26,6 @@ const ImageUploader = ({
         const img = new Image();
         img.src = event.target?.result as string;
         img.onload = () => {
-          // Créer un canvas pour le redimensionnement et la conversion
-          const canvas = document.createElement('canvas');
-
-          // Définir une taille maximale raisonnable (1920px) tout en conservant le ratio
           const MAX_WIDTH = 1920;
           const MAX_HEIGHT = 1920;
           let width = img.width;
@@ -44,27 +41,22 @@ const ImageUploader = ({
               height = MAX_HEIGHT;
             }
           }
+          const canvas = document.createElement('canvas');
           canvas.width = width;
           canvas.height = height;
-
-          // Dessiner l'image redimensionnée sur le canvas
           const ctx = canvas.getContext('2d');
           ctx?.drawImage(img, 0, 0, width, height);
-
-          // Convertir en WebP avec une qualité de 80%
           canvas.toBlob(blob => {
             if (!blob) {
               reject(new Error("La conversion a échoué"));
               return;
             }
-
-            // Créer un nouveau fichier au format WebP avec le même nom mais extension changée
             const fileName = file.name.split('.')[0] + '.webp';
             const newFile = new File([blob], fileName, {
               type: 'image/webp'
             });
             resolve(newFile);
-          }, 'image/webp', 0.8); // 0.8 = 80% de qualité
+          }, 'image/webp', 0.8);
         };
         img.onerror = () => {
           reject(new Error("Erreur lors du chargement de l'image"));
@@ -75,19 +67,18 @@ const ImageUploader = ({
       };
     });
   };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
     try {
       setIsUploading(true);
 
-      // Compresser et convertir chaque image avant l'upload
       const processedFiles = await Promise.all(Array.from(files).map(async file => {
         try {
           return await compressAndConvertToWebp(file);
         } catch (error) {
           console.error("Erreur de compression:", error);
-          // En cas d'erreur de compression, utiliser le fichier original
           return file;
         }
       }));
@@ -99,11 +90,12 @@ const ImageUploader = ({
       console.error("Error uploading images:", error);
       toast.error("Erreur lors du téléversement des images: " + error.message);
     } finally {
-      setIsUploading(false); // Fixed: was incorrectly setIsSubmitting
+      setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
       if (cameraInputRef.current) cameraInputRef.current.value = '';
     }
   };
+
   const uploadImages = async (files: File[]): Promise<string[]> => {
     const uploadPromises = files.map(async file => {
       const fileExt = file.name.split('.').pop();
@@ -127,21 +119,25 @@ const ImageUploader = ({
     });
     return Promise.all(uploadPromises);
   };
+
   const removeImage = (indexToRemove: number) => {
     const newImages = uploadedImages.filter((_, index) => index !== indexToRemove);
     setUploadedImages(newImages);
     form.setValue('images', newImages);
   };
+
   const triggerFileUpload = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
+
   const triggerCameraUpload = () => {
     if (cameraInputRef.current) {
       cameraInputRef.current.click();
     }
   };
+
   return <div>
       <Label>Images</Label>
       <div className="mt-2 border-2 border-dashed rounded-lg p-6">
@@ -184,4 +180,5 @@ const ImageUploader = ({
       </div>
     </div>;
 };
+
 export default ImageUploader;

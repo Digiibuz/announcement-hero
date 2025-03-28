@@ -12,6 +12,7 @@ import { ArrowLeft, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useMediaQuery } from "@/hooks/use-media-query";
+
 const CreateAnnouncement = () => {
   const navigate = useNavigate();
   const {
@@ -23,6 +24,7 @@ const CreateAnnouncement = () => {
     isPublishing
   } = useWordPressPublishing();
   const isMobile = useMediaQuery("(max-width: 767px)");
+
   const handleSubmit = async (data: any) => {
     try {
       setIsSubmitting(true);
@@ -74,6 +76,7 @@ const CreateAnnouncement = () => {
       setIsSubmitting(false);
     }
   };
+
   return <PageLayout title="Créer une nouvelle annonce" titleAction={<Button variant="outline" size="sm" onClick={() => navigate("/announcements")} className="flex items-center gap-2">
           <ArrowLeft className="h-4 w-4" />
           Retour aux annonces
@@ -94,4 +97,5 @@ const CreateAnnouncement = () => {
       </AnimatedContainer>
     </PageLayout>;
 };
+
 export default CreateAnnouncement;

@@ -13,12 +13,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
+
 export interface AnnouncementFormProps {
   onSubmit?: (data: AnnouncementFormData) => void;
   isSubmitting?: boolean;
   onCancel?: () => void;
   isMobile?: boolean;
 }
+
 export interface AnnouncementFormData {
   title: string;
   description: string;
@@ -30,6 +32,7 @@ export interface AnnouncementFormData {
   seoDescription: string;
   seoSlug: string;
 }
+
 const AnnouncementForm = ({
   onSubmit,
   isSubmitting = false,
@@ -59,6 +62,7 @@ const AnnouncementForm = ({
     setValue
   } = form;
   const title = watch("title");
+
   useEffect(() => {
     if (title) {
       const normalizedTitle = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
@@ -68,6 +72,7 @@ const AnnouncementForm = ({
       }
     }
   }, [title, setValue]);
+
   const optimizeSeoContent = async (field: 'seoTitle' | 'seoDescription') => {
     try {
       const currentTitle = form.getValues('title');
@@ -84,6 +89,7 @@ const AnnouncementForm = ({
       console.error(`Error optimizing ${field}:`, error);
     }
   };
+
   const handleCancel = () => {
     if (onCancel) {
       onCancel();
@@ -91,12 +97,14 @@ const AnnouncementForm = ({
       navigate('/announcements');
     }
   };
+
   const getCardStyles = (isSectionCard = false) => {
     if (isMobile) {
       return isSectionCard ? "border-0 border-b border-border shadow-none rounded-none bg-transparent mb-3 last:border-b-0 last:mb-0" : "border-0 shadow-none bg-transparent";
     }
     return "border shadow-sm";
   };
+
   return <div className="space-y-6">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit || (() => {}))} className="space-y-6">
@@ -209,7 +217,7 @@ const AnnouncementForm = ({
                           </Button>
                         </div>
                         <FormControl>
-                          <Textarea placeholder="Description courte qui apparaîtra dans les résultats de recherche" className="resize-none min-h-[100px] bg-slate-100" />
+                          <Textarea placeholder="Description courte qui apparaîtra dans les résultats de recherche" className="resize-none min-h-[100px]" {...field} />
                         </FormControl>
                         <FormDescription>
                           Idéalement entre 120 et 158 caractères.
@@ -273,4 +281,5 @@ const AnnouncementForm = ({
       </Form>
     </div>;
 };
+
 export default AnnouncementForm;
