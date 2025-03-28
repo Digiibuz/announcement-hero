@@ -3,6 +3,7 @@
 .rich-text-editor {
   line-height: 1.5;
   word-break: break-word;
+  white-space: pre-wrap;
 }
 
 .rich-text-editor:focus {
@@ -60,4 +61,10 @@
   content: "Entrez la description de l'annonce";
   color: #9ca3af;
   pointer-events: none;
+}
+
+/* Fixes for HTML tags in the editor */
+.rich-text-editor b, .rich-text-editor strong {
+  display: inline;
+  white-space: normal;
 }

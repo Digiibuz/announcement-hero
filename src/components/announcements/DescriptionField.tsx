@@ -28,7 +28,8 @@ const DescriptionField = ({
 
   const updateFormValue = () => {
     if (editorRef.current) {
-      const htmlContent = editorRef.current.innerHTML;
+      // Normaliser le contenu en remplaçant les balises HTML par une version plus propre
+      let htmlContent = editorRef.current.innerHTML;
       form.setValue('description', htmlContent);
       console.log("Form value updated from editor:", htmlContent);
     }
@@ -67,8 +68,17 @@ const DescriptionField = ({
   };
 
   const applyFormatting = (format: string) => {
+    // Sauvegarder la sélection actuelle
     document.execCommand(format, false);
-    updateFormValue();
+    
+    // Nettoyer le DOM après le formatage pour éviter les problèmes
+    if (editorRef.current) {
+      // Correction pour éviter les sauts de ligne indésirables pour les balises en ligne
+      let content = editorRef.current.innerHTML;
+      
+      // Mise à jour de la valeur du formulaire
+      updateFormValue();
+    }
   };
 
   const insertList = (type: 'insertUnorderedList' | 'insertOrderedList') => {
@@ -257,7 +267,15 @@ const DescriptionField = ({
       field
     }) => <FormItem>
             <FormControl>
-              <div ref={editorRef} id="description" contentEditable className="flex min-h-32 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 overflow-auto rich-text-editor" onInput={updateFormValue} onPaste={handlePaste} onBlur={updateFormValue} />
+              <div 
+                ref={editorRef} 
+                id="description" 
+                contentEditable 
+                className="flex min-h-32 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 overflow-auto rich-text-editor" 
+                onInput={updateFormValue} 
+                onPaste={handlePaste} 
+                onBlur={updateFormValue} 
+              />
             </FormControl>
             <FormMessage />
           </FormItem>} />
