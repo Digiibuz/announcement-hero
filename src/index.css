@@ -4,6 +4,10 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    font-family: 'Nunito', sans-serif;
+  }
+
   :root {
     --background: 220 33% 98%;
     --foreground: 222 47% 11%;
@@ -91,10 +95,12 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    font-family: 'Nunito', sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-medium tracking-tight;
+    font-family: 'Nunito', sans-serif;
   }
 
   h1 {

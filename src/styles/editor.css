@@ -4,6 +4,7 @@
   line-height: 1.5;
   word-break: break-word;
   white-space: pre-wrap;
+  font-family: 'Nunito', sans-serif;
 }
 
 .rich-text-editor:focus {
@@ -69,6 +70,7 @@
   color: #9ca3af;
   font-size: 0.875rem;
   pointer-events: none;
+  font-family: 'Nunito', sans-serif;
 }
 
 /* Fixes for HTML tags in the editor */
