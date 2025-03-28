@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -27,7 +28,7 @@ const Sidebar = () => {
 
   const navItems = [
     {
-      name: "Tableau de bord",
+      name: "Mon Tableau de bord",
       href: "/dashboard",
       icon: <LayoutDashboard className="h-5 w-5" />,
       isActive: pathname === "/dashboard",

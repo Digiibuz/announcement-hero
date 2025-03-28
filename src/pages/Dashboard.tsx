@@ -10,13 +10,15 @@ import {
   FileText, 
   Clock,
   ChevronRight,
-  Calendar
+  Calendar,
+  Plus
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Announcement } from "@/types/announcement";
+import { Button } from "@/components/ui/button";
 
 const stripHtmlTags = (html: string): string => {
   if (!html) return '';
@@ -164,12 +166,16 @@ const Dashboard = () => {
   };
 
   return (
-    <PageLayout title="Dashboard">
+    <PageLayout title="Mon Tableau de bord">
       <AnimatedContainer delay={100} className="mt-0">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
           <p className="text-muted-foreground">
             Bienvenue, {user?.name}
           </p>
+          <Button as={Link} to="/create" className="mt-2 sm:mt-0">
+            <Plus className="mr-2 h-4 w-4" />
+            Créer une annonce
+          </Button>
         </div>
       </AnimatedContainer>
 
