@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -58,7 +57,8 @@ const Sidebar = () => {
       adminOnly: true, // New property to indicate admin-only access
     },
     {
-      name: "Gestion WordPress",
+      // Changed the label to "Mon site" for clients, keeping "Gestion WordPress" for admins
+      name: isClient ? "Mon site" : "Gestion WordPress",
       href: "/wordpress",
       icon: <Globe className="h-5 w-5" />,
       isActive: pathname === "/wordpress",
