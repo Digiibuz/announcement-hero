@@ -7,7 +7,7 @@ import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
 import { Announcement } from "@/types/announcement";
 
 export interface ExtendedAnnouncement extends Omit<Announcement, 'wordpress_post_id'> {
-  wordpress_post_id?: number | null;
+  wordpress_post_id?: number;
   wordpress_site_url?: string;
   wordpress_published_at?: string;
 }

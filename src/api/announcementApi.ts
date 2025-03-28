@@ -124,8 +124,6 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
       console.error("Error stack:", error.stack);
       toast.error("L'annonce a été supprimée de l'application, mais pas de WordPress: " + error.message);
     }
-  } else {
-    console.log("No WordPress post ID associated with this announcement, skipping WordPress deletion");
   }
 
   // Delete the announcement from Supabase
