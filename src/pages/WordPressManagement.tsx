@@ -17,6 +17,8 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import AccessDenied from "@/components/users/AccessDenied";
 import { WordPressConfig } from "@/types/wordpress";
+import WordPressClientUsers from "@/components/wordpress/WordPressClientUsers";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const WordPressManagement = () => {
   const { isAdmin, isClient } = useAuth();
@@ -31,6 +33,7 @@ const WordPressManagement = () => {
   } = useWordPressConfigs();
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState("configs");
 
   const handleCreateConfig = async (data: any) => {
     await createConfig(data);
@@ -72,13 +75,26 @@ const WordPressManagement = () => {
       ) : (
         <AnimatedContainer delay={200}>
           <div className="w-full">
-            <WordPressConfigList
-              configs={configs}
-              isLoading={isLoading}
-              isSubmitting={isSubmitting}
-              onUpdateConfig={handleUpdateConfig}
-              onDeleteConfig={deleteConfig}
-            />
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="configs">Configurations</TabsTrigger>
+                <TabsTrigger value="clients">Utilisateurs clients</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="configs" className="w-full">
+                <WordPressConfigList
+                  configs={configs}
+                  isLoading={isLoading}
+                  isSubmitting={isSubmitting}
+                  onUpdateConfig={handleUpdateConfig}
+                  onDeleteConfig={deleteConfig}
+                />
+              </TabsContent>
+              
+              <TabsContent value="clients" className="w-full">
+                <WordPressClientUsers />
+              </TabsContent>
+            </Tabs>
           </div>
         </AnimatedContainer>
       )}
