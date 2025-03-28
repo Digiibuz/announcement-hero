@@ -173,7 +173,7 @@ const Dashboard = () => {
           <p className="text-muted-foreground">
             Bienvenue, {user?.name}
           </p>
-          <Button asChild className="mt-2 sm:mt-0">
+          <Button asChild className="mt-2 sm:mt-0 bg-digibuz-yellow text-digibuz-navy hover:bg-digibuz-yellow/90">
             <Link to="/create">
               <Plus className="mr-2 h-4 w-4" />
               Créer une annonce
