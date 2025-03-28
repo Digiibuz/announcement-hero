@@ -1,12 +1,10 @@
-
 import React from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { CalendarIcon, FolderIcon, Clock, Search, Link } from "lucide-react";
-import type { AnnouncementFormData } from "./AnnouncementForm";
 
-interface AnnouncementPreviewProps {
+export interface AnnouncementPreviewProps {
   data: {
     title: string;
     description: string;

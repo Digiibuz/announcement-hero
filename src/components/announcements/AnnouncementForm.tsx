@@ -24,9 +24,10 @@ import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 
-interface AnnouncementFormProps {
+export interface AnnouncementFormProps {
   onSubmit?: (data: AnnouncementFormData) => void;
   isSubmitting?: boolean;
+  onCancel?: () => void;
 }
 
 export interface AnnouncementFormData {
@@ -41,7 +42,7 @@ export interface AnnouncementFormData {
   seoSlug: string;
 }
 
-const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormProps) => {
+const AnnouncementForm = ({ onSubmit, isSubmitting = false, onCancel }: AnnouncementFormProps) => {
   const form = useForm<AnnouncementFormData>({
     defaultValues: {
       title: "",
@@ -136,6 +137,14 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false }: AnnouncementFormPr
       } else {
         setIsSeoDescriptionOptimizing(false);
       }
+    }
+  };
+
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel();
+    } else {
+      navigate('/announcements');
     }
   };
 

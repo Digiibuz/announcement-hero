@@ -34,6 +34,7 @@ const WordPressManagement = () => {
   const handleCreateConfig = async (data: any) => {
     await createConfig(data);
     setIsDialogOpen(false);
+    fetchConfigs(); // Call fetchConfigs after creating a new config
   };
 
   const titleAction = (isAdmin || isClient) ? (
@@ -66,9 +67,8 @@ const WordPressManagement = () => {
             <WordPressConfigList
               configs={configs}
               isLoading={isLoading}
-              onUpdateConfig={updateConfig as any}
+              onUpdateConfig={updateConfig}
               onDeleteConfig={deleteConfig}
-              onConfigCreated={fetchConfigs}
             />
           </div>
         </AnimatedContainer>
