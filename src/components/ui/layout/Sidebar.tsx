@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -46,18 +47,22 @@ const Sidebar = () => {
     },
   ];
 
+  // Modified adminItems to separate admin-only and client-accessible items
   const adminItems = [
+    // This item will only be visible to admin users, not clients
     {
       name: "Gestion utilisateurs",
       href: "/users",
       icon: <UserCog className="h-5 w-5" />,
       isActive: pathname === "/users",
+      adminOnly: true, // New property to indicate admin-only access
     },
     {
       name: "Gestion WordPress",
       href: "/wordpress",
       icon: <Globe className="h-5 w-5" />,
       isActive: pathname === "/wordpress",
+      adminOnly: false, // Both admin and client can access this
     },
   ];
 
@@ -96,22 +101,25 @@ const Sidebar = () => {
                   Administration
                 </h3>
               </li>
-              {adminItems.map((item) => (
-                <li key={item.href}>
-                  <Link to={item.href} onClick={() => isMobile && setIsOpen(false)}>
-                    <Button
-                      variant="ghost"
-                      className={cn(
-                        "w-full justify-start",
-                        item.isActive && "bg-accent text-accent-foreground"
-                      )}
-                    >
-                      {item.icon}
-                      <span className="ml-3">{item.name}</span>
-                    </Button>
-                  </Link>
-                </li>
-              ))}
+              {adminItems
+                // Filter items based on user role
+                .filter(item => isAdmin || (!item.adminOnly && isClient))
+                .map((item) => (
+                  <li key={item.href}>
+                    <Link to={item.href} onClick={() => isMobile && setIsOpen(false)}>
+                      <Button
+                        variant="ghost"
+                        className={cn(
+                          "w-full justify-start",
+                          item.isActive && "bg-accent text-accent-foreground"
+                        )}
+                      >
+                        {item.icon}
+                        <span className="ml-3">{item.name}</span>
+                      </Button>
+                    </Link>
+                  </li>
+                ))}
             </>
           )}
         </ul>
