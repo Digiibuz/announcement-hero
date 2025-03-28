@@ -342,11 +342,11 @@ const Dashboard = () => {
       </div>
 
       <FloatingActionButton 
-        position="bottom-left" 
+        position="bottom-right" 
         asChild
         showOnMobile={true}
         hideOnDesktop={true}
-        className="bg-digibuz-yellow text-digibuz-navy hover:bg-digibuz-yellow/90"
+        className="bg-digibuz-yellow text-digibuz-navy hover:bg-digibuz-yellow/90 font-bold"
       >
         <Link to="/create">
           <Plus className="mr-2 h-4 w-4" />
