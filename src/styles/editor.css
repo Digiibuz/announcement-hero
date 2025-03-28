@@ -67,6 +67,7 @@
 .rich-text-editor:empty:before {
   content: "Entrez la description de l'annonce";
   color: #9ca3af;
+  font-size: 1rem;
   pointer-events: none;
 }
 
