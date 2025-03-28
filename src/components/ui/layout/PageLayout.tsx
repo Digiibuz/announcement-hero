@@ -23,7 +23,7 @@ const PageLayout = ({ children, title, titleAction }: PageLayoutProps) => {
         <div className="container px-4 py-0">
           {(title || titleAction) && (
             <AnimatedContainer delay={100}>
-              <div className={`flex flex-col ${!isMobile ? "sm:flex-row sm:items-center sm:justify-between" : ""} mb-6 pt-4 gap-3`}>
+              <div className={`flex flex-col ${!isMobile ? "sm:flex-row sm:items-center sm:justify-between" : ""} mb-6 ${isMobile ? "pt-1" : "pt-4"} gap-3`}>
                 {title && <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>}
                 {titleAction && <div className={`${isMobile ? "w-full" : ""}`}>{titleAction}</div>}
               </div>
