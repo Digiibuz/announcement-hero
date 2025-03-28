@@ -19,6 +19,9 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
     throw new Error('Failed to fetch announcement');
   }
 
+  console.log("Announcement data:", announcement);
+  console.log("WordPress post ID:", announcement?.wordpress_post_id);
+
   // If there's a WordPress post ID, delete it from WordPress
   if (announcement && announcement.wordpress_post_id) {
     try {
@@ -33,6 +36,8 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
         console.error("Error fetching user profile:", profileError);
         throw new Error("Profil utilisateur non trouvé");
       }
+
+      console.log("User profile:", userProfile);
 
       if (!userProfile?.wordpress_config_id) {
         console.error("WordPress configuration not found for user");
@@ -56,6 +61,12 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
         throw new Error("WordPress configuration not found");
       }
 
+      console.log("WordPress config:", {
+        site_url: wpConfig.site_url,
+        hasAppUsername: !!wpConfig.app_username,
+        hasAppPassword: !!wpConfig.app_password
+      });
+
       // Ensure site_url has proper format
       const siteUrl = wpConfig.site_url.endsWith('/')
         ? wpConfig.site_url.slice(0, -1)
@@ -76,6 +87,7 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
         const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
         headers['Authorization'] = `Basic ${basicAuth}`;
         console.log("Using Application Password authentication");
+        console.log("Auth header format (not showing actual credentials):", "Basic ****");
       } else {
         throw new Error("Aucune méthode d'authentification disponible pour WordPress");
       }
@@ -83,24 +95,33 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
       console.log("Sending WordPress deletion request...");
       
       // Send DELETE request to WordPress
-      const response = await fetch(apiUrl, {
-        method: 'DELETE',
-        headers: headers
-      });
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'DELETE',
+          headers: headers
+        });
 
-      console.log("WordPress deletion response status:", response.status);
-      
-      const responseText = await response.text();
-      console.log("WordPress deletion response:", responseText);
-      
-      if (!response.ok) {
-        console.error("WordPress deletion error:", responseText);
-        toast.error("L'annonce a été supprimée de l'application, mais pas de WordPress: " + response.statusText);
-      } else {
-        console.log("WordPress post deleted successfully");
+        console.log("WordPress deletion response status:", response.status);
+        
+        const responseText = await response.text();
+        console.log("WordPress deletion response:", responseText);
+        
+        if (!response.ok) {
+          console.error("WordPress deletion error:", responseText);
+          toast.error("L'annonce a été supprimée de l'application, mais pas de WordPress: " + response.statusText);
+        } else {
+          console.log("WordPress post deleted successfully");
+        }
+      } catch (fetchError: any) {
+        console.error("Fetch error during WordPress deletion:", fetchError);
+        console.error("Fetch error message:", fetchError.message);
+        console.error("Fetch error stack:", fetchError.stack);
+        throw fetchError;
       }
     } catch (error: any) {
       console.error("Error deleting from WordPress:", error);
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
       toast.error("L'annonce a été supprimée de l'application, mais pas de WordPress: " + error.message);
     }
   }
