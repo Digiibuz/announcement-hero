@@ -1,12 +1,10 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import Header from "@/components/ui/layout/Header";
-import Sidebar from "@/components/ui/layout/Sidebar";
 import AnnouncementForm from "@/components/announcements/AnnouncementForm";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
+import PageLayout from "@/components/ui/layout/PageLayout";
 import { toast } from "sonner";
 import { Announcement } from "@/types/announcement";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
@@ -76,23 +74,16 @@ const CreateAnnouncement = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <Sidebar />
-
-      <main className="pt-16 md:pl-64">
-        <div className="container px-4 py-6">
-          <AnimatedContainer>
-            <div className="max-w-5xl mx-auto">
-              <AnnouncementForm 
-                onSubmit={handleSubmit} 
-                isSubmitting={isSubmitting || isPublishing} 
-              />
-            </div>
-          </AnimatedContainer>
+    <PageLayout title="Créer une annonce">
+      <AnimatedContainer delay={200}>
+        <div className="max-w-5xl mx-auto">
+          <AnnouncementForm 
+            onSubmit={handleSubmit} 
+            isSubmitting={isSubmitting || isPublishing} 
+          />
         </div>
-      </main>
-    </div>
+      </AnimatedContainer>
+    </PageLayout>
   );
 };
 

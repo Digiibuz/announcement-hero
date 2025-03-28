@@ -1,14 +1,12 @@
-
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import Header from "@/components/ui/layout/Header";
-import Sidebar from "@/components/ui/layout/Sidebar";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import AnnouncementList from "@/components/announcements/AnnouncementList";
 import AnnouncementFilter from "@/components/announcements/AnnouncementFilter";
+import PageLayout from "@/components/ui/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -128,41 +126,33 @@ const Announcements = () => {
     }
   };
 
+  const titleAction = (
+    <Link to="/create">
+      <Button>
+        <Plus className="h-4 w-4 mr-2" />
+        Créer une annonce
+      </Button>
+    </Link>
+  );
+
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <Sidebar />
-
-      <main className="pt-16 md:pl-64">
-        <div className="container px-4 py-6">
-          <AnimatedContainer>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-              <h1 className="text-3xl font-bold">Annonces</h1>
-              <Link to="/create">
-                <Button className="mt-4 sm:mt-0">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Créer une annonce
-                </Button>
-              </Link>
-            </div>
-
-            <div className="mb-6">
-              <AnnouncementFilter 
-                filter={filter} 
-                setFilter={setFilter} 
-              />
-            </div>
-
-            <AnnouncementList 
-              announcements={filteredAnnouncements || []} 
-              isLoading={isLoading}
-              onDelete={handleDelete}
-              viewMode={viewMode}
-            />
-          </AnimatedContainer>
+    <PageLayout title="Annonces" titleAction={titleAction}>
+      <AnimatedContainer delay={200}>
+        <div className="mb-6">
+          <AnnouncementFilter 
+            filter={filter} 
+            setFilter={setFilter} 
+          />
         </div>
-      </main>
-    </div>
+
+        <AnnouncementList 
+          announcements={filteredAnnouncements || []} 
+          isLoading={isLoading}
+          onDelete={handleDelete}
+          viewMode={viewMode}
+        />
+      </AnimatedContainer>
+    </PageLayout>
   );
 };
 
