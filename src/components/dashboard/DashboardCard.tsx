@@ -33,13 +33,13 @@ const DashboardCard = ({
     if (to) {
       return (
         <Link to={to} className="block">
-          <Card className={cn("hover-scale overflow-hidden", className)}>
+          <Card className={cn("hover-scale overflow-hidden h-full", className)}>
             {children}
           </Card>
         </Link>
       );
     }
-    return <Card className={cn("overflow-hidden", className)}>{children}</Card>;
+    return <Card className={cn("overflow-hidden h-full", className)}>{children}</Card>;
   };
 
   return (

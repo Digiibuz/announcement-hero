@@ -34,38 +34,59 @@ const Dashboard = () => {
   const { data: statsData, isLoading: isLoadingStats } = useQuery({
     queryKey: ["announcements-stats"],
     queryFn: async () => {
-      // Start with a base query that will be filtered depending on user role
-      let baseQuery = supabase.from("announcements");
+      // Get all announcements to calculate statistics
+      const query = supabase.from("announcements").select("*");
       
       // If not admin, only query user's own announcements
-      if (!isAdmin) {
-        baseQuery = baseQuery.eq("user_id", user?.id);
-      }
-      
-      // Get all announcements to calculate statistics
-      const { data, error } = await baseQuery.select("*");
-      
-      if (error) {
-        console.error("Error fetching announcements stats:", error);
+      if (!isAdmin && user?.id) {
+        const { data, error } = await query.filter('user_id', 'eq', user.id);
+        
+        if (error) {
+          console.error("Error fetching announcements stats:", error);
+          return {
+            published: 0,
+            scheduled: 0,
+            draft: 0,
+            total: 0
+          };
+        }
+        
+        // Calculate statistics
+        const published = data.filter(a => a.status === "published").length;
+        const scheduled = data.filter(a => a.status === "scheduled").length;
+        const draft = data.filter(a => a.status === "draft").length;
+        
         return {
-          published: 0,
-          scheduled: 0,
-          draft: 0,
-          total: 0
+          published,
+          scheduled,
+          draft,
+          total: data.length
+        };
+      } else {
+        const { data, error } = await query;
+        
+        if (error) {
+          console.error("Error fetching announcements stats:", error);
+          return {
+            published: 0,
+            scheduled: 0,
+            draft: 0,
+            total: 0
+          };
+        }
+        
+        // Calculate statistics
+        const published = data.filter(a => a.status === "published").length;
+        const scheduled = data.filter(a => a.status === "scheduled").length;
+        const draft = data.filter(a => a.status === "draft").length;
+        
+        return {
+          published,
+          scheduled,
+          draft,
+          total: data.length
         };
       }
-      
-      // Calculate statistics
-      const published = data.filter(a => a.status === "published").length;
-      const scheduled = data.filter(a => a.status === "scheduled").length;
-      const draft = data.filter(a => a.status === "draft").length;
-      
-      return {
-        published,
-        scheduled,
-        draft,
-        total: data.length
-      };
     },
     enabled: !!user,
   });
@@ -74,7 +95,7 @@ const Dashboard = () => {
   const { data: recentAnnouncements, isLoading: isLoadingRecent } = useQuery({
     queryKey: ["recent-announcements"],
     queryFn: async () => {
-      // Start with a base query that will be filtered depending on user role
+      // Start with a base query for recent announcements
       let query = supabase
         .from("announcements")
         .select("*")
@@ -82,8 +103,8 @@ const Dashboard = () => {
         .limit(3);
       
       // If not admin, only query user's own announcements
-      if (!isAdmin) {
-        query = query.eq("user_id", user?.id);
+      if (!isAdmin && user?.id) {
+        query = query.filter('user_id', 'eq', user.id);
       }
       
       const { data, error } = await query;
@@ -119,14 +140,14 @@ const Dashboard = () => {
       let query = supabase
         .from("announcements")
         .select("*")
-        .eq("status", "scheduled")
-        .gt("publish_date", now)
+        .filter('status', 'eq', 'scheduled')
+        .filter('publish_date', 'gt', now)
         .order("publish_date", { ascending: true })
         .limit(3);
       
       // If not admin, only query user's own announcements
-      if (!isAdmin) {
-        query = query.eq("user_id", user?.id);
+      if (!isAdmin && user?.id) {
+        query = query.filter('user_id', 'eq', user.id);
       }
       
       const { data, error } = await query;
