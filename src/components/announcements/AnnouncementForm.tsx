@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -13,12 +14,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { formSchema } from "@/schemas/formSchema";
 
 export interface AnnouncementFormProps {
   onSubmit?: (data: AnnouncementFormData) => void;
-  buttonText?: string;
   isSubmitting?: boolean;
   onCancel?: () => void;
   isMobile?: boolean;
@@ -37,9 +35,8 @@ export interface AnnouncementFormData {
   seoSlug: string;
 }
 
-const AnnouncementForm = ({ 
-  onSubmit = () => {}, 
-  buttonText = "Publier l'annonce", 
+const AnnouncementForm = ({
+  onSubmit,
   isSubmitting = false,
   onCancel,
   isMobile = false,
@@ -49,8 +46,8 @@ const AnnouncementForm = ({
     title: "",
     description: "",
     wordpressCategory: "",
-    publishDate: new Date(),
-    status: "draft" as "draft" | "published" | "scheduled",
+    publishDate: undefined,
+    status: "draft",
     images: [],
     seoTitle: "",
     seoDescription: "",
@@ -58,10 +55,10 @@ const AnnouncementForm = ({
   };
 
   const form = useForm<AnnouncementFormData>({
-    resolver: zodResolver(formSchema),
     defaultValues: initialValues || defaultValues
   });
 
+  // Update form values when initialValues changes
   useEffect(() => {
     if (initialValues) {
       Object.keys(initialValues).forEach((key) => {
@@ -292,7 +289,7 @@ const AnnouncementForm = ({
                   Enregistrement...
                 </> : <>
                   <Save className="mr-2 h-4 w-4" />
-                  {buttonText}
+                  Publier
                 </>}
             </Button>
           </div>

@@ -234,7 +234,7 @@ const UserList: React.FC<UserListProps> = ({
 
   // Desktop view with table
   return (
-    <div className="w-full bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-border">
+    <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-border">
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>

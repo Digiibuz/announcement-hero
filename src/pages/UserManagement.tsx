@@ -40,7 +40,7 @@ const UserManagement = () => {
         <AccessDenied />
       ) : (
         <AnimatedContainer delay={200}>
-          <div className="w-full">
+          <div className={isMobile ? "w-full" : "max-w-5xl mx-auto"}>
             <UserList 
               users={users}
               isLoading={isLoading}
