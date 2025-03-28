@@ -3,6 +3,7 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface DashboardCardProps {
   title: string;
@@ -15,6 +16,7 @@ interface DashboardCardProps {
   };
   to?: string;
   className?: string;
+  isLoading?: boolean;
 }
 
 const DashboardCard = ({
@@ -25,6 +27,7 @@ const DashboardCard = ({
   trend,
   to,
   className,
+  isLoading = false,
 }: DashboardCardProps) => {
   const CardWrapper = ({ children }: { children: React.ReactNode }) => {
     if (to) {
@@ -48,7 +51,11 @@ const DashboardCard = ({
         </div>
       </CardHeader>
       <CardContent className="pb-2">
-        <div className="text-2xl font-bold">{value}</div>
+        {isLoading ? (
+          <Skeleton className="h-8 w-12" />
+        ) : (
+          <div className="text-2xl font-bold">{value}</div>
+        )}
         {description && (
           <p className="text-sm text-muted-foreground mt-1">{description}</p>
         )}
