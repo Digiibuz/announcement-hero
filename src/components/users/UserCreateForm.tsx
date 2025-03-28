@@ -79,7 +79,9 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
     const subscription = form.watch((value, { name }) => {
       if (name === "role" && (value.role === "admin" || value.role === "client")) {
         form.setValue("wpConfigIds", []);
-        form.setValue("wordpressConfigId", "");
+        if (value.role === "admin") {
+          form.setValue("wordpressConfigId", "");
+        }
       }
     });
     return () => subscription.unsubscribe();
@@ -94,7 +96,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       
       console.log("Envoi des données:", values);
       
-      // Mise à jour pour gérer le rôle client de la même manière que le rôle admin
+      // Mise à jour pour gérer les rôles client et editor
       const needsClientId = values.role === "editor";
       
       // Appel de la fonction Edge avec une meilleure gestion des erreurs
@@ -105,7 +107,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
           password: values.password,
           role: values.role,
           clientId: needsClientId ? values.clientId : null,
-          wordpressConfigId: needsClientId ? values.wordpressConfigId : null,
+          wordpressConfigId: (values.role === "editor" || values.role === "client") ? values.wordpressConfigId : null,
         },
       });
       
@@ -347,6 +349,41 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
                   />
                 )}
               </>
+            )}
+            
+            {/* Ajouter la sélection de configuration WordPress pour les clients */}
+            {form.watch("role") === "client" && (
+              <FormField
+                control={form.control}
+                name="wordpressConfigId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Site WordPress</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      value={field.value || "none"}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner un site WordPress" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">Aucun site</SelectItem>
+                        {configs.map((config) => (
+                          <SelectItem key={config.id} value={config.id}>
+                            {config.name} ({config.site_url})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Site WordPress associé à ce client
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             )}
             
             <DialogFooter>
