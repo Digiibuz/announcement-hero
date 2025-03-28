@@ -20,6 +20,7 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { isPublishing } = useWordPressPublishing();
   const [activeTab, setActiveTab] = useState("preview");
+  const [formData, setFormData] = useState<any>(null);
 
   useEffect(() => {
     fetchAnnouncement();
@@ -30,6 +31,21 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
     if (announcement && announcement.status === 'draft' && !isEditing) {
       setIsEditing(true);
       setActiveTab("edit");
+    }
+
+    // Prepare form data from announcement
+    if (announcement) {
+      setFormData({
+        title: announcement.title || "",
+        description: announcement.description || "",
+        wordpressCategory: announcement.wordpress_category_id || "",
+        publishDate: announcement.publish_date ? new Date(announcement.publish_date) : undefined,
+        status: announcement.status || "draft",
+        images: announcement.images || [],
+        seoTitle: announcement.seo_title || "",
+        seoDescription: announcement.seo_description || "",
+        seoSlug: announcement.seo_slug || ""
+      });
     }
   }, [announcement]);
 
@@ -94,6 +110,7 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
     activeTab,
     setActiveTab,
     fetchAnnouncement,
-    handleSubmit
+    handleSubmit,
+    formData
   };
 };

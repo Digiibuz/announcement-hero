@@ -55,7 +55,8 @@ const CreateAnnouncement = () => {
       // If status is published or scheduled, try to publish to WordPress
       let wordpressResult = {
         success: true,
-        message: ""
+        message: "",
+        wordpressPostId: null as number | null
       };
       
       if ((data.status === 'published' || data.status === 'scheduled') && data.wordpressCategory && user?.id) {

@@ -15,6 +15,7 @@ interface AnnouncementTabsProps {
   setActiveTab: (value: string) => void;
   setIsEditing: (value: boolean) => void;
   handleSubmit: (formData: any) => Promise<void>;
+  formData?: any;
 }
 
 const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
@@ -25,6 +26,7 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
   setActiveTab,
   setIsEditing,
   handleSubmit,
+  formData
 }) => {
   const isDraft = announcement?.status === 'draft';
   
@@ -69,6 +71,7 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
           <AnnouncementForm
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
+            initialValues={formData}
             onCancel={() => {
               setIsEditing(false);
               setActiveTab("preview");
