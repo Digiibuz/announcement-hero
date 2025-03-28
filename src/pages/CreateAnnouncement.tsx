@@ -13,12 +13,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 const CreateAnnouncement = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { publishToWordPress, isPublishing } = useWordPressPublishing();
+  const isMobile = useMediaQuery("(max-width: 767px)");
 
   const handleSubmit = async (data: any) => {
     try {
@@ -87,18 +89,19 @@ const CreateAnnouncement = () => {
           Retour aux annonces
         </Button>
       }
+      fullWidthMobile={true}
     >
       <AnimatedContainer delay={200}>
         <div className="max-w-5xl mx-auto">
-          <Alert className="mb-6">
+          <Alert className={`${isMobile ? 'mx-4' : ''} mb-6`}>
             <Wand2 className="h-4 w-4" />
             <AlertDescription>
               Utilisez les boutons <span className="font-medium inline-flex items-center mx-1"><Wand2 className="h-3 w-3 mr-1" /> Optimiser</span> pour améliorer automatiquement votre contenu et vos métadonnées SEO grâce à l'intelligence artificielle.
             </AlertDescription>
           </Alert>
           
-          <Card className="border shadow-sm bg-card/50 backdrop-blur-sm">
-            <CardContent className="p-6">
+          <Card className={`border shadow-sm bg-card/50 backdrop-blur-sm ${isMobile ? 'rounded-none mx-0' : ''}`}>
+            <CardContent className={`${isMobile ? 'p-3 sm:p-6' : 'p-6'}`}>
               <AnnouncementForm 
                 onSubmit={handleSubmit} 
                 isSubmitting={isSubmitting || isPublishing} 
