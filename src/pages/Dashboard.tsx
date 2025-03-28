@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
@@ -172,9 +173,11 @@ const Dashboard = () => {
           <p className="text-muted-foreground">
             Bienvenue, {user?.name}
           </p>
-          <Button as={Link} to="/create" className="mt-2 sm:mt-0">
-            <Plus className="mr-2 h-4 w-4" />
-            Créer une annonce
+          <Button asChild className="mt-2 sm:mt-0">
+            <Link to="/create">
+              <Plus className="mr-2 h-4 w-4" />
+              Créer une annonce
+            </Link>
           </Button>
         </div>
       </AnimatedContainer>
