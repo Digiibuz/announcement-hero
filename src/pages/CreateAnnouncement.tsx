@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -13,18 +12,21 @@ import { ArrowLeft, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useMediaQuery } from "@/hooks/use-media-query";
-
 const CreateAnnouncement = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const {
+    user
+  } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { publishToWordPress, isPublishing } = useWordPressPublishing();
+  const {
+    publishToWordPress,
+    isPublishing
+  } = useWordPressPublishing();
   const isMobile = useMediaQuery("(max-width: 767px)");
-
   const handleSubmit = async (data: any) => {
     try {
       setIsSubmitting(true);
-      
+
       // Prepare the announcement data
       const announcementData = {
         user_id: user?.id,
@@ -38,37 +40,31 @@ const CreateAnnouncement = () => {
         seo_description: data.seoDescription || null,
         seo_slug: data.seoSlug || null
       };
-      
       console.log("Enregistrement de l'annonce:", announcementData);
-      
+
       // Save to Supabase
-      const { data: newAnnouncement, error } = await supabase
-        .from("announcements")
-        .insert(announcementData)
-        .select()
-        .single();
-      
+      const {
+        data: newAnnouncement,
+        error
+      } = await supabase.from("announcements").insert(announcementData).select().single();
       if (error) throw error;
-      
       console.log("Annonce enregistrée dans Supabase:", newAnnouncement);
-      
+
       // If status is published or scheduled, try to publish to WordPress
-      let wordpressResult = { success: true, message: "" };
+      let wordpressResult = {
+        success: true,
+        message: ""
+      };
       if ((data.status === 'published' || data.status === 'scheduled') && data.wordpressCategory && user?.id) {
         console.log("Tentative de publication sur WordPress...");
-        wordpressResult = await publishToWordPress(
-          newAnnouncement as Announcement, 
-          data.wordpressCategory,
-          user.id
-        );
+        wordpressResult = await publishToWordPress(newAnnouncement as Announcement, data.wordpressCategory, user.id);
       }
-      
       if (wordpressResult.success) {
         toast.success("Annonce enregistrée avec succès");
       } else {
         toast.warning("Annonce enregistrée dans la base de données, mais la publication WordPress a échoué: " + (wordpressResult.message || "Erreur inconnue"));
       }
-      
+
       // Redirect to the announcements list
       navigate("/announcements");
     } catch (error: any) {
@@ -78,47 +74,24 @@ const CreateAnnouncement = () => {
       setIsSubmitting(false);
     }
   };
-
-  return (
-    <PageLayout 
-      title="Créer une nouvelle annonce" 
-      titleAction={
-        <Button variant="outline" size="sm" onClick={() => navigate("/announcements")} className="flex items-center gap-2">
+  return <PageLayout title="Créer une nouvelle annonce" titleAction={<Button variant="outline" size="sm" onClick={() => navigate("/announcements")} className="flex items-center gap-2">
           <ArrowLeft className="h-4 w-4" />
           Retour aux annonces
-        </Button>
-      }
-      fullWidthMobile={true}
-    >
+        </Button>} fullWidthMobile={true}>
       <AnimatedContainer delay={200} className={isMobile ? "pb-6" : ""}>
-        {!isMobile && (
-          <Alert className="mb-6">
-            <Wand2 className="h-4 w-4" />
-            <AlertDescription>
-              Utilisez les boutons <span className="font-medium inline-flex items-center mx-1"><Wand2 className="h-3 w-3 mr-1" /> Optimiser</span> pour améliorer automatiquement votre contenu et vos métadonnées SEO grâce à l'intelligence artificielle.
-            </AlertDescription>
-          </Alert>
-        )}
+        {!isMobile}
         
         <div className="max-w-5xl mx-auto">
-          {isMobile && (
-            <div className="bg-muted/30 px-4 py-3 mb-4 text-sm text-muted-foreground flex items-center">
+          {isMobile && <div className="bg-muted/30 px-4 py-3 mb-4 text-sm text-muted-foreground flex items-center">
               <Wand2 className="h-4 w-4 mr-2 flex-shrink-0" />
               <span>Utilisez les boutons <b>Optimiser</b> pour améliorer votre contenu avec l'IA.</span>
-            </div>
-          )}
+            </div>}
           
           <div className={isMobile ? "" : ""}>
-            <AnnouncementForm 
-              onSubmit={handleSubmit} 
-              isSubmitting={isSubmitting || isPublishing}
-              isMobile={isMobile}
-            />
+            <AnnouncementForm onSubmit={handleSubmit} isSubmitting={isSubmitting || isPublishing} isMobile={isMobile} />
           </div>
         </div>
       </AnimatedContainer>
-    </PageLayout>
-  );
+    </PageLayout>;
 };
-
 export default CreateAnnouncement;
