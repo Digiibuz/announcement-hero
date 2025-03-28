@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -220,6 +221,26 @@ export const useWordPressPublishing = () => {
       }
 
       console.log("Publication WordPress réussie:", responseData);
+      
+      // CRITICAL FIX: Update the announcement in Supabase with the WordPress post ID
+      if (responseData && responseData.id) {
+        console.log("Mise à jour de l'annonce dans Supabase avec l'ID WordPress:", responseData.id);
+        
+        const { error: updateError } = await supabase
+          .from('announcements')
+          .update({ wordpress_post_id: responseData.id })
+          .eq('id', announcement.id);
+          
+        if (updateError) {
+          console.error("Erreur lors de la mise à jour de l'annonce avec l'ID WordPress:", updateError);
+          // Continue despite error, but log it
+        } else {
+          console.log("Annonce mise à jour avec l'ID WordPress avec succès");
+        }
+      } else {
+        console.error("Pas d'ID WordPress reçu dans la réponse");
+      }
+      
       return { 
         success: true, 
         message: "Publication WordPress réussie",
@@ -246,6 +267,14 @@ export const useWordPressPublishing = () => {
       return { 
         success: false, 
         message: "Utilisateur non identifié" 
+      };
+    }
+
+    if (!wordpressPostId) {
+      console.error("No WordPress post ID provided", wordpressPostId);
+      return {
+        success: false,
+        message: "Aucun ID de post WordPress fourni"
       };
     }
 
