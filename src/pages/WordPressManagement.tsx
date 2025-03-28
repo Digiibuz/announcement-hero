@@ -32,27 +32,17 @@ const WordPressManagement = () => {
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
-  // Fetch configs when component mounts
-  React.useEffect(() => {
-    fetchConfigs();
-  }, [fetchConfigs]);
-
   const handleCreateConfig = async (data: any) => {
     await createConfig(data);
     setIsDialogOpen(false);
-    fetchConfigs(); // Refresh configs after creating a new one
+    fetchConfigs(); // Call fetchConfigs after creating a new config
   };
 
-  // Handler for updating config
+  // Wrapper pour updateConfig pour assurer la compatibilité avec le composant
   const handleUpdateConfig = async (id: string, data: Partial<WordPressConfig>) => {
     await updateConfig(id, data);
-    fetchConfigs(); // Refresh configs after updating
-  };
-
-  // Handler for deleting config
-  const handleDeleteConfig = async (id: string) => {
-    await deleteConfig(id);
-    fetchConfigs(); // Refresh configs after deleting
+    // La fonction updateConfig retourne un WordPressConfig, mais nous ignorons la valeur retournée
+    // pour rendre la fonction compatible avec le type attendu
   };
 
   const titleAction = (isAdmin || isClient) ? (
@@ -87,7 +77,7 @@ const WordPressManagement = () => {
               isLoading={isLoading}
               isSubmitting={isSubmitting}
               onUpdateConfig={handleUpdateConfig}
-              onDeleteConfig={handleDeleteConfig}
+              onDeleteConfig={deleteConfig}
             />
           </div>
         </AnimatedContainer>
