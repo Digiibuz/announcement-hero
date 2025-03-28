@@ -69,9 +69,14 @@ const Sidebar = () => {
   const SidebarContent = () => (
     <>
       <div className="flex h-16 items-center px-6 border-b border-border">
-        <Link to="/dashboard" className="flex items-center">
-          <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">
-            DigiiApp
+        <Link to="/dashboard" className="flex items-center gap-2">
+          <img 
+            src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
+            alt="DigiiBuz" 
+            className="h-8 w-auto" 
+          />
+          <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-digibuz-navy to-digibuz-navy/70">
+            DigiiBuz
           </span>
         </Link>
       </div>
@@ -165,9 +170,14 @@ const Sidebar = () => {
     return (
       <>
         <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between h-16 px-4 bg-background/90 backdrop-blur-sm border-b border-border">
-          <Link to="/dashboard" className="flex items-center">
-            <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">
-              DigiiApp
+          <Link to="/dashboard" className="flex items-center gap-2">
+            <img 
+              src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
+              alt="DigiiBuz" 
+              className="h-7 w-auto" 
+            />
+            <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-digibuz-navy to-digibuz-navy/70">
+              DigiiBuz
             </span>
           </Link>
           

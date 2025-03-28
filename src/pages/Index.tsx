@@ -45,9 +45,14 @@ const Index = () => {
       <header className="fixed top-0 left-0 right-0 z-40 bg-background/70 backdrop-blur-xl border-b border-border">
         <div className="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center">
-              <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">
-                DigiiApp
+            <div className="flex items-center gap-2">
+              <img 
+                src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
+                alt="DigiiBuz" 
+                className="h-8 w-auto" 
+              />
+              <span className="text-xl font-bold text-digibuz-navy dark:text-digibuz-yellow">
+                DigiiBuz
               </span>
             </div>
 
@@ -137,14 +142,19 @@ const Index = () => {
       <footer className="border-t py-8 md:py-12">
         <div className="container px-4 md:px-6">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="text-center md:text-left mb-6 md:mb-0">
-              <span className="text-lg font-semibold">DigiiApp</span>
+            <div className="text-center md:text-left mb-6 md:mb-0 flex items-center gap-2">
+              <img 
+                src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
+                alt="DigiiBuz" 
+                className="h-6 w-auto" 
+              />
+              <span className="text-lg font-semibold">DigiiBuz</span>
               <p className="text-sm text-muted-foreground mt-1">
                 Elegant WordPress announcement management
               </p>
             </div>
             <div className="text-sm text-muted-foreground">
-              &copy; {new Date().getFullYear()} DigiiApp. All rights reserved.
+              &copy; {new Date().getFullYear()} DigiiBuz. All rights reserved.
             </div>
           </div>
         </div>
