@@ -67,7 +67,7 @@ const Sidebar = () => {
       <div className="flex h-16 items-center px-6 border-b border-border">
         <Link to="/dashboard" className="flex items-center">
           <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">
-            Announcement Manager
+            DigiiApp
           </span>
         </Link>
       </div>

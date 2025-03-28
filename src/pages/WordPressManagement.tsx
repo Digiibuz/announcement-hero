@@ -23,7 +23,6 @@ const WordPressManagement = () => {
     configs,
     isLoading,
     isSubmitting,
-    error: configError,
     createConfig,
     updateConfig,
     deleteConfig,
@@ -52,7 +51,6 @@ const WordPressManagement = () => {
         <WordPressConfigForm
           onSubmit={handleCreateConfig}
           isSubmitting={isSubmitting}
-          onCancel={() => setIsDialogOpen(false)}
         />
       </DialogContent>
     </Dialog>
@@ -68,7 +66,7 @@ const WordPressManagement = () => {
             <WordPressConfigList
               configs={configs}
               isLoading={isLoading}
-              onUpdateConfig={updateConfig}
+              onUpdateConfig={updateConfig as any}
               onDeleteConfig={deleteConfig}
               onConfigCreated={fetchConfigs}
             />

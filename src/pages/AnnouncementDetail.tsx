@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -8,8 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Pencil, ArrowLeft, ExternalLink } from "lucide-react";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 import AnnouncementForm from "@/components/announcements/AnnouncementForm";
 import AnnouncementPreview from "@/components/announcements/AnnouncementPreview";
@@ -17,11 +16,22 @@ import { Announcement } from "@/types/announcement";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
 
+// Extend the Announcement type to include WordPress properties
+interface ExtendedAnnouncement extends Announcement {
+  wordpress_post_id?: string;
+  wordpress_site_url?: string;
+  wordpress_published_at?: string;
+  wordpress_categories?: {
+    id: string;
+    name: string;
+  };
+}
+
 const AnnouncementDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
+  const [announcement, setAnnouncement] = useState<ExtendedAnnouncement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,7 +51,7 @@ const AnnouncementDetail = () => {
         .from("announcements")
         .select(`
           *,
-          wordpress_categories!inner (
+          wordpress_categories (
             id,
             name
           )
@@ -53,7 +63,7 @@ const AnnouncementDetail = () => {
 
       if (data) {
         // Format data for the form
-        const formattedData: Announcement = {
+        const formattedData: ExtendedAnnouncement = {
           ...data,
           wordpress_category_id: data.wordpress_categories?.id || null,
           wordpress_category_name: data.wordpress_categories?.name || null,
@@ -152,7 +162,7 @@ const AnnouncementDetail = () => {
       </Button>
       <Button 
         size="sm" 
-        variant="primary" 
+        variant="secondary" 
         disabled={isPublishing} 
         onClick={handlePublishToWordPress}
       >
@@ -181,12 +191,12 @@ const AnnouncementDetail = () => {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="preview">
-              <AnnouncementPreview announcement={announcement} />
+              <AnnouncementPreview announcement={announcement as any} />
             </TabsContent>
             <TabsContent value="edit">
               {isEditing ? (
                 <AnnouncementForm
-                  initialValues={announcement}
+                  defaultValues={announcement as any}
                   onSubmit={handleSubmit}
                   isLoading={isSubmitting}
                   onCancel={() => {

@@ -47,7 +47,7 @@ const Index = () => {
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center">
               <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">
-                Announcement Manager
+                DigiiApp
               </span>
             </div>
 
@@ -138,13 +138,13 @@ const Index = () => {
         <div className="container px-4 md:px-6">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="text-center md:text-left mb-6 md:mb-0">
-              <span className="text-lg font-semibold">Announcement Manager</span>
+              <span className="text-lg font-semibold">DigiiApp</span>
               <p className="text-sm text-muted-foreground mt-1">
                 Elegant WordPress announcement management
               </p>
             </div>
             <div className="text-sm text-muted-foreground">
-              &copy; {new Date().getFullYear()} Announcement Manager. All rights reserved.
+              &copy; {new Date().getFullYear()} DigiiApp. All rights reserved.
             </div>
           </div>
         </div>
