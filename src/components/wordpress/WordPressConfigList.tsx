@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Card, 
   CardContent, 
@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { WordPressConfig } from "@/types/wordpress";
-import { Loader2, Pencil, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Trash2, Users } from "lucide-react";
 import WordPressConfigForm from "./WordPressConfigForm";
 import {
   AlertDialog,
@@ -26,6 +26,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import WordPressConnectionStatus from "./WordPressConnectionStatus";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { supabase } from "@/integrations/supabase/client";
+import { UserProfile } from "@/types/auth";
+import { 
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger
+} from "@/components/ui/collapsible";
 
 interface WordPressConfigListProps {
   configs: WordPressConfig[];
@@ -44,6 +51,9 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
 }) => {
   const [configToDelete, setConfigToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [clientUsers, setClientUsers] = useState<{[key: string]: UserProfile[]}>({});
+  const [loadingUsers, setLoadingUsers] = useState<{[key: string]: boolean}>({});
+  const [openCollapsibles, setOpenCollapsibles] = useState<{[key: string]: boolean}>({});
   const isMobile = useMediaQuery("(max-width: 640px)");
 
   const handleDeleteConfirm = async () => {
@@ -57,6 +67,49 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
     } finally {
       setIsDeleting(false);
       setConfigToDelete(null);
+    }
+  };
+
+  const fetchClientUsers = async (configId: string) => {
+    try {
+      setLoadingUsers(prev => ({ ...prev, [configId]: true }));
+      
+      // Fetch client users associated with this WordPress config
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('wordpress_config_id', configId)
+        .eq('role', 'client');
+      
+      if (profilesError) {
+        throw profilesError;
+      }
+      
+      // Format client user data
+      const formattedUsers: UserProfile[] = profilesData.map(profile => ({
+        id: profile.id,
+        email: profile.email,
+        name: profile.name,
+        role: "client",
+        clientId: profile.client_id,
+        wordpressConfigId: profile.wordpress_config_id
+      }));
+      
+      setClientUsers(prev => ({ ...prev, [configId]: formattedUsers }));
+    } catch (error) {
+      console.error("Error fetching client users for config:", error);
+    } finally {
+      setLoadingUsers(prev => ({ ...prev, [configId]: false }));
+    }
+  };
+
+  const toggleCollapsible = (configId: string) => {
+    const newState = !openCollapsibles[configId];
+    setOpenCollapsibles(prev => ({ ...prev, [configId]: newState }));
+    
+    // Fetch users when opening the collapsible if not already loaded
+    if (newState && (!clientUsers[configId] || clientUsers[configId]?.length === 0)) {
+      fetchClientUsers(configId);
     }
   };
 
@@ -129,6 +182,46 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
                   )}
                 </div>
               </div>
+            </div>
+
+            <div className="mt-4">
+              <Collapsible
+                open={openCollapsibles[config.id]}
+                onOpenChange={() => toggleCollapsible(config.id)}
+                className="border rounded-md"
+              >
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="flex w-full justify-between p-4 rounded-none">
+                    <span className="flex items-center">
+                      <Users className="h-4 w-4 mr-2" />
+                      Utilisateurs clients
+                    </span>
+                    <span className="text-muted-foreground">
+                      {clientUsers[config.id]?.length || 0} utilisateur(s)
+                    </span>
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="px-4 pb-4">
+                  {loadingUsers[config.id] ? (
+                    <div className="flex justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : clientUsers[config.id]?.length ? (
+                    <div className="space-y-3">
+                      {clientUsers[config.id].map(user => (
+                        <div key={user.id} className="border rounded p-3">
+                          <div className="font-medium">{user.name}</div>
+                          <div className="text-sm text-muted-foreground">{user.email}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-3 text-muted-foreground">
+                      Aucun utilisateur client associé à cette configuration.
+                    </div>
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
             </div>
           </CardContent>
           
