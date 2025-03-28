@@ -5,11 +5,9 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { UseFormReturn } from "react-hook-form";
-
 interface ImageUploaderProps {
   form: UseFormReturn<any>;
 }
-
 const ImageUploader = ({
   form
 }: ImageUploaderProps) => {
@@ -17,7 +15,6 @@ const ImageUploader = ({
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-
   const compressAndConvertToWebp = async (file: File): Promise<File> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -67,13 +64,11 @@ const ImageUploader = ({
       };
     });
   };
-
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
     try {
       setIsUploading(true);
-
       const processedFiles = await Promise.all(Array.from(files).map(async file => {
         try {
           return await compressAndConvertToWebp(file);
@@ -95,7 +90,6 @@ const ImageUploader = ({
       if (cameraInputRef.current) cameraInputRef.current.value = '';
     }
   };
-
   const uploadImages = async (files: File[]): Promise<string[]> => {
     const uploadPromises = files.map(async file => {
       const fileExt = file.name.split('.').pop();
@@ -119,25 +113,21 @@ const ImageUploader = ({
     });
     return Promise.all(uploadPromises);
   };
-
   const removeImage = (indexToRemove: number) => {
     const newImages = uploadedImages.filter((_, index) => index !== indexToRemove);
     setUploadedImages(newImages);
     form.setValue('images', newImages);
   };
-
   const triggerFileUpload = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
-
   const triggerCameraUpload = () => {
     if (cameraInputRef.current) {
       cameraInputRef.current.click();
     }
   };
-
   return <div>
       <Label>Images</Label>
       <div className="mt-2 border-2 border-dashed rounded-lg p-6">
@@ -150,7 +140,7 @@ const ImageUploader = ({
               <ImageIcon className="h-6 w-6 text-muted-foreground" />
             </div>
           </div>
-          <p className="mb-4 text-amber-400">
+          <p className="mb-4 text-gray-950">
             Glissez-déposez vos images ici, ou sélectionnez une option ci-dessous
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-2">
@@ -180,5 +170,4 @@ const ImageUploader = ({
       </div>
     </div>;
 };
-
 export default ImageUploader;
