@@ -40,6 +40,7 @@ interface WordPressConfigListProps {
   isSubmitting: boolean;
   onUpdateConfig: (id: string, data: Partial<WordPressConfig>) => Promise<void>;
   onDeleteConfig: (id: string) => Promise<void>;
+  readOnly?: boolean; // Nouvelle prop pour indiquer le mode lecture seule
 }
 
 const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
@@ -47,7 +48,8 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
   isLoading,
   isSubmitting,
   onUpdateConfig,
-  onDeleteConfig
+  onDeleteConfig,
+  readOnly = false // Valeur par défaut à false
 }) => {
   const [configToDelete, setConfigToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -126,7 +128,7 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
       <div className="bg-muted/20 rounded-lg p-8 text-center">
         <h3 className="text-lg font-medium mb-2">Aucune configuration WordPress</h3>
         <p className="text-muted-foreground mb-4">
-          Commencez par ajouter une nouvelle configuration WordPress.
+          {!readOnly ? "Commencez par ajouter une nouvelle configuration WordPress." : "Aucune configuration WordPress ne vous a été attribuée."}
         </p>
       </div>
     );
@@ -225,62 +227,64 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
             </div>
           </CardContent>
           
-          <CardFooter className="border-t bg-muted/10 pt-4 flex flex-col sm:flex-row sm:justify-end gap-2">
-            <WordPressConfigForm
-              config={config}
-              onSubmit={(data) => onUpdateConfig(config.id, data)}
-              buttonText="Modifier"
-              dialogTitle="Modifier la configuration WordPress"
-              dialogDescription="Mettez à jour les informations de configuration."
-              isSubmitting={isSubmitting}
-              trigger={
-                <Button variant="outline" size="sm" className={`${isMobile ? 'w-full' : ''}`}>
-                  <Pencil className="h-4 w-4 mr-1" />
-                  Modifier
-                </Button>
-              }
-            />
-            
-            <AlertDialog open={configToDelete === config.id} onOpenChange={(open) => !open && setConfigToDelete(null)}>
-              <AlertDialogTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setConfigToDelete(config.id)}
-                  className={`${isMobile ? 'w-full' : ''}`}
-                >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  Supprimer
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Êtes-vous sûr?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Cette action ne peut pas être annulée. Cette configuration sera définitivement supprimée
-                    de nos serveurs.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-                  <AlertDialogCancel className={`${isMobile ? 'w-full' : ''}`}>Annuler</AlertDialogCancel>
-                  <AlertDialogAction 
-                    onClick={handleDeleteConfirm}
-                    disabled={isDeleting}
+          {!readOnly && (
+            <CardFooter className="border-t bg-muted/10 pt-4 flex flex-col sm:flex-row sm:justify-end gap-2">
+              <WordPressConfigForm
+                config={config}
+                onSubmit={(data) => onUpdateConfig(config.id, data)}
+                buttonText="Modifier"
+                dialogTitle="Modifier la configuration WordPress"
+                dialogDescription="Mettez à jour les informations de configuration."
+                isSubmitting={isSubmitting}
+                trigger={
+                  <Button variant="outline" size="sm" className={`${isMobile ? 'w-full' : ''}`}>
+                    <Pencil className="h-4 w-4 mr-1" />
+                    Modifier
+                  </Button>
+                }
+              />
+              
+              <AlertDialog open={configToDelete === config.id} onOpenChange={(open) => !open && setConfigToDelete(null)}>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setConfigToDelete(config.id)}
                     className={`${isMobile ? 'w-full' : ''}`}
                   >
-                    {isDeleting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Suppression...
-                      </>
-                    ) : (
-                      "Continuer"
-                    )}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </CardFooter>
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Supprimer
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Êtes-vous sûr?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Cette action ne peut pas être annulée. Cette configuration sera définitivement supprimée
+                      de nos serveurs.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                    <AlertDialogCancel className={`${isMobile ? 'w-full' : ''}`}>Annuler</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={handleDeleteConfirm}
+                      disabled={isDeleting}
+                      className={`${isMobile ? 'w-full' : ''}`}
+                    >
+                      {isDeleting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Suppression...
+                        </>
+                      ) : (
+                        "Continuer"
+                      )}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </CardFooter>
+          )}
         </Card>
       ))}
     </div>

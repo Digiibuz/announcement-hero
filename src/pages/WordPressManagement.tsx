@@ -45,7 +45,8 @@ const WordPressManagement = () => {
     // pour rendre la fonction compatible avec le type attendu
   };
 
-  const titleAction = (isAdmin || isClient) ? (
+  // Le bouton d'ajout n'est disponible que pour les administrateurs, pas pour les clients
+  const titleAction = isAdmin ? (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>
         <Button>
@@ -78,6 +79,7 @@ const WordPressManagement = () => {
               isSubmitting={isSubmitting}
               onUpdateConfig={handleUpdateConfig}
               onDeleteConfig={deleteConfig}
+              readOnly={isClient} // Mode lecture seule pour les clients
             />
           </div>
         </AnimatedContainer>
