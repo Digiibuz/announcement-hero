@@ -17,3 +17,13 @@ export type Announcement = {
   seo_description?: string;
   seo_slug?: string;
 };
+
+// Ajout du type WordPressCategory
+export type WordPressCategory = {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string;
+  count?: number;
+  parent?: number;
+};

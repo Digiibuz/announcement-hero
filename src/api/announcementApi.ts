@@ -21,7 +21,7 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
   }
 
   // If there's a WordPress post ID, delete it from WordPress
-  if (announcement?.wordpress_post_id) {
+  if (announcement && announcement.wordpress_post_id) {
     const { deleteFromWordPress } = useWordPressPublishing();
     const result = await deleteFromWordPress(id, announcement.wordpress_post_id, userId);
     
