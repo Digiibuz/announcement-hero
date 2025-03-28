@@ -7,7 +7,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import AnnouncementActions from "@/components/announcements/detail/AnnouncementActions";
 import AnnouncementTabs from "@/components/announcements/detail/AnnouncementTabs";
 import { useAnnouncementDetail } from "@/components/announcements/detail/useAnnouncementDetail";
-import { Announcement } from "@/types/announcement";
 
 const AnnouncementDetail = () => {
   const { user } = useAuth();
@@ -43,7 +42,7 @@ const AnnouncementDetail = () => {
           </div>
         ) : announcement ? (
           <AnnouncementTabs
-            announcement={announcement as Announcement}
+            announcement={announcement}
             isEditing={isEditing}
             isSubmitting={isSubmitting}
             activeTab={activeTab}
