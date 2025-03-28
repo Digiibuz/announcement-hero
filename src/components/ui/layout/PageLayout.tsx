@@ -10,9 +10,16 @@ interface PageLayoutProps {
   title?: string;
   titleAction?: React.ReactNode;
   fullWidthMobile?: boolean;
+  containerClassName?: string;
 }
 
-const PageLayout = ({ children, title, titleAction, fullWidthMobile = false }: PageLayoutProps) => {
+const PageLayout = ({ 
+  children, 
+  title, 
+  titleAction, 
+  fullWidthMobile = false,
+  containerClassName
+}: PageLayoutProps) => {
   const isMobile = useMediaQuery("(max-width: 767px)");
 
   return (
@@ -21,7 +28,7 @@ const PageLayout = ({ children, title, titleAction, fullWidthMobile = false }: P
       <Sidebar />
 
       <main className="pt-16 md:pl-64">
-        <div className={`container ${fullWidthMobile && isMobile ? 'px-0 sm:px-4' : 'px-4'} py-0`}>
+        <div className={`container ${fullWidthMobile && isMobile ? 'px-0 sm:px-4' : 'px-4'} py-0 ${containerClassName || ''}`}>
           {(title || titleAction) && (
             <AnimatedContainer delay={100}>
               <div className={`flex flex-col ${!isMobile ? "sm:flex-row sm:items-center sm:justify-between" : ""} mb-4 ${isMobile ? "pt-0 px-4" : "pt-2"} gap-3`}>

@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
@@ -20,6 +19,7 @@ import { fr } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Announcement } from "@/types/announcement";
 import { Button } from "@/components/ui/button";
+import FloatingActionButton from "@/components/ui/FloatingActionButton";
 
 const stripHtmlTags = (html: string): string => {
   if (!html) return '';
@@ -340,6 +340,19 @@ const Dashboard = () => {
           </Card>
         </AnimatedContainer>
       </div>
+
+      <FloatingActionButton 
+        position="bottom-left" 
+        asChild
+        showOnMobile={true}
+        hideOnDesktop={true}
+        className="bg-digibuz-yellow text-digibuz-navy hover:bg-digibuz-yellow/90"
+      >
+        <Link to="/create">
+          <Plus className="mr-2 h-4 w-4" />
+          Créer
+        </Link>
+      </FloatingActionButton>
     </PageLayout>
   );
 };
