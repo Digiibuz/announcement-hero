@@ -16,7 +16,11 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Fonction optimize-content appelée");
+    
     const { type, title, description } = await req.json();
+    
+    console.log(`Paramètres reçus - Type: ${type}, Titre: "${title.substring(0, 20)}...", Description: "${description.substring(0, 30)}..."`);
     
     let prompt = "";
     let systemMessage = "";
@@ -39,6 +43,12 @@ serve(async (req) => {
         throw new Error("Type d'optimisation non supporté");
     }
 
+    console.log(`Type d'optimisation: ${type}, appel à OpenAI en cours...`);
+
+    if (!openAIApiKey) {
+      throw new Error("Clé API OpenAI manquante. Veuillez configurer la variable d'environnement OPENAI_API_KEY.");
+    }
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -55,11 +65,14 @@ serve(async (req) => {
       }),
     });
 
-    const data = await response.json();
-    
     if (!response.ok) {
-      throw new Error(data.error?.message || 'Erreur lors de la génération du contenu');
+      const error = await response.json();
+      console.error("Erreur OpenAI:", error);
+      throw new Error(`Erreur OpenAI: ${error.error?.message || 'Erreur inconnue'}`);
     }
+
+    const data = await response.json();
+    console.log("Réponse OpenAI reçue avec succès");
     
     let optimizedContent = data.choices[0].message.content;
     
