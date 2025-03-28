@@ -18,7 +18,6 @@ import { fr } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Announcement } from "@/types/announcement";
 
-// Helper function to strip HTML tags
 const stripHtmlTags = (html: string): string => {
   if (!html) return '';
   return html.replace(/<[^>]*>/g, '');
@@ -27,14 +26,11 @@ const stripHtmlTags = (html: string): string => {
 const Dashboard = () => {
   const { user, isAdmin } = useAuth();
 
-  // Fetch announcements stats
   const { data: statsData, isLoading: isLoadingStats } = useQuery({
     queryKey: ["announcements-stats"],
     queryFn: async () => {
-      // Get all announcements to calculate statistics
       const query = supabase.from("announcements").select("*");
       
-      // If not admin, only query user's own announcements
       if (!isAdmin && user?.id) {
         const { data, error } = await query.filter('user_id', 'eq', user.id);
         
@@ -48,7 +44,6 @@ const Dashboard = () => {
           };
         }
         
-        // Calculate statistics
         const published = data.filter(a => a.status === "published").length;
         const scheduled = data.filter(a => a.status === "scheduled").length;
         const draft = data.filter(a => a.status === "draft").length;
@@ -72,7 +67,6 @@ const Dashboard = () => {
           };
         }
         
-        // Calculate statistics
         const published = data.filter(a => a.status === "published").length;
         const scheduled = data.filter(a => a.status === "scheduled").length;
         const draft = data.filter(a => a.status === "draft").length;
@@ -88,18 +82,15 @@ const Dashboard = () => {
     enabled: !!user,
   });
 
-  // Fetch recent announcements
   const { data: recentAnnouncements, isLoading: isLoadingRecent } = useQuery({
     queryKey: ["recent-announcements"],
     queryFn: async () => {
-      // Start with a base query for recent announcements
       let query = supabase
         .from("announcements")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(3);
       
-      // If not admin, only query user's own announcements
       if (!isAdmin && user?.id) {
         query = query.filter('user_id', 'eq', user.id);
       }
@@ -111,12 +102,9 @@ const Dashboard = () => {
         return [];
       }
       
-      // Process announcements for display
       return data.map(announcement => {
-        // Create a new object with all properties from announcement
         const processed: Announcement = { ...announcement } as Announcement;
         
-        // Strip HTML tags from description
         if (processed.description) {
           processed.description = stripHtmlTags(processed.description);
         }
@@ -127,13 +115,11 @@ const Dashboard = () => {
     enabled: !!user,
   });
 
-  // Fetch upcoming scheduled announcements
   const { data: upcomingAnnouncements, isLoading: isLoadingUpcoming } = useQuery({
     queryKey: ["upcoming-announcements"],
     queryFn: async () => {
       const now = new Date().toISOString();
       
-      // Start with a base query for scheduled announcements after current date
       let query = supabase
         .from("announcements")
         .select("*")
@@ -142,7 +128,6 @@ const Dashboard = () => {
         .order("publish_date", { ascending: true })
         .limit(3);
       
-      // If not admin, only query user's own announcements
       if (!isAdmin && user?.id) {
         query = query.filter('user_id', 'eq', user.id);
       }
@@ -159,7 +144,6 @@ const Dashboard = () => {
     enabled: !!user,
   });
 
-  // Format the date for display
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), "d MMMM yyyy", { locale: fr });
@@ -168,7 +152,6 @@ const Dashboard = () => {
     }
   };
 
-  // Get the status badge styling
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
       case "published":
@@ -182,7 +165,7 @@ const Dashboard = () => {
 
   return (
     <PageLayout title="Dashboard">
-      <AnimatedContainer delay={100}>
+      <AnimatedContainer delay={100} className="mt-0">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
           <p className="text-muted-foreground">
             Bienvenue, {user?.name}

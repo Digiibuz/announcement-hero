@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 import AccessDenied from "@/components/users/AccessDenied";
+import { WordPressConfig } from "@/types/wordpress";
 
 const WordPressManagement = () => {
   const { isAdmin, isClient } = useAuth();
@@ -35,6 +36,13 @@ const WordPressManagement = () => {
     await createConfig(data);
     setIsDialogOpen(false);
     fetchConfigs(); // Call fetchConfigs after creating a new config
+  };
+
+  // Wrapper pour updateConfig pour assurer la compatibilité avec le composant
+  const handleUpdateConfig = async (id: string, data: Partial<WordPressConfig>) => {
+    await updateConfig(id, data);
+    // La fonction updateConfig retourne un WordPressConfig, mais nous ignorons la valeur retournée
+    // pour rendre la fonction compatible avec le type attendu
   };
 
   const titleAction = (isAdmin || isClient) ? (
@@ -67,7 +75,7 @@ const WordPressManagement = () => {
             <WordPressConfigList
               configs={configs}
               isLoading={isLoading}
-              onUpdateConfig={updateConfig}
+              onUpdateConfig={handleUpdateConfig}
               onDeleteConfig={deleteConfig}
             />
           </div>

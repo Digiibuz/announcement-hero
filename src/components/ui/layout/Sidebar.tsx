@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -154,14 +153,13 @@ const Sidebar = () => {
     </>
   );
 
-  // Mobile sidebar with Sheet component
   if (isMobile) {
     return (
       <>
         <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between h-16 px-4 bg-background/90 backdrop-blur-sm border-b border-border">
           <Link to="/dashboard" className="flex items-center">
             <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">
-              Announcement Manager
+              DigiiApp
             </span>
           </Link>
           
@@ -177,13 +175,11 @@ const Sidebar = () => {
           </Sheet>
         </div>
         
-        {/* Add padding for fixed header */}
         <div className="h-16" />
       </>
     );
   }
 
-  // Desktop sidebar
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 transform border-r border-border bg-card shadow-sm transition-transform md:translate-x-0">
       <SidebarContent />
