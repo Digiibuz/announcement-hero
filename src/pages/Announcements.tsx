@@ -12,6 +12,7 @@ import { Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Announcement } from "@/types/announcement";
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
+import FloatingActionButton from "@/components/ui/FloatingActionButton";
 
 // Helper function to strip HTML tags
 const stripHtmlTags = (html: string): string => {
@@ -152,6 +153,19 @@ const Announcements = () => {
           viewMode={viewMode}
         />
       </AnimatedContainer>
+
+      <FloatingActionButton 
+        position="bottom-right" 
+        asChild
+        showOnMobile={true}
+        hideOnDesktop={true}
+        className="bg-digibuz-yellow text-digibuz-navy hover:bg-digibuz-yellow/90 font-bold"
+      >
+        <Link to="/create">
+          <Plus className="mr-2 h-4 w-4" />
+          Créer
+        </Link>
+      </FloatingActionButton>
     </PageLayout>
   );
 };
