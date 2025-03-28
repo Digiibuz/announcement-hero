@@ -9,9 +9,11 @@ import AccessDenied from "@/components/users/AccessDenied";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import { useUserManagement } from "@/hooks/useUserManagement";
 import { UserProfile } from "@/types/auth";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 const UserManagement = () => {
   const { user, isAdmin, impersonateUser } = useAuth();
+  const isMobile = useMediaQuery("(max-width: 767px)");
   const { 
     users, 
     isLoading, 
@@ -38,7 +40,7 @@ const UserManagement = () => {
         <AccessDenied />
       ) : (
         <AnimatedContainer delay={200}>
-          <div className="max-w-5xl mx-auto">
+          <div className={isMobile ? "w-full" : "max-w-5xl mx-auto"}>
             <UserList 
               users={users}
               isLoading={isLoading}
