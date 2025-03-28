@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -93,7 +92,6 @@ const UserList: React.FC<UserListProps> = ({
             <TableHead>Nom</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Rôle</TableHead>
-            <TableHead>ID Client</TableHead>
             <TableHead>WordPress</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -101,7 +99,7 @@ const UserList: React.FC<UserListProps> = ({
         <TableBody>
           {isLoading ? (
             <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center">
+              <TableCell colSpan={5} className="h-24 text-center">
                 <div className="flex justify-center items-center">
                   <Loader2 className="h-6 w-6 animate-spin mr-2" />
                   Chargement des utilisateurs...
@@ -110,7 +108,7 @@ const UserList: React.FC<UserListProps> = ({
             </TableRow>
           ) : users.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center">
+              <TableCell colSpan={5} className="h-24 text-center">
                 Aucun utilisateur trouvé
               </TableCell>
             </TableRow>
@@ -124,7 +122,6 @@ const UserList: React.FC<UserListProps> = ({
                     {getRoleDisplayName(user.role)}
                   </span>
                 </TableCell>
-                <TableCell>{user.clientId || "-"}</TableCell>
                 <TableCell>{getWordPressConfigName(user)}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
