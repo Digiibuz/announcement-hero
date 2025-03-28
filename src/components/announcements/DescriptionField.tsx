@@ -1,3 +1,4 @@
+
 import React, { useRef, useState } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
@@ -9,18 +10,22 @@ import { toast } from "sonner";
 import { AnnouncementFormData } from "./AnnouncementForm";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useContentOptimization } from "@/hooks/useContentOptimization";
 import "@/styles/editor.css";
+
 interface DescriptionFieldProps {
   form: UseFormReturn<AnnouncementFormData>;
 }
+
 const DescriptionField = ({
   form
 }: DescriptionFieldProps) => {
-  const [isGenerating, setIsGenerating] = React.useState(false);
   const [showLinkPopover, setShowLinkPopover] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
   const [linkText, setLinkText] = useState("");
   const editorRef = useRef<HTMLDivElement>(null);
+  const { optimizeContent, isOptimizing } = useContentOptimization();
+
   const updateFormValue = () => {
     if (editorRef.current) {
       const htmlContent = editorRef.current.innerHTML;
@@ -28,42 +33,49 @@ const DescriptionField = ({
       console.log("Form value updated from editor:", htmlContent);
     }
   };
+
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const text = e.clipboardData.getData('text/plain');
     document.execCommand('insertText', false, text);
     updateFormValue();
   };
+
   const generateImprovedContent = async () => {
     const currentDescription = form.getValues('description');
+    const currentTitle = form.getValues('title');
+    
     if (!currentDescription) {
       toast.warning("Veuillez d'abord saisir du contenu à améliorer");
       return;
     }
+
     try {
-      setIsGenerating(true);
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      const enhancedText = `${currentDescription}\n\n[Version améliorée pour le SEO]\n${currentDescription.split(' ').map(word => Math.random() > 0.8 ? word.charAt(0).toUpperCase() + word.slice(1) : word).join(' ')}\n\nCette version a été optimisée pour améliorer sa visibilité dans les moteurs de recherche.`;
-      if (editorRef.current) {
-        editorRef.current.innerHTML = enhancedText;
+      const optimizedContent = await optimizeContent(
+        "description", 
+        currentTitle, 
+        currentDescription
+      );
+      
+      if (optimizedContent && editorRef.current) {
+        editorRef.current.innerHTML = optimizedContent;
         updateFormValue();
       }
-      toast.success("Contenu amélioré avec succès");
     } catch (error: any) {
       console.error("Error generating content:", error);
-      toast.error("Erreur lors de l'amélioration du contenu: " + error.message);
-    } finally {
-      setIsGenerating(false);
     }
   };
+
   const applyFormatting = (format: string) => {
     document.execCommand(format, false);
     updateFormValue();
   };
+
   const insertList = (type: 'insertUnorderedList' | 'insertOrderedList') => {
     document.execCommand(type, false);
     updateFormValue();
   };
+
   const insertLink = () => {
     if (!linkUrl) {
       toast.warning("Veuillez entrer une URL");
@@ -78,12 +90,14 @@ const DescriptionField = ({
     setShowLinkPopover(false);
     updateFormValue();
   };
+
   React.useEffect(() => {
     const description = form.getValues('description') || '';
     if (editorRef.current && description) {
       editorRef.current.innerHTML = description;
     }
   }, []);
+
   React.useEffect(() => {
     // Add an input event listener to catch updates
     const editorElement = editorRef.current;
@@ -97,13 +111,14 @@ const DescriptionField = ({
       };
     }
   }, []);
+
   return <div className="space-y-2">
       <div className="flex justify-between items-center">
         <Label>Description</Label>
         
         <div className="flex gap-2">
-          <Button type="button" size="sm" variant="secondary" className="flex items-center gap-1" onClick={generateImprovedContent} disabled={isGenerating}>
-            {isGenerating ? <>
+          <Button type="button" size="sm" variant="secondary" className="flex items-center gap-1" onClick={generateImprovedContent} disabled={isOptimizing.description}>
+            {isOptimizing.description ? <>
                 <Loader2 size={16} className="animate-spin" />
                 <span>Optimisation...</span>
               </> : <>

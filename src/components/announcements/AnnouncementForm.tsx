@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,7 @@ import {
   FormMessage,
   FormDescription,
 } from "@/components/ui/form";
-import { Loader2, ArrowLeft, Save, ExternalLink, Sparkles, Eye, PencilLine } from "lucide-react";
+import { Loader2, ArrowLeft, Save, ExternalLink, Sparkles, Eye, PencilLine, Search } from "lucide-react";
 import AnnouncementPreview from "./AnnouncementPreview";
 import { useNavigate } from "react-router-dom";
 import ImageUploader from "./ImageUploader";
@@ -24,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
+import { useContentOptimization } from "@/hooks/useContentOptimization";
 
 export interface AnnouncementFormProps {
   onSubmit?: (data: AnnouncementFormData) => void;
@@ -60,8 +60,7 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false, onCancel }: Announce
 
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
-  const [isSeoTitleOptimizing, setIsSeoTitleOptimizing] = useState(false);
-  const [isSeoDescriptionOptimizing, setIsSeoDescriptionOptimizing] = useState(false);
+  const { optimizeContent, isOptimizing } = useContentOptimization();
   const { watch, setValue } = form;
   const title = watch("title");
 
@@ -93,39 +92,17 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false, onCancel }: Announce
         return;
       }
       
-      if (field === 'seoTitle') {
-        setIsSeoTitleOptimizing(true);
-        
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        const optimizedTitle = currentTitle
-          .split(' ')
-          .map(word => word.length > 3 ? word.charAt(0).toUpperCase() + word.slice(1) : word)
-          .join(' ');
-        
-        form.setValue('seoTitle', optimizedTitle);
-        toast.success("Titre SEO optimisé avec succès");
-      } else {
-        setIsSeoDescriptionOptimizing(true);
-        
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        const plainText = currentDescription.replace(/<[^>]*>?/gm, '');
-        const firstPart = plainText.substring(0, 120);
-        const optimizedDescription = `${firstPart}... Découvrez cette annonce exceptionnelle!`;
-        
-        form.setValue('seoDescription', optimizedDescription);
-        toast.success("Méta description optimisée avec succès");
+      const optimizedContent = await optimizeContent(
+        field, 
+        currentTitle, 
+        currentDescription
+      );
+      
+      if (optimizedContent) {
+        form.setValue(field, optimizedContent);
       }
     } catch (error: any) {
       console.error(`Error optimizing ${field}:`, error);
-      toast.error(`Erreur lors de l'optimisation: ${error.message}`);
-    } finally {
-      if (field === 'seoTitle') {
-        setIsSeoTitleOptimizing(false);
-      } else {
-        setIsSeoDescriptionOptimizing(false);
-      }
     }
   };
 
@@ -239,9 +216,9 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false, onCancel }: Announce
                               variant="outline"
                               className="flex items-center gap-1 h-8"
                               onClick={() => optimizeSeoContent('seoTitle')}
-                              disabled={isSeoTitleOptimizing}
+                              disabled={isOptimizing.seoTitle}
                             >
-                              {isSeoTitleOptimizing ? (
+                              {isOptimizing.seoTitle ? (
                                 <>
                                   <Loader2 size={14} className="animate-spin" />
                                   <span className="text-xs">Optimisation...</span>
@@ -281,9 +258,9 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false, onCancel }: Announce
                               variant="outline"
                               className="flex items-center gap-1 h-8"
                               onClick={() => optimizeSeoContent('seoDescription')}
-                              disabled={isSeoDescriptionOptimizing}
+                              disabled={isOptimizing.seoDescription}
                             >
-                              {isSeoDescriptionOptimizing ? (
+                              {isOptimizing.seoDescription ? (
                                 <>
                                   <Loader2 size={14} className="animate-spin" />
                                   <span className="text-xs">Optimisation...</span>
@@ -437,6 +414,3 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false, onCancel }: Announce
 };
 
 export default AnnouncementForm;
-
-// Import for Search icon
-import { Search } from "lucide-react";
