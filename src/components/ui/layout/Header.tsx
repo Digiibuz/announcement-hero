@@ -21,11 +21,11 @@ const Header = () => {
             <Link to="/" className="flex items-center gap-2">
               <img 
                 src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
-                alt="DigiiBuz" 
+                alt="Digiibuz" 
                 className="h-8 w-auto" 
               />
               <span className="text-xl font-bold text-digibuz-navy dark:text-digibuz-yellow">
-                DigiiBuz
+                Digiibuz
               </span>
             </Link>
           </div>

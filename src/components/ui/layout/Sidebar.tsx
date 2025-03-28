@@ -72,11 +72,11 @@ const Sidebar = () => {
         <Link to="/dashboard" className="flex items-center gap-2">
           <img 
             src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
-            alt="DigiiBuz" 
+            alt="Digiibuz" 
             className="h-8 w-auto" 
           />
           <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-digibuz-navy to-digibuz-navy/70">
-            DigiiBuz
+            Digiibuz
           </span>
         </Link>
       </div>
@@ -173,11 +173,11 @@ const Sidebar = () => {
           <Link to="/dashboard" className="flex items-center gap-2">
             <img 
               src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
-              alt="DigiiBuz" 
+              alt="Digiibuz" 
               className="h-7 w-auto" 
             />
             <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-digibuz-navy to-digibuz-navy/70">
-              DigiiBuz
+              Digiibuz
             </span>
           </Link>
           

@@ -48,11 +48,11 @@ const Index = () => {
             <div className="flex items-center gap-2">
               <img 
                 src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
-                alt="DigiiBuz" 
+                alt="Digiibuz" 
                 className="h-8 w-auto" 
               />
               <span className="text-xl font-bold text-digibuz-navy dark:text-digibuz-yellow">
-                DigiiBuz
+                Digiibuz
               </span>
             </div>
 
@@ -145,16 +145,16 @@ const Index = () => {
             <div className="text-center md:text-left mb-6 md:mb-0 flex items-center gap-2">
               <img 
                 src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
-                alt="DigiiBuz" 
+                alt="Digiibuz" 
                 className="h-6 w-auto" 
               />
-              <span className="text-lg font-semibold">DigiiBuz</span>
+              <span className="text-lg font-semibold">Digiibuz</span>
               <p className="text-sm text-muted-foreground mt-1">
                 Elegant WordPress announcement management
               </p>
             </div>
             <div className="text-sm text-muted-foreground">
-              &copy; {new Date().getFullYear()} DigiiBuz. All rights reserved.
+              &copy; {new Date().getFullYear()} Digiibuz. All rights reserved.
             </div>
           </div>
         </div>
