@@ -62,6 +62,10 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				digibuz: {
+					navy: '#0C1646', // Le bleu foncé du logo
+					yellow: '#FFD600' // Le jaune du logo
 				}
 			},
 			borderRadius: {
