@@ -98,6 +98,18 @@ const Login = () => {
 
       <AnimatedContainer direction="up" className="w-full max-w-md">
         <Card className="glass-panel shadow-lg border-white/20">
+          <div className="flex justify-center pt-6">
+            <div className="flex flex-col items-center">
+              <img 
+                src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
+                alt="DigiiBuz" 
+                className="h-16 w-auto mb-2"
+              />
+              <span className="text-xl font-bold text-digibuz-navy dark:text-digibuz-yellow">
+                DigiiBuz
+              </span>
+            </div>
+          </div>
           <CardHeader className="space-y-1 text-center">
             <CardTitle className="text-2xl flex items-center justify-center gap-2">
               <Lock className="h-6 w-6" />
