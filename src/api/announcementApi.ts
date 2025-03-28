@@ -1,7 +1,6 @@
 
 // API calls for announcements
 import { supabase } from "@/integrations/supabase/client";
-import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
 import { toast } from "sonner";
 
 /**
@@ -22,12 +21,27 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
 
   // If there's a WordPress post ID, delete it from WordPress
   if (announcement && announcement.wordpress_post_id) {
-    const { deleteFromWordPress } = useWordPressPublishing();
-    const result = await deleteFromWordPress(id, announcement.wordpress_post_id, userId);
-    
-    if (!result.success) {
-      console.error("Error deleting from WordPress:", result.message);
-      toast.error("L'annonce a été supprimée de l'application, mais pas de WordPress: " + result.message);
+    // Delete from WordPress using a direct fetch call to our API endpoint
+    try {
+      const response = await fetch(`/api/announcements/${id}/delete-wordpress`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          wordpressPostId: announcement.wordpress_post_id,
+          userId: userId
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Error deleting from WordPress:", errorText);
+        toast.error("L'annonce a été supprimée de l'application, mais pas de WordPress: " + errorText);
+      }
+    } catch (error: any) {
+      console.error("Error calling WordPress delete API:", error);
+      toast.error("L'annonce a été supprimée de l'application, mais pas de WordPress: " + error.message);
     }
   }
 
