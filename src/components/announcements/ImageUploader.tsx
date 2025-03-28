@@ -18,13 +18,90 @@ const ImageUploader = ({ form }: ImageUploaderProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
+  // Fonction pour compresser et convertir l'image en WebP
+  const compressAndConvertToWebp = async (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          // Créer un canvas pour le redimensionnement et la conversion
+          const canvas = document.createElement('canvas');
+          
+          // Définir une taille maximale raisonnable (1920px) tout en conservant le ratio
+          const MAX_WIDTH = 1920;
+          const MAX_HEIGHT = 1920;
+          let width = img.width;
+          let height = img.height;
+          
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          // Dessiner l'image redimensionnée sur le canvas
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          // Convertir en WebP avec une qualité de 80%
+          canvas.toBlob((blob) => {
+            if (!blob) {
+              reject(new Error("La conversion a échoué"));
+              return;
+            }
+            
+            // Créer un nouveau fichier au format WebP avec le même nom mais extension changée
+            const fileName = file.name.split('.')[0] + '.webp';
+            const newFile = new File([blob], fileName, { type: 'image/webp' });
+            
+            resolve(newFile);
+          }, 'image/webp', 0.8); // 0.8 = 80% de qualité
+        };
+        
+        img.onerror = () => {
+          reject(new Error("Erreur lors du chargement de l'image"));
+        };
+      };
+      
+      reader.onerror = () => {
+        reject(new Error("Erreur lors de la lecture du fichier"));
+      };
+    });
+  };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
     
     try {
       setIsUploading(true);
-      const uploadedImageUrls = await uploadImages(Array.from(files));
+      
+      // Compresser et convertir chaque image avant l'upload
+      const processedFiles = await Promise.all(
+        Array.from(files).map(async (file) => {
+          try {
+            return await compressAndConvertToWebp(file);
+          } catch (error) {
+            console.error("Erreur de compression:", error);
+            // En cas d'erreur de compression, utiliser le fichier original
+            return file;
+          }
+        })
+      );
+      
+      const uploadedImageUrls = await uploadImages(processedFiles);
       
       setUploadedImages(prev => [...prev, ...uploadedImageUrls]);
       form.setValue('images', [...form.getValues('images') || [], ...uploadedImageUrls]);
@@ -34,7 +111,7 @@ const ImageUploader = ({ form }: ImageUploaderProps) => {
       console.error("Error uploading images:", error);
       toast.error("Erreur lors du téléversement des images: " + error.message);
     } finally {
-      setIsUploading(false);
+      setIsSubmitting(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
       if (cameraInputRef.current) cameraInputRef.current.value = '';
     }
