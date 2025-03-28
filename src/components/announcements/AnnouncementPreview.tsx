@@ -1,8 +1,10 @@
+
 import React from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { CalendarIcon, FolderIcon, Clock, Search, Link } from "lucide-react";
+import { CalendarIcon, FolderIcon, Clock, Search, Link, Tag, AlertCircle } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 export interface AnnouncementPreviewProps {
   data: {
@@ -27,9 +29,9 @@ const AnnouncementPreview = ({ data }: AnnouncementPreviewProps) => {
   const getCategoryName = (categoryId: string) => {
     const categories: Record<string, string> = {
       news: "News",
-      events: "Events",
+      events: "Événements",
       blog: "Blog",
-      product: "Product Updates",
+      product: "Produits",
     };
     return categories[categoryId] || categoryId;
   };
@@ -49,21 +51,29 @@ const AnnouncementPreview = ({ data }: AnnouncementPreviewProps) => {
 
   return (
     <div className="space-y-6">
-      <Card className="overflow-hidden shadow-sm">
-        <CardHeader className="pb-0">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-semibold">{data.title || "Untitled Announcement"}</h1>
-              <Badge className={getStatusColor(data.status)} variant="outline">
-                {data.status.charAt(0).toUpperCase() + data.status.slice(1)}
-              </Badge>
-            </div>
+      <div className="bg-muted/30 p-4 rounded-lg flex items-center text-sm">
+        <AlertCircle className="h-5 w-5 mr-2 text-muted-foreground" />
+        <p>Ceci est un aperçu de votre annonce. Elle apparaîtra comme ceci sur votre site WordPress.</p>
+      </div>
+      
+      <Card className="overflow-hidden shadow-md border-muted">
+        <CardHeader className="pb-0 space-y-4">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-semibold leading-tight">
+              {data.title || "Titre de l'annonce"}
+            </h1>
+            <Badge className={getStatusColor(data.status)} variant="outline">
+              {data.status === "draft" ? "Brouillon" : 
+               data.status === "published" ? "Publié" :
+               data.status === "scheduled" ? "Planifié" : 
+               data.status.charAt(0).toUpperCase() + data.status.slice(1)}
+            </Badge>
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground mb-4">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
             {data.category && (
               <div className="flex items-center gap-1">
-                <FolderIcon size={14} />
+                <Tag size={14} />
                 <span>{getCategoryName(data.category)}</span>
               </div>
             )}
@@ -71,13 +81,15 @@ const AnnouncementPreview = ({ data }: AnnouncementPreviewProps) => {
             {data.publishDate && (
               <div className="flex items-center gap-1">
                 <CalendarIcon size={14} />
-                <span>{format(data.publishDate, "MMMM d, yyyy")}</span>
+                <time dateTime={data.publishDate.toISOString()}>
+                  {format(data.publishDate, "d MMMM yyyy")}
+                </time>
               </div>
             )}
 
             <div className="flex items-center gap-1">
               <Clock size={14} />
-              <span>{format(new Date(), "h:mm a")}</span>
+              <span>{format(new Date(), "HH:mm")}</span>
             </div>
             
             {data.seoSlug && (
@@ -87,43 +99,57 @@ const AnnouncementPreview = ({ data }: AnnouncementPreviewProps) => {
               </div>
             )}
           </div>
+          
+          <Separator />
         </CardHeader>
 
-        <CardContent>
-          {data.description ? (
-            <div className="prose prose-sm max-w-none rich-text-editor">
-              {/* Always render description with HTML formatting */}
-              <div dangerouslySetInnerHTML={{ __html: data.description }} />
+        <CardContent className="p-6">
+          {data.images && data.images.length > 0 ? (
+            <div className="mb-6">
+              <div className="aspect-video rounded-md overflow-hidden bg-muted">
+                <img
+                  src={data.images[0]}
+                  alt={data.title || "Image principale de l'annonce"}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              
+              {data.images.length > 1 && (
+                <div className="grid grid-cols-4 gap-2 mt-2">
+                  {data.images.slice(1).map((image, index) => (
+                    <div key={index} className="aspect-square rounded-md overflow-hidden bg-muted">
+                      <img
+                        src={image}
+                        alt={`Image supplémentaire ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
-            <div className="text-muted-foreground italic">
-              No description provided
+            <div className="mb-6 border border-dashed rounded-md aspect-video flex items-center justify-center text-muted-foreground">
+              Aucune image attachée
             </div>
           )}
 
-          {data.images && data.images.length > 0 ? (
-            <div className="grid grid-cols-2 gap-2 mt-4">
-              {data.images.map((image, index) => (
-                <img
-                  key={index}
-                  src={image}
-                  alt={`Announcement image ${index + 1}`}
-                  className="rounded-md object-cover w-full h-32"
-                />
-              ))}
+          {data.description ? (
+            <div className="prose prose-sm md:prose-base max-w-none rich-text-editor">
+              <div dangerouslySetInnerHTML={{ __html: data.description }} />
             </div>
           ) : (
-            <div className="mt-6 p-8 border border-dashed rounded-md text-center text-muted-foreground">
-              No images attached
+            <div className="text-muted-foreground italic py-4 text-center">
+              Aucune description fournie
             </div>
           )}
           
           {/* SEO Preview */}
           {(data.seoTitle || data.seoDescription) && (
-            <div className="mt-6 border rounded-md p-4 bg-slate-50">
+            <div className="mt-8 border rounded-md p-4 bg-slate-50">
               <div className="flex items-center gap-2 mb-2 text-sm font-medium text-slate-600">
                 <Search size={16} />
-                <span>SEO Preview</span>
+                <span>Aperçu SEO Google</span>
               </div>
               
               <div className="text-blue-600 text-lg font-medium truncate">
@@ -133,20 +159,12 @@ const AnnouncementPreview = ({ data }: AnnouncementPreviewProps) => {
                 yoursite.com/annonces/{data.seoSlug || "url-de-lannonce"}
               </div>
               <div className="text-slate-700 text-sm line-clamp-2">
-                {data.seoDescription || "No meta description provided"}
+                {data.seoDescription || "Aucune méta-description fournie."}
               </div>
             </div>
           )}
         </CardContent>
       </Card>
-
-      <div className="p-4 bg-muted rounded-md">
-        <h3 className="text-sm font-medium mb-2">Preview Notes</h3>
-        <p className="text-sm text-muted-foreground">
-          This is how your announcement will appear on your WordPress site.
-          The final appearance may vary slightly based on your Divi theme settings.
-        </p>
-      </div>
     </div>
   );
 };

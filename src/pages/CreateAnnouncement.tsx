@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -8,6 +9,9 @@ import PageLayout from "@/components/ui/layout/PageLayout";
 import { toast } from "sonner";
 import { Announcement } from "@/types/announcement";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
+import { Card, CardContent } from "@/components/ui/card";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const CreateAnnouncement = () => {
   const navigate = useNavigate();
@@ -74,13 +78,25 @@ const CreateAnnouncement = () => {
   };
 
   return (
-    <PageLayout title="Créer une annonce">
+    <PageLayout 
+      title="Créer une nouvelle annonce" 
+      titleAction={
+        <Button variant="outline" size="sm" onClick={() => navigate("/announcements")} className="flex items-center gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Retour aux annonces
+        </Button>
+      }
+    >
       <AnimatedContainer delay={200}>
         <div className="max-w-5xl mx-auto">
-          <AnnouncementForm 
-            onSubmit={handleSubmit} 
-            isSubmitting={isSubmitting || isPublishing} 
-          />
+          <Card className="border shadow-sm bg-card/50 backdrop-blur-sm">
+            <CardContent className="p-6">
+              <AnnouncementForm 
+                onSubmit={handleSubmit} 
+                isSubmitting={isSubmitting || isPublishing} 
+              />
+            </CardContent>
+          </Card>
         </div>
       </AnimatedContainer>
     </PageLayout>
