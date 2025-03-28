@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -112,7 +111,6 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false, onCancel, isMobile =
     }
   };
 
-  // Fonction pour déterminer les styles en fonction du mode mobile ou non
   const getCardStyles = (isSectionCard = false) => {
     if (isMobile) {
       return isSectionCard 
@@ -369,7 +367,7 @@ const AnnouncementForm = ({ onSubmit, isSubmitting = false, onCancel, isMobile =
               ) : (
                 <>
                   <Save className="mr-2 h-4 w-4" />
-                  Enregistrer
+                  Publier
                 </>
               )}
             </Button>
