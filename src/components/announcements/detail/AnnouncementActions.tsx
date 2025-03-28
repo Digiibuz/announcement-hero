@@ -21,6 +21,7 @@ import {
 } from "@/api/announcementApi";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 interface AnnouncementActionsProps {
   id: string;
@@ -33,11 +34,21 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ id, status })
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const deleteAnnouncement = async () => {
     try {
+      if (!user?.id) {
+        toast({
+          title: "Erreur",
+          description: "Utilisateur non identifié.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       setIsDeleting(true);
-      await apiDeleteAnnouncement(id);
+      await apiDeleteAnnouncement(id, user.id);
       toast({
         title: "Annonce supprimée",
         description: "L'annonce a été supprimée avec succès.",

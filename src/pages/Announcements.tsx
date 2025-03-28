@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
@@ -13,6 +14,7 @@ import { Link } from "react-router-dom";
 import { Announcement } from "@/types/announcement";
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
 import FloatingActionButton from "@/components/ui/FloatingActionButton";
+import { deleteAnnouncement as apiDeleteAnnouncement } from "@/api/announcementApi";
 
 // Helper function to strip HTML tags
 const stripHtmlTags = (html: string): string => {
@@ -113,12 +115,13 @@ const Announcements = () => {
   // Handle announcement deletion
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from("announcements")
-        .delete()
-        .filter("id", "eq", id);
-      
-      if (error) throw error;
+      if (!user?.id) {
+        toast.error("Utilisateur non identifié");
+        return;
+      }
+
+      // Utiliser l'API pour supprimer l'annonce (et son équivalent WordPress si existant)
+      await apiDeleteAnnouncement(id, user.id);
       
       toast.success("Annonce supprimée avec succès");
       refetch();
