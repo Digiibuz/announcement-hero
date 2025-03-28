@@ -111,7 +111,7 @@ const ImageUploader = ({ form }: ImageUploaderProps) => {
       console.error("Error uploading images:", error);
       toast.error("Erreur lors du téléversement des images: " + error.message);
     } finally {
-      setIsSubmitting(false);
+      setIsUploading(false); // Fixed: was incorrectly setIsSubmitting
       if (fileInputRef.current) fileInputRef.current.value = '';
       if (cameraInputRef.current) cameraInputRef.current.value = '';
     }
