@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -13,26 +12,43 @@ export const useUserManagement = () => {
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
+      
+      // Fetch user profiles
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*, wordpress_configs(name, site_url)');
       
-      if (error) {
-        throw error;
+      if (profilesError) {
+        throw profilesError;
       }
       
-      const processedUsers: UserProfile[] = data.map(profile => ({
-        id: profile.id,
-        email: profile.email,
-        name: profile.name,
-        role: profile.role as Role,
-        clientId: profile.client_id,
-        wordpressConfigId: profile.wordpress_config_id || null,
-        wordpressConfig: profile.wordpress_configs ? {
-          name: profile.wordpress_configs.name,
-          site_url: profile.wordpress_configs.site_url
-        } : null
-      }));
+      // Fetch auth users to get last sign in time
+      const { data: authData, error: authError } = await supabase.functions.invoke('get-user-logins', {});
+      
+      if (authError) {
+        console.error('Error fetching auth data:', authError);
+      }
+      
+      const authUsers = authError ? [] : (authData as any[] || []);
+      
+      // Map last login times to user profiles
+      const processedUsers: UserProfile[] = profilesData.map(profile => {
+        const authUser = authUsers.find(user => user.id === profile.id);
+        
+        return {
+          id: profile.id,
+          email: profile.email,
+          name: profile.name,
+          role: profile.role as Role,
+          clientId: profile.client_id,
+          wordpressConfigId: profile.wordpress_config_id || null,
+          wordpressConfig: profile.wordpress_configs ? {
+            name: profile.wordpress_configs.name,
+            site_url: profile.wordpress_configs.site_url
+          } : null,
+          lastLogin: authUser?.last_sign_in_at || null
+        };
+      });
       
       setUsers(processedUsers);
     } catch (error) {

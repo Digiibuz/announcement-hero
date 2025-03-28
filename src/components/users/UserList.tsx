@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -8,7 +9,7 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
-import { Loader2, AlertTriangle, UserMinus } from "lucide-react";
+import { Loader2, AlertTriangle, UserMinus, Clock } from "lucide-react";
 import { UserProfile } from "@/types/auth";
 import UserEditForm from "./UserEditForm";
 import {
@@ -21,6 +22,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { format, parseISO } from "date-fns";
+import { fr } from "date-fns/locale";
 
 interface UserListProps {
   users: UserProfile[];
@@ -84,6 +87,17 @@ const UserList: React.FC<UserListProps> = ({
     }
   };
 
+  const formatLastLogin = (lastLogin: string | null | undefined) => {
+    if (!lastLogin) return "Jamais";
+    try {
+      const date = parseISO(lastLogin);
+      return format(date, "dd MMM yyyy, HH:mm", { locale: fr });
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "Format invalide";
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-border">
       <Table>
@@ -93,13 +107,19 @@ const UserList: React.FC<UserListProps> = ({
             <TableHead>Email</TableHead>
             <TableHead>Rôle</TableHead>
             <TableHead>WordPress</TableHead>
+            <TableHead>
+              <div className="flex items-center">
+                <Clock className="h-4 w-4 mr-1" />
+                Dernière connexion
+              </div>
+            </TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {isLoading ? (
             <TableRow>
-              <TableCell colSpan={5} className="h-24 text-center">
+              <TableCell colSpan={6} className="h-24 text-center">
                 <div className="flex justify-center items-center">
                   <Loader2 className="h-6 w-6 animate-spin mr-2" />
                   Chargement des utilisateurs...
@@ -108,7 +128,7 @@ const UserList: React.FC<UserListProps> = ({
             </TableRow>
           ) : users.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="h-24 text-center">
+              <TableCell colSpan={6} className="h-24 text-center">
                 Aucun utilisateur trouvé
               </TableCell>
             </TableRow>
@@ -123,6 +143,9 @@ const UserList: React.FC<UserListProps> = ({
                   </span>
                 </TableCell>
                 <TableCell>{getWordPressConfigName(user)}</TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                  {formatLastLogin(user.lastLogin)}
+                </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <UserEditForm 

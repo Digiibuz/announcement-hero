@@ -1,4 +1,3 @@
-
 import { User } from "@supabase/supabase-js";
 
 export type Role = "admin" | "editor" | "client";
@@ -14,6 +13,7 @@ export interface UserProfile {
     name: string;
     site_url: string;
   } | null;
+  lastLogin?: string | null;
 }
 
 export interface AuthContextType {
