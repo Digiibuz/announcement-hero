@@ -2,8 +2,9 @@
 import { useState, useEffect } from "react";
 import { UserProfile } from "@/types/auth";
 
+// Custom React hook for handling user impersonation
 export const useImpersonation = (currentUser: UserProfile | null) => {
-  // Ces hooks useState doivent être appelés directement dans le corps de la fonction hook
+  // Initialize state variables directly in the hook function
   const [originalUser, setOriginalUser] = useState<UserProfile | null>(null);
   const [isImpersonating, setIsImpersonating] = useState(false);
 
