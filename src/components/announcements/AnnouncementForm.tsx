@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -41,12 +42,12 @@ const AnnouncementForm = ({
   isMobile = false,
   initialValues
 }: AnnouncementFormProps) => {
-  const defaultValues: AnnouncementFormData = {
+  const defaultValues = {
     title: "",
     description: "",
     wordpressCategory: "",
     publishDate: undefined,
-    status: "draft" as const,
+    status: "draft",
     images: [],
     seoTitle: "",
     seoDescription: "",
@@ -57,6 +58,7 @@ const AnnouncementForm = ({
     defaultValues: initialValues || defaultValues
   });
 
+  // Update form values when initialValues changes
   useEffect(() => {
     if (initialValues) {
       Object.keys(initialValues).forEach((key) => {

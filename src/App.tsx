@@ -14,42 +14,18 @@ import AnnouncementDetail from "./pages/AnnouncementDetail";
 import UserManagement from "./pages/UserManagement";
 import WordPressManagement from "./pages/WordPressManagement";
 import NotFound from "./pages/NotFound";
-import { Suspense, useEffect } from "react";
 
-// Create a new query client instance
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: true,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes (renamed from cacheTime)
-    },
-  },
-});
-
-// Loading component
-const LoadingFallback = () => (
-  <div className="min-h-screen flex items-center justify-center">
-    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-  </div>
-);
+const queryClient = new QueryClient();
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading, session } = useAuth();
-
-  // Debugging logs
-  useEffect(() => {
-    console.log("ProtectedRoute state:", { isAuthenticated, isLoading, sessionExists: !!session });
-  }, [isAuthenticated, isLoading, session]);
+  const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
-    return <LoadingFallback />;
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
-  if (!isAuthenticated || !session) {
-    console.log("Not authenticated, redirecting to login");
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
@@ -58,119 +34,100 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Admin only route component
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading, isAdmin, isClient, session } = useAuth();
-
-  // Debugging logs
-  useEffect(() => {
-    console.log("AdminRoute state check:", { 
-      isAuthenticated, 
-      isLoading, 
-      isAdmin, 
-      isClient, 
-      sessionExists: !!session 
-    });
-  }, [isAuthenticated, isLoading, isAdmin, isClient, session]);
+  const { isAuthenticated, isLoading, isAdmin, isClient } = useAuth();
 
   if (isLoading) {
-    return <LoadingFallback />;
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
-  if (!isAuthenticated || !session) {
-    console.log("Not authenticated, redirecting to login");
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  // Authorize access to admin and client users
+  // Autoriser l'accès aux utilisateurs admin et client
   if (!isAdmin && !isClient) {
-    console.log("Not authorized, redirecting to dashboard");
     return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
 };
 
-// AppRoutes component uses useAuth, so it needs to be inside AuthProvider
 const AppRoutes = () => {
   return (
-    <Suspense fallback={<LoadingFallback />}>
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/login" element={<Login />} />
-        
-        {/* Protected routes */}
-        <Route 
-          path="/dashboard" 
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/announcements" 
-          element={
-            <ProtectedRoute>
-              <Announcements />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/announcements/:id" 
-          element={
-            <ProtectedRoute>
-              <AnnouncementDetail />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/create" 
-          element={
-            <ProtectedRoute>
-              <CreateAnnouncement />
-            </ProtectedRoute>
-          } 
-        />
-        
-        {/* Admin/Client only routes */}
-        <Route 
-          path="/users" 
-          element={
-            <AdminRoute>
-              <UserManagement />
-            </AdminRoute>
-          } 
-        />
-        <Route 
-          path="/wordpress" 
-          element={
-            <AdminRoute>
-              <WordPressManagement />
-            </AdminRoute>
-          } 
-        />
-        
-        {/* Fallback route */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </Suspense>
+    <Routes>
+      <Route path="/" element={<Index />} />
+      <Route path="/login" element={<Login />} />
+      
+      {/* Protected routes */}
+      <Route 
+        path="/dashboard" 
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/announcements" 
+        element={
+          <ProtectedRoute>
+            <Announcements />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/announcements/:id" 
+        element={
+          <ProtectedRoute>
+            <AnnouncementDetail />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/create" 
+        element={
+          <ProtectedRoute>
+            <CreateAnnouncement />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Admin/Client only routes */}
+      <Route 
+        path="/users" 
+        element={
+          <AdminRoute>
+            <UserManagement />
+          </AdminRoute>
+        } 
+      />
+      <Route 
+        path="/wordpress" 
+        element={
+          <AdminRoute>
+            <WordPressManagement />
+          </AdminRoute>
+        } 
+      />
+      
+      {/* Fallback route */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 };
 
-// App component with correct component ordering
-const App = () => {
-  return (
-    <BrowserRouter>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <AppRoutes />
-          </TooltipProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </BrowserRouter>
-  );
-};
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
+  </QueryClientProvider>
+);
 
 export default App;

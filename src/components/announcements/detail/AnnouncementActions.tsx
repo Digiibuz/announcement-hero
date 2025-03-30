@@ -22,14 +22,6 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 interface AnnouncementActionsProps {
   id: string;
@@ -40,9 +32,6 @@ interface AnnouncementActionsProps {
 const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ id, status, wordpressPostId }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [deleteErrorOpen, setDeleteErrorOpen] = useState(false);
-  const [deleteError, setDeleteError] = useState("");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -60,32 +49,28 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ id, status, w
       }
       
       setIsDeleting(true);
-      const result = await apiDeleteAnnouncement(id, user.id);
+      await apiDeleteAnnouncement(id, user.id);
       
-      if (result.success) {
-        toast({
-          title: "Annonce supprimée",
-          description: result.message,
-        });
-        
-        navigate("/announcements");
-        queryClient.invalidateQueries({ queryKey: ["announcements"] });
-      } else {
-        setDeleteError(result.message);
-        setDeleteErrorOpen(true);
-        toast({
-          title: "Erreur",
-          description: "La suppression a échoué. Consultez les détails pour plus d'informations.",
-          variant: "destructive",
-        });
-      }
+      const successMessage = wordpressPostId 
+        ? "L'annonce a été supprimée de l'application et de WordPress."
+        : "L'annonce a été supprimée avec succès.";
+      
+      toast({
+        title: "Annonce supprimée",
+        description: successMessage,
+      });
+      
+      navigate("/announcements");
+      queryClient.invalidateQueries({ queryKey: ["announcements"] });
     } catch (error) {
       console.error("Error deleting announcement:", error);
-      setDeleteError("Une erreur inattendue s'est produite lors de la suppression.");
-      setDeleteErrorOpen(true);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer l'annonce.",
+        variant: "destructive",
+      });
     } finally {
       setIsDeleting(false);
-      setConfirmDeleteOpen(false);
     }
   };
 
@@ -132,16 +117,13 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ id, status, w
         </Button>
       )}
 
-      <Button 
-        variant="destructive" 
-        onClick={() => setConfirmDeleteOpen(true)}
-      >
-        <Trash2 className="mr-2 h-4 w-4" />
-        Supprimer
-      </Button>
-
-      {/* Boîte de dialogue de confirmation de suppression */}
-      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="destructive">
+            <Trash2 className="mr-2 h-4 w-4" />
+            Supprimer
+          </Button>
+        </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
@@ -151,7 +133,7 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ id, status, w
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setConfirmDeleteOpen(false)}>Annuler</AlertDialogCancel>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction 
               onClick={deleteAnnouncement}
               className="bg-destructive hover:bg-destructive/90"
@@ -169,23 +151,6 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ id, status, w
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Boîte de dialogue d'erreur de suppression */}
-      <Dialog open={deleteErrorOpen} onOpenChange={setDeleteErrorOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Erreur lors de la suppression</DialogTitle>
-            <DialogDescription>
-              {deleteError}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button onClick={() => setDeleteErrorOpen(false)}>
-              Fermer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

@@ -42,8 +42,7 @@ export const useUserProfile = () => {
           wordpressConfig: data.wordpress_configs ? {
             name: data.wordpress_configs.name,
             site_url: data.wordpress_configs.site_url
-          } : null,
-          lastLogin: data.last_login
+          } : null
         });
         return true;
       } else if (error) {

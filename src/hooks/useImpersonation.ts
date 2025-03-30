@@ -1,8 +1,8 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { UserProfile } from "@/types/auth";
 
-export function useImpersonation(currentUser: UserProfile | null) {
+export const useImpersonation = (currentUser: UserProfile | null) => {
   const [originalUser, setOriginalUser] = useState<UserProfile | null>(null);
   const [isImpersonating, setIsImpersonating] = useState(false);
 
@@ -10,20 +10,15 @@ export function useImpersonation(currentUser: UserProfile | null) {
   useEffect(() => {
     const storedOriginalUser = localStorage.getItem("originalUser");
     if (storedOriginalUser) {
-      try {
-        setOriginalUser(JSON.parse(storedOriginalUser));
-        setIsImpersonating(true);
-      } catch (error) {
-        console.error("Error parsing stored original user:", error);
-        localStorage.removeItem("originalUser");
-      }
+      setOriginalUser(JSON.parse(storedOriginalUser));
+      setIsImpersonating(true);
     }
   }, []);
 
   // Function to start impersonating a user
-  const impersonateUser = useCallback((userToImpersonate: UserProfile) => {
+  const impersonateUser = (userToImpersonate: UserProfile) => {
     // Only allow admins to impersonate
-    if (!currentUser || currentUser.role !== "admin") return null;
+    if (!currentUser || currentUser.role !== "admin") return;
     
     // Store the original user
     setOriginalUser(currentUser);
@@ -31,10 +26,10 @@ export function useImpersonation(currentUser: UserProfile | null) {
     setIsImpersonating(true);
     
     return userToImpersonate;
-  }, [currentUser]);
+  };
 
   // Function to stop impersonating
-  const stopImpersonating = useCallback(() => {
+  const stopImpersonating = () => {
     if (!originalUser) return null;
     
     // Restore the original user
@@ -46,7 +41,7 @@ export function useImpersonation(currentUser: UserProfile | null) {
     setOriginalUser(null);
     
     return user;
-  }, [originalUser]);
+  };
 
   return {
     originalUser,
@@ -54,4 +49,4 @@ export function useImpersonation(currentUser: UserProfile | null) {
     impersonateUser,
     stopImpersonating
   };
-}
+};
