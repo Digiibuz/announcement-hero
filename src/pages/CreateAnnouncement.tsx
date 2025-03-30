@@ -96,7 +96,7 @@ const CreateAnnouncement = () => {
 
   return (
     <PageLayout 
-      title="Créer un nouvel article" 
+      title="Créer une nouvelle annonce" 
       titleAction={
         <Button variant="outline" size="sm" onClick={() => navigate("/announcements")} className="flex items-center gap-2">
           <ArrowLeft className="h-4 w-4" />
