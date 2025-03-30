@@ -16,49 +16,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Initialize auth state and set up listeners
   useEffect(() => {
-    // Set up the auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setIsLoading(true);
+    let isMounted = true;
+    
+    // Initialize session
+    const initializeAuth = async () => {
+      try {
+        // First get any existing session
+        const { data: { session } } = await supabase.auth.getSession();
         
-        if (session?.user) {
+        if (session?.user && isMounted) {
           // First set user from metadata for immediate UI feedback
           const initialProfile = createProfileFromMetadata(session.user);
           setUserProfile(initialProfile);
           
-          // Then asynchronously fetch the complete profile
-          setTimeout(() => {
-            fetchFullProfile(session.user.id);
-          }, 100);
-        } else {
-          setUserProfile(null);
+          // Then fetch complete profile asynchronously
+          fetchFullProfile(session.user.id);
         }
-        
-        setIsLoading(false);
+      } catch (error) {
+        console.error("Error initializing auth:", error);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    // Set up the auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (isMounted) {
+          if (session?.user) {
+            // First set user from metadata for immediate UI feedback
+            const initialProfile = createProfileFromMetadata(session.user);
+            setUserProfile(initialProfile);
+            
+            // Then asynchronously fetch the complete profile
+            setTimeout(() => {
+              if (isMounted) {
+                fetchFullProfile(session.user.id);
+              }
+            }, 100);
+          } else {
+            setUserProfile(null);
+          }
+          
+          setIsLoading(false);
+        }
       }
     );
 
-    // Get initial session
-    const initializeAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        // First set user from metadata
-        const initialProfile = createProfileFromMetadata(session.user);
-        setUserProfile(initialProfile);
-        
-        // Then get complete profile
-        setTimeout(() => {
-          fetchFullProfile(session.user.id);
-        }, 100);
-      }
-      
-      setIsLoading(false);
-    };
-
+    // Initialize auth
     initializeAuth();
 
+    // Cleanup
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
   }, []);

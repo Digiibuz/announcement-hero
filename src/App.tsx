@@ -14,15 +14,30 @@ import AnnouncementDetail from "./pages/AnnouncementDetail";
 import UserManagement from "./pages/UserManagement";
 import WordPressManagement from "./pages/WordPressManagement";
 import NotFound from "./pages/NotFound";
+import { Suspense } from "react";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+// Loading component
+const LoadingFallback = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+  </div>
+);
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <LoadingFallback />;
   }
 
   if (!isAuthenticated) {
@@ -37,7 +52,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading, isAdmin, isClient } = useAuth();
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <LoadingFallback />;
   }
 
   if (!isAuthenticated) {
@@ -54,65 +69,67 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 
 const AppRoutes = () => {
   return (
-    <Routes>
-      <Route path="/" element={<Index />} />
-      <Route path="/login" element={<Login />} />
-      
-      {/* Protected routes */}
-      <Route 
-        path="/dashboard" 
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/announcements" 
-        element={
-          <ProtectedRoute>
-            <Announcements />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/announcements/:id" 
-        element={
-          <ProtectedRoute>
-            <AnnouncementDetail />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/create" 
-        element={
-          <ProtectedRoute>
-            <CreateAnnouncement />
-          </ProtectedRoute>
-        } 
-      />
-      
-      {/* Admin/Client only routes */}
-      <Route 
-        path="/users" 
-        element={
-          <AdminRoute>
-            <UserManagement />
-          </AdminRoute>
-        } 
-      />
-      <Route 
-        path="/wordpress" 
-        element={
-          <AdminRoute>
-            <WordPressManagement />
-          </AdminRoute>
-        } 
-      />
-      
-      {/* Fallback route */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/login" element={<Login />} />
+        
+        {/* Protected routes */}
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/announcements" 
+          element={
+            <ProtectedRoute>
+              <Announcements />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/announcements/:id" 
+          element={
+            <ProtectedRoute>
+              <AnnouncementDetail />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/create" 
+          element={
+            <ProtectedRoute>
+              <CreateAnnouncement />
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* Admin/Client only routes */}
+        <Route 
+          path="/users" 
+          element={
+            <AdminRoute>
+              <UserManagement />
+            </AdminRoute>
+          } 
+        />
+        <Route 
+          path="/wordpress" 
+          element={
+            <AdminRoute>
+              <WordPressManagement />
+            </AdminRoute>
+          } 
+        />
+        
+        {/* Fallback route */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Suspense>
   );
 };
 
