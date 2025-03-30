@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { UserProfile } from "@/types/auth";
 
-export const useImpersonation = (currentUser: UserProfile | null) => {
+export function useImpersonation(currentUser: UserProfile | null) {
   const [originalUser, setOriginalUser] = useState<UserProfile | null>(null);
   const [isImpersonating, setIsImpersonating] = useState(false);
 
@@ -49,4 +49,4 @@ export const useImpersonation = (currentUser: UserProfile | null) => {
     impersonateUser,
     stopImpersonating
   };
-};
+}
