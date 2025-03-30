@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { UserProfile } from "@/types/auth";
 
 export const useImpersonation = (currentUser: UserProfile | null) => {
+  // Ces hooks useState doivent être appelés directement dans le corps de la fonction hook
   const [originalUser, setOriginalUser] = useState<UserProfile | null>(null);
   const [isImpersonating, setIsImpersonating] = useState(false);
 
@@ -10,15 +11,20 @@ export const useImpersonation = (currentUser: UserProfile | null) => {
   useEffect(() => {
     const storedOriginalUser = localStorage.getItem("originalUser");
     if (storedOriginalUser) {
-      setOriginalUser(JSON.parse(storedOriginalUser));
-      setIsImpersonating(true);
+      try {
+        setOriginalUser(JSON.parse(storedOriginalUser));
+        setIsImpersonating(true);
+      } catch (error) {
+        console.error("Error parsing stored original user:", error);
+        localStorage.removeItem("originalUser");
+      }
     }
   }, []);
 
   // Function to start impersonating a user
   const impersonateUser = (userToImpersonate: UserProfile) => {
     // Only allow admins to impersonate
-    if (!currentUser || currentUser.role !== "admin") return;
+    if (!currentUser || currentUser.role !== "admin") return null;
     
     // Store the original user
     setOriginalUser(currentUser);
