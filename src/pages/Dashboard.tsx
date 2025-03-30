@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
@@ -176,7 +177,7 @@ const Dashboard = () => {
           <Button asChild className="mt-2 sm:mt-0 bg-digibuz-yellow text-digibuz-navy hover:bg-digibuz-yellow/90">
             <Link to="/create">
               <Plus className="mr-2 h-4 w-4" />
-              Créer une annonce
+              Créer un article
             </Link>
           </Button>
         </div>
