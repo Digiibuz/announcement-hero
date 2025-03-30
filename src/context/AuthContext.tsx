@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
@@ -15,12 +14,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { userProfile, setUserProfile, fetchFullProfile } = useUserProfile();
   const { originalUser, isImpersonating, impersonateUser: startImpersonation, stopImpersonating: endImpersonation } = useImpersonation(userProfile);
 
-  // Initialize auth state and set up listeners
   useEffect(() => {
     console.log("Auth context effect running - initializing auth state");
     let isMounted = true;
     
-    // Set up the auth state change listener first to avoid missing events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
         if (!isMounted) return;
@@ -29,11 +26,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (currentSession?.user) {
           setSession(currentSession);
-          // First set user from metadata for immediate UI feedback
           const initialProfile = createProfileFromMetadata(currentSession.user);
           setUserProfile(initialProfile);
           
-          // Then fetch complete profile asynchronously
           if (isMounted) {
             fetchFullProfile(currentSession.user.id);
           }
@@ -46,7 +41,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    // Then check for any existing session
     const initializeAuth = async () => {
       try {
         console.log("Checking for existing session");
@@ -56,11 +50,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log("Existing session found:", existingSession.user.id);
           setSession(existingSession);
           
-          // Set initial profile from metadata
           const initialProfile = createProfileFromMetadata(existingSession.user);
           setUserProfile(initialProfile);
           
-          // Fetch complete profile
           fetchFullProfile(existingSession.user.id);
         } else {
           console.log("No existing session found");
@@ -76,7 +68,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeAuth();
 
-    // Handle visibility change (tab switching)
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible') {
         console.log("Tab became visible - checking session");
@@ -102,7 +93,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Cleanup
     return () => {
       isMounted = false;
       subscription.unsubscribe();
@@ -122,8 +112,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         throw error;
       }
-      
-      // User will be set by the auth state change listener
     } catch (error: any) {
       setIsLoading(false);
       throw new Error(error.message || "Login error");
@@ -141,7 +129,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Impersonation wrappers
   const impersonateUser = (userToImpersonate: UserProfile) => {
     const impersonatedUser = startImpersonation(userToImpersonate);
     if (impersonatedUser) {
