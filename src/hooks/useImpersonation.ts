@@ -2,7 +2,8 @@
 import { useState, useEffect } from "react";
 import { UserProfile } from "@/types/auth";
 
-export const useImpersonation = (currentUser: UserProfile | null) => {
+// Convert to proper React hook function (notice the addition of 'function' keyword)
+export function useImpersonation(currentUser: UserProfile | null) {
   const [originalUser, setOriginalUser] = useState<UserProfile | null>(null);
   const [isImpersonating, setIsImpersonating] = useState(false);
 
@@ -49,4 +50,4 @@ export const useImpersonation = (currentUser: UserProfile | null) => {
     impersonateUser,
     stopImpersonating
   };
-};
+}
