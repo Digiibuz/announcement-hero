@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import CreateAnnouncement from "./pages/CreateAnnouncement";
+import CreatePage from "./pages/CreatePage";
 import Announcements from "./pages/Announcements";
 import AnnouncementDetail from "./pages/AnnouncementDetail";
 import UserManagement from "./pages/UserManagement";
@@ -125,6 +126,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <CreateAnnouncement />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/create-page" 
+          element={
+            <ProtectedRoute>
+              <CreatePage />
             </ProtectedRoute>
           } 
         />
