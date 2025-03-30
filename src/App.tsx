@@ -156,7 +156,7 @@ const AppRoutes = () => {
   );
 };
 
-// App component with precise rendering order to avoid hooks errors
+// App component with correct component ordering
 const App = () => {
   return (
     <BrowserRouter>

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { UserProfile } from "@/types/auth";
 
 export function useImpersonation(currentUser: UserProfile | null) {
@@ -21,7 +21,7 @@ export function useImpersonation(currentUser: UserProfile | null) {
   }, []);
 
   // Function to start impersonating a user
-  const impersonateUser = (userToImpersonate: UserProfile) => {
+  const impersonateUser = useCallback((userToImpersonate: UserProfile) => {
     // Only allow admins to impersonate
     if (!currentUser || currentUser.role !== "admin") return null;
     
@@ -31,10 +31,10 @@ export function useImpersonation(currentUser: UserProfile | null) {
     setIsImpersonating(true);
     
     return userToImpersonate;
-  };
+  }, [currentUser]);
 
   // Function to stop impersonating
-  const stopImpersonating = () => {
+  const stopImpersonating = useCallback(() => {
     if (!originalUser) return null;
     
     // Restore the original user
@@ -46,7 +46,7 @@ export function useImpersonation(currentUser: UserProfile | null) {
     setOriginalUser(null);
     
     return user;
-  };
+  }, [originalUser]);
 
   return {
     originalUser,

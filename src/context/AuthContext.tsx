@@ -13,7 +13,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
-  const { userProfile, setUserProfile, fetchFullProfile } = useUserProfile();
+  const [userProfile, setUserProfileState] = useState<UserProfile | null>(null);
+  const { fetchFullProfile } = useUserProfile();
+  
+  // Use a wrapper for setUserProfile to ensure it's always a function
+  const setUserProfile = (profile: UserProfile | null | ((prev: UserProfile | null) => UserProfile | null)) => {
+    if (typeof profile === 'function') {
+      setUserProfileState(prev => profile(prev));
+    } else {
+      setUserProfileState(profile);
+    }
+  };
   
   // Use the useImpersonation hook after userProfile is defined
   const { 
