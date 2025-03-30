@@ -1,5 +1,5 @@
 
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback } from "react";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -32,44 +32,78 @@ const WordPressManagement = () => {
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
-  // Make sure data is loaded when component mounts and when session/user changes
+  // Function to handle data loading
+  const loadData = useCallback(() => {
+    if (session && user) {
+      console.log("WordPressManagement: Loading data with session and user", { 
+        sessionId: session.access_token ? session.access_token.substring(0, 8) + '...' : 'none',
+        userId: user.id
+      });
+      return fetchConfigs();
+    } else {
+      console.log("WordPressManagement: Cannot load data, missing session or user");
+      return Promise.resolve();
+    }
+  }, [session, user, fetchConfigs]);
+
+  // Load data when component mounts and when session/user changes
   useEffect(() => {
-    console.log("WordPressManagement: Session check", { 
+    console.log("WordPressManagement: Session/user changed, checking credentials", { 
       sessionExists: !!session, 
-      userExists: !!user 
+      userExists: !!user,
+      isAdmin: isAdmin,
+      isClient: isClient
     });
     
-    if (session && user) {
-      console.log("WordPressManagement: Session and user verified, fetching data");
-      fetchConfigs();
-    }
-  }, [session, user]);
+    loadData();
+  }, [loadData, session, user, isAdmin, isClient]);
 
-  // Add visibility change event listener specifically for this page
+  // Add visibility change event listener for reloading data when coming back to the tab
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && session && user) {
+      if (document.visibilityState === 'visible') {
         console.log("WordPressManagement: Tab became visible again, refreshing data");
-        fetchConfigs();
+        loadData();
       }
     };
 
+    // Also reload on window focus
+    const handleFocus = () => {
+      console.log("WordPressManagement: Window focused, refreshing data");
+      loadData();
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
     };
-  }, [session, user, fetchConfigs]);
+  }, [loadData]);
 
   const handleCreateConfig = async (data: any) => {
-    await createConfig(data);
-    setIsDialogOpen(false);
-    fetchConfigs();
+    try {
+      console.log("Creating new WordPress config:", data);
+      await createConfig(data);
+      setIsDialogOpen(false);
+      await loadData(); // Explicitly reload data after creation
+    } catch (error) {
+      console.error("Error in handleCreateConfig:", error);
+      throw error; // Let the form component handle the error
+    }
   };
 
   // Wrapper for updateConfig to ensure compatibility with the component
   const handleUpdateConfig = async (id: string, data: Partial<WordPressConfig>) => {
-    await updateConfig(id, data);
+    try {
+      console.log("Updating WordPress config:", id, data);
+      await updateConfig(id, data);
+      await loadData(); // Explicitly reload data after update
+    } catch (error) {
+      console.error("Error in handleUpdateConfig:", error);
+      throw error; // Let the form component handle the error
+    }
   };
 
   // The add button is only available for administrators, not for clients

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -13,13 +14,26 @@ export const useWordPressConfigCrud = (onConfigsChange?: () => void) => {
     try {
       setIsSubmitting(true);
       
-      // Assurons-nous que les anciens champs sont définis comme null
+      console.log("Creating WordPress config:", config);
+      
+      // Format the URL properly to ensure it ends with a single slash
+      let formattedSiteUrl = config.site_url.trim();
+      if (!formattedSiteUrl.endsWith('/')) {
+        formattedSiteUrl = formattedSiteUrl + '/';
+      }
+      
+      // Prepare the configuration data
       const configData = {
-        ...config,
+        name: config.name,
+        site_url: formattedSiteUrl,
+        app_username: config.app_username || null,
+        app_password: config.app_password || null,
         rest_api_key: null,
         username: null,
         password: null
       };
+      
+      console.log("Formatted config data:", configData);
       
       const { data, error } = await supabase
         .from('wordpress_configs')
@@ -28,9 +42,11 @@ export const useWordPressConfigCrud = (onConfigsChange?: () => void) => {
         .single();
       
       if (error) {
+        console.error("Supabase error while creating WordPress config:", error);
         throw error;
       }
       
+      console.log("WordPress config created successfully:", data);
       toast.success("Configuration WordPress créée avec succès");
       if (onConfigsChange) onConfigsChange();
       return data as WordPressConfig;
@@ -46,17 +62,32 @@ export const useWordPressConfigCrud = (onConfigsChange?: () => void) => {
   const updateConfig = async (id: string, config: Partial<WordPressConfig>) => {
     try {
       setIsSubmitting(true);
+      
+      // Format the URL if it's being updated
+      let updatedConfig = { ...config };
+      if (config.site_url) {
+        let formattedSiteUrl = config.site_url.trim();
+        if (!formattedSiteUrl.endsWith('/')) {
+          formattedSiteUrl = formattedSiteUrl + '/';
+        }
+        updatedConfig.site_url = formattedSiteUrl;
+      }
+      
+      console.log("Updating WordPress config:", id, updatedConfig);
+      
       const { data, error } = await supabase
         .from('wordpress_configs')
-        .update(config)
+        .update(updatedConfig)
         .eq('id', id)
         .select()
         .single();
       
       if (error) {
+        console.error("Supabase error while updating WordPress config:", error);
         throw error;
       }
       
+      console.log("WordPress config updated successfully:", data);
       toast.success("Configuration WordPress mise à jour avec succès");
       if (onConfigsChange) onConfigsChange();
       return data as WordPressConfig;
@@ -72,15 +103,19 @@ export const useWordPressConfigCrud = (onConfigsChange?: () => void) => {
   const deleteConfig = async (id: string) => {
     try {
       setIsSubmitting(true);
+      console.log("Deleting WordPress config:", id);
+      
       const { error } = await supabase
         .from('wordpress_configs')
         .delete()
         .eq('id', id);
       
       if (error) {
+        console.error("Supabase error while deleting WordPress config:", error);
         throw error;
       }
       
+      console.log("WordPress config deleted successfully");
       toast.success("Configuration WordPress supprimée avec succès");
       if (onConfigsChange) onConfigsChange();
     } catch (error) {

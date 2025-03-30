@@ -10,5 +10,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: false,
-  }
+  },
+  global: {
+    fetch: (...args) => {
+      return fetch(...args);
+    },
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
+  },
 });
+
+// Log out client initialization
+console.log("Supabase client initialized with URL:", supabaseUrl);
