@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -19,7 +19,7 @@ import AccessDenied from "@/components/users/AccessDenied";
 import { WordPressConfig } from "@/types/wordpress";
 
 const WordPressManagement = () => {
-  const { isAdmin, isClient } = useAuth();
+  const { isAdmin, isClient, user, session } = useAuth();
   const {
     configs,
     isLoading,
@@ -32,20 +32,26 @@ const WordPressManagement = () => {
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
+  // Make sure data is loaded when tab is reactivated
+  useEffect(() => {
+    if (session && user) {
+      console.log("WordPressManagement: Session and user verified, fetching data");
+      fetchConfigs();
+    }
+  }, [session, user]);
+
   const handleCreateConfig = async (data: any) => {
     await createConfig(data);
     setIsDialogOpen(false);
-    fetchConfigs(); // Call fetchConfigs after creating a new config
+    fetchConfigs();
   };
 
-  // Wrapper pour updateConfig pour assurer la compatibilité avec le composant
+  // Wrapper for updateConfig to ensure compatibility with the component
   const handleUpdateConfig = async (id: string, data: Partial<WordPressConfig>) => {
     await updateConfig(id, data);
-    // La fonction updateConfig retourne un WordPressConfig, mais nous ignorons la valeur retournée
-    // pour rendre la fonction compatible avec le type attendu
   };
 
-  // Le bouton d'ajout n'est disponible que pour les administrateurs, pas pour les clients
+  // The add button is only available for administrators, not for clients
   const titleAction = isAdmin ? (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>
@@ -82,7 +88,7 @@ const WordPressManagement = () => {
               isSubmitting={isSubmitting}
               onUpdateConfig={handleUpdateConfig}
               onDeleteConfig={deleteConfig}
-              readOnly={isClient} // Mode lecture seule pour les clients
+              readOnly={isClient}
             />
           </div>
         </AnimatedContainer>

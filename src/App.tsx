@@ -14,13 +14,15 @@ import AnnouncementDetail from "./pages/AnnouncementDetail";
 import UserManagement from "./pages/UserManagement";
 import WordPressManagement from "./pages/WordPressManagement";
 import NotFound from "./pages/NotFound";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      cacheTime: 10 * 60 * 1000, // 10 minutes
     },
   },
 });
@@ -34,13 +36,19 @@ const LoadingFallback = () => (
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, session } = useAuth();
+
+  // Debugging logs
+  useEffect(() => {
+    console.log("ProtectedRoute state:", { isAuthenticated, isLoading, sessionExists: !!session });
+  }, [isAuthenticated, isLoading, session]);
 
   if (isLoading) {
     return <LoadingFallback />;
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !session) {
+    console.log("Not authenticated, redirecting to login");
     return <Navigate to="/login" replace />;
   }
 
@@ -49,18 +57,31 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Admin only route component
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading, isAdmin, isClient } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin, isClient, session } = useAuth();
+
+  // Debugging logs
+  useEffect(() => {
+    console.log("AdminRoute state:", { 
+      isAuthenticated, 
+      isLoading, 
+      isAdmin, 
+      isClient, 
+      sessionExists: !!session 
+    });
+  }, [isAuthenticated, isLoading, isAdmin, isClient, session]);
 
   if (isLoading) {
     return <LoadingFallback />;
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !session) {
+    console.log("Not authenticated, redirecting to login");
     return <Navigate to="/login" replace />;
   }
 
-  // Autoriser l'accès aux utilisateurs admin et client
+  // Authorize access to admin and client users
   if (!isAdmin && !isClient) {
+    console.log("Not authorized, redirecting to dashboard");
     return <Navigate to="/dashboard" replace />;
   }
 

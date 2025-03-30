@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
@@ -11,7 +11,7 @@ import { useUserManagement } from "@/hooks/useUserManagement";
 import { UserProfile } from "@/types/auth";
 
 const UserManagement = () => {
-  const { user, isAdmin, impersonateUser } = useAuth();
+  const { user, isAdmin, impersonateUser, session } = useAuth();
   const { 
     users, 
     isLoading, 
@@ -23,6 +23,14 @@ const UserManagement = () => {
     deleteUser
   } = useUserManagement();
   
+  // Make sure user data is loaded when tab is reactivated
+  useEffect(() => {
+    if (session && user) {
+      console.log("UserManagement: Session and user verified, fetching data");
+      fetchUsers();
+    }
+  }, [session, user]);
+
   const handleImpersonateUser = (userToImpersonate: UserProfile) => {
     impersonateUser(userToImpersonate);
     toast.success(`Vous êtes maintenant connecté en tant que ${userToImpersonate.name}`);
