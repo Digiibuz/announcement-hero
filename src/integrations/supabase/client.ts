@@ -13,8 +13,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: false,
   },
   global: {
-    fetch: function(...args) {
-      return fetch(...args);
+    fetch: function(input, init) {
+      return fetch(input, init);
     },
   },
   realtime: {

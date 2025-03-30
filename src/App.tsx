@@ -155,7 +155,7 @@ const AppRoutes = () => {
   );
 };
 
-// Ensure proper component wrapping order
+// Ensure proper component wrapping order for React hooks to work properly
 const App = () => (
   <BrowserRouter>
     <QueryClientProvider client={queryClient}>
