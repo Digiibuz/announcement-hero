@@ -40,7 +40,7 @@ const Sidebar = () => {
       isActive: pathname === "/announcements",
     },
     {
-      name: "Créer une annonce",
+      name: "Créer un article",
       href: "/create",
       icon: <Newspaper className="h-5 w-5" />,
       isActive: pathname === "/create",
