@@ -138,7 +138,7 @@ export type Database = {
           id: string
           name: string
           password: string | null
-          rest_api_key: string | null
+          rest_api_key: string
           site_url: string
           updated_at: string
           username: string | null
@@ -150,7 +150,7 @@ export type Database = {
           id?: string
           name: string
           password?: string | null
-          rest_api_key?: string | null
+          rest_api_key: string
           site_url: string
           updated_at?: string
           username?: string | null
@@ -162,7 +162,7 @@ export type Database = {
           id?: string
           name?: string
           password?: string | null
-          rest_api_key?: string | null
+          rest_api_key?: string
           site_url?: string
           updated_at?: string
           username?: string | null
