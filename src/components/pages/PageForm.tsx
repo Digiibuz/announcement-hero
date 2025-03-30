@@ -42,12 +42,12 @@ const PageForm = ({
   isMobile = false,
   initialValues
 }: PageFormProps) => {
-  const defaultValues = {
+  const defaultValues: PageFormData = {
     title: "",
     description: "",
     wordpressCategory: "",
     publishDate: undefined,
-    status: "draft",
+    status: "draft" as "draft" | "published" | "scheduled",
     images: [],
     seoTitle: "",
     seoDescription: "",
