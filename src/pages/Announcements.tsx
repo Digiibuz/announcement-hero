@@ -15,6 +15,14 @@ import { Announcement } from "@/types/announcement";
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
 import FloatingActionButton from "@/components/ui/FloatingActionButton";
 import { deleteAnnouncement as apiDeleteAnnouncement } from "@/api/announcementApi";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // Helper function to strip HTML tags
 const stripHtmlTags = (html: string): string => {
@@ -28,6 +36,8 @@ const Announcements = () => {
     search: "",
     status: "all",
   });
+  const [deleteErrorOpen, setDeleteErrorOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   // Grid view is now the only view mode, so no need for state
   const viewMode = "grid";
   
@@ -121,12 +131,20 @@ const Announcements = () => {
       }
 
       // Utiliser l'API pour supprimer l'annonce (et son équivalent WordPress si existant)
-      await apiDeleteAnnouncement(id, user.id);
+      const result = await apiDeleteAnnouncement(id, user.id);
       
-      toast.success("Annonce supprimée avec succès");
-      refetch();
+      if (result.success) {
+        toast.success(result.message);
+        refetch();
+      } else {
+        setDeleteError(result.message);
+        setDeleteErrorOpen(true);
+        toast.error("La suppression a échoué. Consultez les détails pour plus d'informations.");
+      }
     } catch (error: any) {
       toast.error("Erreur lors de la suppression: " + error.message);
+      setDeleteError(error.message || "Une erreur inattendue s'est produite");
+      setDeleteErrorOpen(true);
     }
   };
 
@@ -169,6 +187,23 @@ const Announcements = () => {
           Créer
         </Link>
       </FloatingActionButton>
+
+      {/* Boîte de dialogue d'erreur de suppression */}
+      <Dialog open={deleteErrorOpen} onOpenChange={setDeleteErrorOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Erreur lors de la suppression</DialogTitle>
+            <DialogDescription>
+              {deleteError}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setDeleteErrorOpen(false)}>
+              Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 };

@@ -6,7 +6,7 @@ import { toast } from "sonner";
 /**
  * Delete an announcement
  */
-export const deleteAnnouncement = async (id: string, userId: string): Promise<void> => {
+export const deleteAnnouncement = async (id: string, userId: string): Promise<{ success: boolean; message: string }> => {
   // Get the announcement to check if it has a WordPress post ID
   const { data: announcement, error: fetchError } = await supabase
     .from("announcements")
@@ -16,13 +16,18 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
 
   if (fetchError) {
     console.error("Error fetching announcement:", fetchError);
-    throw new Error('Failed to fetch announcement');
+    return { 
+      success: false, 
+      message: 'Impossible de récupérer les informations de l\'annonce'
+    };
   }
 
   console.log("Announcement data:", announcement);
   console.log("WordPress post ID:", announcement?.wordpress_post_id);
 
-  // If there's a WordPress post ID, delete it from WordPress
+  // Si l'annonce a un ID WordPress, nous devons d'abord la supprimer de WordPress
+  let wordpressDeleteSuccess = true;
+  
   if (announcement && announcement.wordpress_post_id) {
     try {
       // Get WordPress config from the user's profile
@@ -34,14 +39,20 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
 
       if (profileError) {
         console.error("Error fetching user profile:", profileError);
-        throw new Error("Profil utilisateur non trouvé");
+        return {
+          success: false,
+          message: "Profil utilisateur non trouvé"
+        };
       }
 
       console.log("User profile:", userProfile);
 
       if (!userProfile?.wordpress_config_id) {
         console.error("WordPress configuration not found for user");
-        throw new Error("Configuration WordPress introuvable");
+        return {
+          success: false,
+          message: "Configuration WordPress introuvable"
+        };
       }
       
       // Get WordPress config
@@ -53,12 +64,18 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
 
       if (wpConfigError) {
         console.error("Error fetching WordPress config:", wpConfigError);
-        throw wpConfigError;
+        return {
+          success: false,
+          message: "Impossible de récupérer la configuration WordPress"
+        };
       }
       
       if (!wpConfig) {
         console.error("WordPress configuration not found");
-        throw new Error("WordPress configuration not found");
+        return {
+          success: false,
+          message: "Configuration WordPress introuvable"
+        };
       }
 
       console.log("WordPress config:", {
@@ -89,7 +106,10 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
         console.log("Using Application Password authentication");
         console.log("Auth header format (not showing actual credentials):", "Basic ****");
       } else {
-        throw new Error("Aucune méthode d'authentification disponible pour WordPress");
+        return {
+          success: false,
+          message: "Aucune méthode d'authentification disponible pour WordPress"
+        };
       }
       
       console.log("Sending WordPress deletion request...");
@@ -108,24 +128,43 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
         
         if (!response.ok) {
           console.error("WordPress deletion error:", responseText);
-          toast.error("L'annonce a été supprimée de l'application, mais pas de WordPress: " + response.statusText);
+          return {
+            success: false,
+            message: `L'annonce n'a pas pu être supprimée de WordPress: ${response.statusText}`
+          };
         } else {
           console.log("WordPress post deleted successfully");
+          // Succès de la suppression WordPress
+          wordpressDeleteSuccess = true;
         }
       } catch (fetchError: any) {
         console.error("Fetch error during WordPress deletion:", fetchError);
         console.error("Fetch error message:", fetchError.message);
         console.error("Fetch error stack:", fetchError.stack);
-        throw fetchError;
+        return {
+          success: false,
+          message: `Erreur lors de la suppression sur WordPress: ${fetchError.message}`
+        };
       }
     } catch (error: any) {
       console.error("Error deleting from WordPress:", error);
       console.error("Error message:", error.message);
       console.error("Error stack:", error.stack);
-      toast.error("L'annonce a été supprimée de l'application, mais pas de WordPress: " + error.message);
+      return {
+        success: false,
+        message: `Erreur lors de la suppression sur WordPress: ${error.message}`
+      };
     }
   } else {
     console.log("No WordPress post ID associated with this announcement, skipping WordPress deletion");
+  }
+
+  // Si nous avons un ID WordPress et que la suppression WordPress a échoué, ne pas supprimer l'annonce de Supabase
+  if (announcement?.wordpress_post_id && !wordpressDeleteSuccess) {
+    return {
+      success: false,
+      message: "L'annonce n'a pas été supprimée de WordPress. La suppression a été annulée."
+    };
   }
 
   // Delete the announcement from Supabase
@@ -135,8 +174,18 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
     .eq("id", id);
 
   if (error) {
-    throw new Error('Failed to delete announcement');
+    return {
+      success: false,
+      message: `Impossible de supprimer l'annonce de la base de données: ${error.message}`
+    };
   }
+
+  return {
+    success: true,
+    message: announcement?.wordpress_post_id 
+      ? "L'annonce a été supprimée avec succès de l'application et de WordPress"
+      : "L'annonce a été supprimée avec succès"
+  };
 };
 
 /**
