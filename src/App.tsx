@@ -16,6 +16,7 @@ import WordPressManagement from "./pages/WordPressManagement";
 import NotFound from "./pages/NotFound";
 import { Suspense, useEffect } from "react";
 
+// Create a new query client instance
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -155,19 +156,21 @@ const AppRoutes = () => {
   );
 };
 
-// Ensure proper component wrapping order for React hooks to work properly
-const App = () => (
-  <BrowserRouter>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <AppRoutes />
-        </TooltipProvider>
-      </AuthProvider>
-    </QueryClientProvider>
-  </BrowserRouter>
-);
+// App component with precise rendering order to avoid hooks errors
+const App = () => {
+  return (
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <AppRoutes />
+          </TooltipProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </BrowserRouter>
+  );
+};
 
 export default App;

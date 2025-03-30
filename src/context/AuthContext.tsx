@@ -7,13 +7,21 @@ import { useUserProfile, createProfileFromMetadata } from "@/hooks/useUserProfil
 import { useImpersonation } from "@/hooks/useImpersonation";
 import { UserProfile, AuthContextType } from "@/types/auth";
 
+// Create Auth context with undefined default value
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
   const { userProfile, setUserProfile, fetchFullProfile } = useUserProfile();
-  const { originalUser, isImpersonating, impersonateUser: startImpersonation, stopImpersonating: endImpersonation } = useImpersonation(userProfile);
+  
+  // Use the useImpersonation hook after userProfile is defined
+  const { 
+    originalUser, 
+    isImpersonating, 
+    impersonateUser: startImpersonation, 
+    stopImpersonating: endImpersonation 
+  } = useImpersonation(userProfile);
 
   // Initialize auth state and set up listeners
   useEffect(() => {
