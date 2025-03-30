@@ -7,7 +7,7 @@ import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
 import { Announcement } from "@/types/announcement";
 
 export interface ExtendedAnnouncement extends Omit<Announcement, 'wordpress_post_id'> {
-  wordpress_post_id?: number;
+  wordpress_post_id?: number | null;
   wordpress_site_url?: string;
   wordpress_published_at?: string;
 }
@@ -20,10 +20,34 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { isPublishing } = useWordPressPublishing();
   const [activeTab, setActiveTab] = useState("preview");
+  const [formData, setFormData] = useState<any>(null);
 
   useEffect(() => {
     fetchAnnouncement();
   }, [id]);
+
+  useEffect(() => {
+    // Automatically switch to edit mode when viewing a draft announcement
+    if (announcement && announcement.status === 'draft' && !isEditing) {
+      setIsEditing(true);
+      setActiveTab("edit");
+    }
+
+    // Prepare form data from announcement
+    if (announcement) {
+      setFormData({
+        title: announcement.title || "",
+        description: announcement.description || "",
+        wordpressCategory: announcement.wordpress_category_id || "",
+        publishDate: announcement.publish_date ? new Date(announcement.publish_date) : undefined,
+        status: announcement.status || "draft",
+        images: announcement.images || [],
+        seoTitle: announcement.seo_title || "",
+        seoDescription: announcement.seo_description || "",
+        seoSlug: announcement.seo_slug || ""
+      });
+    }
+  }, [announcement]);
 
   const fetchAnnouncement = async () => {
     try {
@@ -86,6 +110,7 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
     activeTab,
     setActiveTab,
     fetchAnnouncement,
-    handleSubmit
+    handleSubmit,
+    formData
   };
 };

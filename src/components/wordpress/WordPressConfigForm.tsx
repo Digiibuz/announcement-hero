@@ -16,10 +16,16 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { WordPressConfig } from "@/types/wordpress";
+import { Loader2 } from "lucide-react";
 
 const wordpressConfigSchema = z.object({
   name: z.string().min(1, "Le nom est requis"),
-  site_url: z.string().url("L'URL doit être valide").min(1, "L'URL du site est requise"),
+  site_url: z.string()
+    .min(1, "L'URL du site est requise")
+    .url("L'URL doit être valide")
+    .refine(url => url.startsWith('http://') || url.startsWith('https://'), {
+      message: "L'URL doit commencer par http:// ou https://"
+    }),
   app_username: z.string().optional(),
   app_password: z.string().optional(),
 });
@@ -48,6 +54,7 @@ const WordPressConfigForm: React.FC<WordPressConfigFormProps> = ({
   config
 }) => {
   const [open, setOpen] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
   
   const form = useForm<WordPressConfigFormValues>({
     resolver: zodResolver(wordpressConfigSchema),
@@ -61,11 +68,14 @@ const WordPressConfigForm: React.FC<WordPressConfigFormProps> = ({
 
   const handleSubmit = async (data: WordPressConfigFormValues) => {
     try {
+      setSubmitError(null);
+      console.log("Submitting WordPress config form:", data);
       await onSubmit(data);
       setOpen(false);
       form.reset();
     } catch (error) {
-      console.error("Error submitting form:", error);
+      console.error("Error submitting WordPress config form:", error);
+      setSubmitError("Une erreur est survenue lors de l'enregistrement. Veuillez réessayer.");
     }
   };
 
@@ -146,10 +156,23 @@ const WordPressConfigForm: React.FC<WordPressConfigFormProps> = ({
                 {...form.register("app_password")}
               />
             </div>
+            
+            {submitError && (
+              <div className="col-span-4 p-3 rounded-md bg-red-50 text-red-500 text-sm">
+                {submitError}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Enregistrement..." : "Enregistrer"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Enregistrement...
+                </>
+              ) : (
+                "Enregistrer"
+              )}
             </Button>
           </DialogFooter>
         </form>

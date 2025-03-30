@@ -11,7 +11,6 @@ import { Announcement } from "@/types/announcement";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
 import { ArrowLeft, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useMediaQuery } from "@/hooks/use-media-query";
 
 const CreateAnnouncement = () => {
@@ -56,12 +55,29 @@ const CreateAnnouncement = () => {
       // If status is published or scheduled, try to publish to WordPress
       let wordpressResult = {
         success: true,
-        message: ""
+        message: "",
+        wordpressPostId: null as number | null
       };
+      
       if ((data.status === 'published' || data.status === 'scheduled') && data.wordpressCategory && user?.id) {
         console.log("Tentative de publication sur WordPress...");
         wordpressResult = await publishToWordPress(newAnnouncement as Announcement, data.wordpressCategory, user.id);
+        
+        // Save WordPress post ID to the announcement if publishing succeeded
+        if (wordpressResult.success && wordpressResult.wordpressPostId) {
+          console.log("Mise à jour de l'annonce avec l'ID WordPress:", wordpressResult.wordpressPostId);
+          
+          const { error: updateError } = await supabase
+            .from("announcements")
+            .update({ wordpress_post_id: wordpressResult.wordpressPostId })
+            .eq("id", newAnnouncement.id);
+            
+          if (updateError) {
+            console.error("Erreur lors de la mise à jour de l'ID WordPress:", updateError);
+          }
+        }
       }
+      
       if (wordpressResult.success) {
         toast.success("Annonce enregistrée avec succès");
       } else {
