@@ -14,7 +14,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const { userProfile, setUserProfile, fetchFullProfile } = useUserProfile();
   
-  // First initialize userProfile, then pass it to useImpersonation
+  // Ensure userProfile is initialized before useImpersonation
   const { originalUser, isImpersonating, impersonateUser: startImpersonation, stopImpersonating: endImpersonation } = useImpersonation(userProfile);
 
   // Initialize auth state and set up listeners
