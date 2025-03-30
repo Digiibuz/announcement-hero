@@ -12,7 +12,6 @@ export type Announcement = {
   wordpress_category_id?: string;
   wordpress_category_name?: string;
   wordpress_post_id?: number; // Ajout de l'ID du post WordPress
-  wordpress_content_type?: "post" | "page"; // Ajout du type de contenu WordPress
   publish_date?: string;
   seo_title?: string;
   seo_description?: string;
@@ -28,5 +27,3 @@ export type WordPressCategory = {
   count?: number;
   parent?: number;
 };
-
-export type WordPressContentType = "post" | "page";

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
-import { WordPressContentType } from "@/types/announcement";
 
 export interface AnnouncementFormProps {
   onSubmit?: (data: AnnouncementFormData) => void;
@@ -27,7 +27,6 @@ export interface AnnouncementFormData {
   title: string;
   description: string;
   wordpressCategory: string;
-  wordpressContentType: WordPressContentType;
   publishDate: Date | undefined;
   status: "draft" | "published" | "scheduled";
   images: string[];
@@ -47,9 +46,8 @@ const AnnouncementForm = ({
     title: "",
     description: "",
     wordpressCategory: "",
-    wordpressContentType: "post" as WordPressContentType,
     publishDate: undefined,
-    status: "draft" as const,
+    status: "draft",
     images: [],
     seoTitle: "",
     seoDescription: "",
