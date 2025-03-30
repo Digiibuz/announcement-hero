@@ -73,7 +73,7 @@ serve(async (req) => {
         name,
         role,
         clientId: role === "editor" ? clientId : null,
-        wordpressConfigId: (role === "editor" || role === "client") ? wordpressConfigId : null,
+        wordpressConfigId: role === "editor" ? wordpressConfigId : null,
       },
     });
 
@@ -91,7 +91,7 @@ serve(async (req) => {
         name: name,
         role: role,
         client_id: role === "editor" ? clientId : null,
-        wordpress_config_id: (role === "editor" || role === "client") ? wordpressConfigId : null,
+        wordpress_config_id: role === "editor" ? wordpressConfigId : null,
       })
       .select()
       .single();

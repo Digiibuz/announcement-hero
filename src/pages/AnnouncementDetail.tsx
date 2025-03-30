@@ -21,8 +21,7 @@ const AnnouncementDetail = () => {
     activeTab,
     setActiveTab,
     fetchAnnouncement,
-    handleSubmit,
-    formData
+    handleSubmit
   } = useAnnouncementDetail(user?.id);
 
   const titleAction = announcement ? (
@@ -51,7 +50,6 @@ const AnnouncementDetail = () => {
             setActiveTab={setActiveTab}
             setIsEditing={setIsEditing}
             handleSubmit={handleSubmit}
-            formData={formData}
           />
         ) : (
           <div>Annonce non trouvée.</div>

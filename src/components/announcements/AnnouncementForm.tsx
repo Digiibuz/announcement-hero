@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -20,7 +19,6 @@ export interface AnnouncementFormProps {
   isSubmitting?: boolean;
   onCancel?: () => void;
   isMobile?: boolean;
-  initialValues?: AnnouncementFormData;
 }
 
 export interface AnnouncementFormData {
@@ -39,35 +37,21 @@ const AnnouncementForm = ({
   onSubmit,
   isSubmitting = false,
   onCancel,
-  isMobile = false,
-  initialValues
+  isMobile = false
 }: AnnouncementFormProps) => {
-  const defaultValues = {
-    title: "",
-    description: "",
-    wordpressCategory: "",
-    publishDate: undefined,
-    status: "draft",
-    images: [],
-    seoTitle: "",
-    seoDescription: "",
-    seoSlug: ""
-  };
-
   const form = useForm<AnnouncementFormData>({
-    defaultValues: initialValues || defaultValues
-  });
-
-  // Update form values when initialValues changes
-  useEffect(() => {
-    if (initialValues) {
-      Object.keys(initialValues).forEach((key) => {
-        const typedKey = key as keyof AnnouncementFormData;
-        form.setValue(typedKey, initialValues[typedKey]);
-      });
+    defaultValues: {
+      title: "",
+      description: "",
+      wordpressCategory: "",
+      publishDate: undefined,
+      status: "draft",
+      images: [],
+      seoTitle: "",
+      seoDescription: "",
+      seoSlug: ""
     }
-  }, [initialValues, form]);
-
+  });
   const navigate = useNavigate();
   const {
     optimizeContent,

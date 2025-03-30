@@ -9,9 +9,11 @@ import AccessDenied from "@/components/users/AccessDenied";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import { useUserManagement } from "@/hooks/useUserManagement";
 import { UserProfile } from "@/types/auth";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 const UserManagement = () => {
   const { user, isAdmin, impersonateUser } = useAuth();
+  const isMobile = useMediaQuery("(max-width: 767px)");
   const { 
     users, 
     isLoading, 
@@ -33,21 +35,23 @@ const UserManagement = () => {
   ) : null;
 
   return (
-    <PageLayout title="Gestion des utilisateurs" titleAction={titleAction} containerClassName="max-w-full">
+    <PageLayout title="Gestion des utilisateurs" titleAction={titleAction}>
       {!isAdmin ? (
         <AccessDenied />
       ) : (
-        <AnimatedContainer delay={200} className="w-full">
-          <UserList 
-            users={users}
-            isLoading={isLoading}
-            isDeleting={isDeleting}
-            isUpdating={isUpdating}
-            onResetPassword={handleResetPassword}
-            onImpersonateUser={handleImpersonateUser}
-            onUpdateUser={updateUser}
-            onDeleteUser={deleteUser}
-          />
+        <AnimatedContainer delay={200}>
+          <div className={isMobile ? "w-full" : "max-w-5xl mx-auto"}>
+            <UserList 
+              users={users}
+              isLoading={isLoading}
+              isDeleting={isDeleting}
+              isUpdating={isUpdating}
+              onResetPassword={handleResetPassword}
+              onImpersonateUser={handleImpersonateUser}
+              onUpdateUser={updateUser}
+              onDeleteUser={deleteUser}
+            />
+          </div>
         </AnimatedContainer>
       )}
     </PageLayout>

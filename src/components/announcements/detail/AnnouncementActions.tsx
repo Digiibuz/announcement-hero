@@ -26,10 +26,9 @@ import { useAuth } from "@/context/AuthContext";
 interface AnnouncementActionsProps {
   id: string;
   status: string;
-  wordpressPostId?: number | null;
 }
 
-const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ id, status, wordpressPostId }) => {
+const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ id, status }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const navigate = useNavigate();
@@ -50,16 +49,10 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ id, status, w
       
       setIsDeleting(true);
       await apiDeleteAnnouncement(id, user.id);
-      
-      const successMessage = wordpressPostId 
-        ? "L'annonce a été supprimée de l'application et de WordPress."
-        : "L'annonce a été supprimée avec succès.";
-      
       toast({
         title: "Annonce supprimée",
-        description: successMessage,
+        description: "L'annonce a été supprimée avec succès.",
       });
-      
       navigate("/announcements");
       queryClient.invalidateQueries({ queryKey: ["announcements"] });
     } catch (error) {
@@ -129,7 +122,6 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ id, status, w
             <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
             <AlertDialogDescription>
               Cette action ne peut pas être annulée. Cela supprimera définitivement cette annonce.
-              {wordpressPostId ? " Cela supprimera également l'article associé sur WordPress." : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

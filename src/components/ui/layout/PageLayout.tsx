@@ -30,7 +30,7 @@ const PageLayout = ({
       <main className="pt-16 md:pl-64">
         <div className={`container ${fullWidthMobile && isMobile ? 'px-0 sm:px-4' : 'px-4'} py-0 ${containerClassName || ''}`}>
           {(title || titleAction) && (
-            <AnimatedContainer delay={100} className={containerClassName?.includes('max-w-full') ? 'w-full' : ''}>
+            <AnimatedContainer delay={100}>
               <div className={`flex flex-col ${!isMobile ? "sm:flex-row sm:items-center sm:justify-between" : ""} mb-4 ${isMobile ? "pt-0 px-4" : "pt-2"} gap-3`}>
                 {title && <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>}
                 {titleAction && <div className={`${isMobile ? "w-full" : ""}`}>{titleAction}</div>}
