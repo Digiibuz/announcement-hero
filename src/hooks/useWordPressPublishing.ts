@@ -51,15 +51,19 @@ export const useWordPressPublishing = () => {
         ? wpConfig.site_url.slice(0, -1)
         : wpConfig.site_url;
       
-      // Construct the WordPress REST API URL
-      const apiUrl = `${siteUrl}/wp-json/wp/v2/posts`;
+      // Determine content type (default to post if not specified)
+      const contentType = announcement.wordpress_content_type || "post";
+      
+      // Construct the WordPress REST API URL based on content type
+      const apiUrl = `${siteUrl}/wp-json/wp/v2/${contentType === "post" ? "posts" : "pages"}`;
+      
+      console.log(`Publishing as WordPress ${contentType} to: ${apiUrl}`);
       
       // Prepare post data
-      const wpPostData = {
+      const wpPostData: any = {
         title: announcement.title,
         content: announcement.description || "",
         status: announcement.status === 'published' ? 'publish' : announcement.status === 'scheduled' ? 'future' : 'draft',
-        categories: [parseInt(wordpressCategoryId)],
         // Add date if scheduled
         date: announcement.status === 'scheduled' && announcement.publish_date
           ? new Date(announcement.publish_date).toISOString()
@@ -72,7 +76,15 @@ export const useWordPressPublishing = () => {
         }
       };
       
-      console.log("WordPress post data:", wpPostData);
+      // For posts, add categories (pages have custom taxonomies)
+      if (contentType === "post") {
+        wpPostData.categories = [parseInt(wordpressCategoryId)];
+      } else if (contentType === "page") {
+        // For pages, add DiviPixel taxonomy
+        wpPostData.dipi_cpt_category = [parseInt(wordpressCategoryId)];
+      }
+      
+      console.log(`WordPress ${contentType} data:`, wpPostData);
       
       // Prepare headers with authentication
       const headers: Record<string, string> = {
@@ -112,13 +124,13 @@ export const useWordPressPublishing = () => {
       }
       
       const wpResponseData = await response.json();
-      console.log("WordPress response:", wpResponseData);
+      console.log(`WordPress ${contentType} response:`, wpResponseData);
       
       // Check if the response contains the WordPress post ID
       if (wpResponseData && wpResponseData.id) {
         return { 
           success: true, 
-          message: "Publié avec succès sur WordPress", 
+          message: `Publié avec succès sur WordPress en tant que ${contentType === "post" ? "article" : "page"}`, 
           wordpressPostId: wpResponseData.id 
         };
       } else {

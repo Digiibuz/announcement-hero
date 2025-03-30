@@ -37,6 +37,7 @@ const CreateAnnouncement = () => {
         status: data.status || "draft",
         images: data.images || [],
         wordpress_category_id: data.wordpressCategory,
+        wordpress_content_type: data.wordpressContentType || "post",
         publish_date: data.publishDate ? new Date(data.publishDate).toISOString() : null,
         seo_title: data.seoTitle || null,
         seo_description: data.seoDescription || null,
