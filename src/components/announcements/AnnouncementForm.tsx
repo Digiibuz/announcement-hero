@@ -42,12 +42,12 @@ const AnnouncementForm = ({
   isMobile = false,
   initialValues
 }: AnnouncementFormProps) => {
-  const defaultValues = {
+  const defaultValues: AnnouncementFormData = {
     title: "",
     description: "",
     wordpressCategory: "",
     publishDate: undefined,
-    status: "draft",
+    status: "draft" as const,
     images: [],
     seoTitle: "",
     seoDescription: "",
@@ -128,9 +128,9 @@ const AnnouncementForm = ({
             <div className={`${isMobile ? "px-4" : ""}`}>
               <Card className={getCardStyles(true)}>
                 <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"}`}>
-                  <CardTitle className="text-lg font-medium">Votre annonce</CardTitle>
+                  <CardTitle className="text-lg font-medium">Votre article</CardTitle>
                   {!isMobile && <CardDescription className="text-amber-400">
-                      Les informations essentielles de votre annonce
+                      Les informations essentielles de votre article
                     </CardDescription>}
                 </CardHeader>
                 <CardContent className={`space-y-4 ${isMobile ? "px-0 py-3" : ""}`}>
@@ -139,7 +139,7 @@ const AnnouncementForm = ({
                 }) => <FormItem>
                         <FormLabel>Titre</FormLabel>
                         <FormControl>
-                          <Input placeholder="Entrez le titre de l'annonce" className="h-11" {...field} />
+                          <Input placeholder="Entrez le titre de l'article" className="h-11" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>} />
@@ -183,7 +183,7 @@ const AnnouncementForm = ({
                   <div>
                     <CardTitle className="text-lg font-medium">SEO</CardTitle>
                     {!isMobile && <CardDescription className="text-amber-400">
-                        Optimisez votre annonce pour les moteurs de recherche
+                        Optimisez votre article pour les moteurs de recherche
                       </CardDescription>}
                   </div>
                   <Badge variant="outline" className="ml-2">
