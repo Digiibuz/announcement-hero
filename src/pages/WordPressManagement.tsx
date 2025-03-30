@@ -32,13 +32,34 @@ const WordPressManagement = () => {
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
-  // Make sure data is loaded when tab is reactivated
+  // Make sure data is loaded when component mounts and when session/user changes
   useEffect(() => {
+    console.log("WordPressManagement: Session check", { 
+      sessionExists: !!session, 
+      userExists: !!user 
+    });
+    
     if (session && user) {
       console.log("WordPressManagement: Session and user verified, fetching data");
       fetchConfigs();
     }
   }, [session, user]);
+
+  // Add visibility change event listener specifically for this page
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && session && user) {
+        console.log("WordPressManagement: Tab became visible again, refreshing data");
+        fetchConfigs();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [session, user, fetchConfigs]);
 
   const handleCreateConfig = async (data: any) => {
     await createConfig(data);

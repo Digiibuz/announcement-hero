@@ -20,9 +20,9 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true,
       staleTime: 5 * 60 * 1000, // 5 minutes
-      cacheTime: 10 * 60 * 1000, // 10 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (renamed from cacheTime)
     },
   },
 });
@@ -61,7 +61,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 
   // Debugging logs
   useEffect(() => {
-    console.log("AdminRoute state:", { 
+    console.log("AdminRoute state check:", { 
       isAuthenticated, 
       isLoading, 
       isAdmin, 

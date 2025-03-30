@@ -25,11 +25,32 @@ const UserManagement = () => {
   
   // Make sure user data is loaded when tab is reactivated
   useEffect(() => {
+    console.log("UserManagement: Session check", { 
+      sessionExists: !!session, 
+      userExists: !!user 
+    });
+    
     if (session && user) {
       console.log("UserManagement: Session and user verified, fetching data");
       fetchUsers();
     }
   }, [session, user]);
+
+  // Add visibility change event listener specifically for this page
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && session && user) {
+        console.log("UserManagement: Tab became visible again, refreshing data");
+        fetchUsers();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [session, user, fetchUsers]);
 
   const handleImpersonateUser = (userToImpersonate: UserProfile) => {
     impersonateUser(userToImpersonate);

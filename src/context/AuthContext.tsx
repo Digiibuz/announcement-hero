@@ -17,6 +17,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Initialize auth state and set up listeners
   useEffect(() => {
+    console.log("Auth context effect running - initializing auth state");
     let isMounted = true;
     
     // Set up the auth state change listener first to avoid missing events
@@ -25,21 +26,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isMounted) return;
         
         console.log(`Auth state changed: ${event}`, currentSession?.user?.id);
-        setSession(currentSession);
         
         if (currentSession?.user) {
+          setSession(currentSession);
           // First set user from metadata for immediate UI feedback
           const initialProfile = createProfileFromMetadata(currentSession.user);
           setUserProfile(initialProfile);
           
           // Then fetch complete profile asynchronously
-          setTimeout(() => {
-            if (isMounted) {
-              fetchFullProfile(currentSession.user.id);
-            }
-          }, 0);
-        } else {
+          if (isMounted) {
+            fetchFullProfile(currentSession.user.id);
+          }
+        } else if (event === 'SIGNED_OUT') {
           setUserProfile(null);
+          setSession(null);
         }
         
         setIsLoading(false);
@@ -49,6 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Then check for any existing session
     const initializeAuth = async () => {
       try {
+        console.log("Checking for existing session");
         const { data: { session: existingSession } } = await supabase.auth.getSession();
         
         if (existingSession?.user && isMounted) {
@@ -63,7 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           fetchFullProfile(existingSession.user.id);
         } else {
           console.log("No existing session found");
-          setIsLoading(false);
+          if (isMounted) setIsLoading(false);
         }
       } catch (error) {
         console.error("Error initializing auth:", error);
@@ -75,10 +76,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeAuth();
 
+    // Handle visibility change (tab switching)
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        console.log("Tab became visible - checking session");
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        
+        if (currentSession?.user) {
+          console.log("Session still valid after visibility change");
+          setSession(currentSession);
+          
+          if (!userProfile || userProfile.id !== currentSession.user.id) {
+            console.log("Updating user profile after visibility change");
+            const initialProfile = createProfileFromMetadata(currentSession.user);
+            setUserProfile(initialProfile);
+            fetchFullProfile(currentSession.user.id);
+          }
+        } else if (session) {
+          console.log("Session lost after visibility change");
+          setSession(null);
+          setUserProfile(null);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     // Cleanup
     return () => {
       isMounted = false;
       subscription.unsubscribe();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
