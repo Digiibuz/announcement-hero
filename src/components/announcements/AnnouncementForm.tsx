@@ -42,12 +42,12 @@ const AnnouncementForm = ({
   isMobile = false,
   initialValues
 }: AnnouncementFormProps) => {
-  const defaultValues = {
+  const defaultValues: AnnouncementFormData = {
     title: "",
     description: "",
     wordpressCategory: "",
     publishDate: undefined,
-    status: "draft",
+    status: "draft" as const,
     images: [],
     seoTitle: "",
     seoDescription: "",
