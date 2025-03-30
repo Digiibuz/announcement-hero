@@ -22,7 +22,7 @@ export const useWordPressConfigCrud = (onConfigsChange?: () => void) => {
         formattedSiteUrl = formattedSiteUrl + '/';
       }
       
-      // Prepare the configuration data with null values for unused fields
+      // Prepare the configuration data
       const configData = {
         name: config.name,
         site_url: formattedSiteUrl,
