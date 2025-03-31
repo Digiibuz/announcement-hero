@@ -52,8 +52,9 @@ serve(async (req) => {
       );
     }
 
-    // Check if the user already exists
+    // Check if the user already exists in Auth
     try {
+      console.log("Vérification si l'utilisateur existe dans auth.users:", email);
       const { data: existingUsers, error: searchError } = await supabaseAdmin.auth.admin.listUsers({
         filter: {
           email: email,
@@ -66,9 +67,29 @@ serve(async (req) => {
       }
 
       if (existingUsers && existingUsers.users.length > 0) {
-        console.log("L'utilisateur existe déjà:", email);
+        console.log("L'utilisateur existe déjà dans auth.users:", email);
+        
+        // Check if the user exists in the profiles table
+        const { data: existingProfiles, error: profilesError } = await supabaseAdmin
+          .from('profiles')
+          .select('*')
+          .eq('email', email);
+          
+        if (profilesError) {
+          console.error("Erreur lors de la vérification du profil existant:", profilesError);
+        }
+        
+        if (existingProfiles && existingProfiles.length > 0) {
+          console.log("L'utilisateur existe également dans la table profiles:", existingProfiles);
+        } else {
+          console.log("L'utilisateur existe dans auth.users mais PAS dans la table profiles");
+        }
+        
         return new Response(
-          JSON.stringify({ error: "L'utilisateur existe déjà" }),
+          JSON.stringify({ 
+            error: "L'utilisateur existe déjà", 
+            details: "L'email est déjà utilisé dans le système d'authentification"
+          }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 400,
@@ -79,6 +100,43 @@ serve(async (req) => {
       console.error("Erreur lors de la vérification d'utilisateur existant:", error);
       return new Response(
         JSON.stringify({ error: error.message || "Erreur lors de la vérification d'utilisateur existant" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
+    }
+    
+    // Also check if the email exists in the profiles table
+    try {
+      console.log("Vérification si l'email existe dans la table profiles:", email);
+      const { data: existingProfiles, error: profilesError } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .eq('email', email);
+        
+      if (profilesError) {
+        console.error("Erreur lors de la vérification du profil existant:", profilesError);
+        throw profilesError;
+      }
+      
+      if (existingProfiles && existingProfiles.length > 0) {
+        console.log("L'email existe déjà dans la table profiles mais pas dans auth.users:", existingProfiles);
+        return new Response(
+          JSON.stringify({ 
+            error: "L'utilisateur existe déjà", 
+            details: "L'email est déjà utilisé dans la table des profils mais pas dans le système d'authentification. Incohérence de données détectée."
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400,
+          }
+        );
+      }
+    } catch (error) {
+      console.error("Erreur lors de la vérification du profil existant:", error);
+      return new Response(
+        JSON.stringify({ error: error.message || "Erreur lors de la vérification du profil existant" }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 500,

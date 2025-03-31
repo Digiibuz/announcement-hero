@@ -98,13 +98,14 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       
       if (!data || (data as any).error) {
         const errorMessage = (data as any)?.error || "Erreur lors de la création de l'utilisateur";
+        const errorDetails = (data as any)?.details || "";
         toast.dismiss(toastId);
         
         // Messages d'erreur plus précis pour les cas courants
         if (errorMessage.includes("L'utilisateur existe déjà")) {
-          toast.error("Cet email est déjà utilisé par un autre utilisateur");
+          toast.error(`Cet email est déjà utilisé par un autre utilisateur. ${errorDetails}`);
         } else {
-          toast.error(errorMessage);
+          toast.error(`${errorMessage}${errorDetails ? ` - ${errorDetails}` : ""}`);
         }
         return;
       }
