@@ -24,13 +24,12 @@ export const useCategoryKeywords = (wordpressConfigId: string, categoryId: strin
       
       console.info(`Fetching keywords for category ${categoryId} in WordPress config ${wordpressConfigId}`);
       
-      // Correction de l'appel Supabase - Vérification explicite que category_id est une chaîne de caractères
+      // Utiliser maybeSingle() au lieu de single() pour éviter les erreurs lorsqu'aucun résultat n'est trouvé
       const { data, error } = await supabase
         .from('categories_keywords')
         .select('*')
         .eq('wordpress_config_id', wordpressConfigId)
-        .eq('category_id', categoryId.toString())
-        .order('created_at', { ascending: true });
+        .eq('category_id', categoryId.toString()); // Toujours s'assurer que category_id est une chaîne
       
       if (error) {
         throw new Error(`Erreur lors de la récupération des mots-clés: ${error.message}`);
@@ -136,8 +135,13 @@ export const useCategoryKeywords = (wordpressConfigId: string, categoryId: strin
   };
 
   const fetchAllKeywordsForWordPressConfig = useCallback(async (configId: string) => {
+    if (!configId) {
+      return [];
+    }
+    
     try {
       console.info(`Fetching all keywords for WordPress config ${configId}`);
+      setIsLoading(true);
       
       const { data, error } = await supabase
         .from('categories_keywords')
@@ -155,6 +159,8 @@ export const useCategoryKeywords = (wordpressConfigId: string, categoryId: strin
       console.error("Error fetching all keywords:", err);
       toast.error(`Erreur lors du chargement des mots-clés: ${err.message || "Erreur inconnue"}`);
       throw err;
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 

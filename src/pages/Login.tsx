@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { CardTitle, CardDescription, CardHeader, CardContent, CardFooter, Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +13,7 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const { isAuthenticated, signIn } = useAuth();
+  const { isAuthenticated, auth } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,8 +29,13 @@ const Login = () => {
 
     setLoading(true);
     try {
-      await signIn(email, password);
-      // La redirection sera gérée automatiquement via le hook useAuth
+      if (auth.signInWithEmail) {
+        await auth.signInWithEmail(email, password);
+      } else if (auth.login) {
+        await auth.login(email, password);
+      } else {
+        console.error("Aucune méthode de connexion disponible dans le contexte d'authentification");
+      }
     } catch (error: any) {
       console.error("Login error:", error);
       let message = "Une erreur est survenue lors de la connexion";

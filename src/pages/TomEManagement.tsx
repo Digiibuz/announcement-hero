@@ -75,10 +75,10 @@ const TomEManagement = () => {
     setIsRefreshing(true);
     try {
       // Recharger toutes les données nécessaires
-      await Promise.all([
-        // Les catégories et localités sont rechargées automatiquement via leurs hooks
-        fetchAllKeywordsForWordPressConfig(selectedConfigId).then(k => setKeywords(k || []))
-      ]);
+      if (selectedConfigId) {
+        const keywordsData = await fetchAllKeywordsForWordPressConfig(selectedConfigId);
+        setKeywords(keywordsData || []);
+      }
       
       toast.success("Données rafraîchies avec succès");
     } catch (error) {

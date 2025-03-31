@@ -1,4 +1,3 @@
-
 // Types définis pour les annonces
 
 // Type pour les catégories Divi Pixel (dipi_cpt_category)
@@ -65,4 +64,10 @@ export interface AnnouncementUpdate {
   seo_title?: string | null;
   seo_description?: string | null;
   seo_slug?: string | null;
+}
+
+export interface FilterState {
+  category: string | null;
+  status: string;
+  searchText: string;
 }
