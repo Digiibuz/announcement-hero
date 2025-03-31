@@ -51,7 +51,7 @@ export const useUserManagement = () => {
         throw profilesError;
       }
       
-      // Format user profiles without relying on the Edge function
+      // Format user profiles
       const processedUsers: UserProfile[] = profilesData.map(profile => {
         return {
           id: profile.id,
@@ -64,9 +64,31 @@ export const useUserManagement = () => {
             name: profile.wordpress_configs.name,
             site_url: profile.wordpress_configs.site_url
           } : null,
-          lastLogin: null // Nous n'avons plus accès à cette information sans la fonction Edge
+          lastLogin: null // Sera mis à jour par la fonction Edge
         };
       });
+      
+      // Récupérer les informations de dernière connexion via la fonction Edge
+      try {
+        const { data: loginData, error: loginError } = await supabase.functions.invoke('get-user-logins');
+        
+        if (loginError) {
+          console.error('Error fetching login data:', loginError);
+        }
+        
+        if (loginData && Array.isArray(loginData)) {
+          // Mise à jour des données de dernière connexion
+          loginData.forEach((item: {id: string, last_sign_in_at: string}) => {
+            const userIndex = processedUsers.findIndex(u => u.id === item.id);
+            if (userIndex !== -1) {
+              processedUsers[userIndex].lastLogin = item.last_sign_in_at;
+            }
+          });
+          console.log("Informations de dernière connexion intégrées pour", loginData.length, "utilisateurs");
+        }
+      } catch (edgeError) {
+        console.error('Edge function error:', edgeError);
+      }
       
       // Sauvegarder dans le cache de session pour les autres onglets
       await saveSessionData(USERS_CACHE_KEY, processedUsers);
