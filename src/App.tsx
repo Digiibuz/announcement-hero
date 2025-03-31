@@ -1,12 +1,12 @@
+
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster as UIToaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
 import { Suspense, lazy, useEffect } from 'react';
-import { Toaster } from "sonner";
 
 // Lazy loading des pages pour améliorer les performances
 const Login = lazy(() => import("./pages/Login"));
@@ -177,8 +177,8 @@ function App() {
                   {/* Fallback route */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-                <Toaster position="top-right" closeButton richColors />
                 <SonnerToaster />
+                <UIToaster />
               </Suspense>
             </TooltipProvider>
           </AuthProvider>
