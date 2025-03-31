@@ -81,9 +81,9 @@ const AdminTickets: React.FC<AdminTicketsProps> = ({ filter: initialFilter }) =>
       case "open":
         return <Badge className="bg-green-500">Ouvert</Badge>;
       case "in_progress":
-        return <Badge className="bg-blue-500">En cours</Badge>;
+        return <Badge className="bg-orange-500">En cours</Badge>;
       case "closed":
-        return <Badge className="bg-gray-500">Résolu</Badge>;
+        return <Badge className="bg-green-500">Résolu</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
