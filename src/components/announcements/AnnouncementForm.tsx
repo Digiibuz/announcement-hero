@@ -21,6 +21,7 @@ export interface AnnouncementFormProps {
   onCancel?: () => void;
   isMobile?: boolean;
   initialValues?: AnnouncementFormData;
+  isForDiviPixel?: boolean; // Nouvel attribut pour indiquer si c'est pour DiviPixel
 }
 
 export interface AnnouncementFormData {
@@ -40,7 +41,8 @@ const AnnouncementForm = ({
   isSubmitting = false,
   onCancel,
   isMobile = false,
-  initialValues
+  initialValues,
+  isForDiviPixel = false
 }: AnnouncementFormProps) => {
   const defaultValues: AnnouncementFormData = {
     title: "",
@@ -110,7 +112,8 @@ const AnnouncementForm = ({
     if (onCancel) {
       onCancel();
     } else {
-      navigate('/announcements');
+      // Redirection selon le type de contenu
+      navigate(isForDiviPixel ? '/divipixel-pages' : '/announcements');
     }
   };
 
@@ -121,6 +124,17 @@ const AnnouncementForm = ({
     return "border shadow-sm";
   };
 
+  // Détermine le titre des sections en fonction du type de contenu
+  const getContentTypeTitle = () => {
+    return isForDiviPixel ? "Votre page DiviPixel" : "Votre annonce";
+  };
+
+  const getContentTypeDescription = () => {
+    return isForDiviPixel 
+      ? "Les informations essentielles de votre page DiviPixel" 
+      : "Les informations essentielles de votre annonce";
+  };
+
   return <div className="space-y-6">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit || (() => {}))} className="space-y-6">
@@ -128,9 +142,9 @@ const AnnouncementForm = ({
             <div className={`${isMobile ? "px-4" : ""}`}>
               <Card className={getCardStyles(true)}>
                 <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"}`}>
-                  <CardTitle className="text-lg font-medium">Votre annonce</CardTitle>
+                  <CardTitle className="text-lg font-medium">{getContentTypeTitle()}</CardTitle>
                   {!isMobile && <CardDescription className="text-amber-400">
-                      Les informations essentielles de votre annonce
+                      {getContentTypeDescription()}
                     </CardDescription>}
                 </CardHeader>
                 <CardContent className={`space-y-4 ${isMobile ? "px-0 py-3" : ""}`}>
@@ -139,12 +153,12 @@ const AnnouncementForm = ({
                 }) => <FormItem>
                         <FormLabel>Titre</FormLabel>
                         <FormControl>
-                          <Input placeholder="Entrez le titre de l'annonce" className="h-11" {...field} />
+                          <Input placeholder={`Entrez le titre de ${isForDiviPixel ? 'la page' : 'l\'annonce'}`} className="h-11" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>} />
 
-                  <DescriptionField form={form} />
+                  <DescriptionField form={form} isForDiviPixel={isForDiviPixel} />
                 </CardContent>
               </Card>
             </div>
@@ -154,7 +168,7 @@ const AnnouncementForm = ({
                 <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"}`}>
                   <CardTitle className="text-lg font-medium">Images</CardTitle>
                   {!isMobile && <CardDescription className="text-amber-400">
-                      Ajoutez des images à votre annonce pour attirer l'attention
+                      Ajoutez des images à votre {isForDiviPixel ? 'page' : 'annonce'} pour attirer l'attention
                     </CardDescription>}
                 </CardHeader>
                 <CardContent className={`${isMobile ? "px-0 py-3" : ""}`}>
@@ -172,7 +186,7 @@ const AnnouncementForm = ({
                     </CardDescription>}
                 </CardHeader>
                 <CardContent className={`${isMobile ? "px-0 py-3" : ""}`}>
-                  <PublishingOptions form={form} />
+                  <PublishingOptions form={form} isForDiviPixel={isForDiviPixel} />
                 </CardContent>
               </Card>
             </div>
@@ -183,7 +197,7 @@ const AnnouncementForm = ({
                   <div>
                     <CardTitle className="text-lg font-medium">SEO</CardTitle>
                     {!isMobile && <CardDescription className="text-amber-400">
-                        Optimisez votre annonce pour les moteurs de recherche
+                        Optimisez votre {isForDiviPixel ? 'page' : 'annonce'} pour les moteurs de recherche
                       </CardDescription>}
                   </div>
                   <Badge variant="outline" className="ml-2">
@@ -247,12 +261,12 @@ const AnnouncementForm = ({
                         <FormLabel>URL Slug</FormLabel>
                         <FormControl>
                           <div className="flex items-center">
-                            <span className="text-sm text-muted-foreground mr-2 hidden sm:inline">yoursite.com/annonces/</span>
+                            <span className="text-sm text-muted-foreground mr-2 hidden sm:inline">yoursite.com/{isForDiviPixel ? 'pages' : 'annonces'}/</span>
                             <Input placeholder="slug-de-url" {...field} />
                           </div>
                         </FormControl>
                         <FormDescription>
-                          L'URL qui sera utilisée pour accéder à cette annonce.
+                          L'URL qui sera utilisée pour accéder à cette {isForDiviPixel ? 'page' : 'annonce'}.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>} />
@@ -264,10 +278,10 @@ const AnnouncementForm = ({
                           Aperçu dans Google
                         </h3>
                         <div className="text-blue-600 text-lg font-medium truncate">
-                          {form.getValues('seoTitle') || form.getValues('title') || "Titre de votre annonce"}
+                          {form.getValues('seoTitle') || form.getValues('title') || `Titre de votre ${isForDiviPixel ? 'page' : 'annonce'}`}
                         </div>
                         <div className="text-green-700 text-sm mb-1">
-                          yoursite.com/annonces/{form.getValues('seoSlug') || "url-de-lannonce"}
+                          yoursite.com/{isForDiviPixel ? 'pages' : 'annonces'}/{form.getValues('seoSlug') || `url-de-${isForDiviPixel ? 'la-page' : 'lannonce'}`}
                         </div>
                         <div className="text-slate-700 text-sm line-clamp-2">
                           {form.getValues('seoDescription') || "Ajoutez une méta description pour qu'elle apparaisse ici."}

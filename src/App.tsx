@@ -10,7 +10,9 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import CreateAnnouncement from "./pages/CreateAnnouncement";
+import CreateDiviPixelPage from "./pages/CreateDiviPixelPage"; // Ajout de la nouvelle page
 import Announcements from "./pages/Announcements";
+import DiviPixelPages from "./pages/DiviPixelPages"; // Ajout de la nouvelle page
 import AnnouncementDetail from "./pages/AnnouncementDetail";
 import UserManagement from "./pages/UserManagement";
 import WordPressManagement from "./pages/WordPressManagement";
@@ -89,6 +91,24 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <CreateAnnouncement />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Routes DiviPixel */}
+      <Route 
+        path="/divipixel-pages" 
+        element={
+          <ProtectedRoute>
+            <DiviPixelPages />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/create-divipixel" 
+        element={
+          <ProtectedRoute>
+            <CreateDiviPixelPage />
           </ProtectedRoute>
         } 
       />
