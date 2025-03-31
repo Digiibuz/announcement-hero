@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -34,9 +33,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Checkbox
-} from "@/components/ui/checkbox";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Email invalide" }),
@@ -79,7 +75,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       
       console.log("Envoi des données:", values);
       
-      // Appel de la fonction Edge avec une meilleure gestion des erreurs
+      // Call the Edge function with better error handling
       const { data, error } = await supabase.functions.invoke("create-user", {
         body: {
           email: values.email,
@@ -92,14 +88,18 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       
       if (error) {
         console.error("Erreur renvoyée par la fonction Edge:", error);
-        throw new Error(error.message || "Erreur lors de la création de l'utilisateur");
+        toast.dismiss(toastId);
+        toast.error(`Erreur: ${error.message || "Échec de la création de l'utilisateur"}`);
+        return;
       }
       
       console.log("Réponse de la fonction Edge:", data);
       
       if (!data || (data as any).error) {
         const errorMessage = (data as any)?.error || "Erreur lors de la création de l'utilisateur";
-        throw new Error(errorMessage);
+        toast.dismiss(toastId);
+        toast.error(errorMessage);
+        return;
       }
       
       toast.dismiss(toastId);
@@ -110,15 +110,15 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       toast.dismiss();
       console.error("Error creating user:", error);
       
-      // Message d'erreur plus détaillé pour aider au débogage
+      // More detailed error message for debugging
       let errorMessage = error.message || "Erreur lors de la création de l'utilisateur";
       
-      // Si l'erreur contient des détails supplémentaires
+      // If the error contains additional details
       if (error.details) {
         errorMessage += ` (${error.details})`;
       }
       
-      // Ajouter le statut à l'erreur si disponible
+      // Add status to the error if available
       if (error.status) {
         errorMessage += ` (Status: ${error.status})`;
       }

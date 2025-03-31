@@ -28,8 +28,13 @@ const UserManagement = () => {
     toast.success(`Vous êtes maintenant connecté en tant que ${userToImpersonate.name}`);
   };
 
+  const handleUserCreated = () => {
+    console.log("Rafraîchissement de la liste des utilisateurs après création");
+    fetchUsers();
+  };
+
   const titleAction = isAdmin ? (
-    <UserCreateForm onUserCreated={fetchUsers} />
+    <UserCreateForm onUserCreated={handleUserCreated} />
   ) : null;
 
   return (
