@@ -56,19 +56,6 @@ const TicketDetails: React.FC<TicketDetailsProps> = ({ ticketId }) => {
     }
   };
 
-  const getPriorityBadge = (priority: string) => {
-    switch (priority) {
-      case "high":
-        return <Badge className="bg-red-500">Priorité haute</Badge>;
-      case "medium":
-        return <Badge className="bg-orange-500">Priorité moyenne</Badge>;
-      case "low":
-        return <Badge className="bg-blue-500">Priorité basse</Badge>;
-      default:
-        return null;
-    }
-  };
-
   const handleSendReply = () => {
     if (!reply.trim()) {
       toast.error("Veuillez saisir une réponse");
@@ -150,7 +137,6 @@ const TicketDetails: React.FC<TicketDetailsProps> = ({ ticketId }) => {
           </div>
           <div className="flex gap-2">
             {getStatusBadge(ticket.status)}
-            {getPriorityBadge(ticket.priority)}
           </div>
         </div>
       </CardHeader>

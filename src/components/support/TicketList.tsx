@@ -104,19 +104,6 @@ const TicketList = () => {
     );
   }
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "high":
-        return "bg-red-500";
-      case "medium":
-        return "bg-orange-500";
-      case "low":
-        return "bg-blue-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "open":
@@ -191,11 +178,6 @@ const TicketList = () => {
                   <div className="flex items-center text-sm text-muted-foreground mt-1">
                     <Clock className="mr-1 h-4 w-4" />
                     {format(new Date(ticket.created_at), 'PPP à HH:mm', { locale: fr })}
-                    <Badge 
-                      className={`ml-2 ${getPriorityColor(ticket.priority)}`}
-                    >
-                      {ticket.priority === "high" ? "Haute" : ticket.priority === "medium" ? "Moyenne" : "Basse"}
-                    </Badge>
                   </div>
                 </CardHeader>
                 <CardContent>

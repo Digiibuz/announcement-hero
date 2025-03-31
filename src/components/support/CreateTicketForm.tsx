@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateTicket } from "@/hooks/useTickets";
 import { toast } from "sonner";
 
@@ -13,7 +12,6 @@ const CreateTicketForm = () => {
   const { user } = useAuth();
   const [subject, setSubject] = React.useState("");
   const [message, setMessage] = React.useState("");
-  const [priority, setPriority] = React.useState<"low" | "medium" | "high">("medium");
   const { mutate: createTicket, isPending } = useCreateTicket();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -39,7 +37,7 @@ const CreateTicketForm = () => {
       username: user.name || user.email.split("@")[0],
       subject,
       message,
-      priority,
+      priority: "medium", // Default priority is still set at the backend
       status: "open",
       created_at: new Date().toISOString()
     });
@@ -47,7 +45,6 @@ const CreateTicketForm = () => {
     // Reset form after submission
     setSubject("");
     setMessage("");
-    setPriority("medium");
   };
 
   return (
@@ -71,26 +68,6 @@ const CreateTicketForm = () => {
               onChange={(e) => setSubject(e.target.value)}
               disabled={isPending}
             />
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor="priority" className="text-sm font-medium">
-              Priorité
-            </label>
-            <Select
-              value={priority}
-              onValueChange={(value: "low" | "medium" | "high") => setPriority(value)}
-              disabled={isPending}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionner la priorité" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Basse</SelectItem>
-                <SelectItem value="medium">Moyenne</SelectItem>
-                <SelectItem value="high">Haute</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           <div className="space-y-2">
