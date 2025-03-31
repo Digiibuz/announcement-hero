@@ -52,36 +52,70 @@ export const useWordPressPublishing = () => {
         ? wpConfig.site_url.slice(0, -1)
         : wpConfig.site_url;
       
-      // Vérifier si l'endpoint DipiPixel existe, sinon utiliser l'endpoint pages
-      let apiUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt`;
-      let useCustomTaxonomy = true;
+      // First check if dipi_cpt_category exists to determine if we're using a DipiPixel site
+      console.log("Checking if dipi_cpt_category exists...");
+      const categoryEndpoint = `${siteUrl}/wp-json/wp/v2/dipi_cpt_category`;
+      let useCustomTaxonomy = false;
+      let postEndpoint = `${siteUrl}/wp-json/wp/v2/pages`; // Default to pages
       
-      // Check if we need to fall back to standard pages
-      const checkEndpoint = async (url: string): Promise<boolean> => {
-        try {
-          const response = await fetch(`${url}?per_page=1`, {
-            method: 'OPTIONS',
-            headers: { 'Content-Type': 'application/json' }
+      try {
+        // First try to access the dipi_cpt_category endpoint
+        const response = await fetch(categoryEndpoint, {
+          method: 'HEAD',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        console.log(`Category endpoint check (${categoryEndpoint}) status:`, response.status);
+        
+        // If dipi_cpt_category exists, we likely should use dipi_cpt for posts
+        if (response.status !== 404) {
+          console.log("DipiPixel category endpoint found, trying dipi_cpt endpoint");
+          useCustomTaxonomy = true;
+          
+          // Now check if dipi_cpt endpoint exists
+          const dipiPostEndpoint = `${siteUrl}/wp-json/wp/v2/dipi_cpt`;
+          const postEndpointResponse = await fetch(dipiPostEndpoint, {
+            method: 'HEAD',
+            headers: {
+              'Content-Type': 'application/json'
+            }
           });
-          console.log(`Checking endpoint ${url} - status: ${response.status}`);
-          // 404 means endpoint doesn't exist
-          return response.status !== 404;
-        } catch (error) {
-          console.log("Error checking endpoint:", error);
-          return false;
+          
+          console.log(`Post endpoint check (${dipiPostEndpoint}) status:`, postEndpointResponse.status);
+          
+          if (postEndpointResponse.status !== 404) {
+            postEndpoint = dipiPostEndpoint;
+            console.log("Using DipiPixel post endpoint:", postEndpoint);
+          } else {
+            // Try another common CPT endpoint pattern
+            const altPostEndpoint = `${siteUrl}/wp-json/wp/v2/dipicpt`;
+            const altResponse = await fetch(altPostEndpoint, {
+              method: 'HEAD',
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            console.log(`Alternative post endpoint check (${altPostEndpoint}) status:`, altResponse.status);
+            
+            if (altResponse.status !== 404) {
+              postEndpoint = altPostEndpoint;
+              console.log("Using alternative DipiPixel post endpoint:", postEndpoint);
+            } else {
+              console.log("No DipiPixel post endpoint found, falling back to pages");
+            }
+          }
+        } else {
+          console.log("DipiPixel category endpoint not found, using standard pages");
         }
-      };
-
-      console.log("Checking DipiPixel endpoint:", apiUrl);
-      const dipiEndpointExists = await checkEndpoint(apiUrl);
-      
-      if (!dipiEndpointExists) {
-        console.log("DipiPixel endpoint not found, falling back to pages endpoint");
-        apiUrl = `${siteUrl}/wp-json/wp/v2/pages`;
-        useCustomTaxonomy = false;
+      } catch (error) {
+        console.log("Error checking endpoints:", error);
+        console.log("Falling back to standard pages endpoint");
       }
       
-      console.log("Using WordPress endpoint:", apiUrl, "with custom taxonomy:", useCustomTaxonomy);
+      console.log("Using WordPress endpoint:", postEndpoint, "with custom taxonomy:", useCustomTaxonomy);
       
       // Prepare post data
       const wpPostData: any = {
@@ -135,8 +169,8 @@ export const useWordPressPublishing = () => {
       }
       
       // Send request to WordPress
-      console.log("Sending POST request to WordPress:", apiUrl);
-      const response = await fetch(apiUrl, {
+      console.log("Sending POST request to WordPress:", postEndpoint);
+      const response = await fetch(postEndpoint, {
         method: 'POST',
         headers: headers,
         body: JSON.stringify(wpPostData)
