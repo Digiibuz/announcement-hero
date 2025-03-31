@@ -2,15 +2,17 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Announcement } from "@/types/announcement";
+import { DivipixelPublication } from "@/types/divipixel";
 import { toast } from "sonner";
 
 export const useWordPressPublishing = () => {
   const [isPublishing, setIsPublishing] = useState(false);
   
   const publishToWordPress = async (
-    announcement: Announcement, 
+    content: Announcement | DivipixelPublication, 
     wordpressCategoryId: string,
-    userId: string
+    userId: string,
+    isDivipixel: boolean = false
   ): Promise<{ success: boolean; message: string; wordpressPostId: number | null }> => {
     setIsPublishing(true);
     
@@ -52,28 +54,30 @@ export const useWordPressPublishing = () => {
         ? wpConfig.site_url.slice(0, -1)
         : wpConfig.site_url;
       
-      // Construct the WordPress REST API URL
-      const apiUrl = `${siteUrl}/wp-json/wp/v2/posts`;
+      // Construct the WordPress REST API URL - use dipi_cpt endpoint for Divipixel
+      const apiUrl = isDivipixel 
+        ? `${siteUrl}/wp-json/wp/v2/dipi_cpt` 
+        : `${siteUrl}/wp-json/wp/v2/posts`;
       
       // Prepare post data
       const wpPostData = {
-        title: announcement.title,
-        content: announcement.description || "",
-        status: announcement.status === 'published' ? 'publish' : announcement.status === 'scheduled' ? 'future' : 'draft',
+        title: content.title,
+        content: content.description || "",
+        status: content.status === 'published' ? 'publish' : content.status === 'scheduled' ? 'future' : 'draft',
         categories: [parseInt(wordpressCategoryId)],
         // Add date if scheduled
-        date: announcement.status === 'scheduled' && announcement.publish_date
-          ? new Date(announcement.publish_date).toISOString()
+        date: content.status === 'scheduled' && content.publish_date
+          ? new Date(content.publish_date).toISOString()
           : undefined,
         // Add SEO metadata
         meta: {
-          _yoast_wpseo_title: announcement.seo_title || "",
-          _yoast_wpseo_metadesc: announcement.seo_description || "",
-          _yoast_wpseo_focuskw: announcement.title
+          _yoast_wpseo_title: content.seo_title || "",
+          _yoast_wpseo_metadesc: content.seo_description || "",
+          _yoast_wpseo_focuskw: content.title
         }
       };
       
-      console.log("WordPress post data:", wpPostData);
+      console.log(`WordPress ${isDivipixel ? 'Divipixel' : 'Post'} data:`, wpPostData);
       
       // Prepare headers with authentication
       const headers: Record<string, string> = {
@@ -117,17 +121,18 @@ export const useWordPressPublishing = () => {
       
       // Check if the response contains the WordPress post ID
       if (wpResponseData && wpResponseData.id) {
-        // Update the announcement in Supabase with the WordPress post ID
+        // Update the content in Supabase with the WordPress post ID
+        const tableName = isDivipixel ? "divipixel_publications" : "announcements";
         const { error: updateError } = await supabase
-          .from("announcements")
+          .from(tableName)
           .update({ wordpress_post_id: wpResponseData.id })
-          .eq("id", announcement.id);
+          .eq("id", content.id);
           
         if (updateError) {
-          console.error("Error updating announcement with WordPress post ID:", updateError);
-          toast.error("L'annonce a été publiée sur WordPress mais l'ID n'a pas pu être enregistré dans la base de données");
+          console.error(`Error updating ${tableName} with WordPress post ID:`, updateError);
+          toast.error(`Le contenu a été publié sur WordPress mais l'ID n'a pas pu être enregistré dans la base de données`);
         } else {
-          console.log("Successfully updated announcement with WordPress post ID:", wpResponseData.id);
+          console.log(`Successfully updated ${tableName} with WordPress post ID:`, wpResponseData.id);
         }
         
         return { 

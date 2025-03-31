@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { WordPressCategory } from "@/types/announcement";
 
-export const useWordPressCategories = () => {
+export const useWordPressCategories = (isDivipixel: boolean = false) => {
   const [categories, setCategories] = useState<WordPressCategory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +21,7 @@ export const useWordPressCategories = () => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log("Fetching Divipixel categories for WordPress config ID:", user.wordpressConfigId);
+      console.log(`Fetching ${isDivipixel ? 'Divipixel' : 'WordPress'} categories for WordPress config ID:`, user.wordpressConfigId);
 
       // First get the WordPress config for the user
       const { data: wpConfig, error: wpConfigError } = await supabase
@@ -50,10 +50,12 @@ export const useWordPressCategories = () => {
       // Normaliser l'URL (supprimer les doubles slashes)
       const siteUrl = wpConfig.site_url.replace(/([^:]\/)\/+/g, "$1");
 
-      // Construct the WordPress API URL for Divipixel categories
-      const apiUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt_category`;
+      // Construct the WordPress API URL based on the type of categories needed
+      const apiUrl = isDivipixel 
+        ? `${siteUrl}/wp-json/wp/v2/dipi_cpt_category` 
+        : `${siteUrl}/wp-json/wp/v2/categories`;
       
-      console.log("Fetching Divipixel categories from:", apiUrl);
+      console.log(`Fetching ${isDivipixel ? 'Divipixel' : 'WordPress'} categories from:`, apiUrl);
       
       // Prepare headers
       const headers: Record<string, string> = {
@@ -93,11 +95,11 @@ export const useWordPressCategories = () => {
             throw new Error("Identifiants incorrects ou autorisations insuffisantes");
           }
           
-          throw new Error(`Failed to fetch Divipixel categories: ${response.statusText}`);
+          throw new Error(`Failed to fetch ${isDivipixel ? 'Divipixel' : 'WordPress'} categories: ${response.statusText}`);
         }
   
         const categoriesData = await response.json();
-        console.log("Divipixel categories fetched successfully:", categoriesData.length);
+        console.log(`${isDivipixel ? 'Divipixel' : 'WordPress'} categories fetched successfully:`, categoriesData.length);
         setCategories(categoriesData);
       } catch (fetchError: any) {
         if (fetchError.name === 'AbortError') {
@@ -106,9 +108,9 @@ export const useWordPressCategories = () => {
         throw fetchError;
       }
     } catch (err: any) {
-      console.error("Error fetching Divipixel categories:", err);
+      console.error(`Error fetching ${isDivipixel ? 'Divipixel' : 'WordPress'} categories:`, err);
       
-      let errorMessage = err.message || "Failed to fetch Divipixel categories";
+      let errorMessage = err.message || `Failed to fetch ${isDivipixel ? 'Divipixel' : 'WordPress'} categories`;
       
       // Améliorer les messages d'erreur
       if (err.message.includes("Failed to fetch")) {
@@ -120,18 +122,18 @@ export const useWordPressCategories = () => {
       }
       
       setError(errorMessage);
-      toast.error("Erreur lors de la récupération des catégories Divipixel");
+      toast.error(`Erreur lors de la récupération des catégories ${isDivipixel ? 'Divipixel' : 'WordPress'}`);
     } finally {
       setIsLoading(false);
     }
-  }, [user?.wordpressConfigId]);
+  }, [user?.wordpressConfigId, isDivipixel]);
 
   useEffect(() => {
-    console.log("useWordPressCategories effect running, user:", user?.id, "wordpressConfigId:", user?.wordpressConfigId);
+    console.log(`useWordPressCategories effect running, user:`, user?.id, `wordpressConfigId:`, user?.wordpressConfigId, `isDivipixel:`, isDivipixel);
     if (user?.wordpressConfigId) {
       fetchCategories();
     }
-  }, [user?.wordpressConfigId, fetchCategories]);
+  }, [user?.wordpressConfigId, fetchCategories, isDivipixel]);
 
   return { 
     categories, 

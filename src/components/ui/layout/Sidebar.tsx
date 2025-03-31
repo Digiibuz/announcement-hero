@@ -17,7 +17,8 @@ import {
   AlertTriangle, 
   Globe,
   FileText,
-  Menu
+  Menu,
+  Box
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -46,6 +47,18 @@ const Sidebar = () => {
       href: "/create",
       icon: <Newspaper className="h-5 w-5" />,
       isActive: pathname === "/create",
+    },
+    {
+      name: "Publications Divipixel",
+      href: "/divipixel-publications",
+      icon: <Box className="h-5 w-5" />,
+      isActive: pathname === "/divipixel-publications",
+    },
+    {
+      name: "Créer une publication",
+      href: "/create-divipixel",
+      icon: <Newspaper className="h-5 w-5" />,
+      isActive: pathname === "/create-divipixel",
     },
   ];
 
