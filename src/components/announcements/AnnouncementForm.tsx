@@ -113,7 +113,19 @@ const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
   }, [initialValues, form]);
 
   const handleFormSubmit = (data: z.infer<typeof formSchema>) => {
-    onSubmit(data);
+    // Make sure the data conforms to AnnouncementFormData by providing defaults
+    const formData: AnnouncementFormData = {
+      title: data.title,
+      description: data.description || "",
+      status: data.status,
+      wordpressCategory: data.wordpressCategory,
+      publishDate: data.publishDate,
+      images: data.images,
+      seoTitle: data.seoTitle,
+      seoDescription: data.seoDescription,
+      seoSlug: data.seoSlug,
+    };
+    onSubmit(formData);
   };
 
   return (
@@ -154,8 +166,8 @@ const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
                   <FormLabel>Images</FormLabel>
                   <FormControl>
                     <ImageUploader 
-                      value={field.value || []} 
-                      onChange={field.onChange}
+                      images={field.value || []} 
+                      onImagesChange={field.onChange}
                     />
                   </FormControl>
                   <FormMessage />
@@ -173,8 +185,8 @@ const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
                   <FormLabel>Statut</FormLabel>
                   <FormControl>
                     <PublishingOptions 
-                      value={field.value} 
-                      onChange={field.onChange}
+                      status={field.value} 
+                      onStatusChange={field.onChange}
                     />
                   </FormControl>
                   <FormMessage />
