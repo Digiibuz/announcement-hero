@@ -1,3 +1,4 @@
+
 import React from "react";
 import { WordPressConfig } from "@/types/wordpress";
 import {
@@ -11,8 +12,35 @@ import {
 import { Button } from "@/components/ui/button";
 import { Edit, Trash2 } from "lucide-react";
 import WordPressConnectionStatus from "./WordPressConnectionStatus";
+import WordPressConfigForm from "./WordPressConfigForm";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
-const WordPressConfigItem = ({ config, onEdit, onDelete }: { config: WordPressConfig, onEdit: (id: string) => void, onDelete: (id: string) => void }) => {
+const WordPressConfigItem = ({ 
+  config, 
+  onEdit, 
+  onDelete, 
+  readOnly = false 
+}: { 
+  config: WordPressConfig, 
+  onEdit?: (id: string) => void, 
+  onDelete?: (id: string) => void,
+  readOnly?: boolean
+}) => {
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+
+  const handleEditClick = () => {
+    if (onEdit) {
+      onEdit(config.id);
+    } else {
+      setIsEditDialogOpen(true);
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -35,14 +63,43 @@ const WordPressConfigItem = ({ config, onEdit, onDelete }: { config: WordPressCo
         </div>
       </CardContent>
       <CardFooter className="flex justify-end gap-2 pt-2">
-        <Button variant="ghost" size="sm" onClick={() => onEdit(config.id)}>
-          <Edit className="h-4 w-4 mr-2" />
-          Modifier
-        </Button>
-        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => onDelete(config.id)}>
-          <Trash2 className="h-4 w-4 mr-2" />
-          Supprimer
-        </Button>
+        {!readOnly && (
+          <>
+            <Button variant="ghost" size="sm" onClick={handleEditClick}>
+              <Edit className="h-4 w-4 mr-2" />
+              Modifier
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-destructive hover:text-destructive" 
+              onClick={() => onDelete && onDelete(config.id)}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Supprimer
+            </Button>
+
+            {/* Dialog pour éditer la configuration si onEdit n'est pas fourni */}
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Modifier la configuration WordPress</DialogTitle>
+                </DialogHeader>
+                <WordPressConfigForm
+                  config={config}
+                  onSubmit={(data) => {
+                    // Supposons que onUpdateConfig est disponible même si onEdit ne l'est pas
+                    if (onUpdateConfig) {
+                      onUpdateConfig(config.id, data);
+                      setIsEditDialogOpen(false);
+                    }
+                  }}
+                  isSubmitting={isSubmitting}
+                />
+              </DialogContent>
+            </Dialog>
+          </>
+        )}
       </CardFooter>
     </Card>
   );
@@ -50,12 +107,23 @@ const WordPressConfigItem = ({ config, onEdit, onDelete }: { config: WordPressCo
 
 interface WordPressConfigListProps {
   configs: WordPressConfig[];
-  onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
+  onUpdateConfig?: (id: string, data: Partial<WordPressConfig>) => void;
   isLoading: boolean;
+  isSubmitting?: boolean;
+  readOnly?: boolean;
 }
 
-const WordPressConfigList = ({ configs, onEdit, onDelete, isLoading }: WordPressConfigListProps) => {
+const WordPressConfigList = ({ 
+  configs, 
+  onEdit, 
+  onDelete,
+  onUpdateConfig,
+  isLoading,
+  isSubmitting = false,
+  readOnly = false
+}: WordPressConfigListProps) => {
   if (isLoading) {
     return <p>Chargement des configurations WordPress...</p>;
   }
@@ -72,6 +140,9 @@ const WordPressConfigList = ({ configs, onEdit, onDelete, isLoading }: WordPress
           config={config}
           onEdit={onEdit}
           onDelete={onDelete}
+          onUpdateConfig={onUpdateConfig}
+          isSubmitting={isSubmitting}
+          readOnly={readOnly}
         />
       ))}
     </div>
