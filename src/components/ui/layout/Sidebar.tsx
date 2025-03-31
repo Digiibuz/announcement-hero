@@ -127,6 +127,29 @@ const Sidebar = () => {
     },
   ];
 
+  const profileItems = [
+    {
+      name: "Mon Profil",
+      href: "/profile",
+      icon: <UserCircle className="h-5 w-5" />,
+      isActive: pathname === "/profile",
+    },
+    {
+      name: "Support & Assistance",
+      href: "/support",
+      icon: <Ticket className="h-5 w-5" />,
+      isActive: pathname === "/support",
+      badge: localUnreadCount > 0 ? (
+        <Badge 
+          variant="destructive" 
+          className="ml-2 px-1.5 py-0.5 text-xs"
+        >
+          {localUnreadCount}
+        </Badge>
+      ) : null,
+    },
+  ];
+
   const SidebarContent = () => (
     <>
       <div className="flex h-16 items-center px-6 border-b border-border">
@@ -141,99 +164,84 @@ const Sidebar = () => {
           </span>
         </Link>
       </div>
-      <div className={`h-[calc(100vh-4rem)] overflow-y-auto px-3 py-4 ${isMobile ? "" : "relative"}`}>
-        <ul className="space-y-2">
-          {navItems.map((item) => (
-            <li key={item.href}>
-              <Link to={item.href} onClick={() => isMobile && setIsOpen(false)}>
-                <Button
-                  variant="ghost"
-                  className={cn(
-                    "w-full justify-start",
-                    item.isActive && "bg-accent text-accent-foreground"
-                  )}
-                >
-                  {item.icon}
-                  <span className="ml-3">{item.name}</span>
-                </Button>
-              </Link>
-            </li>
-          ))}
 
-          {(isAdmin || isClient) && (
-            <>
-              <li className="pt-5">
-                <h3 className="px-3 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
-                  Administration
-                </h3>
-              </li>
-              {adminItems
-                .filter(item => isAdmin || (!item.adminOnly && isClient))
-                .map((item) => (
-                  <li key={item.href}>
-                    <Link to={item.href} onClick={() => isMobile && setIsOpen(false)}>
-                      <Button
-                        variant="ghost"
-                        className={cn(
-                          "w-full justify-start",
-                          item.isActive && "bg-accent text-accent-foreground"
-                        )}
-                      >
-                        {item.icon}
-                        <span className="ml-3">{item.name}</span>
-                      </Button>
-                    </Link>
-                  </li>
-                ))}
-            </>
-          )}
-        </ul>
-
-        <div className={`mt-auto pt-4 ${isMobile ? "pb-4" : "absolute bottom-4 left-0 right-0"} px-3`}>
-          <div className="border-t border-border pt-4">
-            <Link to="/profile" onClick={() => isMobile && setIsOpen(false)}>
-              <Button
-                variant="ghost"
-                className={cn(
-                  "w-full justify-start mb-2",
-                  pathname === "/profile" && "bg-accent text-accent-foreground"
-                )}
-              >
-                <UserCircle className="h-5 w-5" />
-                <span className="ml-3">Mon Profil</span>
-              </Button>
-            </Link>
-            
-            <Link to="/support" onClick={() => isMobile && setIsOpen(false)}>
-              <Button
-                variant="ghost"
-                className={cn(
-                  "w-full justify-start mb-2",
-                  pathname === "/support" && "bg-accent text-accent-foreground"
-                )}
-              >
-                <Ticket className="h-5 w-5" />
-                <span className="ml-3">Support & Assistance</span>
-                {localUnreadCount > 0 && (
-                  <Badge 
-                    variant="destructive" 
-                    className="ml-2 px-1.5 py-0.5 text-xs"
+      <div className={`h-[calc(100vh-4rem)] overflow-y-auto px-3 py-4 flex flex-col ${isMobile ? "" : "relative"}`}>
+        {/* Main navigation items */}
+        <div className="flex-grow">
+          <ul className="space-y-2">
+            {navItems.map((item) => (
+              <li key={item.href}>
+                <Link to={item.href} onClick={() => isMobile && setIsOpen(false)}>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "w-full justify-start",
+                      item.isActive && "bg-accent text-accent-foreground"
+                    )}
                   >
-                    {localUnreadCount}
-                  </Badge>
+                    {item.icon}
+                    <span className="ml-3">{item.name}</span>
+                  </Button>
+                </Link>
+              </li>
+            ))}
+
+            {(isAdmin || isClient) && (
+              <>
+                <li className="pt-5">
+                  <h3 className="px-3 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+                    Administration
+                  </h3>
+                </li>
+                {adminItems
+                  .filter(item => isAdmin || (!item.adminOnly && isClient))
+                  .map((item) => (
+                    <li key={item.href}>
+                      <Link to={item.href} onClick={() => isMobile && setIsOpen(false)}>
+                        <Button
+                          variant="ghost"
+                          className={cn(
+                            "w-full justify-start",
+                            item.isActive && "bg-accent text-accent-foreground"
+                          )}
+                        >
+                          {item.icon}
+                          <span className="ml-3">{item.name}</span>
+                        </Button>
+                      </Link>
+                    </li>
+                  ))}
+              </>
+            )}
+          </ul>
+        </div>
+
+        {/* Profile, support and logout items - always at the bottom */}
+        <div className="mt-auto border-t border-border pt-4">
+          {profileItems.map((item) => (
+            <Link key={item.href} to={item.href} onClick={() => isMobile && setIsOpen(false)}>
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start mb-2",
+                  item.isActive && "bg-accent text-accent-foreground"
                 )}
+              >
+                {item.icon}
+                <span className="ml-3">{item.name}</span>
+                {item.badge}
               </Button>
             </Link>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{user?.name}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
-              </div>
-              <Button onClick={logout} variant="ghost" size="icon" aria-label="Déconnexion">
-                {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5" />}
-              </Button>
+          ))}
+          
+          <div className="flex items-center justify-between mt-2">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{user?.name}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
             </div>
+            <Button onClick={logout} variant="ghost" size="icon" aria-label="Déconnexion">
+              {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5" />}
+            </Button>
           </div>
         </div>
       </div>
