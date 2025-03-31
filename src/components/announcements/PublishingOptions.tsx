@@ -20,9 +20,11 @@ interface PublishingOptionsProps {
 const PublishingOptions = ({ form }: PublishingOptionsProps) => {
   const { categories, isLoading: isCategoriesLoading, error: categoriesError, hasCategories } = useWordPressCategories();
   
+  // Forcez la définition du statut à "published" à l'initialisation du composant
   React.useEffect(() => {
-    // Si le status n'est pas défini, définir par défaut à "published"
-    if (!form.getValues("status")) {
+    // Si le status n'est pas défini ou est "draft", définir par défaut à "published"
+    const currentStatus = form.getValues("status");
+    if (!currentStatus || currentStatus === "draft") {
       form.setValue("status", "published");
     }
   }, [form]);
@@ -78,12 +80,14 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
       <FormField
         control={form.control}
         name="status"
+        defaultValue="published"
         render={({ field }) => (
           <FormItem>
             <Label>Statut de publication</Label>
             <Select
               onValueChange={field.onChange}
-              defaultValue={field.value || "published"}
+              value={field.value || "published"}
+              defaultValue="published"
             >
               <FormControl>
                 <SelectTrigger>

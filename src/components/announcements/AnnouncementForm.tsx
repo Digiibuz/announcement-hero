@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -46,7 +47,7 @@ const AnnouncementForm = ({
     description: "",
     wordpressCategory: "",
     publishDate: undefined,
-    status: "published",
+    status: "published", // Explicitement défini ici
     images: [],
     seoTitle: "",
     seoDescription: "",
@@ -56,6 +57,13 @@ const AnnouncementForm = ({
   const form = useForm<AnnouncementFormData>({
     defaultValues: initialValues || defaultValues
   });
+
+  // S'assurer que le statut est défini à "published" dès le début
+  useEffect(() => {
+    if (!form.getValues("status")) {
+      form.setValue("status", "published");
+    }
+  }, [form]);
 
   // Update form values when initialValues changes
   useEffect(() => {

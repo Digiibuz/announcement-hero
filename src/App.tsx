@@ -16,7 +16,14 @@ import UserManagement from "./pages/UserManagement";
 import WordPressManagement from "./pages/WordPressManagement";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false
+    }
+  }
+});
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -117,7 +124,9 @@ const AppRoutes = () => {
   );
 };
 
+// Important: L'ordre des providers est crucial pour éviter les erreurs React
 const App = () => (
+  // BrowserRouter doit être le provider le plus externe
   <BrowserRouter>
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="light">

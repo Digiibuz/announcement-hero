@@ -34,6 +34,11 @@ const CreateAnnouncement = () => {
       }
       
       setIsSubmitting(true);
+      
+      // Définir le statut par défaut à "published" si non spécifié
+      if (!data.status) {
+        data.status = "published";
+      }
 
       // Prepare the announcement data
       const announcementData = {
@@ -100,6 +105,19 @@ const CreateAnnouncement = () => {
     }
   };
 
+  // Valeurs initiales explicitement définies pour assurer que le statut est publié par défaut
+  const initialFormValues = {
+    title: "",
+    description: "",
+    wordpressCategory: "",
+    publishDate: undefined,
+    status: "published", // Statut par défaut explicitement défini
+    images: [],
+    seoTitle: "",
+    seoDescription: "",
+    seoSlug: ""
+  };
+
   return (
     <PageLayout 
       title="Créer une nouvelle annonce" 
@@ -131,17 +149,7 @@ const CreateAnnouncement = () => {
             onSubmit={handleSubmit} 
             isSubmitting={isSubmitting || isPublishing} 
             isMobile={isMobile} 
-            initialValues={{
-              title: "",
-              description: "",
-              wordpressCategory: "",
-              publishDate: undefined,
-              status: "published", // Définir le statut par défaut à "published"
-              images: [],
-              seoTitle: "",
-              seoDescription: "",
-              seoSlug: ""
-            }}
+            initialValues={initialFormValues}
           />
         </div>
       </AnimatedContainer>
