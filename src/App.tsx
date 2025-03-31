@@ -17,6 +17,7 @@ const AnnouncementDetail = lazy(() => import("./pages/AnnouncementDetail"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
 const WordPressManagement = lazy(() => import("./pages/WordPressManagement"));
 const UserProfile = lazy(() => import("./pages/UserProfile"));
+const Support = lazy(() => import("./pages/Support"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Composant de chargement
@@ -143,6 +144,14 @@ const App = () => {
                     element={
                       <ProtectedRoute>
                         <UserProfile />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/support" 
+                    element={
+                      <ProtectedRoute>
+                        <Support />
                       </ProtectedRoute>
                     } 
                   />

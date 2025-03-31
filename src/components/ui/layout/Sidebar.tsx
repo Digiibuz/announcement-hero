@@ -17,7 +17,8 @@ import {
   Globe,
   FileText,
   Menu,
-  UserCircle
+  UserCircle,
+  Ticket
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -145,6 +146,20 @@ const Sidebar = () => {
               >
                 <UserCircle className="h-5 w-5" />
                 <span className="ml-3">Mon Profil</span>
+              </Button>
+            </Link>
+            
+            {/* Support link below profile */}
+            <Link to="/support" onClick={() => isMobile && setIsOpen(false)}>
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start mb-2",
+                  pathname === "/support" && "bg-accent text-accent-foreground"
+                )}
+              >
+                <Ticket className="h-5 w-5" />
+                <span className="ml-3">Support & Assistance</span>
               </Button>
             </Link>
             
