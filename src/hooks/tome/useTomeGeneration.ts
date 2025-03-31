@@ -10,6 +10,8 @@ export const useTomeGeneration = (configId: string | null) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<Record<string, string | null>>({});
+  const [contentErrors, setContentErrors] = useState<Record<string, string>>({});
+  const [pollingGenerations, setPollingGenerations] = useState<string[]>([]);
 
   const fetchGenerations = useCallback(async () => {
     if (!configId) {
@@ -32,10 +34,19 @@ export const useTomeGeneration = (configId: string | null) => {
         return;
       }
 
-      setGenerations(data as TomeGeneration[]);
+      const typedData = data as TomeGeneration[];
+      setGenerations(typedData);
+      
+      // Identify generations that are in progress
+      const pendingIds = typedData
+        .filter(gen => gen.status === 'pending' || gen.status === 'processing')
+        .map(gen => gen.id);
+      
+      // Update polling list
+      setPollingGenerations(pendingIds);
       
       // Fetch content for completed generations
-      for (const generation of data) {
+      for (const generation of typedData) {
         if (generation.status === 'published' && generation.wordpress_post_id) {
           fetchGeneratedContent(generation.id, generation.wordpress_post_id);
         }
@@ -46,6 +57,19 @@ export const useTomeGeneration = (configId: string | null) => {
       setIsLoading(false);
     }
   }, [configId]);
+
+  // Setup polling for in-progress generations
+  useEffect(() => {
+    if (pollingGenerations.length === 0) return;
+    
+    console.log("Setting up polling for generations:", pollingGenerations);
+    
+    const intervalId = setInterval(() => {
+      fetchGenerations();
+    }, 5000); // Poll every 5 seconds
+    
+    return () => clearInterval(intervalId);
+  }, [pollingGenerations, fetchGenerations]);
 
   useEffect(() => {
     fetchGenerations();
@@ -65,6 +89,10 @@ export const useTomeGeneration = (configId: string | null) => {
         
       if (wpConfigError || !wpConfig) {
         console.error("Error fetching WordPress config:", wpConfigError);
+        setContentErrors(prev => ({
+          ...prev,
+          [generationId]: "Impossible de récupérer la configuration WordPress"
+        }));
         return;
       }
       
@@ -78,6 +106,19 @@ export const useTomeGeneration = (configId: string | null) => {
       
       if (contentError) {
         console.error("Error fetching content:", contentError);
+        setContentErrors(prev => ({
+          ...prev,
+          [generationId]: `Erreur: ${contentError.message || "Échec de la récupération du contenu"}`
+        }));
+        return;
+      }
+      
+      if (contentData?.success === false) {
+        console.error("Content API returned error:", contentData.message);
+        setContentErrors(prev => ({
+          ...prev,
+          [generationId]: `Erreur: ${contentData.message || "Contenu introuvable"}`
+        }));
         return;
       }
       
@@ -86,9 +127,25 @@ export const useTomeGeneration = (configId: string | null) => {
           ...prev,
           [generationId]: contentData.content
         }));
+        
+        // Clear any previous errors
+        setContentErrors(prev => {
+          const newErrors = {...prev};
+          delete newErrors[generationId];
+          return newErrors;
+        });
+      } else {
+        setContentErrors(prev => ({
+          ...prev,
+          [generationId]: "Le contenu est vide ou le format est incorrect"
+        }));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error in fetchGeneratedContent:", error);
+      setContentErrors(prev => ({
+        ...prev,
+        [generationId]: `Erreur: ${error.message || "Erreur inconnue"}`
+      }));
     }
   };
 
@@ -143,13 +200,20 @@ export const useTomeGeneration = (configId: string | null) => {
         if (genError) {
           console.error("Error triggering generation:", genError);
           toast.error("Erreur lors du démarrage de la génération: " + genError.message);
+        } else {
+          // Add to polling list
+          setPollingGenerations(prev => [...prev, data.id]);
         }
       }
       
-      toast.success(isScheduled ? "Génération planifiée avec succès" : "Génération lancée avec succès");
+      toast.success(isScheduled 
+        ? "Génération planifiée avec succès" 
+        : "Génération lancée avec succès. Cela peut prendre 1-2 minutes."
+      );
       return true;
     } catch (error: any) {
       console.error("Error in createGeneration:", error);
+      toast.error(`Erreur: ${error.message || "Erreur inconnue"}`);
       return false;
     } finally {
       setIsSubmitting(false);
@@ -159,6 +223,18 @@ export const useTomeGeneration = (configId: string | null) => {
   const regenerate = async (generationId: string) => {
     try {
       setIsSubmitting(true);
+      
+      // Update status first
+      const { error: updateError } = await supabase
+        .from("tome_generations")
+        .update({ status: "pending" })
+        .eq("id", generationId);
+        
+      if (updateError) {
+        console.error("Error updating generation status:", updateError);
+        toast.error("Erreur lors de la mise à jour du statut: " + updateError.message);
+        return false;
+      }
       
       // Appeler la fonction edge pour relancer la génération
       const { error } = await supabase.functions.invoke('tome-generate', {
@@ -172,10 +248,21 @@ export const useTomeGeneration = (configId: string | null) => {
       }
       
       toast.success("Régénération lancée avec succès");
-      await fetchGenerations(); // Rafraîchir la liste
+      
+      // Add to polling list
+      setPollingGenerations(prev => [...prev, generationId]);
+      
+      // Update local state
+      setGenerations(prev => 
+        prev.map(gen => 
+          gen.id === generationId ? { ...gen, status: 'pending' } : gen
+        )
+      );
+      
       return true;
     } catch (error: any) {
       console.error("Error in regenerate:", error);
+      toast.error(`Erreur: ${error.message || "Erreur inconnue"}`);
       return false;
     } finally {
       setIsSubmitting(false);
@@ -190,6 +277,7 @@ export const useTomeGeneration = (configId: string | null) => {
     regenerate,
     fetchGenerations,
     generatedContent,
+    contentErrors,
     fetchGeneratedContent
   };
 };

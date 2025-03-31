@@ -107,7 +107,7 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
     });
     
     // Fetch the content if we don't have it yet
-    if (!generatedContent[generationId] && postId) {
+    if (!generatedContent[generationId] && !contentErrors[generationId] && postId) {
       await fetchGeneratedContent(generationId, postId);
     }
   };
@@ -497,6 +497,7 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
         title={viewingGeneration?.title || "Contenu généré"}
         content={viewingGeneration ? generatedContent[viewingGeneration.id] : null}
         postUrl={getPostUrl()}
+        error={viewingGeneration ? contentErrors[viewingGeneration.id] : null}
       />
     </div>
   );

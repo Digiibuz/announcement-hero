@@ -21,6 +21,8 @@ serve(async (req) => {
       throw new Error('Site URL and post ID are required');
     }
 
+    console.log(`Fetching content from ${siteUrl} for post ID ${postId}`);
+
     // Get API keys from environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -35,12 +37,27 @@ serve(async (req) => {
     // Standardize the site URL
     const formattedSiteUrl = siteUrl.endsWith('/') ? siteUrl : siteUrl + '/';
     
+    // Set timeout for fetch operations
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    
     // First try to fetch as DipiPixel custom post type
     try {
-      const dipiResponse = await fetch(`${formattedSiteUrl}wp-json/wp/v2/dipi_cpt/${postId}`);
+      console.log(`Attempting to fetch DipiPixel content from: ${formattedSiteUrl}wp-json/wp/v2/dipi_cpt/${postId}`);
+      
+      const dipiResponse = await fetch(`${formattedSiteUrl}wp-json/wp/v2/dipi_cpt/${postId}`, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'TomeContentFetcher/1.0',
+          'Accept': 'application/json'
+        }
+      });
       
       if (dipiResponse.ok) {
+        console.log("DipiPixel content found!");
         const dipiData = await dipiResponse.json();
+        clearTimeout(timeoutId);
+        
         return new Response(
           JSON.stringify({
             success: true,
@@ -52,6 +69,12 @@ serve(async (req) => {
             status: 200,
           }
         );
+      } else {
+        console.log(`DipiPixel request failed with status: ${dipiResponse.status}`);
+        if (dipiResponse.status !== 404) {
+          const errorText = await dipiResponse.text();
+          console.log(`Error response: ${errorText.substring(0, 200)}...`);
+        }
       }
     } catch (error) {
       console.log("Error fetching DipiPixel content, will try standard post:", error);
@@ -59,10 +82,21 @@ serve(async (req) => {
     
     // If not found as DipiPixel, try standard post
     try {
-      const postResponse = await fetch(`${formattedSiteUrl}wp-json/wp/v2/posts/${postId}`);
+      console.log(`Attempting to fetch standard post from: ${formattedSiteUrl}wp-json/wp/v2/posts/${postId}`);
+      
+      const postResponse = await fetch(`${formattedSiteUrl}wp-json/wp/v2/posts/${postId}`, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'TomeContentFetcher/1.0',
+          'Accept': 'application/json'
+        }
+      });
       
       if (postResponse.ok) {
+        console.log("Standard post content found!");
         const postData = await postResponse.json();
+        clearTimeout(timeoutId);
+        
         return new Response(
           JSON.stringify({
             success: true,
@@ -74,6 +108,12 @@ serve(async (req) => {
             status: 200,
           }
         );
+      } else {
+        console.log(`Standard post request failed with status: ${postResponse.status}`);
+        if (postResponse.status !== 404) {
+          const errorText = await postResponse.text();
+          console.log(`Error response: ${errorText.substring(0, 200)}...`);
+        }
       }
     } catch (error) {
       console.log("Error fetching standard post content, will try page:", error);
@@ -81,10 +121,21 @@ serve(async (req) => {
     
     // If not found as post, try page
     try {
-      const pageResponse = await fetch(`${formattedSiteUrl}wp-json/wp/v2/pages/${postId}`);
+      console.log(`Attempting to fetch page from: ${formattedSiteUrl}wp-json/wp/v2/pages/${postId}`);
+      
+      const pageResponse = await fetch(`${formattedSiteUrl}wp-json/wp/v2/pages/${postId}`, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'TomeContentFetcher/1.0',
+          'Accept': 'application/json'
+        }
+      });
       
       if (pageResponse.ok) {
+        console.log("Page content found!");
         const pageData = await pageResponse.json();
+        clearTimeout(timeoutId);
+        
         return new Response(
           JSON.stringify({
             success: true,
@@ -96,20 +147,28 @@ serve(async (req) => {
             status: 200,
           }
         );
+      } else {
+        console.log(`Page request failed with status: ${pageResponse.status}`);
+        if (pageResponse.status !== 404) {
+          const errorText = await pageResponse.text();
+          console.log(`Error response: ${errorText.substring(0, 200)}...`);
+        }
       }
     } catch (error) {
       console.log("Error fetching page content:", error);
     }
     
+    clearTimeout(timeoutId);
+    
     // If we got here, we couldn't find the content
     return new Response(
       JSON.stringify({
         success: false,
-        message: 'Content not found'
+        message: 'Le contenu n\'a pas pu être récupéré. Le site WordPress peut temporairement bloquer notre accès. Veuillez vérifier directement sur votre site WordPress.'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 404,
+        status: 200, // Returning 200 with error in payload for better client handling
       }
     );
   } catch (error) {
