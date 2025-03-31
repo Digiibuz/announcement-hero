@@ -1,4 +1,5 @@
-import React from "react";
+
+import React, { useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,16 @@ const TicketList = () => {
   const { data: tickets, isLoading, error } = useTickets(user?.id);
   const { markTicketAsRead } = useTicketNotifications();
   const [selectedTicket, setSelectedTicket] = React.useState<string | null>(null);
+
+  // Mark all tickets as read as soon as the component mounts (ticket list is displayed)
+  useEffect(() => {
+    if (tickets && tickets.length > 0) {
+      // Mark all tickets as read when the list is viewed
+      tickets.forEach(ticket => {
+        markTicketAsRead(ticket.id);
+      });
+    }
+  }, [tickets, markTicketAsRead]);
 
   const handleSelectTicket = (ticketId: string) => {
     setSelectedTicket(ticketId);
