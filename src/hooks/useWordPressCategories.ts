@@ -3,10 +3,10 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { WordPressCategory } from "@/types/announcement";
+import { DipiCptCategory } from "@/types/announcement";
 
 export const useWordPressCategories = () => {
-  const [categories, setCategories] = useState<WordPressCategory[]>([]);
+  const [categories, setCategories] = useState<DipiCptCategory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
@@ -24,21 +24,35 @@ export const useWordPressCategories = () => {
       // First get the WordPress config for the user
       const { data: wpConfig, error: wpConfigError } = await supabase
         .from('wordpress_configs')
-        .select('site_url, username, password, rest_api_key')
+        .select('site_url, username, password, rest_api_key, app_username, app_password')
         .eq('id', user.wordpressConfigId)
         .single();
 
       if (wpConfigError) throw wpConfigError;
       if (!wpConfig) throw new Error("WordPress configuration not found");
 
-      // Construct the WordPress API URL
-      const apiUrl = `${wpConfig.site_url}/wp-json/wp/v2/categories`;
+      // Normalize the URL (remove double slashes)
+      const siteUrl = wpConfig.site_url.replace(/([^:]\/)\/+/g, "$1");
+      
+      // Use the custom taxonomy endpoint for DipiPixel
+      const apiUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt_category`;
+      
+      // Prepare headers
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      // Prioritize Application Password authentication
+      if (wpConfig.app_username && wpConfig.app_password) {
+        const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
+        headers['Authorization'] = `Basic ${basicAuth}`;
+      } else if (wpConfig.rest_api_key) {
+        headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
+      }
       
       const response = await fetch(apiUrl, {
-        headers: {
-          'Authorization': `Bearer ${wpConfig.rest_api_key}`,
-          'Content-Type': 'application/json'
-        }
+        method: 'GET',
+        headers: headers
       });
 
       if (!response.ok) {
@@ -50,7 +64,7 @@ export const useWordPressCategories = () => {
     } catch (err: any) {
       console.error("Error fetching WordPress categories:", err);
       setError(err.message || "Failed to fetch WordPress categories");
-      toast.error("Erreur lors de la récupération des catégories WordPress");
+      toast.error("Erreur lors de la récupération des catégories DipiPixel");
     } finally {
       setIsLoading(false);
     }
@@ -62,5 +76,11 @@ export const useWordPressCategories = () => {
     }
   }, [user?.wordpressConfigId]);
 
-  return { categories, isLoading, error, refetch: fetchCategories };
+  return { 
+    categories, 
+    isLoading, 
+    error, 
+    refetch: fetchCategories,
+    hasCategories: categories.length > 0
+  };
 };
