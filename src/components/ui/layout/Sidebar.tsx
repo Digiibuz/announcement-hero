@@ -1,7 +1,6 @@
-
 "use client"
 
-import React from "react";
+import React, { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useIsMobile } from "@/hooks/use-media-query";
@@ -28,7 +27,13 @@ const Sidebar = () => {
   const { pathname } = useLocation();
   const { user, logout, isLoading, isAuthenticated, isAdmin, isClient } = useAuth();
   const [isOpen, setIsOpen] = React.useState(false);
-  const { unreadCount } = useTicketNotifications();
+  const { unreadCount, resetTicketTabView } = useTicketNotifications();
+
+  useEffect(() => {
+    if (!pathname.includes('/support')) {
+      resetTicketTabView();
+    }
+  }, [pathname, resetTicketTabView]);
 
   if (!isAuthenticated) return null;
 
@@ -53,23 +58,20 @@ const Sidebar = () => {
     },
   ];
 
-  // Modified adminItems to separate admin-only and client-accessible items
   const adminItems = [
-    // This item will only be visible to admin users, not clients
     {
       name: "Gestion utilisateurs",
       href: "/users",
       icon: <UserCog className="h-5 w-5" />,
       isActive: pathname === "/users",
-      adminOnly: true, // New property to indicate admin-only access
+      adminOnly: true,
     },
     {
-      // Changed the label to "Mon site" for clients, keeping "Gestion WordPress" for admins
       name: isClient ? "Mon site" : "Gestion WordPress",
       href: "/wordpress",
       icon: <Globe className="h-5 w-5" />,
       isActive: pathname === "/wordpress",
-      adminOnly: false, // Both admin and client can access this
+      adminOnly: false,
     },
   ];
 
@@ -114,7 +116,6 @@ const Sidebar = () => {
                 </h3>
               </li>
               {adminItems
-                // Filter items based on user role
                 .filter(item => isAdmin || (!item.adminOnly && isClient))
                 .map((item) => (
                   <li key={item.href}>
@@ -138,7 +139,6 @@ const Sidebar = () => {
 
         <div className={`mt-auto pt-4 ${isMobile ? "pb-4" : "absolute bottom-4 left-0 right-0"} px-3`}>
           <div className="border-t border-border pt-4">
-            {/* Profile link now in the footer section */}
             <Link to="/profile" onClick={() => isMobile && setIsOpen(false)}>
               <Button
                 variant="ghost"
@@ -152,7 +152,6 @@ const Sidebar = () => {
               </Button>
             </Link>
             
-            {/* Support link below profile - with notification badge */}
             <Link to="/support" onClick={() => isMobile && setIsOpen(false)}>
               <Button
                 variant="ghost"
