@@ -1,11 +1,12 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Pencil, FileEdit } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import AnnouncementPreview from "@/components/announcements/AnnouncementPreview";
 import AnnouncementForm from "@/components/announcements/AnnouncementForm";
 import { Announcement } from "@/types/announcement";
+import { saveToCache, getFromCache } from "@/utils/cacheStorage";
 
 interface AnnouncementTabsProps {
   announcement: Announcement | null;
@@ -35,19 +36,23 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
     // On empêche tout comportement de rechargement en utilisant preventDefault
     setActiveTab(value);
     
-    // On mémorise l'onglet actif dans le sessionStorage pour le restaurer
+    // On mémorise l'onglet actif dans le cache pour le restaurer
     if (announcement?.id) {
-      sessionStorage.setItem(`announcementTab-${announcement.id}`, value);
+      saveToCache(`announcementTab-${announcement.id}`, value);
     }
   };
   
-  // Restaurer l'onglet actif depuis sessionStorage au chargement
-  React.useEffect(() => {
+  // Restaurer l'onglet actif depuis le cache au chargement
+  useEffect(() => {
     if (announcement?.id) {
-      const savedTab = sessionStorage.getItem(`announcementTab-${announcement.id}`);
-      if (savedTab && (savedTab === 'preview' || (savedTab === 'edit' && isEditing))) {
-        setActiveTab(savedTab);
-      }
+      const fetchSavedTab = async () => {
+        const savedTab = await getFromCache<string>(`announcementTab-${announcement.id}`);
+        if (savedTab && (savedTab === 'preview' || (savedTab === 'edit' && isEditing))) {
+          setActiveTab(savedTab);
+        }
+      };
+      
+      fetchSavedTab();
     }
   }, [announcement?.id, isEditing, setActiveTab]);
   
@@ -96,9 +101,9 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
             onCancel={() => {
               setIsEditing(false);
               setActiveTab("preview");
-              // Mettre à jour sessionStorage
+              // Mettre à jour le cache
               if (announcement?.id) {
-                sessionStorage.setItem(`announcementTab-${announcement.id}`, 'preview');
+                saveToCache(`announcementTab-${announcement.id}`, 'preview');
               }
             }}
           />

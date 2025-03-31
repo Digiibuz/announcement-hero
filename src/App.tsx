@@ -1,5 +1,4 @@
 
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -94,28 +93,30 @@ const AppRoutes = () => {
   const { isAuthenticated, isAdmin, isClient, isLoading } = useAuth();
   const location = useLocation();
   
-  // Fix: Simplified path restoration logic to prevent redirection loops
+  // Enhanced path restoration with improved role checking and timing
   useEffect(() => {
-    // Only restore paths if we're on the home page or login page
-    // This prevents redirection loops from dashboard to admin pages
-    if (isAuthenticated && !isLoading && (location.pathname === '/' || location.pathname === '/login')) {
-      console.log("Checking for path restoration");
+    if (isAuthenticated && !isLoading) {
+      console.log("Current path:", location.pathname);
+      console.log("Is admin:", isAdmin, "Is client:", isClient);
       
-      // First try to restore the last authenticated path
-      const lastAuthPath = sessionStorage.getItem('lastAuthenticatedPath');
-      
-      if (lastAuthPath && lastAuthPath !== '/' && lastAuthPath !== '/login') {
-        console.log("Redirecting to last authenticated path:", lastAuthPath);
-        window.history.replaceState(null, '', lastAuthPath);
-        window.location.href = lastAuthPath;
-        return;
-      }
-      
-      // If no authenticated path, default to dashboard
-      if (location.pathname === '/' || location.pathname === '/login') {
-        console.log("Defaulting to dashboard");
-        window.history.replaceState(null, '', '/dashboard');
-        window.location.href = '/dashboard';
+      // If we're at dashboard (potential redirect destination), check if we should go to admin page
+      if (location.pathname === '/dashboard' || location.pathname === '/') {
+        const lastAdminPath = sessionStorage.getItem('lastAdminPath');
+        console.log("Last admin path from session:", lastAdminPath);
+        
+        if (lastAdminPath && (isAdmin || isClient)) {
+          // Admin paths we should restore to
+          const adminPaths = ['/users', '/wordpress'];
+          
+          if (adminPaths.includes(lastAdminPath)) {
+            console.log("Redirecting to last admin path:", lastAdminPath);
+            // Use a small timeout to ensure auth state is fully processed
+            setTimeout(() => {
+              window.history.replaceState(null, '', lastAdminPath);
+              window.location.href = lastAdminPath;
+            }, 100);
+          }
+        }
       }
     }
   }, [isAuthenticated, isAdmin, isClient, isLoading, location.pathname]);
@@ -185,18 +186,17 @@ const AppRoutes = () => {
   );
 };
 
-// L'ordre des providers est important pour que les hooks fonctionnent correctement
+// Fixed App component by properly nesting providers 
+// The order of providers is important for hooks to work correctly
 const App = () => (
   <BrowserRouter>
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <TooltipProvider>
-          <AuthProvider>
-            <AppRoutes />
-            <Toaster />
-            <SonnerToaster />
-          </AuthProvider>
-        </TooltipProvider>
+        <AuthProvider>
+          <AppRoutes />
+          <Toaster />
+          <SonnerToaster />
+        </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   </BrowserRouter>

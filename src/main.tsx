@@ -6,10 +6,8 @@ import './index.css'
 // Enregistrer le service worker pour PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(registration => {
+    navigator.serviceWorker.register('/sw.js').then(registration => {
       console.log('SW registered: ', registration);
-      // Force une vérification de mise à jour
-      registration.update();
     }).catch(registrationError => {
       console.log('SW registration failed: ', registrationError);
     });
