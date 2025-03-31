@@ -9,6 +9,7 @@ export const useTomeGeneration = (configId: string | null) => {
   const [generations, setGenerations] = useState<TomeGeneration[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [generatedContent, setGeneratedContent] = useState<Record<string, string | null>>({});
 
   const fetchGenerations = useCallback(async () => {
     if (!configId) {
@@ -32,6 +33,13 @@ export const useTomeGeneration = (configId: string | null) => {
       }
 
       setGenerations(data as TomeGeneration[]);
+      
+      // Fetch content for completed generations
+      for (const generation of data) {
+        if (generation.status === 'published' && generation.wordpress_post_id) {
+          fetchGeneratedContent(generation.id, generation.wordpress_post_id);
+        }
+      }
     } catch (error: any) {
       console.error("Error in fetchGenerations:", error);
     } finally {
@@ -42,6 +50,47 @@ export const useTomeGeneration = (configId: string | null) => {
   useEffect(() => {
     fetchGenerations();
   }, [fetchGenerations]);
+
+  const fetchGeneratedContent = async (generationId: string, postId: number) => {
+    try {
+      // First check if we already have the content for this generation
+      if (generatedContent[generationId]) return;
+      
+      // Get WordPress config to determine the site URL
+      const { data: wpConfig, error: wpConfigError } = await supabase
+        .from("wordpress_configs")
+        .select("site_url")
+        .eq("id", configId)
+        .single();
+        
+      if (wpConfigError || !wpConfig) {
+        console.error("Error fetching WordPress config:", wpConfigError);
+        return;
+      }
+      
+      // Fetch the content
+      const { data: contentData, error: contentError } = await supabase.functions.invoke('fetch-tome-content', {
+        body: { 
+          siteUrl: wpConfig.site_url,
+          postId: postId
+        }
+      });
+      
+      if (contentError) {
+        console.error("Error fetching content:", contentError);
+        return;
+      }
+      
+      if (contentData?.content) {
+        setGeneratedContent(prev => ({
+          ...prev,
+          [generationId]: contentData.content
+        }));
+      }
+    } catch (error) {
+      console.error("Error in fetchGeneratedContent:", error);
+    }
+  };
 
   const createGeneration = async (
     categoryId: string,
@@ -139,6 +188,8 @@ export const useTomeGeneration = (configId: string | null) => {
     isSubmitting,
     createGeneration,
     regenerate,
-    fetchGenerations
+    fetchGenerations,
+    generatedContent,
+    fetchGeneratedContent
   };
 };

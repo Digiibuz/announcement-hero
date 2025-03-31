@@ -5,7 +5,7 @@ import { useCategoriesKeywords, useLocalities } from "@/hooks/tome";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, Calendar, ExternalLink, Clock } from "lucide-react";
+import { Loader2, RefreshCw, Calendar, ExternalLink, Clock, Eye } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,8 @@ import { format } from "date-fns";
 import { fr } from 'date-fns/locale';
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import GeneratedContentDialog from "./GeneratedContentDialog";
 
 interface TomeGenerationsProps {
   configId: string;
@@ -27,7 +29,10 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
     isLoading: isLoadingGenerations, 
     isSubmitting,
     createGeneration,
-    fetchGenerations
+    regenerate,
+    fetchGenerations,
+    generatedContent,
+    fetchGeneratedContent
   } = useTomeGeneration(configId);
 
   const { 
@@ -48,6 +53,15 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
   const [selectedLocality, setSelectedLocality] = useState<string | null>(null);
   const [scheduleDate, setScheduleDate] = useState<Date | null>(null);
   const [isScheduled, setIsScheduled] = useState(false);
+  const [viewingGeneration, setViewingGeneration] = useState<{
+    id: string;
+    title: string;
+    postId: number | null;
+    siteUrl?: string;
+  } | null>(null);
+
+  // Set to track generations that are currently polling for status updates
+  const [pollingGenerations, setPollingGenerations] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!isLoadingKeywords && categories.length > 0 && !selectedCategory) {
@@ -57,7 +71,46 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
 
   useEffect(() => {
     fetchGenerations();
+    
+    // Setup polling for generations that are in progress
+    const pendingGenerations = generations.filter(
+      g => g.status === 'pending' || g.status === 'processing'
+    );
+    
+    if (pendingGenerations.length > 0) {
+      const interval = setInterval(() => {
+        fetchGenerations();
+      }, 10000); // Poll every 10 seconds
+      
+      return () => clearInterval(interval);
+    }
   }, [configId]);
+
+  // Handle viewing content
+  const handleViewContent = async (generationId: string, postId: number | null, title: string) => {
+    if (!postId) return;
+    
+    // Find the base URL for the WordPress site
+    const generation = generations.find(g => g.id === generationId);
+    if (!generation) return;
+
+    // Get site URL from the category
+    const categoryDetails = categories.find(c => c.id.toString() === generation.category_id);
+    const siteUrl = categoryDetails?.link?.split('/wp-json/')[0] || 
+                   (categories.length > 0 && categories[0]?.link?.split('/wp-json/')[0]);
+    
+    setViewingGeneration({
+      id: generationId,
+      title,
+      postId,
+      siteUrl
+    });
+    
+    // Fetch the content if we don't have it yet
+    if (!generatedContent[generationId] && postId) {
+      await fetchGeneratedContent(generationId, postId);
+    }
+  };
 
   const handleCreateGeneration = async () => {
     if (!selectedCategory) return;
@@ -102,6 +155,13 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
   const selectedCategoryKeywords = selectedCategory 
     ? getKeywordsForCategory(selectedCategory)
     : [];
+
+  // Get post URL for the viewing generation
+  const getPostUrl = () => {
+    if (!viewingGeneration || !viewingGeneration.postId || !viewingGeneration.siteUrl) return null;
+    
+    return `${viewingGeneration.siteUrl}/?p=${viewingGeneration.postId}`;
+  };
 
   return (
     <div className="space-y-6">
@@ -294,38 +354,48 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
                 
                 let statusLabel = "";
                 let statusColor = "";
+                let statusProgress = 0;
                 
                 switch (generation.status) {
                   case 'pending':
                     statusLabel = "En attente";
                     statusColor = "bg-amber-100 text-amber-800";
+                    statusProgress = 10;
                     break;
                   case 'processing':
                     statusLabel = "En cours";
                     statusColor = "bg-blue-100 text-blue-800";
+                    statusProgress = 50;
                     break;
                   case 'scheduled':
                     statusLabel = "Planifiée";
                     statusColor = "bg-purple-100 text-purple-800";
+                    statusProgress = 0;
                     break;
                   case 'published':
                     statusLabel = "Publiée";
                     statusColor = "bg-green-100 text-green-800";
+                    statusProgress = 100;
                     break;
                   case 'failed':
                     statusLabel = "Échec";
                     statusColor = "bg-red-100 text-red-800";
+                    statusProgress = 0;
                     break;
                   default:
                     statusLabel = generation.status;
                     statusColor = "bg-gray-100 text-gray-800";
+                    statusProgress = 0;
                 }
+                
+                // Show processing indicator with progress
+                const showProgress = generation.status === 'pending' || generation.status === 'processing';
                 
                 return (
                   <div key={generation.id} className="border rounded-md p-4">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
+                      <div className="w-full md:w-3/4">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
                           <span className={`text-xs px-2 py-1 rounded-md ${statusColor}`}>
                             {statusLabel}
                           </span>
@@ -347,7 +417,22 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
                             </span>
                           )}
                         </div>
-                        <h3 className="text-lg font-medium mt-1">
+                        
+                        {showProgress && (
+                          <div className="mb-3">
+                            <Progress 
+                              value={statusProgress} 
+                              className="h-2"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {generation.status === 'pending' 
+                                ? "En file d'attente, la génération va démarrer bientôt..." 
+                                : "Génération et publication en cours..."}
+                            </p>
+                          </div>
+                        )}
+                        
+                        <h3 className="text-lg font-medium">
                           {categoryDetails?.name || generation.category_id}
                         </h3>
                         <div className="mt-1 space-y-1">
@@ -364,7 +449,23 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
                           )}
                         </div>
                       </div>
-                      <div>
+                      <div className="flex space-x-2">
+                        {generation.status === 'published' && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex items-center gap-2"
+                            onClick={() => handleViewContent(
+                              generation.id, 
+                              generation.wordpress_post_id,
+                              categoryDetails?.name || "Contenu généré"
+                            )}
+                          >
+                            <Eye className="h-4 w-4" />
+                            Voir le contenu
+                          </Button>
+                        )}
+                        
                         {generation.wordpress_post_id && (
                           <Button variant="outline" size="sm" className="flex items-center gap-2" asChild>
                             <a 
@@ -388,6 +489,15 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog to display content */}
+      <GeneratedContentDialog
+        isOpen={!!viewingGeneration}
+        onClose={() => setViewingGeneration(null)}
+        title={viewingGeneration?.title || "Contenu généré"}
+        content={viewingGeneration ? generatedContent[viewingGeneration.id] : null}
+        postUrl={getPostUrl()}
+      />
     </div>
   );
 };
