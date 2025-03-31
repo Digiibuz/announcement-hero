@@ -81,9 +81,11 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
           const response = await fetch(`${siteUrl}/wp-json/wp/v2/${endpoint}/1`, {
             method: 'HEAD',
           });
-          // If we get a 404, the endpoint may not exist (or post #1 might not exist, but this is a reasonable check)
-          // Fix the TypeScript error by using strict equality (===) and ensuring types match
-          return response.status !== 404 || response.status === 401; // 401 means endpoint exists but not authorized
+          
+          // Fix the TypeScript error by using number type for status
+          // and correct comparison
+          const status = response.status;
+          return status !== 404 || status === 401; // 401 means endpoint exists but not authorized
         } catch (error) {
           return false;
         }
