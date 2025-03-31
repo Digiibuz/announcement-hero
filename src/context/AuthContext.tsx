@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Session } from "@supabase/supabase-js";
+import { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { useUserProfile, createProfileFromMetadata } from "@/hooks/useUserProfile";
 import { useImpersonation } from "@/hooks/useImpersonation";
@@ -11,102 +11,55 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
-  const [session, setSession] = useState<Session | null>(null);
   const { userProfile, setUserProfile, fetchFullProfile } = useUserProfile();
   const { originalUser, isImpersonating, impersonateUser: startImpersonation, stopImpersonating: endImpersonation } = useImpersonation(userProfile);
 
   // Initialize auth state and set up listeners
   useEffect(() => {
-    console.log("Auth context effect running - initializing auth state");
-    let isMounted = true;
-    
-    // Set up the auth state change listener first to avoid missing events
+    // Set up the auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, currentSession) => {
-        if (!isMounted) return;
+      async (event, session) => {
+        setIsLoading(true);
         
-        console.log(`Auth state changed: ${event}`, currentSession?.user?.id);
-        
-        if (currentSession?.user) {
-          setSession(currentSession);
+        if (session?.user) {
           // First set user from metadata for immediate UI feedback
-          const initialProfile = createProfileFromMetadata(currentSession.user);
+          const initialProfile = createProfileFromMetadata(session.user);
           setUserProfile(initialProfile);
           
-          // Then fetch complete profile asynchronously
-          if (isMounted) {
-            fetchFullProfile(currentSession.user.id);
-          }
-        } else if (event === 'SIGNED_OUT') {
+          // Then asynchronously fetch the complete profile
+          setTimeout(() => {
+            fetchFullProfile(session.user.id);
+          }, 100);
+        } else {
           setUserProfile(null);
-          setSession(null);
         }
         
         setIsLoading(false);
       }
     );
 
-    // Then check for any existing session
+    // Get initial session
     const initializeAuth = async () => {
-      try {
-        console.log("Checking for existing session");
-        const { data: { session: existingSession } } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        // First set user from metadata
+        const initialProfile = createProfileFromMetadata(session.user);
+        setUserProfile(initialProfile);
         
-        if (existingSession?.user && isMounted) {
-          console.log("Existing session found:", existingSession.user.id);
-          setSession(existingSession);
-          
-          // Set initial profile from metadata
-          const initialProfile = createProfileFromMetadata(existingSession.user);
-          setUserProfile(initialProfile);
-          
-          // Fetch complete profile
-          fetchFullProfile(existingSession.user.id);
-        } else {
-          console.log("No existing session found");
-          if (isMounted) setIsLoading(false);
-        }
-      } catch (error) {
-        console.error("Error initializing auth:", error);
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        // Then get complete profile
+        setTimeout(() => {
+          fetchFullProfile(session.user.id);
+        }, 100);
       }
+      
+      setIsLoading(false);
     };
 
     initializeAuth();
 
-    // Handle visibility change (tab switching)
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
-        console.log("Tab became visible - checking session");
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        
-        if (currentSession?.user) {
-          console.log("Session still valid after visibility change");
-          setSession(currentSession);
-          
-          if (!userProfile || userProfile.id !== currentSession.user.id) {
-            console.log("Updating user profile after visibility change");
-            const initialProfile = createProfileFromMetadata(currentSession.user);
-            setUserProfile(initialProfile);
-            fetchFullProfile(currentSession.user.id);
-          }
-        } else if (session) {
-          console.log("Session lost after visibility change");
-          setSession(null);
-          setUserProfile(null);
-        }
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // Cleanup
     return () => {
-      isMounted = false;
       subscription.unsubscribe();
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
@@ -134,7 +87,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await supabase.auth.signOut();
       setUserProfile(null);
-      setSession(null);
       localStorage.removeItem("originalUser");
     } catch (error) {
       console.error("Error during logout:", error);
@@ -158,11 +110,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const value: AuthContextType = {
     user: userProfile,
-    session,
     isLoading,
     login,
     logout,
-    isAuthenticated: !!userProfile && !!session,
+    isAuthenticated: !!userProfile,
     isAdmin: userProfile?.role === "admin",
     isEditor: userProfile?.role === "editor",
     isClient: userProfile?.role === "client",
