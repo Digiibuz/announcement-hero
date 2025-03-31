@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from "react";
 import { useTomeGeneration } from "@/hooks/tome";
 import { useCategoriesKeywords, useLocalities } from "@/hooks/tome";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, Calendar, ExternalLink } from "lucide-react";
+import { Loader2, RefreshCw, Calendar, ExternalLink, Clock } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { fr } from 'date-fns/locale';
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 
 interface TomeGenerationsProps {
   configId: string;
@@ -318,19 +320,25 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
                   <div key={generation.id} className="border rounded-md p-4">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className={`text-xs px-2 py-1 rounded-md ${statusColor}`}>
                             {statusLabel}
                           </span>
-                          {generation.scheduled_at && generation.status === 'scheduled' ? (
+                          
+                          {generation.status === 'scheduled' && generation.scheduled_at ? (
+                            <Badge variant="outline" className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              <span>
+                                Publication prévue le {format(new Date(generation.scheduled_at), 'dd/MM/yyyy HH:mm')}
+                              </span>
+                            </Badge>
+                          ) : generation.published_at ? (
                             <span className="text-sm text-muted-foreground">
-                              Planifiée le {format(new Date(generation.scheduled_at), 'dd/MM/yyyy HH:mm')}
+                              Publiée le {format(new Date(generation.published_at), 'dd/MM/yyyy HH:mm')}
                             </span>
                           ) : (
                             <span className="text-sm text-muted-foreground">
-                              {generation.published_at 
-                                ? `Publiée le ${format(new Date(generation.published_at), 'dd/MM/yyyy HH:mm')}` 
-                                : `Créée le ${format(new Date(generation.created_at), 'dd/MM/yyyy HH:mm')}`}
+                              Créée le {format(new Date(generation.created_at), 'dd/MM/yyyy HH:mm')}
                             </span>
                           )}
                         </div>
