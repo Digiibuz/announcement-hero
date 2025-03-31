@@ -1,6 +1,5 @@
-
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v12';
+const CACHE_NAME = 'digiibuz-cache-v13';
 
 // Liste des ressources à mettre en cache
 const urlsToCache = [

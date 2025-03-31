@@ -58,7 +58,7 @@ serve(async (req) => {
         prompt = `Voici le titre: "${title}" et la description: "${description}". Génère une méta-description SEO d'environ 120-155 caractères qui résume le contenu de manière attrayante. Renvoie uniquement la méta-description sans aucune phrase d'introduction ou commentaire.`;
         break;
       default:
-        throw new Error("Type d'optimisation non supporté");
+        throw new Error(`Type d'optimisation non supporté: ${type}`);
     }
 
     console.log(`Type d'optimisation: ${type}, appel à OpenAI en cours...`);
