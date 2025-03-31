@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import AnnouncementForm from "@/components/announcements/AnnouncementForm";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import PageLayout from "@/components/ui/layout/PageLayout";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Announcement } from "@/types/announcement";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
 import { ArrowLeft, Wand2 } from "lucide-react";
