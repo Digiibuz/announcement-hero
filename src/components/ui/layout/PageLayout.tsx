@@ -7,12 +7,10 @@ import Sidebar from "@/components/ui/layout/Sidebar";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Moon, Sun } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLocation } from "react-router-dom";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
-import { useTheme } from "next-themes";
-import { Toggle } from "@/components/ui/toggle";
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -34,7 +32,6 @@ const PageLayout = ({
   const isMobile = useMediaQuery("(max-width: 767px)");
   const { isAdmin, isClient, isImpersonating } = useAuth();
   const location = useLocation();
-  const { theme, setTheme } = useTheme();
   
   // Vérifier si nous sommes sur une page d'administration
   const isAdminPage = location.pathname === '/users' || location.pathname === '/wordpress';
@@ -52,11 +49,6 @@ const PageLayout = ({
 
   // Calculer le padding-top supplémentaire si la bannière d'impersonation est visible
   const bannerPadding = isImpersonating ? "pt-12" : "";
-
-  // Toggle theme function
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -85,20 +77,6 @@ const PageLayout = ({
                   )}
                 </div>
                 <div className={`${isMobile ? "w-full" : ""} flex items-center gap-2`}>
-                  <Toggle 
-                    variant="outline" 
-                    size="sm"
-                    pressed={theme === 'dark'}
-                    onPressedChange={toggleTheme}
-                    title={theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
-                    className="mr-2"
-                  >
-                    {theme === 'dark' ? (
-                      <Sun className="h-4 w-4" />
-                    ) : (
-                      <Moon className="h-4 w-4" />
-                    )}
-                  </Toggle>
                   {titleAction && <div>{titleAction}</div>}
                 </div>
               </div>
