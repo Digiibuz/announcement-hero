@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
+
 export interface AnnouncementFormProps {
   onSubmit?: (data: AnnouncementFormData) => void;
   isSubmitting?: boolean;
@@ -20,6 +22,7 @@ export interface AnnouncementFormProps {
   isMobile?: boolean;
   initialValues?: AnnouncementFormData;
 }
+
 export interface AnnouncementFormData {
   title: string;
   description: string;
@@ -31,6 +34,7 @@ export interface AnnouncementFormData {
   seoDescription: string;
   seoSlug: string;
 }
+
 const AnnouncementForm = ({
   onSubmit,
   isSubmitting = false,
@@ -38,17 +42,18 @@ const AnnouncementForm = ({
   isMobile = false,
   initialValues
 }: AnnouncementFormProps) => {
-  const defaultValues: AnnouncementFormData = {
+  const defaultValues = {
     title: "",
     description: "",
     wordpressCategory: "",
     publishDate: undefined,
-    status: "draft" as const,
+    status: "draft",
     images: [],
     seoTitle: "",
     seoDescription: "",
     seoSlug: ""
   };
+
   const form = useForm<AnnouncementFormData>({
     defaultValues: initialValues || defaultValues
   });
@@ -56,12 +61,13 @@ const AnnouncementForm = ({
   // Update form values when initialValues changes
   useEffect(() => {
     if (initialValues) {
-      Object.keys(initialValues).forEach(key => {
+      Object.keys(initialValues).forEach((key) => {
         const typedKey = key as keyof AnnouncementFormData;
         form.setValue(typedKey, initialValues[typedKey]);
       });
     }
   }, [initialValues, form]);
+
   const navigate = useNavigate();
   const {
     optimizeContent,
@@ -72,6 +78,7 @@ const AnnouncementForm = ({
     setValue
   } = form;
   const title = watch("title");
+
   useEffect(() => {
     if (title) {
       const normalizedTitle = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
@@ -81,6 +88,7 @@ const AnnouncementForm = ({
       }
     }
   }, [title, setValue]);
+
   const optimizeSeoContent = async (field: 'seoTitle' | 'seoDescription') => {
     try {
       const currentTitle = form.getValues('title');
@@ -97,6 +105,7 @@ const AnnouncementForm = ({
       console.error(`Error optimizing ${field}:`, error);
     }
   };
+
   const handleCancel = () => {
     if (onCancel) {
       onCancel();
@@ -104,12 +113,14 @@ const AnnouncementForm = ({
       navigate('/announcements');
     }
   };
+
   const getCardStyles = (isSectionCard = false) => {
     if (isMobile) {
       return isSectionCard ? "border-0 border-b border-border shadow-none rounded-none bg-transparent mb-3 last:border-b-0 last:mb-0" : "border-0 shadow-none bg-transparent";
     }
     return "border shadow-sm";
   };
+
   return <div className="space-y-6">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit || (() => {}))} className="space-y-6">
@@ -117,7 +128,7 @@ const AnnouncementForm = ({
             <div className={`${isMobile ? "px-4" : ""}`}>
               <Card className={getCardStyles(true)}>
                 <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"}`}>
-                  <CardTitle className="text-lg font-medium">Votre annonces</CardTitle>
+                  <CardTitle className="text-lg font-medium">Votre annonce</CardTitle>
                   {!isMobile && <CardDescription className="text-amber-400">
                       Les informations essentielles de votre annonce
                     </CardDescription>}
@@ -286,4 +297,5 @@ const AnnouncementForm = ({
       </Form>
     </div>;
 };
+
 export default AnnouncementForm;

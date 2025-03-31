@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -39,27 +40,30 @@ const Sidebar = () => {
       isActive: pathname === "/announcements",
     },
     {
-      name: "Créer un article",
+      name: "Créer une annonce",
       href: "/create",
       icon: <Newspaper className="h-5 w-5" />,
       isActive: pathname === "/create",
     },
   ];
 
+  // Modified adminItems to separate admin-only and client-accessible items
   const adminItems = [
+    // This item will only be visible to admin users, not clients
     {
       name: "Gestion utilisateurs",
       href: "/users",
       icon: <UserCog className="h-5 w-5" />,
       isActive: pathname === "/users",
-      adminOnly: true,
+      adminOnly: true, // New property to indicate admin-only access
     },
     {
+      // Changed the label to "Mon site" for clients, keeping "Gestion WordPress" for admins
       name: isClient ? "Mon site" : "Gestion WordPress",
       href: "/wordpress",
       icon: <Globe className="h-5 w-5" />,
       isActive: pathname === "/wordpress",
-      adminOnly: false,
+      adminOnly: false, // Both admin and client can access this
     },
   ];
 
@@ -104,6 +108,7 @@ const Sidebar = () => {
                 </h3>
               </li>
               {adminItems
+                // Filter items based on user role
                 .filter(item => isAdmin || (!item.adminOnly && isClient))
                 .map((item) => (
                   <li key={item.href}>

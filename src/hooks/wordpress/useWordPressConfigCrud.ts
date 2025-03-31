@@ -105,49 +105,6 @@ export const useWordPressConfigCrud = (onConfigsChange?: () => void) => {
       setIsSubmitting(true);
       console.log("Deleting WordPress config:", id);
       
-      // Vérifier si des profils utilisent cette configuration
-      const { data: profilesWithConfig, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, name, email')
-        .eq('wordpress_config_id', id);
-      
-      if (profilesError) {
-        console.error("Error checking profiles with config:", profilesError);
-        throw profilesError;
-      }
-      
-      if (profilesWithConfig && profilesWithConfig.length > 0) {
-        const userNames = profilesWithConfig.map(p => p.name || p.email).join(', ');
-        throw new Error(`Cette configuration est utilisée par ${profilesWithConfig.length} utilisateur(s): ${userNames}. Veuillez d'abord modifier ou supprimer ces utilisateurs.`);
-      }
-      
-      // Vérifier si des associations client-config existent
-      const { data: clientConfigs, error: clientConfigsError } = await supabase
-        .from('client_wordpress_configs')
-        .select('id')
-        .eq('wordpress_config_id', id);
-      
-      if (clientConfigsError) {
-        console.error("Error checking client configs:", clientConfigsError);
-        throw clientConfigsError;
-      }
-      
-      // Supprimer d'abord les associations client-config si elles existent
-      if (clientConfigs && clientConfigs.length > 0) {
-        console.log(`Removing ${clientConfigs.length} client associations before deleting config`);
-        
-        const { error: deleteAssociationsError } = await supabase
-          .from('client_wordpress_configs')
-          .delete()
-          .eq('wordpress_config_id', id);
-        
-        if (deleteAssociationsError) {
-          console.error("Error deleting client associations:", deleteAssociationsError);
-          throw deleteAssociationsError;
-        }
-      }
-      
-      // Maintenant, supprimer la configuration WordPress
       const { error } = await supabase
         .from('wordpress_configs')
         .delete()
@@ -161,9 +118,9 @@ export const useWordPressConfigCrud = (onConfigsChange?: () => void) => {
       console.log("WordPress config deleted successfully");
       toast.success("Configuration WordPress supprimée avec succès");
       if (onConfigsChange) onConfigsChange();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting WordPress config:', error);
-      toast.error(`Erreur lors de la suppression de la configuration WordPress: ${error.message}`);
+      toast.error("Erreur lors de la suppression de la configuration WordPress");
       throw error;
     } finally {
       setIsSubmitting(false);

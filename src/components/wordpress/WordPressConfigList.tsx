@@ -64,9 +64,8 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
     try {
       setIsDeleting(true);
       await onDeleteConfig(configToDelete);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error deleting WordPress config:", error);
-      toast.error(error.message || "Erreur lors de la suppression de la configuration");
     } finally {
       setIsDeleting(false);
       setConfigToDelete(null);
