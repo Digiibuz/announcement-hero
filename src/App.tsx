@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
 import { Suspense, lazy, useEffect } from 'react';
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 // Import Index component directly rather than lazy loading it
 import Index from "./pages/Index";
@@ -214,9 +215,11 @@ const App = () => (
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <TooltipProvider>
           <AuthProvider>
-            <AppRoutes />
-            <Toaster />
-            <SonnerToaster />
+            <SidebarProvider>
+              <AppRoutes />
+              <Toaster />
+              <SonnerToaster />
+            </SidebarProvider>
           </AuthProvider>
         </TooltipProvider>
       </ThemeProvider>

@@ -4,7 +4,15 @@ import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sidebar, SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
+import { 
+  Sidebar, 
+  SidebarProvider,
+  SidebarGroup, 
+  SidebarGroupLabel, 
+  SidebarMenu, 
+  SidebarMenuItem, 
+  SidebarMenuButton 
+} from "@/components/ui/sidebar";
 import { useAuth } from "@/context/AuthContext";
 import { 
   Home, 
@@ -26,94 +34,96 @@ const AppSidebar = () => {
   };
 
   return (
-    <Sidebar>
-      <div className="p-4">
-        <div className="flex items-center gap-2 mb-4">
-          <LayoutDashboard className="h-6 w-6" />
-          <span className="font-semibold">Admin Dashboard</span>
+    <SidebarProvider>
+      <Sidebar>
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-4">
+            <LayoutDashboard className="h-6 w-6" />
+            <span className="font-semibold">Admin Dashboard</span>
+          </div>
         </div>
-      </div>
-      <ScrollArea className="h-[calc(100vh-4rem)]">
-        <div className="space-y-6 p-2">
-          <SidebarGroup>
-            <SidebarGroupLabel>Main</SidebarGroupLabel>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/")}>
-                  <Link to="/">
-                    <Home className="h-4 w-4" />
-                    <span>Accueil</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/announcements")}>
-                  <Link to="/announcements">
-                    <Megaphone className="h-4 w-4" />
-                    <span>Annonces</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/pages")}>
-                  <Link to="/pages">
-                    <FileText className="h-4 w-4" />
-                    <span>Pages</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/tom-e")}>
-                  <Link to="/tom-e">
-                    <Newspaper className="h-4 w-4" />
-                    <span>Tom-E</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              
-              {(isAdmin || isClient) && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/generateur-contenu")}>
-                    <Link to="/generateur-contenu">
-                      <Sparkles className="h-4 w-4" />
-                      <span>Générateur de contenu</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-            </SidebarMenu>
-          </SidebarGroup>
-
-          {isAdmin && (
+        <ScrollArea className="h-[calc(100vh-4rem)]">
+          <div className="space-y-6 p-2">
             <SidebarGroup>
-              <SidebarGroupLabel>Administration</SidebarGroupLabel>
+              <SidebarGroupLabel>Main</SidebarGroupLabel>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/utilisateurs")}>
-                    <Link to="/utilisateurs">
-                      <Users className="h-4 w-4" />
-                      <span>Utilisateurs</span>
+                  <SidebarMenuButton asChild isActive={isActive("/")}>
+                    <Link to="/">
+                      <Home className="h-4 w-4" />
+                      <span>Accueil</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/parametres")}>
-                    <Link to="/parametres">
-                      <Settings className="h-4 w-4" />
-                      <span>Paramètres</span>
+                  <SidebarMenuButton asChild isActive={isActive("/announcements")}>
+                    <Link to="/announcements">
+                      <Megaphone className="h-4 w-4" />
+                      <span>Annonces</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/pages")}>
+                    <Link to="/pages">
+                      <FileText className="h-4 w-4" />
+                      <span>Pages</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/tom-e")}>
+                    <Link to="/tom-e">
+                      <Newspaper className="h-4 w-4" />
+                      <span>Tom-E</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                
+                {(isAdmin || isClient) && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={isActive("/generateur-contenu")}>
+                      <Link to="/generateur-contenu">
+                        <Sparkles className="h-4 w-4" />
+                        <span>Générateur de contenu</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
               </SidebarMenu>
             </SidebarGroup>
-          )}
-        </div>
-      </ScrollArea>
-    </Sidebar>
+
+            {isAdmin && (
+              <SidebarGroup>
+                <SidebarGroupLabel>Administration</SidebarGroupLabel>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={isActive("/utilisateurs")}>
+                      <Link to="/utilisateurs">
+                        <Users className="h-4 w-4" />
+                        <span>Utilisateurs</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={isActive("/parametres")}>
+                      <Link to="/parametres">
+                        <Settings className="h-4 w-4" />
+                        <span>Paramètres</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroup>
+            )}
+          </div>
+        </ScrollArea>
+      </Sidebar>
+    </SidebarProvider>
   );
 };
 

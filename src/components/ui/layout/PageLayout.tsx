@@ -3,7 +3,7 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import Header from "./Header";
 import { useAuth } from "@/context/AuthContext";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarInset } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/layout/AppSidebar";
 
 export interface PageLayoutProps {
@@ -50,24 +50,22 @@ const PageLayout = ({
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className={cn("flex flex-col flex-1 overflow-auto", className)}>
-          <Header 
-            title={title} 
-            description={description} 
-            titleAction={titleAction}
-            onRefresh={onRefresh}
-          />
-          <main className={cn("flex-1 p-4 md:p-6", contentClassName)}>
-            <div className={containerClassName}>
-              {children}
-            </div>
-          </main>
-        </div>
-      </div>
-    </SidebarProvider>
+    <div className="flex h-screen w-full">
+      <AppSidebar />
+      <SidebarInset className={cn("flex flex-col flex-1 overflow-auto", className)}>
+        <Header 
+          title={title} 
+          description={description} 
+          titleAction={titleAction}
+          onRefresh={onRefresh}
+        />
+        <main className={cn("flex-1 p-4 md:p-6", contentClassName)}>
+          <div className={containerClassName}>
+            {children}
+          </div>
+        </main>
+      </SidebarInset>
+    </div>
   );
 };
 

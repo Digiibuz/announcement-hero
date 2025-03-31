@@ -5,7 +5,7 @@ import { Announcement, AnnouncementStatus } from "@/types/announcement";
 import { toast } from "sonner";
 
 interface UseAnnouncementsParams {
-  status?: AnnouncementStatus;
+  status?: AnnouncementStatus | null;
   search?: string;
   isPremium?: boolean;
   wordpressCategory?: string;
@@ -63,6 +63,8 @@ export const useAnnouncements = (params: UseAnnouncementsParams = {}) => {
 
   useEffect(() => {
     fetchAnnouncements();
+  // Using explicit dependency list to avoid TypeScript issue
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     params.status, 
     params.search, 
