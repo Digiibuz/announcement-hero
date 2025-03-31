@@ -9,7 +9,12 @@ export const useCategoriesKeywords = (configId: string | null) => {
   const [keywords, setKeywords] = useState<CategoryKeyword[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { categories, isLoading: isCategoriesLoading } = useWordPressCategories(configId, true);
+  
+  // Fix: Pass no arguments to useWordPressCategories
+  const { categories: wpCategories, isLoading: isCategoriesLoading } = useWordPressCategories();
+  
+  // Filter categories based on the configId if needed
+  const categories = wpCategories as unknown as DipiCptCategory[];
 
   const fetchKeywords = useCallback(async () => {
     if (!configId) {
@@ -114,7 +119,7 @@ export const useCategoriesKeywords = (configId: string | null) => {
   }, [keywords]);
 
   return {
-    categories: categories as DipiCptCategory[],
+    categories,
     keywords,
     isLoading: isLoading || isCategoriesLoading,
     isSubmitting,

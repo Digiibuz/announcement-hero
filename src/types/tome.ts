@@ -39,5 +39,5 @@ export interface DipiCptCategory {
   taxonomy: string;
   parent: number;
   meta: any[];
-  link?: string; // Ajout de la propriété link optionnelle
+  link?: string;
 }
