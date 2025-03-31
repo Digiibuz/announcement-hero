@@ -70,19 +70,21 @@ const CreateAnnouncement = () => {
         if (wordpressResult.wordpressPostId) {
           console.log("WordPress post ID returned:", wordpressResult.wordpressPostId);
           
-          // Vérification supplémentaire - mettre à jour l'annonce si l'ID n'a pas été déjà enregistré
-          if (!newAnnouncement.wordpress_post_id) {
-            console.log("Mise à jour de l'ID du post WordPress dans l'annonce...");
-            const { error: updateError } = await supabase
-              .from("announcements")
-              .update({ wordpress_post_id: wordpressResult.wordpressPostId })
-              .eq("id", newAnnouncement.id);
-              
-            if (updateError) {
-              console.error("Erreur lors de la mise à jour de l'ID WordPress:", updateError);
-            } else {
-              console.log("ID WordPress mis à jour avec succès:", wordpressResult.wordpressPostId);
-            }
+          // Si un ID WordPress a été retourné, mettre à jour l'annonce dans Supabase
+          const { error: updateError } = await supabase
+            .from("announcements")
+            .update({ wordpress_post_id: wordpressResult.wordpressPostId })
+            .eq("id", newAnnouncement.id);
+            
+          if (updateError) {
+            console.error("Erreur lors de la mise à jour de l'ID WordPress:", updateError);
+            toast({
+              title: "Attention",
+              description: "L'annonce a été publiée mais l'ID WordPress n'a pas pu être enregistré",
+              variant: "destructive"
+            });
+          } else {
+            console.log("ID WordPress mis à jour avec succès:", wordpressResult.wordpressPostId);
           }
         } else {
           console.warn("No WordPress post ID was returned");

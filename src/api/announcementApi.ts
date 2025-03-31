@@ -82,10 +82,9 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
             method: 'HEAD',
           });
           
-          // Correction de l'erreur TypeScript en utilisant une variable
+          // Store status in variable to allow comparison
           const status = response.status;
           // 401 signifie que l'endpoint existe mais qu'une authentification est nécessaire
-          // On doit utiliser ici une condition correcte
           return status === 401 || (status !== 404);
         } catch (error) {
           return false;

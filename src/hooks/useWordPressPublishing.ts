@@ -63,6 +63,8 @@ export const useWordPressPublishing = () => {
             method: 'OPTIONS',
             headers: { 'Content-Type': 'application/json' }
           });
+          console.log(`Checking endpoint ${url} - status: ${response.status}`);
+          // 404 means endpoint doesn't exist
           return response.status !== 404;
         } catch (error) {
           console.log("Error checking endpoint:", error);
@@ -163,15 +165,18 @@ export const useWordPressPublishing = () => {
         };
       }
       
-      // Utiliser try/catch pour la lecture du JSON de réponse
+      // Log the raw response for debugging
+      const rawResponse = await response.text();
+      console.log("Raw WordPress response:", rawResponse);
+      
+      // Parse JSON response
       let wpResponseData;
       try {
-        wpResponseData = await response.json();
-        console.log("WordPress response data:", wpResponseData);
+        // Re-parse the text content to JSON
+        wpResponseData = JSON.parse(rawResponse);
+        console.log("WordPress response parsed data:", wpResponseData);
       } catch (jsonError) {
         console.error("Error parsing WordPress response:", jsonError);
-        const rawResponse = await response.text();
-        console.log("Raw WordPress response:", rawResponse);
         return {
           success: false,
           message: "Erreur lors de l'analyse de la réponse WordPress",
@@ -180,7 +185,7 @@ export const useWordPressPublishing = () => {
       }
       
       // Check if the response contains the WordPress post ID
-      if (wpResponseData && wpResponseData.id) {
+      if (wpResponseData && typeof wpResponseData.id === 'number') {
         console.log("WordPress post ID received:", wpResponseData.id);
         
         // Update the announcement in Supabase with the WordPress post ID
@@ -205,10 +210,10 @@ export const useWordPressPublishing = () => {
           wordpressPostId: wpResponseData.id 
         };
       } else {
-        console.error("WordPress response does not contain post ID", wpResponseData);
+        console.error("WordPress response does not contain post ID or ID is not a number", wpResponseData);
         return { 
           success: false, 
-          message: "La réponse WordPress ne contient pas l'ID du post", 
+          message: "La réponse WordPress ne contient pas l'ID du post ou l'ID n'est pas un nombre", 
           wordpressPostId: null 
         };
       }
