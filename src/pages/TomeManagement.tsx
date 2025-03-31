@@ -111,10 +111,8 @@ const TomeManagement = () => {
             <TabsList className="w-full mb-6">
               <TabsTrigger value="categories" className="flex-1">Catégories & Mots-clés</TabsTrigger>
               <TabsTrigger value="localities" className="flex-1">Localités</TabsTrigger>
-              {/* On masque uniquement l'onglet de générations pour les clients */}
-              {isAdmin && (
-                <TabsTrigger value="generations" className="flex-1">Générations</TabsTrigger>
-              )}
+              {/* On montre également l'onglet de générations pour les clients */}
+              <TabsTrigger value="generations" className="flex-1">Publications</TabsTrigger>
             </TabsList>
             <TabsContent value="categories">
               <TomeCategories configId={selectedConfigId} isClientView={isClient} />
@@ -122,11 +120,9 @@ const TomeManagement = () => {
             <TabsContent value="localities">
               <TomeLocalities configId={selectedConfigId} isClientView={isClient} />
             </TabsContent>
-            {isAdmin && (
-              <TabsContent value="generations">
-                <TomeGenerations configId={selectedConfigId} />
-              </TabsContent>
-            )}
+            <TabsContent value="generations">
+              <TomeGenerations configId={selectedConfigId} isClientView={isClient} />
+            </TabsContent>
           </Tabs>
         )}
       </AnimatedContainer>
