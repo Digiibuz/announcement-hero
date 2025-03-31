@@ -17,26 +17,29 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 
 const CreateAnnouncement = () => {
   const navigate = useNavigate();
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const {
-    publishToWordPress,
-    isPublishing
-  } = useWordPressPublishing();
+  const { publishToWordPress, isPublishing } = useWordPressPublishing();
   const isMobile = useMediaQuery("(max-width: 767px)");
 
   const handleSubmit = async (data: any) => {
     try {
       setIsSubmitting(true);
+      
+      // Show immediate feedback on mobile
+      if (isMobile) {
+        toast({
+          title: "Traitement en cours",
+          description: "Enregistrement de votre annonce...",
+        });
+      }
 
       // Prepare the announcement data
       const announcementData = {
         user_id: user?.id,
         title: data.title,
         description: data.description,
-        status: data.status as "draft" | "published" | "scheduled", // Explicit casting to ensure type safety
+        status: data.status as "draft" | "published" | "scheduled",
         images: data.images || [],
         wordpress_category_id: data.wordpressCategory,
         publish_date: data.publishDate ? new Date(data.publishDate).toISOString() : null,
@@ -44,15 +47,21 @@ const CreateAnnouncement = () => {
         seo_description: data.seoDescription || null,
         seo_slug: data.seoSlug || null
       };
-      console.log("Enregistrement de l'annonce:", announcementData);
-
+      
       // Save to Supabase
-      const {
-        data: newAnnouncement,
-        error
-      } = await supabase.from("announcements").insert(announcementData).select().single();
+      const { data: newAnnouncement, error } = await supabase
+        .from("announcements")
+        .insert(announcementData)
+        .select()
+        .single();
+        
       if (error) throw error;
-      console.log("Annonce enregistrée dans Supabase:", newAnnouncement);
+      
+      // Feedback on successful save
+      toast({
+        title: "Succès",
+        description: "Annonce enregistrée avec succès" + (isMobile ? ", publication en cours..." : ""),
+      });
 
       // If status is published or scheduled, try to publish to WordPress
       let wordpressResult = {
@@ -62,46 +71,34 @@ const CreateAnnouncement = () => {
       };
       
       if ((data.status === 'published' || data.status === 'scheduled') && data.wordpressCategory && user?.id) {
-        console.log("Tentative de publication sur WordPress...");
-        wordpressResult = await publishToWordPress(newAnnouncement as Announcement, data.wordpressCategory, user.id);
+        // For mobile, we don't need to show this toast since we already showed feedback
+        if (!isMobile) {
+          toast({
+            title: "WordPress",
+            description: "Publication de l'annonce sur WordPress en cours..."
+          });
+        }
         
-        console.log("Résultat de la publication WordPress:", wordpressResult);
+        wordpressResult = await publishToWordPress(
+          newAnnouncement as Announcement, 
+          data.wordpressCategory, 
+          user.id
+        );
         
-        if (wordpressResult.wordpressPostId) {
-          console.log("WordPress post ID returned:", wordpressResult.wordpressPostId);
-          
-          // Si un ID WordPress a été retourné, mettre à jour l'annonce dans Supabase
-          const { error: updateError } = await supabase
-            .from("announcements")
-            .update({ wordpress_post_id: wordpressResult.wordpressPostId })
-            .eq("id", newAnnouncement.id);
-            
-          if (updateError) {
-            console.error("Erreur lors de la mise à jour de l'ID WordPress:", updateError);
+        if (wordpressResult.success) {
+          if (wordpressResult.wordpressPostId) {
             toast({
-              title: "Attention",
-              description: "L'annonce a été publiée mais l'ID WordPress n'a pas pu être enregistré",
-              variant: "destructive"
+              title: "WordPress",
+              description: `Publication réussie (ID: ${wordpressResult.wordpressPostId})`,
             });
-          } else {
-            console.log("ID WordPress mis à jour avec succès:", wordpressResult.wordpressPostId);
           }
         } else {
-          console.warn("No WordPress post ID was returned");
+          toast({
+            title: "Attention",
+            description: "Annonce enregistrée dans la base de données, mais la publication WordPress a échoué: " + (wordpressResult.message || "Erreur inconnue"),
+            variant: "destructive"
+          });
         }
-      }
-      
-      if (wordpressResult.success) {
-        toast({
-          title: "Succès",
-          description: "Annonce enregistrée avec succès" + (wordpressResult.wordpressPostId ? " et publiée sur WordPress (ID: " + wordpressResult.wordpressPostId + ")" : "")
-        });
-      } else {
-        toast({
-          title: "Attention",
-          description: "Annonce enregistrée dans la base de données, mais la publication WordPress a échoué: " + (wordpressResult.message || "Erreur inconnue"),
-          variant: "destructive"
-        });
       }
 
       // Redirect to the announcements list

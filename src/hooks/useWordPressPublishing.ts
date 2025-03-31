@@ -13,6 +13,7 @@ export const useWordPressPublishing = () => {
     userId: string
   ): Promise<{ success: boolean; message: string; wordpressPostId: number | null }> => {
     setIsPublishing(true);
+    toast.info("Publication sur WordPress en cours...");
     
     try {
       // Get user's WordPress config
@@ -52,63 +53,63 @@ export const useWordPressPublishing = () => {
         ? wpConfig.site_url.slice(0, -1)
         : wpConfig.site_url;
       
-      // First check if dipi_cpt_category exists to determine if we're using a DipiPixel site
-      console.log("Checking if dipi_cpt_category exists...");
-      const categoryEndpoint = `${siteUrl}/wp-json/wp/v2/dipi_cpt_category`;
+      // Determine endpoints
       let useCustomTaxonomy = false;
       let postEndpoint = `${siteUrl}/wp-json/wp/v2/pages`; // Default to pages
       
       try {
-        // First try to access the dipi_cpt_category endpoint
-        const response = await fetch(categoryEndpoint, {
+        // First try to access the dipi_cpt_category endpoint with a timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
+        const response = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt_category`, {
           method: 'HEAD',
           headers: {
             'Content-Type': 'application/json'
-          }
-        });
+          },
+          signal: controller.signal
+        }).catch(() => ({ status: 404 }));
         
-        console.log(`Category endpoint check (${categoryEndpoint}) status:`, response.status);
+        clearTimeout(timeoutId);
         
-        // If dipi_cpt_category exists, we likely should use dipi_cpt for posts
-        if (response.status !== 404) {
-          console.log("DipiPixel category endpoint found, trying dipi_cpt endpoint");
+        if (response && response.status !== 404) {
           useCustomTaxonomy = true;
           
-          // Now check if dipi_cpt endpoint exists
-          const dipiPostEndpoint = `${siteUrl}/wp-json/wp/v2/dipi_cpt`;
-          const postEndpointResponse = await fetch(dipiPostEndpoint, {
+          // Now check if dipi_cpt endpoint exists (with timeout)
+          const dipiController = new AbortController();
+          const dipiTimeoutId = setTimeout(() => dipiController.abort(), 5000);
+          
+          const dipiResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt`, {
             method: 'HEAD',
             headers: {
               'Content-Type': 'application/json'
-            }
-          });
+            },
+            signal: dipiController.signal
+          }).catch(() => ({ status: 404 }));
           
-          console.log(`Post endpoint check (${dipiPostEndpoint}) status:`, postEndpointResponse.status);
+          clearTimeout(dipiTimeoutId);
           
-          if (postEndpointResponse.status !== 404) {
-            postEndpoint = dipiPostEndpoint;
-            console.log("Using DipiPixel post endpoint:", postEndpoint);
+          if (dipiResponse && dipiResponse.status !== 404) {
+            postEndpoint = `${siteUrl}/wp-json/wp/v2/dipi_cpt`;
           } else {
-            // Try another common CPT endpoint pattern
-            const altPostEndpoint = `${siteUrl}/wp-json/wp/v2/dipicpt`;
-            const altResponse = await fetch(altPostEndpoint, {
+            // Try alternative endpoint (with timeout)
+            const altController = new AbortController();
+            const altTimeoutId = setTimeout(() => altController.abort(), 5000);
+            
+            const altResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipicpt`, {
               method: 'HEAD',
               headers: {
                 'Content-Type': 'application/json'
-              }
-            });
+              },
+              signal: altController.signal
+            }).catch(() => ({ status: 404 }));
             
-            console.log(`Alternative post endpoint check (${altPostEndpoint}) status:`, altResponse.status);
+            clearTimeout(altTimeoutId);
             
-            if (altResponse.status !== 404) {
-              postEndpoint = altPostEndpoint;
-              console.log("Using alternative DipiPixel post endpoint:", postEndpoint);
-            } else {
-              console.log("No DipiPixel post endpoint found, falling back to pages");
+            if (altResponse && altResponse.status !== 404) {
+              postEndpoint = `${siteUrl}/wp-json/wp/v2/dipicpt`;
             }
           }
-        } else {
-          console.log("DipiPixel category endpoint not found, using standard pages");
         }
       } catch (error) {
         console.log("Error checking endpoints:", error);
@@ -127,7 +128,6 @@ export const useWordPressPublishing = () => {
         // Application Password Format: "Basic base64(username:password)"
         const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
         headers['Authorization'] = `Basic ${basicAuth}`;
-        console.log("Using Application Password authentication");
       } else {
         return { 
           success: false, 
@@ -136,7 +136,7 @@ export const useWordPressPublishing = () => {
         };
       }
       
-      // Prepare post data
+      // Prepare post data - simplify for mobile
       const wpPostData: any = {
         title: announcement.title,
         content: announcement.description || "",
@@ -152,65 +152,41 @@ export const useWordPressPublishing = () => {
       if (useCustomTaxonomy) {
         // Use the custom taxonomy for DipiPixel
         wpPostData.dipi_cpt_category = [parseInt(wordpressCategoryId)];
-      } else {
-        // Pour les pages standard, pas besoin d'ajouter de catégorie
-        // Si nécessaire, vous pouvez ajouter des tags ou d'autres taxonomies ici
       }
       
-      // Add SEO metadata if available
+      // Add SEO metadata if available - simplified
       if (announcement.seo_title || announcement.seo_description) {
         wpPostData.meta = {
           _yoast_wpseo_title: announcement.seo_title || "",
           _yoast_wpseo_metadesc: announcement.seo_description || "",
-          _yoast_wpseo_focuskw: announcement.title
         };
       }
       
-      console.log("WordPress post data:", wpPostData);
-
-      // Send request to WordPress
+      // First create post without images for speed
       console.log("Sending POST request to WordPress:", postEndpoint);
-      const response = await fetch(postEndpoint, {
+      const postResponse = await fetch(postEndpoint, {
         method: 'POST',
         headers: headers,
         body: JSON.stringify(wpPostData)
       });
       
-      const responseStatus = response.status;
-      console.log("WordPress API response status:", responseStatus);
-      
-      if (!response.ok) {
-        let errorText;
-        try {
-          // Essayer de lire le corps de la réponse comme JSON
-          const errorData = await response.json();
-          console.error("WordPress API error (JSON):", errorData);
-          errorText = JSON.stringify(errorData);
-        } catch (jsonError) {
-          // Si ce n'est pas du JSON, lire comme texte
-          errorText = await response.text();
-          console.error("WordPress API error (text):", errorText);
-        }
-        
+      if (!postResponse.ok) {
+        let errorText = await postResponse.text();
+        console.error("WordPress API error:", errorText);
         return { 
           success: false, 
-          message: `Erreur lors de la publication WordPress (${responseStatus}): ${errorText}`, 
+          message: `Erreur lors de la publication WordPress (${postResponse.status}): ${errorText}`, 
           wordpressPostId: null 
         };
       }
       
-      // Log the raw response for debugging
-      const rawResponse = await response.text();
-      console.log("Raw WordPress response:", rawResponse);
-      
       // Parse JSON response
       let wpResponseData;
       try {
-        // Re-parse the text content to JSON
-        wpResponseData = JSON.parse(rawResponse);
-        console.log("WordPress response parsed data:", wpResponseData);
-      } catch (jsonError) {
-        console.error("Error parsing WordPress response:", jsonError);
+        wpResponseData = await postResponse.json();
+        console.log("WordPress response data:", wpResponseData);
+      } catch (error) {
+        console.error("Error parsing WordPress response:", error);
         return {
           success: false,
           message: "Erreur lors de l'analyse de la réponse WordPress",
@@ -220,98 +196,14 @@ export const useWordPressPublishing = () => {
       
       // Check if the response contains the WordPress post ID
       if (wpResponseData && typeof wpResponseData.id === 'number') {
-        console.log("WordPress post ID received:", wpResponseData.id);
-        
-        // Now, if we have images, upload the first one as featured image
-        if (announcement.images && announcement.images.length > 0) {
-          const featuredImageUrl = announcement.images[0];
-          console.log("Uploading featured image from URL:", featuredImageUrl);
-          
-          try {
-            // 1. Download the image from the URL
-            const imageResponse = await fetch(featuredImageUrl);
-            if (!imageResponse.ok) {
-              console.error("Failed to fetch image from URL:", featuredImageUrl);
-              throw new Error("Failed to fetch image");
-            }
-            
-            const imageBlob = await imageResponse.blob();
-            // Extract filename from URL or generate a unique name
-            const fileName = featuredImageUrl.split('/').pop() || `image-${Date.now()}.jpg`;
-            const imageFile = new File([imageBlob], fileName, { 
-              type: imageBlob.type || 'image/jpeg' 
-            });
-            
-            // 2. Upload to WordPress Media Library
-            console.log("Uploading image to WordPress media library");
-            const mediaFormData = new FormData();
-            mediaFormData.append('file', imageFile);
-            mediaFormData.append('title', announcement.title);
-            mediaFormData.append('alt_text', announcement.title);
-            
-            const mediaEndpoint = `${siteUrl}/wp-json/wp/v2/media`;
-            console.log("Media endpoint:", mediaEndpoint);
-            
-            // Create headers for media upload without Content-Type (browser will set it with boundary)
-            const mediaHeaders = new Headers();
-            if (headers.Authorization) {
-              mediaHeaders.append('Authorization', headers.Authorization);
-            }
-            
-            console.log("Sending media upload request...");
-            const mediaResponse = await fetch(mediaEndpoint, {
-              method: 'POST',
-              headers: mediaHeaders,
-              body: mediaFormData
-            });
-            
-            console.log("Media upload response status:", mediaResponse.status);
-            
-            if (!mediaResponse.ok) {
-              const mediaErrorText = await mediaResponse.text();
-              console.error("Media upload error:", mediaErrorText);
-              throw new Error(`Failed to upload media: ${mediaErrorText}`);
-            }
-            
-            const mediaData = await mediaResponse.json();
-            console.log("Media upload response:", mediaData);
-            
-            if (mediaData && mediaData.id) {
-              // 3. Set as featured image for the post
-              console.log("Setting featured image for post", wpResponseData.id, "with media ID", mediaData.id);
-              
-              const updatePostEndpoint = `${postEndpoint}/${wpResponseData.id}`;
-              console.log("Update post endpoint:", updatePostEndpoint);
-              
-              const updateResponse = await fetch(updatePostEndpoint, {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify({
-                  featured_media: mediaData.id
-                })
-              });
-              
-              console.log("Update post response status:", updateResponse.status);
-              
-              if (!updateResponse.ok) {
-                const updateErrorText = await updateResponse.text();
-                console.error("Error setting featured image:", updateErrorText);
-                // We'll continue even if featured image setting fails
-              } else {
-                console.log("Featured image set successfully");
-              }
-            }
-          } catch (imageError: any) {
-            console.error("Error processing image:", imageError);
-            // We'll continue even if image upload fails
-          }
-        }
+        const wordpressPostId = wpResponseData.id;
+        console.log("WordPress post ID received:", wordpressPostId);
         
         // Update the announcement in Supabase with the WordPress post ID
         const { error: updateError } = await supabase
           .from("announcements")
           .update({ 
-            wordpress_post_id: wpResponseData.id,
+            wordpress_post_id: wordpressPostId,
             is_divipixel: useCustomTaxonomy 
           })
           .eq("id", announcement.id);
@@ -319,20 +211,33 @@ export const useWordPressPublishing = () => {
         if (updateError) {
           console.error("Error updating announcement with WordPress post ID:", updateError);
           toast.error("L'annonce a été publiée sur WordPress mais l'ID n'a pas pu être enregistré dans la base de données");
-        } else {
-          console.log("Successfully updated announcement with WordPress post ID:", wpResponseData.id);
+        }
+        
+        // Process featured image in background to avoid blocking UI
+        if (announcement.images && announcement.images.length > 0) {
+          // Show a notification that image processing is happening in background
+          toast.info("Publication réussie. L'image principale est en cours de transfert...");
+          
+          // Start background process for image upload
+          processImageInBackground(
+            announcement.images[0], 
+            announcement.title, 
+            wordpressPostId, 
+            postEndpoint, 
+            headers
+          );
         }
         
         return { 
           success: true, 
           message: "Publié avec succès sur WordPress", 
-          wordpressPostId: wpResponseData.id 
+          wordpressPostId 
         };
       } else {
         console.error("WordPress response does not contain post ID or ID is not a number", wpResponseData);
         return { 
           success: false, 
-          message: "La réponse WordPress ne contient pas l'ID du post ou l'ID n'est pas un nombre", 
+          message: "La réponse WordPress ne contient pas l'ID du post", 
           wordpressPostId: null 
         };
       }
@@ -345,6 +250,85 @@ export const useWordPressPublishing = () => {
       };
     } finally {
       setIsPublishing(false);
+    }
+  };
+  
+  // Process image upload in background to improve mobile performance
+  const processImageInBackground = async (
+    imageUrl: string,
+    postTitle: string,
+    postId: number,
+    postEndpoint: string,
+    headers: Record<string, string>
+  ) => {
+    try {
+      // 1. Download the image from the URL
+      const imageResponse = await fetch(imageUrl);
+      if (!imageResponse.ok) {
+        console.error("Failed to fetch image from URL:", imageUrl);
+        toast.error("Échec du traitement de l'image principale");
+        return;
+      }
+      
+      const imageBlob = await imageResponse.blob();
+      const fileName = imageUrl.split('/').pop() || `image-${Date.now()}.jpg`;
+      const imageFile = new File([imageBlob], fileName, { 
+        type: imageBlob.type || 'image/jpeg' 
+      });
+      
+      // 2. Upload to WordPress Media Library
+      console.log("Uploading image to WordPress media library");
+      const mediaFormData = new FormData();
+      mediaFormData.append('file', imageFile);
+      mediaFormData.append('title', postTitle);
+      mediaFormData.append('alt_text', postTitle);
+      
+      const mediaEndpoint = `${postEndpoint.split('/wp-json/')[0]}/wp-json/wp/v2/media`;
+      
+      // Create headers for media upload without Content-Type (browser will set it with boundary)
+      const mediaHeaders = new Headers();
+      if (headers.Authorization) {
+        mediaHeaders.append('Authorization', headers.Authorization);
+      }
+      
+      const mediaResponse = await fetch(mediaEndpoint, {
+        method: 'POST',
+        headers: mediaHeaders,
+        body: mediaFormData
+      });
+      
+      if (!mediaResponse.ok) {
+        const mediaErrorText = await mediaResponse.text();
+        console.error("Media upload error:", mediaErrorText);
+        toast.error("Image téléversée mais impossible de l'associer à l'article");
+        return;
+      }
+      
+      const mediaData = await mediaResponse.json();
+      
+      if (mediaData && mediaData.id) {
+        // 3. Set as featured image for the post
+        const updatePostEndpoint = `${postEndpoint}/${postId}`;
+        
+        const updateResponse = await fetch(updatePostEndpoint, {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({
+            featured_media: mediaData.id
+          })
+        });
+        
+        if (!updateResponse.ok) {
+          const updateErrorText = await updateResponse.text();
+          console.error("Error setting featured image:", updateErrorText);
+          toast.error("Image téléversée mais impossible de la définir comme image à la une");
+        } else {
+          toast.success("Image principale téléversée avec succès");
+        }
+      }
+    } catch (error) {
+      console.error("Error in background image processing:", error);
+      toast.error("Erreur lors du traitement de l'image principale");
     }
   };
   

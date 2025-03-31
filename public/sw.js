@@ -1,6 +1,6 @@
 
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v6';
+const CACHE_NAME = 'digiibuz-cache-v7';
 
 // Liste des ressources à mettre en cache
 const urlsToCache = [
@@ -138,3 +138,4 @@ self.addEventListener('fetch', event => {
       })
   );
 });
+
