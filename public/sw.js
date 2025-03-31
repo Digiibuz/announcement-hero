@@ -1,6 +1,6 @@
 
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v4';
+const CACHE_NAME = 'digiibuz-cache-v5';
 
 // Liste des ressources à mettre en cache
 const urlsToCache = [
@@ -22,6 +22,16 @@ function isValidCacheUrl(url) {
   try {
     const urlObj = new URL(url);
     return validSchemes.includes(urlObj.protocol);
+  } catch (e) {
+    return false;
+  }
+}
+
+// Ne jamais mettre en cache les fichiers JavaScript pour éviter les problèmes de chargement de modules
+function isJavaScriptAsset(url) {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.pathname.endsWith('.js') || url.includes('assets/');
   } catch (e) {
     return false;
   }
@@ -64,11 +74,12 @@ self.addEventListener('activate', event => {
 
 // Gestion des requêtes avec stratégie pour éviter les rechargements complets
 self.addEventListener('fetch', event => {
-  // Ne pas intercepter les requêtes API ou assets non essentiels
+  // Ne pas intercepter les requêtes API, assets non essentiels ou JavaScript
   if (event.request.url.includes('/api/') || 
       event.request.url.includes('supabase.co') ||
       event.request.url.includes('wp-json') ||
-      !isValidCacheUrl(event.request.url)) {
+      !isValidCacheUrl(event.request.url) ||
+      isJavaScriptAsset(event.request.url)) {
     return;
   }
   
@@ -97,7 +108,8 @@ self.addEventListener('fetch', event => {
             if (networkResponse && 
                 networkResponse.status === 200 && 
                 networkResponse.type === 'basic' && 
-                isValidCacheUrl(event.request.url)) {
+                isValidCacheUrl(event.request.url) &&
+                !isJavaScriptAsset(event.request.url)) { // Ne jamais mettre en cache les JS
               const responseToCache = networkResponse.clone();
               caches.open(CACHE_NAME)
                 .then(cache => {
