@@ -34,6 +34,7 @@ interface AnnouncementFormProps {
   isSubmitting: boolean;
   isMobile?: boolean;
   formType?: "announcement" | "divipixel"; // Type de formulaire
+  onCancel?: () => void; // Nouvelle prop pour annuler l'édition
 }
 
 const AnnouncementForm = ({
@@ -41,7 +42,8 @@ const AnnouncementForm = ({
   onSubmit,
   isSubmitting,
   isMobile = false,
-  formType = "announcement" // Par défaut, c'est un formulaire d'annonce standard
+  formType = "announcement", // Par défaut, c'est un formulaire d'annonce standard
+  onCancel
 }: AnnouncementFormProps) => {
   // Initialiser le formulaire
   const form = useForm<FormValues>({
@@ -140,8 +142,13 @@ const AnnouncementForm = ({
           formType={formType} // Passer le type de formulaire pour adapter les catégories
         />
 
-        {/* Bouton de soumission */}
-        <div className="flex justify-end">
+        {/* Boutons de soumission et annulation */}
+        <div className="flex justify-end gap-2">
+          {onCancel && (
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Annuler
+            </Button>
+          )}
           <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
             {isSubmitting 
               ? "Enregistrement en cours..." 

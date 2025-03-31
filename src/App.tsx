@@ -1,157 +1,50 @@
-
-import { TooltipProvider } from "@/components/ui/tooltip";
+import React from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Toaster } from "sonner";
+import { ThemeProvider } from "@/components/theme-provider";
+import { AuthProvider } from "@/context/AuthContext";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./context/AuthContext";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as SonnerToaster } from "@/components/ui/sonner";
-import { ThemeProvider } from "next-themes";
-import Index from "./pages/Index";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import CreateAnnouncement from "./pages/CreateAnnouncement";
-import CreateDivipixelPublication from "./pages/CreateDivipixelPublication";
-import Announcements from "./pages/Announcements";
-import DivipixelPublications from "./pages/DivipixelPublications";
-import AnnouncementDetail from "./pages/AnnouncementDetail";
-import UserManagement from "./pages/UserManagement";
-import WordPressManagement from "./pages/WordPressManagement";
-import NotFound from "./pages/NotFound";
+import Index from "@/pages";
+import Login from "@/pages/Login";
+import Dashboard from "@/pages/Dashboard";
+import Announcements from "@/pages/Announcements";
+import AnnouncementDetail from "@/pages/AnnouncementDetail";
+import CreateAnnouncement from "@/pages/CreateAnnouncement";
+import NotFound from "@/pages/NotFound";
+import UserManagement from "@/pages/UserManagement";
+import WordPressManagement from "@/pages/WordPressManagement";
+import DivipixelPublications from "@/pages/DivipixelPublications";
+import CreateDivipixelPublication from "@/pages/CreateDivipixelPublication";
 
 const queryClient = new QueryClient();
 
-// Protected route component
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <>{children}</>;
-};
-
-// Admin only route component
-const AdminRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading, isAdmin, isClient } = useAuth();
-
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // Autoriser l'accès aux utilisateurs admin et client
-  if (!isAdmin && !isClient) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return <>{children}</>;
-};
-
-const AppRoutes = () => {
+function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Index />} />
-      <Route path="/login" element={<Login />} />
-      
-      {/* Protected routes */}
-      <Route 
-        path="/dashboard" 
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/announcements" 
-        element={
-          <ProtectedRoute>
-            <Announcements />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/announcements/:id" 
-        element={
-          <ProtectedRoute>
-            <AnnouncementDetail />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/create" 
-        element={
-          <ProtectedRoute>
-            <CreateAnnouncement />
-          </ProtectedRoute>
-        } 
-      />
-      
-      {/* Routes pour Divipixel */}
-      <Route 
-        path="/divipixel-publications" 
-        element={
-          <ProtectedRoute>
-            <DivipixelPublications />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/create-divipixel" 
-        element={
-          <ProtectedRoute>
-            <CreateDivipixelPublication />
-          </ProtectedRoute>
-        } 
-      />
-      
-      {/* Admin/Client only routes */}
-      <Route 
-        path="/users" 
-        element={
-          <AdminRoute>
-            <UserManagement />
-          </AdminRoute>
-        } 
-      />
-      <Route 
-        path="/wordpress" 
-        element={
-          <AdminRoute>
-            <WordPressManagement />
-          </AdminRoute>
-        } 
-      />
-      
-      {/* Fallback route */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  );
-};
-
-// L'ordre des providers est important pour que les hooks fonctionnent correctement
-const App = () => (
-  <BrowserRouter>
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <TooltipProvider>
-          <AuthProvider>
-            <AppRoutes />
+    <div className="min-h-screen bg-background">
+      <AuthProvider>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider defaultTheme="dark" storageKey="divipixel-ui-theme">
             <Toaster />
-            <SonnerToaster />
-          </AuthProvider>
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  </BrowserRouter>
-);
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/announcements" element={<Announcements />} />
+                <Route path="/announcements/create" element={<CreateAnnouncement />} />
+                <Route path="/announcements/:id" element={<AnnouncementDetail />} />
+                <Route path="/divipixel-publications" element={<DivipixelPublications />} />
+                <Route path="/divipixel-publications/create" element={<CreateDivipixelPublication />} />
+                <Route path="/users" element={<UserManagement />} />
+                <Route path="/wordpress" element={<WordPressManagement />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </ThemeProvider>
+        </QueryClientProvider>
+      </AuthProvider>
+    </div>
+  );
+}
 
 export default App;

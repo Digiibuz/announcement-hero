@@ -71,7 +71,8 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
           <AnnouncementForm
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
-            initialValues={formData}
+            initialData={formData} // Modifié de initialValues à initialData pour correspondre au prop dans AnnouncementForm
+            isMobile={false}
             onCancel={() => {
               setIsEditing(false);
               setActiveTab("preview");

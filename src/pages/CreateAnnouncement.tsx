@@ -59,11 +59,11 @@ const CreateAnnouncement = () => {
       };
       
       if ((data.status === 'published' || data.status === 'scheduled') && data.wordpressCategory && user?.id) {
-        console.log("Tentative de publication sur WordPress (Divipixel)...");
+        console.log("Tentative de publication sur WordPress...");
         wordpressResult = await publishToWordPress(newAnnouncement as Announcement, data.wordpressCategory, user.id);
         
         // WordPress post ID is now updated directly in the publishToWordPress function
-        console.log("Résultat de la publication WordPress (Divipixel):", wordpressResult);
+        console.log("Résultat de la publication WordPress:", wordpressResult);
       }
       
       if (wordpressResult.success) {
@@ -113,6 +113,7 @@ const CreateAnnouncement = () => {
             onSubmit={handleSubmit} 
             isSubmitting={isSubmitting || isPublishing} 
             isMobile={isMobile} 
+            formType="announcement"
           />
         </div>
       </AnimatedContainer>

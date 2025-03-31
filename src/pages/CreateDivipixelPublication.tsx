@@ -22,9 +22,11 @@ const CreateDivipixelPublication = () => {
   const handleSubmit = async (data: any) => {
     try {
       await createPublication(data);
+      toast.success("Publication Divipixel créée avec succès");
       navigate("/divipixel-publications");
     } catch (error) {
       console.error("Erreur lors de la création de la publication:", error);
+      toast.error("Une erreur est survenue lors de la création de la publication");
     }
   };
 
@@ -59,7 +61,7 @@ const CreateDivipixelPublication = () => {
             onSubmit={handleSubmit} 
             isSubmitting={isSubmitting} 
             isMobile={isMobile}
-            formType="divipixel" // Nouveau paramètre pour indiquer le type de formulaire
+            formType="divipixel" // Paramètre pour indiquer le type de formulaire
           />
         </div>
       </AnimatedContainer>
