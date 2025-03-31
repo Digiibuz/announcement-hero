@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTickets, useAllTickets, Ticket } from "./useTickets";
 import { useAuth } from "@/context/AuthContext";
 
@@ -103,7 +103,8 @@ export const useTicketNotifications = () => {
     return count;
   };
 
-  useEffect(() => {
+  // Recalculer le nombre de notifications non lues
+  const updateUnreadCount = useCallback(() => {
     if (user?.id) {
       let count = 0;
       
@@ -118,6 +119,11 @@ export const useTicketNotifications = () => {
       setUnreadCount(count);
     }
   }, [userTickets, allTickets, readTicketIds, user?.id, isAdmin, viewedTicketTab]);
+
+  // Mettre à jour le compteur quand les dépendances changent
+  useEffect(() => {
+    updateUnreadCount();
+  }, [updateUnreadCount]);
 
   // Fonction pour marquer un ticket comme lu
   const markTicketAsRead = (ticketId: string) => {
@@ -146,15 +152,16 @@ export const useTicketNotifications = () => {
   };
 
   // Fonction pour marquer le tab des tickets comme vu
-  const markTicketTabAsViewed = () => {
+  const markTicketTabAsViewed = useCallback(() => {
     setViewedTicketTab(true);
-  };
+    // Forcer la mise à jour immédiate du compteur
+    setTimeout(() => updateUnreadCount(), 0);
+  }, [updateUnreadCount]);
 
   // Réinitialiser cette valeur quand on quitte la page
-  const resetTicketTabView = () => {
+  const resetTicketTabView = useCallback(() => {
     setViewedTicketTab(false);
-  };
+  }, []);
 
   return { unreadCount, markTicketAsRead, markTicketTabAsViewed, resetTicketTabView };
 };
-
