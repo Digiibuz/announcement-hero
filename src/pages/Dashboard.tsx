@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,69 +20,119 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Announcement } from "@/types/announcement";
 import { Button } from "@/components/ui/button";
 import FloatingActionButton from "@/components/ui/FloatingActionButton";
+import { toast } from "sonner";
 
 const stripHtmlTags = (html: string): string => {
   if (!html) return '';
   return html.replace(/<[^>]*>/g, '');
 };
 
+const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => (
+  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+    <h3 className="text-lg font-medium text-red-800 mb-2">Une erreur est survenue</h3>
+    <p className="text-sm text-red-600 mb-4">{error.message}</p>
+    <Button 
+      onClick={resetErrorBoundary}
+      variant="outline"
+      className="text-sm"
+    >
+      Réessayer
+    </Button>
+  </div>
+);
+
 const Dashboard = () => {
   const { user, isAdmin } = useAuth();
+  
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Dashboard tab became visible, checking for module loading errors');
+        const hasLoadingError = sessionStorage.getItem('module_loading_error');
+        if (hasLoadingError) {
+          console.log('Previous module loading error detected, refreshing page');
+          sessionStorage.removeItem('module_loading_error');
+          window.location.reload();
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
-  const { data: statsData, isLoading: isLoadingStats } = useQuery({
+  const { data: statsData, isLoading: isLoadingStats, error: statsError } = useQuery({
     queryKey: ["announcements-stats"],
     queryFn: async () => {
-      const query = supabase.from("announcements").select("*");
-      
-      if (!isAdmin && user?.id) {
-        const { data, error } = await query.filter('user_id', 'eq', user.id);
+      try {
+        const query = supabase.from("announcements").select("*");
         
-        if (error) {
-          console.error("Error fetching announcements stats:", error);
+        if (!isAdmin && user?.id) {
+          const { data, error } = await query.filter('user_id', 'eq', user.id);
+          
+          if (error) {
+            console.error("Error fetching announcements stats:", error);
+            toast.error("Erreur lors du chargement des statistiques");
+            return {
+              published: 0,
+              scheduled: 0,
+              draft: 0,
+              total: 0
+            };
+          }
+          
+          const published = data.filter(a => a.status === "published").length;
+          const scheduled = data.filter(a => a.status === "scheduled").length;
+          const draft = data.filter(a => a.status === "draft").length;
+          
           return {
-            published: 0,
-            scheduled: 0,
-            draft: 0,
-            total: 0
+            published,
+            scheduled,
+            draft,
+            total: data.length
+          };
+        } else {
+          const { data, error } = await query;
+          
+          if (error) {
+            console.error("Error fetching announcements stats:", error);
+            toast.error("Erreur lors du chargement des statistiques");
+            return {
+              published: 0,
+              scheduled: 0,
+              draft: 0,
+              total: 0
+            };
+          }
+          
+          const published = data.filter(a => a.status === "published").length;
+          const scheduled = data.filter(a => a.status === "scheduled").length;
+          const draft = data.filter(a => a.status === "draft").length;
+          
+          return {
+            published,
+            scheduled,
+            draft,
+            total: data.length
           };
         }
-        
-        const published = data.filter(a => a.status === "published").length;
-        const scheduled = data.filter(a => a.status === "scheduled").length;
-        const draft = data.filter(a => a.status === "draft").length;
-        
+      } catch (err) {
+        console.error("Error in stats query:", err);
+        toast.error("Erreur lors du chargement des statistiques");
         return {
-          published,
-          scheduled,
-          draft,
-          total: data.length
-        };
-      } else {
-        const { data, error } = await query;
-        
-        if (error) {
-          console.error("Error fetching announcements stats:", error);
-          return {
-            published: 0,
-            scheduled: 0,
-            draft: 0,
-            total: 0
-          };
-        }
-        
-        const published = data.filter(a => a.status === "published").length;
-        const scheduled = data.filter(a => a.status === "scheduled").length;
-        const draft = data.filter(a => a.status === "draft").length;
-        
-        return {
-          published,
-          scheduled,
-          draft,
-          total: data.length
+          published: 0,
+          scheduled: 0,
+          draft: 0,
+          total: 0
         };
       }
     },
     enabled: !!user,
+    retry: 2,
+    staleTime: 30000,
   });
 
   const { data: recentAnnouncements, isLoading: isLoadingRecent } = useQuery({

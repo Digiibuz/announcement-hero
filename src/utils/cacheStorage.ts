@@ -5,7 +5,7 @@
  */
 
 // Current cache version - change this when making breaking changes
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3'; // Incremented for fresh start
 
 // Vérifier si le service worker est supporté
 const isServiceWorkerSupported = 'serviceWorker' in navigator;
@@ -15,8 +15,8 @@ const isServiceWorkerSupported = 'serviceWorker' in navigator;
  */
 export const saveToCache = async (key: string, value: any): Promise<boolean> => {
   try {
-    // Add version to key to invalidate cache on version changes
-    const versionedKey = `${CACHE_VERSION}:${key}`;
+    // Add version and timestamp to key to invalidate cache on version changes
+    const versionedKey = `${CACHE_VERSION}:${key}:${Date.now()}`;
     
     if (!isServiceWorkerSupported) {
       // Fallback sur localStorage si le service worker n'est pas disponible
@@ -42,7 +42,7 @@ export const saveToCache = async (key: string, value: any): Promise<boolean> => 
     console.error('Erreur de cache:', error);
     // Fallback sur localStorage
     try {
-      const versionedKey = `${CACHE_VERSION}:${key}`;
+      const versionedKey = `${CACHE_VERSION}:${key}:${Date.now()}`;
       localStorage.setItem(versionedKey, JSON.stringify(value));
       return true;
     } catch (e) {
@@ -57,17 +57,28 @@ export const saveToCache = async (key: string, value: any): Promise<boolean> => 
  */
 export const getFromCache = async <T>(key: string, defaultValue?: T): Promise<T | null> => {
   try {
-    // Add version to key
-    const versionedKey = `${CACHE_VERSION}:${key}`;
+    // Get latest value with this version and key prefix
+    const prefix = `${CACHE_VERSION}:${key}`;
     
     if (!isServiceWorkerSupported) {
       // Fallback sur localStorage
-      const item = localStorage.getItem(versionedKey);
+      // Find the most recent key matching our prefix
+      const keys = Object.keys(localStorage).filter(k => k.startsWith(prefix));
+      if (keys.length === 0) return defaultValue || null;
+      
+      // Sort by timestamp (which is at the end of the key)
+      keys.sort((a, b) => {
+        const timestampA = parseInt(a.split(':')[2] || '0');
+        const timestampB = parseInt(b.split(':')[2] || '0');
+        return timestampB - timestampA;
+      });
+      
+      const item = localStorage.getItem(keys[0]);
       return item ? JSON.parse(item) : defaultValue || null;
     }
     
     // Utiliser le service worker pour récupérer la donnée
-    const response = await fetch(`/__store?key=${encodeURIComponent(versionedKey)}`, {
+    const response = await fetch(`/__store?key=${encodeURIComponent(prefix)}`, {
       method: 'GET',
     });
     
@@ -81,8 +92,18 @@ export const getFromCache = async <T>(key: string, defaultValue?: T): Promise<T 
     console.error('Erreur de cache:', error);
     // Fallback sur localStorage
     try {
-      const versionedKey = `${CACHE_VERSION}:${key}`;
-      const item = localStorage.getItem(versionedKey);
+      const prefix = `${CACHE_VERSION}:${key}`;
+      const keys = Object.keys(localStorage).filter(k => k.startsWith(prefix));
+      if (keys.length === 0) return defaultValue || null;
+      
+      // Sort by timestamp (which is at the end of the key)
+      keys.sort((a, b) => {
+        const timestampA = parseInt(a.split(':')[2] || '0');
+        const timestampB = parseInt(b.split(':')[2] || '0');
+        return timestampB - timestampA;
+      });
+      
+      const item = localStorage.getItem(keys[0]);
       return item ? JSON.parse(item) : defaultValue || null;
     } catch (e) {
       console.error('Erreur localStorage:', e);
@@ -96,11 +117,15 @@ export const getFromCache = async <T>(key: string, defaultValue?: T): Promise<T 
  */
 export const removeFromCache = async (key: string): Promise<boolean> => {
   try {
-    // Add version to key
-    const versionedKey = `${CACHE_VERSION}:${key}`;
+    // Remove all keys with this prefix
+    const prefix = `${CACHE_VERSION}:${key}`;
     
-    // Toujours supprimer du localStorage par sécurité
-    localStorage.removeItem(versionedKey);
+    // Nettoyer localStorage 
+    Object.keys(localStorage).forEach(k => {
+      if (k.startsWith(prefix)) {
+        localStorage.removeItem(k);
+      }
+    });
     
     if (!isServiceWorkerSupported) {
       return true;

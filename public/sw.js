@@ -1,13 +1,13 @@
-// Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v5'; // Increment cache version
 
-// Liste des ressources à mettre en cache
+// Nom du cache
+const CACHE_NAME = 'digiibuz-cache-v6'; // Incremented cache version for fresh start
+
+// Liste des ressources à mettre en cache - exclude dynamic JavaScript modules
 const urlsToCache = [
   '/',
   '/index.html',
   '/manifest.json',
   '/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png'
-  // Removed specific routes to prevent caching issues with dynamic imports
 ];
 
 // Installation du service worker
@@ -68,12 +68,15 @@ const saveToCache = async (key, value) => {
 
 // Improved fetch handler to prevent module caching issues
 self.addEventListener('fetch', event => {
-  // Ne pas intercepter les requêtes API, assets non essentiels ou JavaScript dynamique
+  // Skip handling for all JavaScript files to prevent module caching issues
+  if (event.request.url.includes('.js')) {
+    return;
+  }
+  
+  // Skip API requests and special paths
   if (event.request.url.includes('/api/') || 
       event.request.url.includes('supabase.co') ||
-      event.request.url.includes('wp-json') ||
-      (event.request.url.includes('.js') && !event.request.url.includes('sw.js')) // Don't cache JS modules
-  ) {
+      event.request.url.includes('wp-json')) {
     return;
   }
   
@@ -133,14 +136,14 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Pour les autres requêtes - stratégie améliorée
+  // Pour les autres requêtes - stratégie améliorée mais éviter de mettre JavaScript en cache
   event.respondWith(
     caches.match(event.request)
       .then(cachedResponse => {
         // Créer une promesse pour la requête réseau
         const fetchPromise = fetch(event.request)
           .then(networkResponse => {
-            // Ne pas mettre en cache les fichiers JavaScript dynamiques
+            // Ne pas mettre en cache les ressources JavaScript
             if (networkResponse && networkResponse.status === 200 && 
                 networkResponse.type === 'basic' &&
                 !event.request.url.includes('.js')) {
