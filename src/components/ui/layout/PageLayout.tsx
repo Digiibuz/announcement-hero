@@ -5,11 +5,14 @@ import Header from "./Header";
 
 export interface PageLayoutProps {
   title: string;
-  description?: string; // Add this prop to support the TomEManagement component
+  description?: string;
   titleAction?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
   contentClassName?: string;
+  containerClassName?: string;
+  fullWidthMobile?: boolean;
+  onRefresh?: () => void;
 }
 
 const PageLayout = ({
@@ -18,13 +21,23 @@ const PageLayout = ({
   titleAction,
   children,
   className,
-  contentClassName
+  contentClassName,
+  containerClassName,
+  fullWidthMobile,
+  onRefresh
 }: PageLayoutProps) => {
   return (
     <div className={cn("flex flex-col flex-1 min-h-screen", className)}>
-      <Header title={title} description={description} titleAction={titleAction} />
+      <Header 
+        title={title} 
+        description={description} 
+        titleAction={titleAction}
+        onRefresh={onRefresh}
+      />
       <main className={cn("flex-1 p-4 md:p-6", contentClassName)}>
-        {children}
+        <div className={containerClassName}>
+          {children}
+        </div>
       </main>
     </div>
   );
