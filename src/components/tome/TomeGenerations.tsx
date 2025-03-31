@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useTomeGeneration } from "@/hooks/tome";
 import { useCategoriesKeywords, useLocalities } from "@/hooks/tome";
@@ -32,6 +31,7 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
     regenerate,
     fetchGenerations,
     generatedContent,
+    contentErrors,
     fetchGeneratedContent
   } = useTomeGeneration(configId);
 
@@ -230,7 +230,6 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
                     } />
                   </SelectTrigger>
                   <SelectContent>
-                    {/* Fix: Change empty string to a non-empty string with a special value */}
                     <SelectItem key="no-keyword" value="none">Aucun mot-clé</SelectItem>
                     {selectedCategoryKeywords.map((keyword) => (
                       <SelectItem key={keyword.id} value={keyword.id}>
@@ -256,7 +255,6 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
                     } />
                   </SelectTrigger>
                   <SelectContent>
-                    {/* Fix: Change empty string to a non-empty string with a special value */}
                     <SelectItem key="no-locality" value="none">Aucune localité</SelectItem>
                     {activeLocalities.map((locality) => (
                       <SelectItem key={locality.id} value={locality.id}>
