@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { supabase } from "@/integrations/supabase/client";
 import { UserProfile } from "@/types/auth";
 import { FormSchema, formSchema } from "./FormFields";
 
@@ -21,7 +20,7 @@ export const useUserEditForm = (
     defaultValues: {
       email: user.email || "",
       name: user.name || "",
-      role: user.role || "editor",
+      role: user.role || "client",
       clientId: user.clientId || "",
       wordpressConfigId: user.wordpressConfigId || "",
       wpConfigIds: [],
@@ -29,38 +28,10 @@ export const useUserEditForm = (
   });
 
   useEffect(() => {
-    const fetchClientConfigurations = async () => {
-      if (user.clientId && user.role === "editor") {
-        setIsLoadingConfigs(true);
-        try {
-          const { data, error } = await supabase
-            .from('client_wordpress_configs')
-            .select('wordpress_config_id')
-            .eq('client_id', user.clientId);
-          
-          if (error) {
-            throw error;
-          }
-          
-          const configIds = data.map(item => item.wordpress_config_id);
-          setSelectedConfigIds(configIds);
-          form.setValue("wpConfigIds", configIds);
-        } catch (error) {
-          console.error("Error fetching client WordPress configs:", error);
-        } finally {
-          setIsLoadingConfigs(false);
-        }
-      }
-    };
-    
-    fetchClientConfigurations();
-  }, [user, form]);
-
-  useEffect(() => {
     form.reset({
       email: user.email || "",
       name: user.name || "",
-      role: user.role || "editor",
+      role: user.role || "client",
       clientId: user.clientId || "",
       wordpressConfigId: user.wordpressConfigId || "",
       wpConfigIds: selectedConfigIds,
@@ -84,8 +55,7 @@ export const useUserEditForm = (
       email: values.email,
       name: values.name,
       role: values.role,
-      clientId: values.role === "editor" ? values.clientId : undefined,
-      wordpressConfigId: (values.role === "editor" || values.role === "client") ? values.wordpressConfigId : undefined
+      wordpressConfigId: values.role === "client" ? values.wordpressConfigId : undefined
     });
     setIsDialogOpen(false);
   };

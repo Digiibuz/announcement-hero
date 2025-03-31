@@ -26,7 +26,7 @@ serve(async (req) => {
     const requestData = await req.json();
     console.log("Données reçues:", JSON.stringify(requestData));
     
-    const { userId, email, name, role, clientId, wordpressConfigId } = requestData;
+    const { userId, email, name, role, wordpressConfigId } = requestData;
 
     // Vérifier les données requises
     if (!userId) {
@@ -40,9 +40,8 @@ serve(async (req) => {
       );
     }
 
-    // Déterminer si clientId et wordpressConfigId doivent être utilisés
-    const needsClientInfo = role === "editor";
-    const needsWordPressConfig = role === "editor" || role === "client";
+    // Déterminer si wordpressConfigId doit être utilisé
+    const needsWordPressConfig = role === "client";
 
     // Mettre à jour l'utilisateur dans auth si email est fourni
     if (email) {
@@ -55,7 +54,6 @@ serve(async (req) => {
           user_metadata: {
             name,
             role,
-            clientId: needsClientInfo ? clientId : null,
             wordpressConfigId: needsWordPressConfig ? wordpressConfigId : null,
           }
         }
@@ -75,7 +73,6 @@ serve(async (req) => {
           user_metadata: {
             name,
             role,
-            clientId: needsClientInfo ? clientId : null,
             wordpressConfigId: needsWordPressConfig ? wordpressConfigId : null,
           }
         }

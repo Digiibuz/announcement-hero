@@ -28,7 +28,7 @@ import { WordPressConfig } from "@/types/wordpress";
 export const formSchema = z.object({
   email: z.string().email({ message: "Email invalide" }),
   name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères" }),
-  role: z.enum(["admin", "editor", "client"], {
+  role: z.enum(["admin", "client"], {
     required_error: "Veuillez sélectionner un rôle",
   }),
   clientId: z.string().optional(),
@@ -104,124 +104,12 @@ const FormFields: React.FC<FormFieldsProps> = ({
                 <SelectContent>
                   <SelectItem value="admin">Administrateur</SelectItem>
                   <SelectItem value="client">Client</SelectItem>
-                  <SelectItem value="editor">Éditeur</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
             </FormItem>
           )}
         />
-        
-        {form.watch("role") === "editor" && (
-          <>
-            <FormField
-              control={form.control}
-              name="clientId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>ID Client</FormLabel>
-                  <FormControl>
-                    <Input placeholder="client123" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Identifiant unique pour cet espace client
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="wordpressConfigId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Configuration WordPress</FormLabel>
-                  <Select 
-                    onValueChange={field.onChange} 
-                    value={field.value || "none"}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner une configuration" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="none">Aucune configuration</SelectItem>
-                      {configs.map((config) => (
-                        <SelectItem key={config.id} value={config.id}>
-                          {config.name} ({config.site_url})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    Configuration WordPress principale de l'utilisateur
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {configs.length > 0 && (
-              <FormField
-                control={form.control}
-                name="wpConfigIds"
-                render={() => (
-                  <FormItem>
-                    <div className="mb-4">
-                      <FormLabel>Configurations WordPress additionnelles</FormLabel>
-                      <FormDescription>
-                        Sélectionnez les configurations WordPress à associer à ce client
-                      </FormDescription>
-                    </div>
-                    {isLoadingConfigs ? (
-                      <div className="flex items-center justify-center py-2">
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Chargement des configurations...
-                      </div>
-                    ) : (
-                      configs.map((config) => (
-                        <FormField
-                          key={config.id}
-                          control={form.control}
-                          name="wpConfigIds"
-                          render={({ field }) => {
-                            return (
-                              <FormItem
-                                key={config.id}
-                                className="flex flex-row items-start space-x-3 space-y-0 mb-2"
-                              >
-                                <FormControl>
-                                  <Checkbox
-                                    checked={field.value?.includes(config.id)}
-                                    onCheckedChange={(checked) => {
-                                      return checked
-                                        ? field.onChange([...field.value || [], config.id])
-                                        : field.onChange(
-                                            field.value?.filter(
-                                              (value) => value !== config.id
-                                            )
-                                          )
-                                    }}
-                                  />
-                                </FormControl>
-                                <FormLabel className="font-normal">
-                                  {config.name} ({config.site_url})
-                                </FormLabel>
-                              </FormItem>
-                            )
-                          }}
-                        />
-                      ))
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-          </>
-        )}
         
         {/* Ajouter la sélection de configuration WordPress pour les clients */}
         {form.watch("role") === "client" && (

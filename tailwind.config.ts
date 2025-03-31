@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -11,6 +10,9 @@ export default {
 	],
 	prefix: "",
 	theme: {
+		fontFamily: {
+			sans: ['Nunito', 'sans-serif'],
+		},
 		container: {
 			center: true,
 			padding: '2rem',
@@ -62,6 +64,17 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				digibuz: {
+					navy: '#0C1646', // Le bleu foncé du logo
+					yellow: '#FFD600', // Le jaune du logo
+					light: '#ECF0FF', // Couleur claire complémentaire
+					gray: '#8E9196', // Gris neutre
+					accent: '#4A5568', // Accent sombre
+					success: '#48BB78', // Vert de succès
+					warning: '#ED8936', // Orange d'avertissement
+					error: '#E53E3E', // Rouge d'erreur
+					info: '#4299E1' // Bleu d'information
 				}
 			},
 			borderRadius: {

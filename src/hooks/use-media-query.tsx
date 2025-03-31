@@ -1,31 +1,32 @@
 
-import * as React from "react"
+"use client"
 
-/**
- * Hook that returns whether a media query matches the current viewport
- * @param query CSS media query string
- * @returns boolean indicating if the media query matches
- */
+import { useState, useEffect } from "react";
+
 export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = React.useState<boolean>(false)
+  const [matches, setMatches] = useState(false);
 
-  React.useEffect(() => {
-    const media = window.matchMedia(query)
-    const updateMatch = () => {
-      setMatches(media.matches)
-    }
+  useEffect(() => {
+    const media = window.matchMedia(query);
     
-    // Initialize the state
-    updateMatch()
+    // Set initial value
+    setMatches(media.matches);
     
-    // Add event listener
-    media.addEventListener("change", updateMatch)
+    // Define listener function
+    const updateMatches = (e: MediaQueryListEvent) => {
+      setMatches(e.matches);
+    };
     
-    // Clean up event listener
-    return () => media.removeEventListener("change", updateMatch)
-  }, [query])
+    // Add listener
+    media.addEventListener("change", updateMatches);
+    
+    // Cleanup
+    return () => {
+      media.removeEventListener("change", updateMatches);
+    };
+  }, [query]);
 
-  return matches
+  return matches;
 }
 
 /**
@@ -33,7 +34,7 @@ export function useMediaQuery(query: string): boolean {
  * @returns boolean indicating if viewport is mobile
  */
 export function useIsMobile(): boolean {
-  return useMediaQuery("(max-width: 767px)")
+  return useMediaQuery("(max-width: 767px)");
 }
 
 /**
@@ -41,7 +42,7 @@ export function useIsMobile(): boolean {
  * @returns boolean indicating if viewport is tablet
  */
 export function useIsTablet(): boolean {
-  return useMediaQuery("(min-width: 768px) and (max-width: 1023px)")
+  return useMediaQuery("(min-width: 768px) and (max-width: 1023px)");
 }
 
 /**
@@ -49,5 +50,5 @@ export function useIsTablet(): boolean {
  * @returns boolean indicating if viewport is desktop
  */
 export function useIsDesktop(): boolean {
-  return useMediaQuery("(min-width: 1024px)")
+  return useMediaQuery("(min-width: 1024px)");
 }

@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
@@ -28,7 +27,6 @@ const DescriptionField = ({
 
   const updateFormValue = () => {
     if (editorRef.current) {
-      // Normaliser le contenu en remplaçant les balises HTML par une version plus propre
       let htmlContent = editorRef.current.innerHTML;
       form.setValue('description', htmlContent);
       console.log("Form value updated from editor:", htmlContent);
@@ -68,15 +66,9 @@ const DescriptionField = ({
   };
 
   const applyFormatting = (format: string) => {
-    // Sauvegarder la sélection actuelle
     document.execCommand(format, false);
-    
-    // Nettoyer le DOM après le formatage pour éviter les problèmes
     if (editorRef.current) {
-      // Correction pour éviter les sauts de ligne indésirables pour les balises en ligne
       let content = editorRef.current.innerHTML;
-      
-      // Mise à jour de la valeur du formulaire
       updateFormValue();
     }
   };
@@ -109,7 +101,6 @@ const DescriptionField = ({
   }, []);
 
   React.useEffect(() => {
-    // Add an input event listener to catch updates
     const editorElement = editorRef.current;
     if (editorElement) {
       const handleInput = () => {
@@ -246,13 +237,13 @@ const DescriptionField = ({
                   <Label htmlFor="url" className="text-right col-span-1">
                     URL
                   </Label>
-                  <input id="url" placeholder="https://example.com" className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} />
+                  <input id="url" placeholder="https://example.com" className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="text" className="text-right col-span-1">
                     Texte
                   </Label>
-                  <input id="text" placeholder="Texte du lien (optionnel)" className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" value={linkText} onChange={e => setLinkText(e.target.value)} />
+                  <input id="text" placeholder="Texte du lien (optionnel)" className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" value={linkText} onChange={e => setLinkText(e.target.value)} />
                 </div>
                 <Button type="button" onClick={insertLink} className="mt-2">
                   Insérer le lien
@@ -271,10 +262,11 @@ const DescriptionField = ({
                 ref={editorRef} 
                 id="description" 
                 contentEditable 
-                className="flex min-h-32 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 overflow-auto rich-text-editor" 
+                className="flex min-h-32 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 overflow-auto rich-text-editor placeholder:text-muted-foreground/60" 
                 onInput={updateFormValue} 
                 onPaste={handlePaste} 
-                onBlur={updateFormValue} 
+                onBlur={updateFormValue}
+                data-placeholder="Rédigez votre description ici..."
               />
             </FormControl>
             <FormMessage />

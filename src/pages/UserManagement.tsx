@@ -1,19 +1,17 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { useAuth } from "@/context/AuthContext";
-import { toast } from "sonner";
 import UserCreateForm from "@/components/users/UserCreateForm";
 import UserList from "@/components/users/UserList";
 import AccessDenied from "@/components/users/AccessDenied";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import { useUserManagement } from "@/hooks/useUserManagement";
 import { UserProfile } from "@/types/auth";
-import { useMediaQuery } from "@/hooks/use-media-query";
+import { toast } from "sonner"; // Import toast from sonner
 
 const UserManagement = () => {
-  const { user, isAdmin, impersonateUser } = useAuth();
-  const isMobile = useMediaQuery("(max-width: 767px)");
+  const { user, isAdmin } = useAuth();
   const { 
     users, 
     isLoading, 
@@ -25,33 +23,54 @@ const UserManagement = () => {
     deleteUser
   } = useUserManagement();
   
-  const handleImpersonateUser = (userToImpersonate: UserProfile) => {
-    impersonateUser(userToImpersonate);
-    toast.success(`Vous êtes maintenant connecté en tant que ${userToImpersonate.name}`);
+  // Fetch users on component mount
+  useEffect(() => {
+    if (isAdmin) {
+      fetchUsers();
+    }
+  }, [isAdmin, fetchUsers]);
+
+  const handleUserCreated = () => {
+    console.log("Rafraîchissement de la liste des utilisateurs après création");
+    fetchUsers();
+  };
+
+  const handleRefresh = () => {
+    fetchUsers();
+    toast.success("Liste des utilisateurs mise à jour");
+  };
+
+  // Add impersonation handler (empty for now since this requirement was removed)
+  const handleImpersonateUser = (user: UserProfile) => {
+    // This functionality is not implemented but required by the UserList component
+    console.log("Impersonation feature not implemented");
   };
 
   const titleAction = isAdmin ? (
-    <UserCreateForm onUserCreated={fetchUsers} />
+    <UserCreateForm onUserCreated={handleUserCreated} />
   ) : null;
 
   return (
-    <PageLayout title="Gestion des utilisateurs" titleAction={titleAction}>
+    <PageLayout 
+      title="Gestion des utilisateurs" 
+      titleAction={titleAction} 
+      containerClassName="max-w-full"
+      onRefresh={handleRefresh}
+    >
       {!isAdmin ? (
         <AccessDenied />
       ) : (
-        <AnimatedContainer delay={200}>
-          <div className={isMobile ? "w-full" : "max-w-5xl mx-auto"}>
-            <UserList 
-              users={users}
-              isLoading={isLoading}
-              isDeleting={isDeleting}
-              isUpdating={isUpdating}
-              onResetPassword={handleResetPassword}
-              onImpersonateUser={handleImpersonateUser}
-              onUpdateUser={updateUser}
-              onDeleteUser={deleteUser}
-            />
-          </div>
+        <AnimatedContainer delay={200} className="w-full">
+          <UserList 
+            users={users}
+            isLoading={isLoading}
+            isDeleting={isDeleting}
+            isUpdating={isUpdating}
+            onResetPassword={handleResetPassword}
+            onUpdateUser={updateUser}
+            onDeleteUser={deleteUser}
+            onImpersonateUser={handleImpersonateUser} // Add the missing prop
+          />
         </AnimatedContainer>
       )}
     </PageLayout>

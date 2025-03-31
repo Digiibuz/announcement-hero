@@ -1,4 +1,6 @@
 
+"use client"
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -6,30 +8,35 @@ import { supabase } from "@/integrations/supabase/client";
 import AnnouncementForm from "@/components/announcements/AnnouncementForm";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import PageLayout from "@/components/ui/layout/PageLayout";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 import { Announcement } from "@/types/announcement";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
-import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 const CreateAnnouncement = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const {
+    user
+  } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { publishToWordPress, isPublishing } = useWordPressPublishing();
+  const {
+    publishToWordPress,
+    isPublishing
+  } = useWordPressPublishing();
+  const isMobile = useMediaQuery("(max-width: 767px)");
 
   const handleSubmit = async (data: any) => {
     try {
       setIsSubmitting(true);
-      
+
       // Prepare the announcement data
       const announcementData = {
         user_id: user?.id,
         title: data.title,
         description: data.description,
-        status: data.status || "draft",
+        status: data.status as "draft" | "published" | "scheduled", // Explicit casting to ensure type safety
         images: data.images || [],
         wordpress_category_id: data.wordpressCategory,
         publish_date: data.publishDate ? new Date(data.publishDate).toISOString() : null,
@@ -37,42 +44,75 @@ const CreateAnnouncement = () => {
         seo_description: data.seoDescription || null,
         seo_slug: data.seoSlug || null
       };
-      
       console.log("Enregistrement de l'annonce:", announcementData);
-      
+
       // Save to Supabase
-      const { data: newAnnouncement, error } = await supabase
-        .from("announcements")
-        .insert(announcementData)
-        .select()
-        .single();
-      
+      const {
+        data: newAnnouncement,
+        error
+      } = await supabase.from("announcements").insert(announcementData).select().single();
       if (error) throw error;
-      
       console.log("Annonce enregistrée dans Supabase:", newAnnouncement);
-      
+
       // If status is published or scheduled, try to publish to WordPress
-      let wordpressResult = { success: true, message: "" };
+      let wordpressResult = {
+        success: true,
+        message: "",
+        wordpressPostId: null as number | null
+      };
+      
       if ((data.status === 'published' || data.status === 'scheduled') && data.wordpressCategory && user?.id) {
         console.log("Tentative de publication sur WordPress...");
-        wordpressResult = await publishToWordPress(
-          newAnnouncement as Announcement, 
-          data.wordpressCategory,
-          user.id
-        );
+        wordpressResult = await publishToWordPress(newAnnouncement as Announcement, data.wordpressCategory, user.id);
+        
+        console.log("Résultat de la publication WordPress:", wordpressResult);
+        
+        if (wordpressResult.wordpressPostId) {
+          console.log("WordPress post ID returned:", wordpressResult.wordpressPostId);
+          
+          // Si un ID WordPress a été retourné, mettre à jour l'annonce dans Supabase
+          const { error: updateError } = await supabase
+            .from("announcements")
+            .update({ wordpress_post_id: wordpressResult.wordpressPostId })
+            .eq("id", newAnnouncement.id);
+            
+          if (updateError) {
+            console.error("Erreur lors de la mise à jour de l'ID WordPress:", updateError);
+            toast({
+              title: "Attention",
+              description: "L'annonce a été publiée mais l'ID WordPress n'a pas pu être enregistré",
+              variant: "destructive"
+            });
+          } else {
+            console.log("ID WordPress mis à jour avec succès:", wordpressResult.wordpressPostId);
+          }
+        } else {
+          console.warn("No WordPress post ID was returned");
+        }
       }
       
       if (wordpressResult.success) {
-        toast.success("Annonce enregistrée avec succès");
+        toast({
+          title: "Succès",
+          description: "Annonce enregistrée avec succès" + (wordpressResult.wordpressPostId ? " et publiée sur WordPress (ID: " + wordpressResult.wordpressPostId + ")" : "")
+        });
       } else {
-        toast.warning("Annonce enregistrée dans la base de données, mais la publication WordPress a échoué: " + (wordpressResult.message || "Erreur inconnue"));
+        toast({
+          title: "Attention",
+          description: "Annonce enregistrée dans la base de données, mais la publication WordPress a échoué: " + (wordpressResult.message || "Erreur inconnue"),
+          variant: "destructive"
+        });
       }
-      
+
       // Redirect to the announcements list
       navigate("/announcements");
     } catch (error: any) {
       console.error("Error saving announcement:", error);
-      toast.error("Erreur lors de l'enregistrement: " + error.message);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de l'enregistrement: " + error.message,
+        variant: "destructive"
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -86,25 +126,30 @@ const CreateAnnouncement = () => {
           <ArrowLeft className="h-4 w-4" />
           Retour aux annonces
         </Button>
-      }
+      } 
+      fullWidthMobile={true}
+      containerClassName="max-w-5xl mx-auto"
     >
-      <AnimatedContainer delay={200}>
-        <div className="max-w-5xl mx-auto">
-          <Alert className="mb-6">
-            <Wand2 className="h-4 w-4" />
-            <AlertDescription>
-              Utilisez les boutons <span className="font-medium inline-flex items-center mx-1"><Wand2 className="h-3 w-3 mr-1" /> Optimiser</span> pour améliorer automatiquement votre contenu et vos métadonnées SEO grâce à l'intelligence artificielle.
-            </AlertDescription>
-          </Alert>
+      <AnimatedContainer delay={200} className={isMobile ? "pb-6" : ""}>
+        {!isMobile && (
+          <div className="mb-4">
+            {/* Empty space for desktop view if needed */}
+          </div>
+        )}
+        
+        <div>
+          {isMobile && (
+            <div className="bg-muted/30 px-4 py-3 mb-4 text-sm text-muted-foreground flex items-center">
+              <Wand2 className="h-4 w-4 mr-2 flex-shrink-0" />
+              <span>Utilisez les boutons <b>Optimiser</b> pour améliorer votre contenu avec l'IA.</span>
+            </div>
+          )}
           
-          <Card className="border shadow-sm bg-card/50 backdrop-blur-sm">
-            <CardContent className="p-6">
-              <AnnouncementForm 
-                onSubmit={handleSubmit} 
-                isSubmitting={isSubmitting || isPublishing} 
-              />
-            </CardContent>
-          </Card>
+          <AnnouncementForm 
+            onSubmit={handleSubmit} 
+            isSubmitting={isSubmitting || isPublishing} 
+            isMobile={isMobile} 
+          />
         </div>
       </AnimatedContainer>
     </PageLayout>

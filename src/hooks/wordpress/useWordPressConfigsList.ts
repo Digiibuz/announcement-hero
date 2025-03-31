@@ -19,18 +19,24 @@ export const useWordPressConfigsList = () => {
       setIsLoading(true);
       
       // Pour les clients, on ne récupère que leur configuration WordPress attribuée
-      if (isClient && user?.wordpressConfigId) {
-        const { data, error } = await supabase
-          .from('wordpress_configs')
-          .select('*')
-          .eq('id', user.wordpressConfigId)
-          .single();
-        
-        if (error) {
-          throw error;
+      if (isClient) {
+        // Si le client a un wordpressConfigId, on récupère cette configuration
+        if (user?.wordpressConfigId) {
+          const { data, error } = await supabase
+            .from('wordpress_configs')
+            .select('*')
+            .eq('id', user.wordpressConfigId)
+            .single();
+          
+          if (error) {
+            throw error;
+          }
+          
+          setConfigs(data ? [data as WordPressConfig] : []);
+        } else {
+          // Si le client n'a pas de wordpressConfigId, on renvoie un tableau vide
+          setConfigs([]);
         }
-        
-        setConfigs(data ? [data as WordPressConfig] : []);
       } 
       // Pour les autres rôles, on récupère toutes les configurations
       else {

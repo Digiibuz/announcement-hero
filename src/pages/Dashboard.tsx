@@ -10,13 +10,16 @@ import {
   FileText, 
   Clock,
   ChevronRight,
-  Calendar
+  Calendar,
+  Plus
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Announcement } from "@/types/announcement";
+import { Button } from "@/components/ui/button";
+import FloatingActionButton from "@/components/ui/FloatingActionButton";
 
 const stripHtmlTags = (html: string): string => {
   if (!html) return '';
@@ -164,12 +167,18 @@ const Dashboard = () => {
   };
 
   return (
-    <PageLayout title="Dashboard">
+    <PageLayout title="Mon Tableau de bord">
       <AnimatedContainer delay={100} className="mt-0">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
           <p className="text-muted-foreground">
             Bienvenue, {user?.name}
           </p>
+          <Button asChild className="mt-2 sm:mt-0 bg-digibuz-yellow text-digibuz-navy hover:bg-digibuz-yellow/90">
+            <Link to="/create">
+              <Plus className="mr-2 h-4 w-4" />
+              Créer une annonce
+            </Link>
+          </Button>
         </div>
       </AnimatedContainer>
 
@@ -331,6 +340,19 @@ const Dashboard = () => {
           </Card>
         </AnimatedContainer>
       </div>
+
+      <FloatingActionButton 
+        position="bottom-right" 
+        asChild
+        showOnMobile={true}
+        hideOnDesktop={true}
+        className="bg-digibuz-yellow text-digibuz-navy hover:bg-digibuz-yellow/90 font-bold"
+      >
+        <Link to="/create">
+          <Plus className="mr-2 h-4 w-4" />
+          Créer
+        </Link>
+      </FloatingActionButton>
     </PageLayout>
   );
 };

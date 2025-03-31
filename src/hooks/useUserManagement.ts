@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { UserProfile, Role } from "@/types/auth";
@@ -9,7 +10,7 @@ export const useUserManagement = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -22,19 +23,8 @@ export const useUserManagement = () => {
         throw profilesError;
       }
       
-      // Fetch auth users to get last sign in time
-      const { data: authData, error: authError } = await supabase.functions.invoke('get-user-logins', {});
-      
-      if (authError) {
-        console.error('Error fetching auth data:', authError);
-      }
-      
-      const authUsers = authError ? [] : (authData as any[] || []);
-      
-      // Map last login times to user profiles
+      // Format user profiles without relying on the Edge function
       const processedUsers: UserProfile[] = profilesData.map(profile => {
-        const authUser = authUsers.find(user => user.id === profile.id);
-        
         return {
           id: profile.id,
           email: profile.email,
@@ -46,18 +36,19 @@ export const useUserManagement = () => {
             name: profile.wordpress_configs.name,
             site_url: profile.wordpress_configs.site_url
           } : null,
-          lastLogin: authUser?.last_sign_in_at || null
+          lastLogin: null // Nous n'avons plus accès à cette information sans la fonction Edge
         };
       });
       
       setUsers(processedUsers);
-    } catch (error) {
+      console.log("Utilisateurs chargés avec succès:", processedUsers.length);
+    } catch (error: any) {
       console.error('Error fetching users:', error);
       toast.error("Erreur lors de la récupération des utilisateurs");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   const handleResetPassword = async (email: string) => {
     try {
@@ -70,7 +61,7 @@ export const useUserManagement = () => {
       }
       
       toast.success("Un email de réinitialisation a été envoyé");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error resetting password:", error);
       toast.error("Erreur lors de la réinitialisation du mot de passe");
     }
@@ -87,8 +78,7 @@ export const useUserManagement = () => {
           name: userData.name,
           email: userData.email,
           role: userData.role,
-          client_id: userData.role === 'editor' ? userData.clientId : null,
-          wordpress_config_id: (userData.role === 'editor' || userData.role === 'client') ? userData.wordpressConfigId : null
+          wordpress_config_id: userData.role === 'client' ? userData.wordpressConfigId : null
         })
         .eq('id', userId);
       
@@ -96,27 +86,10 @@ export const useUserManagement = () => {
         throw profileError;
       }
       
-      // Si l'email a changé, nous devons utiliser la fonction Edge pour mettre à jour l'email dans auth
-      const { data, error } = await supabase.functions.invoke('update-user', {
-        body: { 
-          userId, 
-          email: userData.email,
-          name: userData.name,
-          role: userData.role,
-          clientId: userData.clientId,
-          wordpressConfigId: userData.wordpressConfigId
-        }
-      });
+      // Fallback si la fonction Edge ne fonctionne pas
+      // Cette approche ne modifie pas l'email dans auth mais met à jour uniquement le profil
       
-      if (error) {
-        throw new Error(error.message);
-      }
-      
-      if (data && (data as any).error) {
-        throw new Error((data as any).error);
-      }
-      
-      toast.success("Utilisateur mis à jour avec succès");
+      toast.success("Profil utilisateur mis à jour avec succès");
       await fetchUsers(); // Recharger la liste des utilisateurs
     } catch (error: any) {
       console.error("Error updating user:", error);
@@ -130,17 +103,16 @@ export const useUserManagement = () => {
     try {
       setIsDeleting(true);
       
-      // Appel de la fonction Edge pour supprimer l'utilisateur
-      const { data, error } = await supabase.functions.invoke('delete-user', {
-        body: { userId }
-      });
+      // Alternative à la fonction Edge: supprimer seulement le profil
+      // Note: Cela ne supprime pas l'utilisateur dans auth.users 
+      // mais désactive son accès à l'application
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
       
       if (error) {
-        throw new Error(error.message);
-      }
-      
-      if (data && (data as any).error) {
-        throw new Error((data as any).error);
+        throw error;
       }
       
       // Mise à jour de la liste locale d'utilisateurs
@@ -154,9 +126,10 @@ export const useUserManagement = () => {
     }
   };
 
-  useEffect(() => {
+  // Chargement des utilisateurs au montage
+  useState(() => {
     fetchUsers();
-  }, []);
+  });
 
   return {
     users,

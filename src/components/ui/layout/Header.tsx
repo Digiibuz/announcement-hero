@@ -18,16 +18,25 @@ const Header = () => {
       <div className="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
-            <Link to="/" className="flex items-center">
-              <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">
-                DigiiApp
+            <Link to="/" className="flex items-center gap-2">
+              <img 
+                src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
+                alt="Digiibuz" 
+                className="h-8 w-auto" 
+              />
+              <span className="text-xl font-bold text-digibuz-navy dark:text-digibuz-yellow">
+                Digiibuz
               </span>
             </Link>
           </div>
 
           <div className="flex items-center gap-4">
             <Link to="/login">
-              <Button variant="ghost">Log in</Button>
+              <Button 
+                className="bg-digibuz-navy hover:bg-digibuz-navy/90 text-white dark:bg-digibuz-yellow dark:text-digibuz-navy dark:hover:bg-digibuz-yellow/90"
+              >
+                Se connecter
+              </Button>
             </Link>
           </div>
         </div>

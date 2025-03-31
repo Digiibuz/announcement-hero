@@ -15,6 +15,7 @@ export type Database = {
           description: string | null
           id: string
           images: string[] | null
+          is_divipixel: boolean | null
           publish_date: string | null
           seo_description: string | null
           seo_slug: string | null
@@ -24,12 +25,14 @@ export type Database = {
           updated_at: string
           user_id: string
           wordpress_category_id: string | null
+          wordpress_post_id: number | null
         }
         Insert: {
           created_at?: string
           description?: string | null
           id?: string
           images?: string[] | null
+          is_divipixel?: boolean | null
           publish_date?: string | null
           seo_description?: string | null
           seo_slug?: string | null
@@ -39,12 +42,14 @@ export type Database = {
           updated_at?: string
           user_id: string
           wordpress_category_id?: string | null
+          wordpress_post_id?: number | null
         }
         Update: {
           created_at?: string
           description?: string | null
           id?: string
           images?: string[] | null
+          is_divipixel?: boolean | null
           publish_date?: string | null
           seo_description?: string | null
           seo_slug?: string | null
@@ -54,6 +59,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           wordpress_category_id?: string | null
+          wordpress_post_id?: number | null
         }
         Relationships: []
       }
@@ -135,7 +141,7 @@ export type Database = {
           id: string
           name: string
           password: string | null
-          rest_api_key: string
+          rest_api_key: string | null
           site_url: string
           updated_at: string
           username: string | null
@@ -147,7 +153,7 @@ export type Database = {
           id?: string
           name: string
           password?: string | null
-          rest_api_key: string
+          rest_api_key?: string | null
           site_url: string
           updated_at?: string
           username?: string | null
@@ -159,7 +165,7 @@ export type Database = {
           id?: string
           name?: string
           password?: string | null
-          rest_api_key?: string
+          rest_api_key?: string | null
           site_url?: string
           updated_at?: string
           username?: string | null

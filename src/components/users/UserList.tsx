@@ -33,9 +33,9 @@ interface UserListProps {
   isDeleting: boolean;
   isUpdating: boolean;
   onResetPassword: (email: string) => void;
-  onImpersonateUser: (user: UserProfile) => void;
   onUpdateUser: (userId: string, userData: Partial<UserProfile>) => Promise<void>;
   onDeleteUser: (userId: string) => Promise<void>;
+  onImpersonateUser: (user: UserProfile) => void; // Add this prop to match what UserManagement is passing
 }
 
 const UserList: React.FC<UserListProps> = ({ 
@@ -76,7 +76,6 @@ const UserList: React.FC<UserListProps> = ({
     switch (role) {
       case 'admin': return 'Administrateur';
       case 'client': return 'Client';
-      case 'editor': return 'Éditeur';
       default: return role;
     }
   };
@@ -85,7 +84,6 @@ const UserList: React.FC<UserListProps> = ({
     switch (role) {
       case 'admin': return 'bg-primary/10 text-primary';
       case 'client': return 'bg-blue-100 text-blue-800 dark:bg-blue-800/20 dark:text-blue-400';
-      case 'editor': return 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400';
       default: return '';
     }
   };
@@ -120,7 +118,6 @@ const UserList: React.FC<UserListProps> = ({
     );
   }
 
-  // Mobile view with cards
   if (isMobile) {
     return (
       <div className="space-y-4">
@@ -173,16 +170,6 @@ const UserList: React.FC<UserListProps> = ({
                     Réinitialiser MDP
                   </Button>
                   
-                  {user.role === "editor" && (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => onImpersonateUser(user)}
-                    >
-                      Se connecter en tant que
-                    </Button>
-                  )}
-                  
                   <Button 
                     variant="destructive" 
                     size="sm"
@@ -232,7 +219,6 @@ const UserList: React.FC<UserListProps> = ({
     );
   }
 
-  // Desktop view with table
   return (
     <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-border">
       <div className="overflow-x-auto">
@@ -283,16 +269,6 @@ const UserList: React.FC<UserListProps> = ({
                     >
                       Réinitialiser MDP
                     </Button>
-                    
-                    {user.role === "editor" && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => onImpersonateUser(user)}
-                      >
-                        Se connecter en tant que
-                      </Button>
-                    )}
                     
                     <Button 
                       variant="destructive" 

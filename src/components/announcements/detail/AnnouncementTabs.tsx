@@ -1,11 +1,12 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Pencil } from "lucide-react";
+import { Pencil, FileEdit } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import AnnouncementPreview from "@/components/announcements/AnnouncementPreview";
 import AnnouncementForm from "@/components/announcements/AnnouncementForm";
 import { Announcement } from "@/types/announcement";
+import { saveToCache, getFromCache } from "@/utils/cacheStorage";
 
 interface AnnouncementTabsProps {
   announcement: Announcement | null;
@@ -15,6 +16,7 @@ interface AnnouncementTabsProps {
   setActiveTab: (value: string) => void;
   setIsEditing: (value: boolean) => void;
   handleSubmit: (formData: any) => Promise<void>;
+  formData?: any;
 }
 
 const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
@@ -25,9 +27,37 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
   setActiveTab,
   setIsEditing,
   handleSubmit,
+  formData
 }) => {
+  const isDraft = announcement?.status === 'draft';
+  
+  // Utilisez une fonction pour changer d'onglet qui empêche le comportement par défaut
+  const handleTabChange = (value: string) => {
+    // On empêche tout comportement de rechargement en utilisant preventDefault
+    setActiveTab(value);
+    
+    // On mémorise l'onglet actif dans le cache pour le restaurer
+    if (announcement?.id) {
+      saveToCache(`announcementTab-${announcement.id}`, value);
+    }
+  };
+  
+  // Restaurer l'onglet actif depuis le cache au chargement
+  useEffect(() => {
+    if (announcement?.id) {
+      const fetchSavedTab = async () => {
+        const savedTab = await getFromCache<string>(`announcementTab-${announcement.id}`);
+        if (savedTab && (savedTab === 'preview' || (savedTab === 'edit' && isEditing))) {
+          setActiveTab(savedTab);
+        }
+      };
+      
+      fetchSavedTab();
+    }
+  }, [announcement?.id, isEditing, setActiveTab]);
+  
   return (
-    <Tabs value={activeTab} onValueChange={setActiveTab}>
+    <Tabs value={activeTab} onValueChange={handleTabChange}>
       <TabsList>
         <TabsTrigger value="preview">Aperçu</TabsTrigger>
         <TabsTrigger value="edit" disabled={!isEditing}>
@@ -37,17 +67,29 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
       </TabsList>
       <TabsContent value="preview">
         {announcement && (
-          <AnnouncementPreview data={{
-            title: announcement.title,
-            description: announcement.description || "",
-            category: announcement.wordpress_category_id || "",
-            publishDate: announcement.publish_date ? new Date(announcement.publish_date) : undefined,
-            status: announcement.status,
-            images: announcement.images || [],
-            seoTitle: announcement.seo_title,
-            seoDescription: announcement.seo_description,
-            seoSlug: announcement.seo_slug,
-          }} />
+          <>
+            {isDraft && (
+              <Alert className="mb-4 bg-amber-50 border-amber-200">
+                <AlertDescription className="flex items-center gap-2">
+                  <FileEdit className="h-4 w-4" />
+                  <span>
+                    Cette annonce est en mode brouillon. Modifiez-la pour finaliser le contenu avant publication.
+                  </span>
+                </AlertDescription>
+              </Alert>
+            )}
+            <AnnouncementPreview data={{
+              title: announcement.title,
+              description: announcement.description || "",
+              category: announcement.wordpress_category_id || "",
+              publishDate: announcement.publish_date ? new Date(announcement.publish_date) : undefined,
+              status: announcement.status,
+              images: announcement.images || [],
+              seoTitle: announcement.seo_title,
+              seoDescription: announcement.seo_description,
+              seoSlug: announcement.seo_slug,
+            }} />
+          </>
         )}
       </TabsContent>
       <TabsContent value="edit">
@@ -55,9 +97,14 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
           <AnnouncementForm
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
+            initialValues={formData}
             onCancel={() => {
               setIsEditing(false);
               setActiveTab("preview");
+              // Mettre à jour le cache
+              if (announcement?.id) {
+                saveToCache(`announcementTab-${announcement.id}`, 'preview');
+              }
             }}
           />
         ) : (

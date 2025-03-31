@@ -1,4 +1,3 @@
-
 import React from "react";
 import { UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -46,7 +45,7 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
   } = useUserEditForm(user, async (userId, userData) => {
     await onUserUpdated(userId, userData);
     
-    if (userData.role === "editor" && userData.clientId) {
+    if (userData.role === "client" && userData.clientId) {
       const newConfigIds = form.getValues("wpConfigIds") || [];
       
       const associationsToRemove = clientConfigs
@@ -72,7 +71,7 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          <UserCog className="mr-2 h-4 w-4" />
+          <UserCog className="h-4 w-4 mr-2" />
           Modifier
         </Button>
       </DialogTrigger>

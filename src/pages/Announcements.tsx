@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
@@ -12,6 +13,8 @@ import { Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Announcement } from "@/types/announcement";
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
+import FloatingActionButton from "@/components/ui/FloatingActionButton";
+import { deleteAnnouncement as apiDeleteAnnouncement } from "@/api/announcementApi";
 
 // Helper function to strip HTML tags
 const stripHtmlTags = (html: string): string => {
@@ -112,12 +115,13 @@ const Announcements = () => {
   // Handle announcement deletion
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from("announcements")
-        .delete()
-        .filter("id", "eq", id);
-      
-      if (error) throw error;
+      if (!user?.id) {
+        toast.error("Utilisateur non identifié");
+        return;
+      }
+
+      // Utiliser l'API pour supprimer l'annonce (et son équivalent WordPress si existant)
+      await apiDeleteAnnouncement(id, user.id);
       
       toast.success("Annonce supprimée avec succès");
       refetch();
@@ -152,6 +156,19 @@ const Announcements = () => {
           viewMode={viewMode}
         />
       </AnimatedContainer>
+
+      <FloatingActionButton 
+        position="bottom-right" 
+        asChild
+        showOnMobile={true}
+        hideOnDesktop={true}
+        className="bg-digibuz-yellow text-digibuz-navy hover:bg-digibuz-yellow/90 font-bold"
+      >
+        <Link to="/create">
+          <Plus className="mr-2 h-4 w-4" />
+          Créer
+        </Link>
+      </FloatingActionButton>
     </PageLayout>
   );
 };

@@ -4,88 +4,90 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    font-family: 'Nunito', sans-serif;
+  }
+
   :root {
-    --background: 0 0% 100%;
-    --foreground: 210 9% 11%;
+    --background: 220 33% 98%;
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 210 9% 11%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 210 9% 11%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 210 90% 60%;
+    --primary: 230 72% 16%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 20% 96%;
-    --secondary-foreground: 210 9% 11%;
+    --secondary: 228 22% 95%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 210 20% 96%;
-    --muted-foreground: 210 9% 45%;
+    --muted: 228 22% 95%;
+    --muted-foreground: 222 47% 45%;
 
-    --accent: 210 20% 96%;
-    --accent-foreground: 210 9% 11%;
+    --accent: 48 100% 50%;
+    --accent-foreground: 222 47% 11%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 90%;
-    --input: 220 13% 90%;
-    --ring: 210 90% 70%;
+    --border: 222 13% 90%;
+    --input: 222 13% 90%;
+    --ring: 230 72% 16%;
 
     --radius: 12px;
 
-    --sidebar-background: 210 20% 98%;
-    --sidebar-foreground: 210 9% 31%;
-    --sidebar-primary: 210 90% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 20% 93%;
-    --sidebar-accent-foreground: 210 9% 11%;
-    --sidebar-border: 210 16% 93%;
-    --sidebar-ring: 210 90% 60%;
+    --sidebar-background: 230 72% 16%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 48 100% 50%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 230 40% 26%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 230 30% 24%;
+    --sidebar-ring: 48 100% 50%;
   }
 
   .dark {
-    --background: 210 9% 11%;
+    --background: 222 47% 11%;
     --foreground: 0 0% 98%;
 
-    --card: 210 9% 13%;
+    --card: 222 47% 13%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 210 9% 13%;
+    --popover: 222 47% 13%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 210 90% 60%;
+    --primary: 230 72% 20%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 9% 18%;
+    --secondary: 222 47% 18%;
     --secondary-foreground: 0 0% 98%;
 
-    --muted: 210 9% 18%;
-    --muted-foreground: 210 9% 65%;
+    --muted: 222 47% 18%;
+    --muted-foreground: 222 47% 65%;
 
-    --accent: 210 9% 18%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 48 80% 50%;
+    --accent-foreground: 222 47% 11%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 210 9% 20%;
-    --input: 210 9% 20%;
-    --ring: 210 90% 40%;
+    --border: 222 47% 20%;
+    --input: 222 47% 20%;
+    --ring: 230 72% 20%;
 
-    --sidebar-background: 210 9% 13%;
-    --sidebar-foreground: 210 9% 85%;
-    --sidebar-primary: 210 90% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 9% 18%;
-    --sidebar-accent-foreground: 210 9% 85%;
-    --sidebar-border: 210 9% 18%;
-    --sidebar-ring: 210 90% 55%;
+    --sidebar-background: 230 72% 13%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 48 100% 50%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 230 40% 20%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 230 30% 18%;
+    --sidebar-ring: 48 100% 50%;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
@@ -93,10 +95,12 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    font-family: 'Nunito', sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-medium tracking-tight;
+    font-family: 'Nunito', sans-serif;
   }
 
   h1 {
@@ -136,6 +140,31 @@
   .nav-link.active::after {
     content: '';
     @apply absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-full;
+  }
+
+  /* Nouvelles classes de la charte graphique */
+  .digiibuz-card {
+    @apply bg-white dark:bg-digibuz-navy/90 rounded-lg shadow-md border border-digibuz-light dark:border-digibuz-accent/20;
+  }
+
+  .digiibuz-button-primary {
+    @apply bg-digibuz-navy hover:bg-digibuz-navy/90 text-white rounded-md px-4 py-2 transition-colors;
+  }
+
+  .digiibuz-button-secondary {
+    @apply bg-digibuz-yellow hover:bg-digibuz-yellow/90 text-digibuz-navy rounded-md px-4 py-2 transition-colors;
+  }
+
+  .digiibuz-button-outline {
+    @apply bg-transparent border border-digibuz-navy text-digibuz-navy hover:bg-digibuz-navy/10 rounded-md px-4 py-2 transition-colors dark:border-digibuz-light dark:text-digibuz-light;
+  }
+
+  .digiibuz-gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-digibuz-navy to-digibuz-accent dark:from-digibuz-light dark:to-white;
+  }
+
+  .digiibuz-panel {
+    @apply bg-digibuz-light/50 dark:bg-digibuz-navy/50 backdrop-blur-md rounded-lg p-6;
   }
 }
 

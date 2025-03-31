@@ -1,236 +1,353 @@
 
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { Announcement } from "@/types/announcement";
-
-interface PublishToWordPressResult {
-  success: boolean;
-  message: string;
-  wordpressPostId?: number;
-}
+import { toast } from "sonner";
 
 export const useWordPressPublishing = () => {
   const [isPublishing, setIsPublishing] = useState(false);
-
+  
   const publishToWordPress = async (
     announcement: Announcement, 
-    wpCategoryId: string,
+    wordpressCategoryId: string,
     userId: string
-  ): Promise<PublishToWordPressResult> => {
-    if (!userId) {
-      console.error("No user ID provided");
-      return { 
-        success: false, 
-        message: "Utilisateur non identifié" 
-      };
-    }
-
+  ): Promise<{ success: boolean; message: string; wordpressPostId: number | null }> => {
+    setIsPublishing(true);
+    
     try {
-      setIsPublishing(true);
-      console.log("Récupération de la configuration WordPress...");
-      
-      // Get WordPress config from the user's profile
+      // Get user's WordPress config
       const { data: userProfile, error: profileError } = await supabase
         .from('profiles')
         .select('wordpress_config_id')
         .eq('id', userId)
         .single();
 
-      if (profileError) {
-        console.error("Erreur lors de la récupération du profil utilisateur:", profileError);
-        throw new Error("Profil utilisateur non trouvé");
-      }
-
-      if (!userProfile?.wordpress_config_id) {
-        console.error("Configuration WordPress introuvable pour cet utilisateur");
-        throw new Error("Configuration WordPress introuvable");
+      if (profileError || !userProfile?.wordpress_config_id) {
+        console.error("Error fetching WordPress config:", profileError || "No WordPress config ID found");
+        return { 
+          success: false, 
+          message: "WordPress configuration non trouvée",
+          wordpressPostId: null 
+        };
       }
       
-      // Get WordPress config
+      // Get WordPress config details
       const { data: wpConfig, error: wpConfigError } = await supabase
         .from('wordpress_configs')
-        .select('site_url, app_username, app_password')
+        .select('*')
         .eq('id', userProfile.wordpress_config_id)
         .single();
-
-      if (wpConfigError) {
-        console.error("Erreur lors de la récupération de la configuration WordPress:", wpConfigError);
-        throw wpConfigError;
+        
+      if (wpConfigError || !wpConfig) {
+        console.error("Error fetching WordPress config details:", wpConfigError || "No config found");
+        return { 
+          success: false, 
+          message: "Configuration WordPress non trouvée", 
+          wordpressPostId: null 
+        };
       }
       
-      if (!wpConfig) {
-        console.error("Configuration WordPress non trouvée");
-        throw new Error("WordPress configuration not found");
-      }
-
-      console.log("Configuration WordPress récupérée:", {
-        site_url: wpConfig.site_url,
-        hasAppCredentials: !!(wpConfig.app_username && wpConfig.app_password),
-      });
-
       // Ensure site_url has proper format
       const siteUrl = wpConfig.site_url.endsWith('/')
         ? wpConfig.site_url.slice(0, -1)
         : wpConfig.site_url;
       
-      // Construct the WordPress API URL for posts
-      const apiUrl = `${siteUrl}/wp-json/wp/v2/posts`;
-      console.log("URL de l'API WordPress:", apiUrl);
+      // First check if dipi_cpt_category exists to determine if we're using a DipiPixel site
+      console.log("Checking if dipi_cpt_category exists...");
+      const categoryEndpoint = `${siteUrl}/wp-json/wp/v2/dipi_cpt_category`;
+      let useCustomTaxonomy = false;
+      let postEndpoint = `${siteUrl}/wp-json/wp/v2/pages`; // Default to pages
       
-      // Format the content correctly
-      const content = announcement.description || "";
-      
-      // Determine publication status
-      let status = 'draft';
-      if (announcement.status === 'published') {
-        status = 'publish';
-      } else if (announcement.status === 'scheduled' && announcement.publish_date) {
-        status = 'future';
+      try {
+        // First try to access the dipi_cpt_category endpoint
+        const response = await fetch(categoryEndpoint, {
+          method: 'HEAD',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        console.log(`Category endpoint check (${categoryEndpoint}) status:`, response.status);
+        
+        // If dipi_cpt_category exists, we likely should use dipi_cpt for posts
+        if (response.status !== 404) {
+          console.log("DipiPixel category endpoint found, trying dipi_cpt endpoint");
+          useCustomTaxonomy = true;
+          
+          // Now check if dipi_cpt endpoint exists
+          const dipiPostEndpoint = `${siteUrl}/wp-json/wp/v2/dipi_cpt`;
+          const postEndpointResponse = await fetch(dipiPostEndpoint, {
+            method: 'HEAD',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          console.log(`Post endpoint check (${dipiPostEndpoint}) status:`, postEndpointResponse.status);
+          
+          if (postEndpointResponse.status !== 404) {
+            postEndpoint = dipiPostEndpoint;
+            console.log("Using DipiPixel post endpoint:", postEndpoint);
+          } else {
+            // Try another common CPT endpoint pattern
+            const altPostEndpoint = `${siteUrl}/wp-json/wp/v2/dipicpt`;
+            const altResponse = await fetch(altPostEndpoint, {
+              method: 'HEAD',
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            console.log(`Alternative post endpoint check (${altPostEndpoint}) status:`, altResponse.status);
+            
+            if (altResponse.status !== 404) {
+              postEndpoint = altPostEndpoint;
+              console.log("Using alternative DipiPixel post endpoint:", postEndpoint);
+            } else {
+              console.log("No DipiPixel post endpoint found, falling back to pages");
+            }
+          }
+        } else {
+          console.log("DipiPixel category endpoint not found, using standard pages");
+        }
+      } catch (error) {
+        console.log("Error checking endpoints:", error);
+        console.log("Falling back to standard pages endpoint");
       }
       
-      // Prepare post data with Yoast SEO meta fields based on correct API fields
-      // Using the fields from the provided image: wpseo_title and wpseo_metadesc
-      const postData: any = {
-        title: announcement.title,
-        content: content,
-        status: status,
-        categories: [parseInt(wpCategoryId)],
-        date: announcement.status === 'scheduled' ? announcement.publish_date : undefined,
-        meta: {
-          // Using the filter/field names from the provided image
-          wpseo_title: announcement.seo_title || announcement.title,
-          wpseo_metadesc: announcement.seo_description || "",
-          _yoast_wpseo_focuskw: announcement.title,
-        },
-        // Add slug if available
-        slug: announcement.seo_slug || undefined
-      };
-      
-      console.log("Données de la publication:", {
-        title: postData.title,
-        status: postData.status,
-        categoryId: wpCategoryId,
-        hasDate: !!postData.date,
-        seoTitle: postData.meta.wpseo_title,
-        seoDescription: postData.meta.wpseo_metadesc,
-        slug: postData.slug
-      });
+      console.log("Using WordPress endpoint:", postEndpoint, "with custom taxonomy:", useCustomTaxonomy);
       
       // Prepare headers with authentication
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
       
-      // Vérifier que nous avons des identifiants d'application
+      // Check for authentication credentials
       if (wpConfig.app_username && wpConfig.app_password) {
         // Application Password Format: "Basic base64(username:password)"
         const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
         headers['Authorization'] = `Basic ${basicAuth}`;
-        console.log("Utilisation de l'authentification par Application Password");
+        console.log("Using Application Password authentication");
       } else {
-        throw new Error("Aucune méthode d'authentification disponible pour WordPress. Veuillez configurer les identifiants d'Application Password.");
+        return { 
+          success: false, 
+          message: "Aucune méthode d'authentification disponible", 
+          wordpressPostId: null 
+        };
       }
       
-      // Handle featured image (if available)
-      if (announcement.images && announcement.images.length > 0) {
-        // Get the first image URL as the featured image
-        const featuredImageUrl = announcement.images[0];
-        console.log("Image mise en avant URL:", featuredImageUrl);
-        
-        // First, create the media item in WordPress
-        try {
-          console.log("Téléchargement de l'image mise en avant vers WordPress...");
-          
-          // Fetch the image file from the URL
-          const imageResponse = await fetch(featuredImageUrl);
-          if (!imageResponse.ok) {
-            throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
-          }
-          
-          const imageBlob = await imageResponse.blob();
-          
-          // Extract the filename from the URL
-          const urlParts = featuredImageUrl.split('/');
-          const fileName = urlParts[urlParts.length - 1];
-          
-          // Create a new FormData object and append the image
-          const formData = new FormData();
-          formData.append('file', imageBlob, fileName);
-          
-          // POST the image to WordPress media endpoint
-          const mediaResponse = await fetch(`${siteUrl}/wp-json/wp/v2/media`, {
-            method: 'POST',
-            headers: {
-              'Authorization': headers['Authorization'],
-              // Content-Type is set automatically by the browser with FormData
-            },
-            body: formData
-          });
-          
-          if (!mediaResponse.ok) {
-            const errorText = await mediaResponse.text();
-            console.error("Erreur lors du téléversement de l'image:", errorText);
-            throw new Error(`Failed to upload featured image: ${mediaResponse.status} ${mediaResponse.statusText}`);
-          }
-          
-          const mediaData = await mediaResponse.json();
-          console.log("Image téléversée avec succès sur WordPress, ID:", mediaData.id);
-          
-          // Set the featured image ID in the post data
-          postData.featured_media = mediaData.id;
-        } catch (mediaError: any) {
-          console.error("Erreur lors de la gestion de l'image mise en avant:", mediaError);
-          // Continue with post creation even if image upload fails
-          console.log("Continuation de la création de l'article sans image mise en avant");
-        }
+      // Prepare post data
+      const wpPostData: any = {
+        title: announcement.title,
+        content: announcement.description || "",
+        status: announcement.status === 'published' ? 'publish' : announcement.status === 'scheduled' ? 'future' : 'draft',
+      };
+      
+      // Add date for scheduled posts
+      if (announcement.status === 'scheduled' && announcement.publish_date) {
+        wpPostData.date = new Date(announcement.publish_date).toISOString();
       }
       
-      console.log("Envoi de la requête à WordPress...");
+      // Add category based on endpoint type
+      if (useCustomTaxonomy) {
+        // Use the custom taxonomy for DipiPixel
+        wpPostData.dipi_cpt_category = [parseInt(wordpressCategoryId)];
+      } else {
+        // Pour les pages standard, pas besoin d'ajouter de catégorie
+        // Si nécessaire, vous pouvez ajouter des tags ou d'autres taxonomies ici
+      }
       
+      // Add SEO metadata if available
+      if (announcement.seo_title || announcement.seo_description) {
+        wpPostData.meta = {
+          _yoast_wpseo_title: announcement.seo_title || "",
+          _yoast_wpseo_metadesc: announcement.seo_description || "",
+          _yoast_wpseo_focuskw: announcement.title
+        };
+      }
+      
+      console.log("WordPress post data:", wpPostData);
+
       // Send request to WordPress
-      const response = await fetch(apiUrl, {
+      console.log("Sending POST request to WordPress:", postEndpoint);
+      const response = await fetch(postEndpoint, {
         method: 'POST',
         headers: headers,
-        body: JSON.stringify(postData)
+        body: JSON.stringify(wpPostData)
       });
-
-      console.log("Statut de la réponse:", response.status);
       
-      const responseText = await response.text();
-      console.log("Réponse texte:", responseText);
+      const responseStatus = response.status;
+      console.log("WordPress API response status:", responseStatus);
       
-      // Try to parse as JSON if possible
-      let responseData;
-      try {
-        responseData = JSON.parse(responseText);
-      } catch (e) {
-        // Not JSON, keep as text
-        responseData = responseText;
-      }
-
       if (!response.ok) {
-        console.error("Erreur de publication WordPress:", responseData);
-        throw new Error(`Failed to publish to WordPress: ${response.status} ${response.statusText}`);
+        let errorText;
+        try {
+          // Essayer de lire le corps de la réponse comme JSON
+          const errorData = await response.json();
+          console.error("WordPress API error (JSON):", errorData);
+          errorText = JSON.stringify(errorData);
+        } catch (jsonError) {
+          // Si ce n'est pas du JSON, lire comme texte
+          errorText = await response.text();
+          console.error("WordPress API error (text):", errorText);
+        }
+        
+        return { 
+          success: false, 
+          message: `Erreur lors de la publication WordPress (${responseStatus}): ${errorText}`, 
+          wordpressPostId: null 
+        };
       }
-
-      console.log("Publication WordPress réussie:", responseData);
-      return { 
-        success: true, 
-        message: "Publication WordPress réussie",
-        wordpressPostId: responseData?.id 
-      };
+      
+      // Log the raw response for debugging
+      const rawResponse = await response.text();
+      console.log("Raw WordPress response:", rawResponse);
+      
+      // Parse JSON response
+      let wpResponseData;
+      try {
+        // Re-parse the text content to JSON
+        wpResponseData = JSON.parse(rawResponse);
+        console.log("WordPress response parsed data:", wpResponseData);
+      } catch (jsonError) {
+        console.error("Error parsing WordPress response:", jsonError);
+        return {
+          success: false,
+          message: "Erreur lors de l'analyse de la réponse WordPress",
+          wordpressPostId: null
+        };
+      }
+      
+      // Check if the response contains the WordPress post ID
+      if (wpResponseData && typeof wpResponseData.id === 'number') {
+        console.log("WordPress post ID received:", wpResponseData.id);
+        
+        // Now, if we have images, upload the first one as featured image
+        if (announcement.images && announcement.images.length > 0) {
+          const featuredImageUrl = announcement.images[0];
+          console.log("Uploading featured image from URL:", featuredImageUrl);
+          
+          try {
+            // 1. Download the image from the URL
+            const imageResponse = await fetch(featuredImageUrl);
+            if (!imageResponse.ok) {
+              console.error("Failed to fetch image from URL:", featuredImageUrl);
+              throw new Error("Failed to fetch image");
+            }
+            
+            const imageBlob = await imageResponse.blob();
+            // Extract filename from URL or generate a unique name
+            const fileName = featuredImageUrl.split('/').pop() || `image-${Date.now()}.jpg`;
+            const imageFile = new File([imageBlob], fileName, { 
+              type: imageBlob.type || 'image/jpeg' 
+            });
+            
+            // 2. Upload to WordPress Media Library
+            console.log("Uploading image to WordPress media library");
+            const mediaFormData = new FormData();
+            mediaFormData.append('file', imageFile);
+            mediaFormData.append('title', announcement.title);
+            mediaFormData.append('alt_text', announcement.title);
+            
+            const mediaEndpoint = `${siteUrl}/wp-json/wp/v2/media`;
+            console.log("Media endpoint:", mediaEndpoint);
+            
+            // Create headers for media upload without Content-Type (browser will set it with boundary)
+            const mediaHeaders = new Headers();
+            if (headers.Authorization) {
+              mediaHeaders.append('Authorization', headers.Authorization);
+            }
+            
+            console.log("Sending media upload request...");
+            const mediaResponse = await fetch(mediaEndpoint, {
+              method: 'POST',
+              headers: mediaHeaders,
+              body: mediaFormData
+            });
+            
+            console.log("Media upload response status:", mediaResponse.status);
+            
+            if (!mediaResponse.ok) {
+              const mediaErrorText = await mediaResponse.text();
+              console.error("Media upload error:", mediaErrorText);
+              throw new Error(`Failed to upload media: ${mediaErrorText}`);
+            }
+            
+            const mediaData = await mediaResponse.json();
+            console.log("Media upload response:", mediaData);
+            
+            if (mediaData && mediaData.id) {
+              // 3. Set as featured image for the post
+              console.log("Setting featured image for post", wpResponseData.id, "with media ID", mediaData.id);
+              
+              const updatePostEndpoint = `${postEndpoint}/${wpResponseData.id}`;
+              console.log("Update post endpoint:", updatePostEndpoint);
+              
+              const updateResponse = await fetch(updatePostEndpoint, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                  featured_media: mediaData.id
+                })
+              });
+              
+              console.log("Update post response status:", updateResponse.status);
+              
+              if (!updateResponse.ok) {
+                const updateErrorText = await updateResponse.text();
+                console.error("Error setting featured image:", updateErrorText);
+                // We'll continue even if featured image setting fails
+              } else {
+                console.log("Featured image set successfully");
+              }
+            }
+          } catch (imageError: any) {
+            console.error("Error processing image:", imageError);
+            // We'll continue even if image upload fails
+          }
+        }
+        
+        // Update the announcement in Supabase with the WordPress post ID
+        const { error: updateError } = await supabase
+          .from("announcements")
+          .update({ 
+            wordpress_post_id: wpResponseData.id,
+            is_divipixel: useCustomTaxonomy 
+          })
+          .eq("id", announcement.id);
+          
+        if (updateError) {
+          console.error("Error updating announcement with WordPress post ID:", updateError);
+          toast.error("L'annonce a été publiée sur WordPress mais l'ID n'a pas pu être enregistré dans la base de données");
+        } else {
+          console.log("Successfully updated announcement with WordPress post ID:", wpResponseData.id);
+        }
+        
+        return { 
+          success: true, 
+          message: "Publié avec succès sur WordPress", 
+          wordpressPostId: wpResponseData.id 
+        };
+      } else {
+        console.error("WordPress response does not contain post ID or ID is not a number", wpResponseData);
+        return { 
+          success: false, 
+          message: "La réponse WordPress ne contient pas l'ID du post ou l'ID n'est pas un nombre", 
+          wordpressPostId: null 
+        };
+      }
     } catch (error: any) {
       console.error("Error publishing to WordPress:", error);
       return { 
         success: false, 
-        message: `Erreur lors de la publication WordPress: ${error.message}` 
+        message: `Erreur lors de la publication: ${error.message}`, 
+        wordpressPostId: null 
       };
     } finally {
       setIsPublishing(false);
     }
   };
-
+  
   return {
     publishToWordPress,
     isPublishing

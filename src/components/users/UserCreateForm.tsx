@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -34,20 +33,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Checkbox
-} from "@/components/ui/checkbox";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Email invalide" }),
   name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères" }),
   password: z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères" }),
-  role: z.enum(["admin", "editor", "client"], {
+  role: z.enum(["admin", "client"], {
     required_error: "Veuillez sélectionner un rôle",
   }),
-  clientId: z.string().optional(),
   wordpressConfigId: z.string().optional(),
-  wpConfigIds: z.array(z.string()).optional(),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -67,23 +61,10 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       email: "",
       name: "",
       password: "",
-      role: "editor",
-      clientId: "",
+      role: "client",
       wordpressConfigId: "",
-      wpConfigIds: [],
     },
   });
-
-  // Reset the wpConfigIds field when the role changes
-  useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
-      if (name === "role" && (value.role === "admin" || value.role === "client")) {
-        form.setValue("wpConfigIds", []);
-        form.setValue("wordpressConfigId", "");
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [form]);
 
   const onSubmit = async (values: FormSchema) => {
     try {
@@ -94,46 +75,38 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       
       console.log("Envoi des données:", values);
       
-      // Mise à jour pour gérer le rôle client de la même manière que le rôle admin
-      const needsClientId = values.role === "editor";
-      
-      // Appel de la fonction Edge avec une meilleure gestion des erreurs
-      const { data, error } = await supabase.functions.invoke("create-user", {
+      // Call the Edge function with better error handling
+      const { data, error: functionCallError } = await supabase.functions.invoke("create-user", {
         body: {
           email: values.email,
           name: values.name,
           password: values.password,
           role: values.role,
-          clientId: needsClientId ? values.clientId : null,
-          wordpressConfigId: needsClientId ? values.wordpressConfigId : null,
+          wordpressConfigId: values.role === "client" ? values.wordpressConfigId : null,
         },
       });
       
-      if (error) {
-        console.error("Erreur renvoyée par la fonction Edge:", error);
-        throw new Error(error.message || "Erreur lors de la création de l'utilisateur");
+      if (functionCallError) {
+        console.error("Erreur d'appel à la fonction Edge:", functionCallError);
+        toast.dismiss(toastId);
+        toast.error(`Erreur: ${functionCallError.message || "Échec de la création de l'utilisateur"}`);
+        return;
       }
       
       console.log("Réponse de la fonction Edge:", data);
       
       if (!data || (data as any).error) {
         const errorMessage = (data as any)?.error || "Erreur lors de la création de l'utilisateur";
-        throw new Error(errorMessage);
-      }
-      
-      // Si l'utilisateur est un éditeur et qu'il a des configurations WordPress sélectionnées
-      if (values.role === "editor" && values.clientId && values.wpConfigIds && values.wpConfigIds.length > 0) {
-        // Associer chaque configuration WordPress au client
-        for (const configId of values.wpConfigIds) {
-          const { error: associationError } = await supabase
-            .from('client_wordpress_configs')
-            .insert([{ client_id: values.clientId, wordpress_config_id: configId }]);
-          
-          if (associationError) {
-            console.error("Erreur lors de l'association du client aux configurations WordPress:", associationError);
-            toast.error("Erreur lors de l'association du client aux configurations WordPress");
-          }
+        const errorDetails = (data as any)?.details || "";
+        toast.dismiss(toastId);
+        
+        // Messages d'erreur plus précis pour les cas courants
+        if (errorMessage.includes("L'utilisateur existe déjà")) {
+          toast.error(`Cet email est déjà utilisé par un autre utilisateur. ${errorDetails}`);
+        } else {
+          toast.error(`${errorMessage}${errorDetails ? ` - ${errorDetails}` : ""}`);
         }
+        return;
       }
       
       toast.dismiss(toastId);
@@ -144,15 +117,15 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       toast.dismiss();
       console.error("Error creating user:", error);
       
-      // Message d'erreur plus détaillé pour aider au débogage
+      // More detailed error message for debugging
       let errorMessage = error.message || "Erreur lors de la création de l'utilisateur";
       
-      // Si l'erreur contient des détails supplémentaires
+      // If the error contains additional details
       if (error.details) {
         errorMessage += ` (${error.details})`;
       }
       
-      // Ajouter le statut à l'erreur si disponible
+      // Add status to the error if available
       if (error.status) {
         errorMessage += ` (Status: ${error.status})`;
       }
@@ -237,7 +210,6 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
                     <SelectContent>
                       <SelectItem value="admin">Administrateur</SelectItem>
                       <SelectItem value="client">Client</SelectItem>
-                      <SelectItem value="editor">Éditeur</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -245,108 +217,39 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
               )}
             />
             
-            {form.watch("role") === "editor" && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="clientId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>ID Client</FormLabel>
+            {/* Sélection de configuration WordPress uniquement pour les clients */}
+            {form.watch("role") === "client" && (
+              <FormField
+                control={form.control}
+                name="wordpressConfigId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Site WordPress</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      value={field.value || "none"}
+                    >
                       <FormControl>
-                        <Input placeholder="client123" {...field} />
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner un site WordPress" />
+                        </SelectTrigger>
                       </FormControl>
-                      <FormDescription>
-                        Identifiant unique pour cet espace client
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="wordpressConfigId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Configuration WordPress</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value || "none"}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Sélectionner une configuration" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="none">Aucune configuration</SelectItem>
-                          {configs.map((config) => (
-                            <SelectItem key={config.id} value={config.id}>
-                              {config.name} ({config.site_url})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        Configuration WordPress principale de l'utilisateur
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {configs.length > 0 && (
-                  <FormField
-                    control={form.control}
-                    name="wpConfigIds"
-                    render={() => (
-                      <FormItem>
-                        <div className="mb-4">
-                          <FormLabel>Configurations WordPress additionnelles</FormLabel>
-                          <FormDescription>
-                            Sélectionnez les configurations WordPress à associer à ce client
-                          </FormDescription>
-                        </div>
+                      <SelectContent>
+                        <SelectItem value="none">Aucun site</SelectItem>
                         {configs.map((config) => (
-                          <FormField
-                            key={config.id}
-                            control={form.control}
-                            name="wpConfigIds"
-                            render={({ field }) => {
-                              return (
-                                <FormItem
-                                  key={config.id}
-                                  className="flex flex-row items-start space-x-3 space-y-0 mb-2"
-                                >
-                                  <FormControl>
-                                    <Checkbox
-                                      checked={field.value?.includes(config.id)}
-                                      onCheckedChange={(checked) => {
-                                        return checked
-                                          ? field.onChange([...field.value || [], config.id])
-                                          : field.onChange(
-                                              field.value?.filter(
-                                                (value) => value !== config.id
-                                              )
-                                            )
-                                      }}
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="font-normal">
-                                    {config.name} ({config.site_url})
-                                  </FormLabel>
-                                </FormItem>
-                              )
-                            }}
-                          />
+                          <SelectItem key={config.id} value={config.id}>
+                            {config.name} ({config.site_url})
+                          </SelectItem>
                         ))}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Site WordPress associé à ce client
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </>
+              />
             )}
             
             <DialogFooter>
