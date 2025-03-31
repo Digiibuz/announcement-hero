@@ -119,140 +119,143 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
         </div>
       )}
       
-      {!isClientView && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Nouvelle génération</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="category">Catégorie</Label>
-                  <Select
-                    value={selectedCategory || ""}
-                    onValueChange={(value) => {
-                      setSelectedCategory(value);
-                      setSelectedKeyword(null);
-                    }}
-                  >
-                    <SelectTrigger id="category">
-                      <SelectValue placeholder="Sélectionner une catégorie" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id.toString()}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <Label htmlFor="keyword">Mot-clé (optionnel)</Label>
-                  <Select
-                    value={selectedKeyword || ""}
-                    onValueChange={setSelectedKeyword}
-                    disabled={!selectedCategory || selectedCategoryKeywords.length === 0}
-                  >
-                    <SelectTrigger id="keyword">
-                      <SelectValue placeholder={
-                        !selectedCategory 
-                          ? "Sélectionnez d'abord une catégorie" 
-                          : selectedCategoryKeywords.length === 0
-                            ? "Aucun mot-clé disponible"
-                            : "Sélectionner un mot-clé"
-                      } />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Aucun mot-clé</SelectItem>
-                      {selectedCategoryKeywords.map((keyword) => (
-                        <SelectItem key={keyword.id} value={keyword.id}>
-                          {keyword.keyword}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <Label htmlFor="locality">Localité (optionnel)</Label>
-                  <Select
-                    value={selectedLocality || ""}
-                    onValueChange={setSelectedLocality}
-                    disabled={activeLocalities.length === 0}
-                  >
-                    <SelectTrigger id="locality">
-                      <SelectValue placeholder={
-                        activeLocalities.length === 0
-                          ? "Aucune localité disponible"
-                          : "Sélectionner une localité"
-                      } />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Aucune localité</SelectItem>
-                      {activeLocalities.map((locality) => (
-                        <SelectItem key={locality.id} value={locality.id}>
-                          {locality.name} {locality.region ? `(${locality.region})` : ''}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="flex items-end space-x-2">
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <Label htmlFor="schedule">Planifier</Label>
-                      <Switch
-                        id="schedule"
-                        checked={isScheduled}
-                        onCheckedChange={setIsScheduled}
-                      />
-                    </div>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start text-left font-normal"
-                          disabled={!isScheduled}
-                        >
-                          <Calendar className="mr-2 h-4 w-4" />
-                          {scheduleDate ? format(scheduleDate, 'PPP', { locale: fr }) : "Sélectionner une date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <CalendarComponent
-                          mode="single"
-                          selected={scheduleDate || undefined}
-                          onSelect={setScheduleDate}
-                          initialFocus
-                          disabled={(date) => date < new Date()}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>{isClientView ? "Demander une nouvelle publication" : "Nouvelle génération"}</CardTitle>
+          {isClientView && (
+            <CardDescription>
+              Planifiez ou générez immédiatement de nouvelles publications pour votre site
+            </CardDescription>
+          )}
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="category">Catégorie</Label>
+                <Select
+                  value={selectedCategory || ""}
+                  onValueChange={(value) => {
+                    setSelectedCategory(value);
+                    setSelectedKeyword(null);
+                  }}
+                >
+                  <SelectTrigger id="category">
+                    <SelectValue placeholder="Sélectionner une catégorie" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id.toString()}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               
-              <Separator />
-              
-              <div className="flex justify-end">
-                <Button
-                  onClick={handleCreateGeneration}
-                  disabled={!selectedCategory || isSubmitting || (isScheduled && !scheduleDate)}
+              <div>
+                <Label htmlFor="keyword">Mot-clé (optionnel)</Label>
+                <Select
+                  value={selectedKeyword || ""}
+                  onValueChange={setSelectedKeyword}
+                  disabled={!selectedCategory || selectedCategoryKeywords.length === 0}
                 >
-                  {isSubmitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : null}
-                  {isScheduled ? "Planifier" : "Générer maintenant"}
-                </Button>
+                  <SelectTrigger id="keyword">
+                    <SelectValue placeholder={
+                      !selectedCategory 
+                        ? "Sélectionnez d'abord une catégorie" 
+                        : selectedCategoryKeywords.length === 0
+                          ? "Aucun mot-clé disponible"
+                          : "Sélectionner un mot-clé"
+                    } />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Aucun mot-clé</SelectItem>
+                    {selectedCategoryKeywords.map((keyword) => (
+                      <SelectItem key={keyword.id} value={keyword.id}>
+                        {keyword.keyword}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="locality">Localité (optionnel)</Label>
+                <Select
+                  value={selectedLocality || ""}
+                  onValueChange={setSelectedLocality}
+                  disabled={activeLocalities.length === 0}
+                >
+                  <SelectTrigger id="locality">
+                    <SelectValue placeholder={
+                      activeLocalities.length === 0
+                        ? "Aucune localité disponible"
+                        : "Sélectionner une localité"
+                    } />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Aucune localité</SelectItem>
+                    {activeLocalities.map((locality) => (
+                      <SelectItem key={locality.id} value={locality.id}>
+                        {locality.name} {locality.region ? `(${locality.region})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex items-end space-x-2">
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <Label htmlFor="schedule">Planifier</Label>
+                    <Switch
+                      id="schedule"
+                      checked={isScheduled}
+                      onCheckedChange={setIsScheduled}
+                    />
+                  </div>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal"
+                        disabled={!isScheduled}
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {scheduleDate ? format(scheduleDate, 'PPP', { locale: fr }) : "Sélectionner une date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <CalendarComponent
+                        mode="single"
+                        selected={scheduleDate || undefined}
+                        onSelect={setScheduleDate}
+                        initialFocus
+                        disabled={(date) => date < new Date()}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+            
+            <Separator />
+            
+            <div className="flex justify-end">
+              <Button
+                onClick={handleCreateGeneration}
+                disabled={!selectedCategory || isSubmitting || (isScheduled && !scheduleDate)}
+              >
+                {isSubmitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                {isScheduled ? "Planifier" : "Générer maintenant"}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       
       <Card>
         <CardHeader>
