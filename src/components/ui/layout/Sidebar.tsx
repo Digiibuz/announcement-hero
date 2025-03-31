@@ -62,6 +62,19 @@ const Sidebar = () => {
               <FileText className="w-5 h-5 mr-3" />
               <span>Publications Divipixel</span>
             </NavLink>
+            
+            <NavLink
+              to="/divipixel-publications/create"
+              className={({ isActive }) => cn(
+                "flex items-center px-4 py-2.5 text-base transition-all rounded-md group mb-2 bg-amber-500 hover:bg-amber-600 text-white",
+                isActive 
+                  ? "bg-amber-600" 
+                  : ""
+              )}
+            >
+              <FileText className="w-5 h-5 mr-3" />
+              <span>Créer une publication</span>
+            </NavLink>
           </div>
 
           {isAdmin && (

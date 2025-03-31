@@ -74,7 +74,7 @@ const DivipixelPublications = () => {
     <PageLayout
       title="Publications Divipixel"
       titleAction={
-        <Button onClick={() => navigate("/create-divipixel")} className="flex items-center gap-2">
+        <Button onClick={() => navigate("/divipixel-publications/create")} className="flex items-center gap-2">
           <Plus className="h-4 w-4" />
           Créer une publication
         </Button>
@@ -94,7 +94,7 @@ const DivipixelPublications = () => {
               </CardDescription>
             </CardHeader>
             <CardFooter>
-              <Button onClick={() => navigate("/create-divipixel")} className="flex items-center gap-2">
+              <Button onClick={() => navigate("/divipixel-publications/create")} className="flex items-center gap-2">
                 <Plus className="h-4 w-4" />
                 Créer une publication
               </Button>
@@ -124,7 +124,7 @@ const DivipixelPublications = () => {
                     <Eye className="h-3.5 w-3.5" />
                     Voir
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => navigate(`/edit-divipixel/${publication.id}`)} className="flex items-center gap-1.5">
+                  <Button variant="outline" size="sm" onClick={() => navigate(`/divipixel-publications/edit/${publication.id}`)} className="flex items-center gap-1.5">
                     <Edit className="h-3.5 w-3.5" />
                     Modifier
                   </Button>
