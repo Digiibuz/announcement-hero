@@ -126,21 +126,23 @@ const AppRoutes = () => {
   );
 };
 
-// L'ordre des providers est important pour que les hooks fonctionnent correctement
-const App = () => (
-  <BrowserRouter>
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <TooltipProvider>
+// The App component is where we correctly set up the providers
+function App() {
+  return (
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AuthProvider>
-            <AppRoutes />
-            <Toaster />
-            <SonnerToaster />
+            <TooltipProvider>
+              <AppRoutes />
+              <Toaster />
+              <SonnerToaster />
+            </TooltipProvider>
           </AuthProvider>
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  </BrowserRouter>
-);
+        </ThemeProvider>
+      </QueryClientProvider>
+    </BrowserRouter>
+  );
+}
 
 export default App;

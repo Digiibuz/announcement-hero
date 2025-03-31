@@ -21,12 +21,7 @@ import { fr } from "date-fns/locale";
 import { useWordPressCategories } from "@/hooks/useWordPressCategories";
 import { useWordPressDivipixelCategories } from "@/hooks/useWordPressDivipixelCategories";
 
-type Category = {
-  id: string;
-  name: string;
-};
-
-type FormData = {
+export type AnnouncementFormData = {
   title: string;
   description: string;
   status: string;
@@ -39,9 +34,9 @@ type FormData = {
 };
 
 interface AnnouncementFormProps {
-  onSubmit: (data: FormData) => void;
+  onSubmit: (data: AnnouncementFormData) => void;
   isSubmitting?: boolean;
-  initialValues?: FormData;
+  initialValues?: Partial<AnnouncementFormData>;
   onCancel?: () => void;
   isMobile?: boolean;
   isDivipixel?: boolean;
@@ -146,22 +141,9 @@ const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <DescriptionField 
-                      value={field.value || ''} 
-                      onChange={field.onChange}
-                      isMobile={isMobile}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+            <DescriptionField 
+              form={form} 
+              isForDiviPixel={isDivipixel}
             />
 
             <FormField
