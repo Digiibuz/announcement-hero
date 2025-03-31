@@ -115,7 +115,7 @@ export const useTomEGenerator = () => {
       const auth = btoa(`${configData.app_username}:${configData.app_password}`);
 
       // Préparer les données pour l'API WordPress
-      const postData = {
+      const postData: any = {
         title: content.title,
         content: content.content,
         status,
@@ -128,7 +128,7 @@ export const useTomEGenerator = () => {
 
       // Ajouter la date de publication si nécessaire
       if (status === 'future' && publishDate) {
-        postData.date = publishDate;
+        postData.date_gmt = publishDate;
       }
 
       // Normaliser l'URL

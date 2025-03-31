@@ -1,5 +1,4 @@
 
-
 // Types définis pour les annonces
 
 // Type pour les catégories Divi Pixel (dipi_cpt_category)
@@ -35,6 +34,8 @@ export interface Announcement {
   seo_title: string | null;
   seo_description: string | null;
   seo_slug: string | null;
+  // Add the wordpress_category_name field as optional
+  wordpress_category_name?: string;
 }
 
 // Structure d'une nouvelle annonce lors de la création
