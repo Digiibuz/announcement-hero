@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageSquare, Clock } from "lucide-react";
 import { useTickets } from "@/hooks/useTickets";
+import { useTicketNotifications } from "@/hooks/useTicketNotifications";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import TicketDetails from "@/components/support/TicketDetails";
@@ -13,7 +13,13 @@ import TicketDetails from "@/components/support/TicketDetails";
 const TicketList = () => {
   const { user } = useAuth();
   const { data: tickets, isLoading, error } = useTickets(user?.id);
+  const { markTicketAsRead } = useTicketNotifications();
   const [selectedTicket, setSelectedTicket] = React.useState<string | null>(null);
+
+  const handleSelectTicket = (ticketId: string) => {
+    setSelectedTicket(ticketId);
+    markTicketAsRead(ticketId);
+  };
 
   if (isLoading) {
     return <p className="text-center py-8">Chargement de vos tickets...</p>;
@@ -100,7 +106,7 @@ const TicketList = () => {
                 <Button
                   variant="outline"
                   className="w-full flex items-center justify-center"
-                  onClick={() => setSelectedTicket(ticket.id)}
+                  onClick={() => handleSelectTicket(ticket.id)}
                 >
                   <MessageSquare className="h-4 w-4 mr-2" />
                   Voir les détails et répondre

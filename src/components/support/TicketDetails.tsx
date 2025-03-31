@@ -1,5 +1,4 @@
-
-import React from "react";
+import React, { useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useTicketDetails, useReplyToTicket, useUpdateTicketStatus } from "@/hooks/useTickets";
+import { useTicketNotifications } from "@/hooks/useTicketNotifications";
 import { toast } from "sonner";
 
 interface TicketDetailsProps {
@@ -27,6 +27,13 @@ const TicketDetails: React.FC<TicketDetailsProps> = ({ ticketId }) => {
   const [reply, setReply] = React.useState("");
   const { mutate: sendReply, isPending: isSendingReply } = useReplyToTicket();
   const { mutate: updateStatus, isPending: isUpdatingStatus } = useUpdateTicketStatus();
+  const { markTicketAsRead } = useTicketNotifications();
+
+  useEffect(() => {
+    if (ticket && !isAdmin) {
+      markTicketAsRead(ticketId);
+    }
+  }, [ticket, ticketId, isAdmin, markTicketAsRead]);
 
   if (isLoading || !ticket) {
     return <p className="text-center py-8">Chargement des détails du ticket...</p>;
@@ -77,7 +84,6 @@ const TicketDetails: React.FC<TicketDetailsProps> = ({ ticketId }) => {
         onSuccess: () => {
           setReply("");
           
-          // If admin is responding and ticket is open, mark as in-progress
           if (isAdmin && ticket.status === "open") {
             updateStatus(
               { id: ticketId, status: "in_progress" },
