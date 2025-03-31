@@ -97,7 +97,7 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
       checkConnection(effectiveConfigId);
       setLastChecked(new Date());
     }
-  }, [effectiveConfigId, status]);
+  }, [effectiveConfigId, status, checkConnection]);
 
   const handleSync = async () => {
     try {
@@ -398,50 +398,6 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
       )}
     </div>
   );
-  
-  function getStatusContent() {
-    if (isChecking) {
-      return (
-        <Badge variant="outline" className="bg-slate-100">
-          <Loader2 className="h-3 w-3 animate-spin mr-1" />
-          <span>Vérification...</span>
-        </Badge>
-      );
-    }
-
-    switch (status) {
-      case "connected":
-        return (
-          <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-            <CheckCircle className="h-3 w-3 mr-1" />
-            <span>Connecté</span>
-          </Badge>
-        );
-      case "disconnected":
-        return (
-          <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">
-            <XCircle className="h-3 w-3 mr-1" />
-            <span>Déconnecté</span>
-          </Badge>
-        );
-      default:
-        return (
-          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">
-            <AlertCircle className="h-3 w-3 mr-1" />
-            <span>Statut inconnu</span>
-          </Badge>
-        );
-    }
-  }
-
-  function formatTime(date: Date | null) {
-    if (!date) return "";
-    return new Intl.DateTimeFormat('fr-FR', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      second: '2-digit'
-    }).format(date);
-  }
 };
 
 export default WordPressConnectionStatus;
