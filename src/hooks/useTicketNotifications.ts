@@ -1,14 +1,15 @@
 
 import { useState, useEffect } from "react";
-import { useTickets, Ticket } from "./useTickets";
+import { useTickets, useAllTickets, Ticket } from "./useTickets";
 import { useAuth } from "@/context/AuthContext";
 
 // Clé pour le stockage local des tickets consultés
 const READ_TICKETS_STORAGE_KEY = "digibuz_read_tickets";
 
 export const useTicketNotifications = () => {
-  const { user } = useAuth();
-  const { data: tickets = [] } = useTickets(user?.id);
+  const { user, isAdmin } = useAuth();
+  const { data: userTickets = [] } = useTickets(user?.id);
+  const { data: allTickets = [] } = useAllTickets();
   const [unreadCount, setUnreadCount] = useState(0);
   const [readTicketIds, setReadTicketIds] = useState<Record<string, Date>>({});
 
@@ -37,8 +38,8 @@ export const useTicketNotifications = () => {
     }
   }, [user?.id]);
 
-  // Vérifier si un ticket a des réponses non lues
-  const checkUnreadResponses = (tickets: Ticket[], readIds: Record<string, Date>) => {
+  // Vérifier si un ticket a des réponses non lues pour un client
+  const checkUnreadResponsesForClient = (tickets: Ticket[], readIds: Record<string, Date>) => {
     let count = 0;
     
     tickets.forEach(ticket => {
@@ -64,12 +65,53 @@ export const useTicketNotifications = () => {
     return count;
   };
 
+  // Vérifier les tickets non lus pour un admin
+  const checkUnreadTicketsForAdmin = (tickets: Ticket[], readIds: Record<string, Date>) => {
+    let count = 0;
+    
+    tickets.forEach(ticket => {
+      if (ticket.status === "open") {
+        // Vérifier si le ticket a été lu par l'admin
+        const lastReadDate = readIds[ticket.id] ? new Date(readIds[ticket.id]) : null;
+        const ticketDate = new Date(ticket.created_at);
+        
+        // Si le ticket n'a jamais été ouvert par l'admin ou si le ticket a été mis à jour après la dernière lecture
+        if (!lastReadDate || ticketDate > lastReadDate) {
+          // Si le ticket a des réponses, vérifier la dernière réponse
+          if (ticket.responses && ticket.responses.length > 0) {
+            const lastResponse = ticket.responses[ticket.responses.length - 1];
+            const lastResponseDate = new Date(lastResponse.created_at);
+            
+            // Si la dernière réponse est du client et qu'elle est plus récente que la dernière lecture
+            if (!lastResponse.is_admin && (!lastReadDate || lastResponseDate > lastReadDate)) {
+              count++;
+            }
+          } else {
+            // Si c'est un nouveau ticket sans réponse
+            count++;
+          }
+        }
+      }
+    });
+
+    return count;
+  };
+
   useEffect(() => {
-    if (tickets.length > 0 && user?.id) {
-      const count = checkUnreadResponses(tickets, readTicketIds);
+    if (user?.id) {
+      let count = 0;
+      
+      if (isAdmin) {
+        // Pour les admins, vérifier tous les tickets
+        count = checkUnreadTicketsForAdmin(allTickets, readTicketIds);
+      } else {
+        // Pour les clients, vérifier uniquement leurs tickets
+        count = checkUnreadResponsesForClient(userTickets, readTicketIds);
+      }
+      
       setUnreadCount(count);
     }
-  }, [tickets, readTicketIds, user?.id]);
+  }, [userTickets, allTickets, readTicketIds, user?.id, isAdmin]);
 
   // Fonction pour marquer un ticket comme lu
   const markTicketAsRead = (ticketId: string) => {

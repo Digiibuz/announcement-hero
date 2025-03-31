@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import PageLayout from "@/components/ui/layout/PageLayout";
@@ -18,10 +19,20 @@ const Support = () => {
     >
       <div className="max-w-5xl mx-auto">
         {isAdmin ? (
-          <Tabs defaultValue="all" className="w-full">
+          <Tabs defaultValue="open" className="w-full">
             <TabsList className="mb-4">
               <TabsTrigger value="all">Tous les tickets</TabsTrigger>
-              <TabsTrigger value="open">Tickets ouverts</TabsTrigger>
+              <TabsTrigger value="open" className="relative">
+                Tickets ouverts
+                {unreadCount > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="ml-2 px-1.5 py-0.5 text-xs"
+                  >
+                    {unreadCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="closed">Tickets résolus</TabsTrigger>
             </TabsList>
             <TabsContent value="all">
