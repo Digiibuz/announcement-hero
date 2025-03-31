@@ -31,7 +31,7 @@ const Announcements = () => {
   // Grid view is now the only view mode, so no need for state
   const viewMode = "grid";
   
-  // Get WordPress categories
+  // Get Divipixel categories
   const { categories, refetch: refetchCategories } = useWordPressCategories();
 
   // Initial load of categories
@@ -61,7 +61,7 @@ const Announcements = () => {
         return [];
       }
       
-      // Map WordPress category IDs to names and strip HTML from descriptions for list view only
+      // Map Divipixel category IDs to names and strip HTML from descriptions for list view only
       return data.map(announcement => {
         // Create a new object with all properties from announcement
         const processed: Announcement = { ...announcement } as Announcement;
@@ -71,7 +71,7 @@ const Announcements = () => {
           processed.description = stripHtmlTags(processed.description);
         }
         
-        // Add WordPress category name if available
+        // Add Divipixel category name if available
         if (announcement.wordpress_category_id && categories) {
           const category = categories.find(
             c => c.id.toString() === announcement.wordpress_category_id

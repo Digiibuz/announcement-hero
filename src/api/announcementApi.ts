@@ -72,8 +72,8 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
         ? wpConfig.site_url.slice(0, -1)
         : wpConfig.site_url;
       
-      // Construct the WordPress API URL for posts
-      const apiUrl = `${siteUrl}/wp-json/wp/v2/posts/${announcement.wordpress_post_id}`;
+      // Construct the WordPress API URL for Divipixel custom post type
+      const apiUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt/${announcement.wordpress_post_id}`;
       console.log("WordPress deletion URL:", apiUrl);
       
       // Prepare headers with authentication

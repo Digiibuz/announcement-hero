@@ -62,11 +62,11 @@ const CreateAnnouncement = () => {
       };
       
       if ((data.status === 'published' || data.status === 'scheduled') && data.wordpressCategory && user?.id) {
-        console.log("Tentative de publication sur WordPress...");
+        console.log("Tentative de publication sur WordPress (Divipixel)...");
         wordpressResult = await publishToWordPress(newAnnouncement as Announcement, data.wordpressCategory, user.id);
         
         // WordPress post ID is now updated directly in the publishToWordPress function
-        console.log("Résultat de la publication WordPress:", wordpressResult);
+        console.log("Résultat de la publication WordPress (Divipixel):", wordpressResult);
       }
       
       if (wordpressResult.success) {

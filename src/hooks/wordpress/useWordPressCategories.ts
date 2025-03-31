@@ -21,7 +21,7 @@ export const useWordPressCategories = () => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log("Fetching categories for WordPress config ID:", user.wordpressConfigId);
+      console.log("Fetching Divipixel categories for WordPress config ID:", user.wordpressConfigId);
 
       // First get the WordPress config for the user
       const { data: wpConfig, error: wpConfigError } = await supabase
@@ -50,8 +50,8 @@ export const useWordPressCategories = () => {
       // Normaliser l'URL (supprimer les doubles slashes)
       const siteUrl = wpConfig.site_url.replace(/([^:]\/)\/+/g, "$1");
 
-      // Construct the WordPress API URL
-      const apiUrl = `${siteUrl}/wp-json/wp/v2/categories`;
+      // Construct the WordPress API URL for Divipixel categories
+      const apiUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt_category`;
       
       // Prepare headers
       const headers: Record<string, string> = {
@@ -70,7 +70,7 @@ export const useWordPressCategories = () => {
         console.log("No authentication credentials provided");
       }
       
-      console.log("Fetching categories from:", apiUrl);
+      console.log("Fetching Divipixel categories from:", apiUrl);
       
       // Ajouter un délai d'expiration à la requête
       const controller = new AbortController();
@@ -93,11 +93,11 @@ export const useWordPressCategories = () => {
             throw new Error("Identifiants incorrects ou autorisations insuffisantes");
           }
           
-          throw new Error(`Failed to fetch categories: ${response.statusText}`);
+          throw new Error(`Failed to fetch Divipixel categories: ${response.statusText}`);
         }
   
         const categoriesData = await response.json();
-        console.log("Categories fetched successfully:", categoriesData.length);
+        console.log("Divipixel categories fetched successfully:", categoriesData.length);
         setCategories(categoriesData);
       } catch (fetchError: any) {
         if (fetchError.name === 'AbortError') {
@@ -106,9 +106,9 @@ export const useWordPressCategories = () => {
         throw fetchError;
       }
     } catch (err: any) {
-      console.error("Error fetching WordPress categories:", err);
+      console.error("Error fetching Divipixel categories:", err);
       
-      let errorMessage = err.message || "Failed to fetch WordPress categories";
+      let errorMessage = err.message || "Failed to fetch Divipixel categories";
       
       // Améliorer les messages d'erreur
       if (err.message.includes("Failed to fetch")) {
@@ -120,7 +120,7 @@ export const useWordPressCategories = () => {
       }
       
       setError(errorMessage);
-      toast.error("Erreur lors de la récupération des catégories WordPress");
+      toast.error("Erreur lors de la récupération des catégories Divipixel");
     } finally {
       setIsLoading(false);
     }

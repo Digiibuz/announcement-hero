@@ -27,7 +27,7 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
         name="wordpressCategory"
         render={({ field }) => (
           <FormItem>
-            <Label>Catégorie WordPress</Label>
+            <Label>Catégorie Divipixel</Label>
             <Select
               onValueChange={field.onChange}
               defaultValue={field.value}
