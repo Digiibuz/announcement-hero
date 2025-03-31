@@ -24,18 +24,19 @@ export const useCategoryKeywords = (wordpressConfigId: string, categoryId: strin
       
       console.info(`Fetching keywords for category ${categoryId} in WordPress config ${wordpressConfigId}`);
       
+      // Correction de l'appel Supabase - Vérification explicite que category_id est une chaîne de caractères
       const { data, error } = await supabase
         .from('categories_keywords')
         .select('*')
         .eq('wordpress_config_id', wordpressConfigId)
-        .eq('category_id', categoryId)
+        .eq('category_id', categoryId.toString())
         .order('created_at', { ascending: true });
       
       if (error) {
         throw new Error(`Erreur lors de la récupération des mots-clés: ${error.message}`);
       }
       
-      console.info(`Successfully fetched ${data.length} keywords`);
+      console.info(`Successfully fetched ${data?.length || 0} keywords`);
       setKeywords(data || []);
     } catch (err: any) {
       console.error('Erreur lors de la récupération des mots-clés:', err);
@@ -70,9 +71,9 @@ export const useCategoryKeywords = (wordpressConfigId: string, categoryId: strin
         .from('categories_keywords')
         .select('id')
         .eq('wordpress_config_id', wordpressConfigId)
-        .eq('category_id', categoryId)
+        .eq('category_id', categoryId.toString())
         .eq('keyword', keywordText)
-        .single();
+        .maybeSingle();
       
       if (existingKeyword) {
         toast.error("Ce mot-clé existe déjà pour cette catégorie");
@@ -84,7 +85,7 @@ export const useCategoryKeywords = (wordpressConfigId: string, categoryId: strin
         .from('categories_keywords')
         .insert({
           wordpress_config_id: wordpressConfigId,
-          category_id: categoryId,
+          category_id: categoryId.toString(),
           keyword: keywordText
         })
         .select('*')
@@ -148,7 +149,7 @@ export const useCategoryKeywords = (wordpressConfigId: string, categoryId: strin
         throw error;
       }
       
-      console.info(`Successfully fetched ${data?.length} total keywords`);
+      console.info(`Successfully fetched ${data?.length || 0} total keywords`);
       return data || [];
     } catch (err: any) {
       console.error("Error fetching all keywords:", err);

@@ -1,9 +1,9 @@
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import PageLayout from "@/components/ui/layout/PageLayout";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, RefreshCw, Loader2 } from "lucide-react";
 import { 
   Select, 
   SelectContent, 
@@ -12,24 +12,84 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import AccessDenied from "@/components/ui/AccessDenied";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
+import { useWordPressCategories } from "@/hooks/useWordPressCategories";
+import { useLocalities } from "@/hooks/useLocalities";
+import { useCategoryKeywords } from "@/hooks/useCategoryKeywords";
+import KeywordsManager from "@/components/tom-e/KeywordsManager";
+import LocalitiesManager from "@/components/tom-e/LocalitiesManager";
+import ContentGenerator from "@/components/tom-e/ContentGenerator";
+import { ContentGeneratorProps } from "@/types/tom-e";
 
 const TomEManagement = () => {
   const { isAdmin, isClient } = useAuth();
   const { configs, isLoading: isLoadingConfigs } = useWordPressConfigs();
-  const [selectedConfigId, setSelectedConfigId] = React.useState<string>("");
+  const [selectedConfigId, setSelectedConfigId] = useState<string>("");
+  const [activeTab, setActiveTab] = useState("generator");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  const { categories, isLoading: isLoadingCategories } = useWordPressCategories(selectedConfigId);
+  const { localities, isLoading: isLoadingLocalities } = useLocalities();
+  
+  // Préchargement des mots-clés pour toutes les catégories
+  const { fetchAllKeywordsForWordPressConfig, isLoading: isLoadingKeywords } = 
+    useCategoryKeywords(selectedConfigId, "");
+  const [keywords, setKeywords] = useState<any[]>([]);
+  const [isLoadingAllKeywords, setIsLoadingAllKeywords] = useState(false);
+
+  useEffect(() => {
+    // Définir la configuration par défaut si disponible
+    if (configs && configs.length > 0 && !selectedConfigId) {
+      setSelectedConfigId(configs[0].id);
+    }
+  }, [configs, selectedConfigId]);
+
+  useEffect(() => {
+    // Charger tous les mots-clés pour la configuration sélectionnée
+    const loadAllKeywords = async () => {
+      if (!selectedConfigId) return;
+      
+      try {
+        setIsLoadingAllKeywords(true);
+        const allKeywords = await fetchAllKeywordsForWordPressConfig(selectedConfigId);
+        setKeywords(allKeywords || []);
+      } catch (error) {
+        console.error("Erreur lors du chargement des mots-clés:", error);
+      } finally {
+        setIsLoadingAllKeywords(false);
+      }
+    };
+    
+    loadAllKeywords();
+  }, [selectedConfigId, fetchAllKeywordsForWordPressConfig]);
   
   const handleConfigChange = (configId: string) => {
     setSelectedConfigId(configId);
   };
   
   const handleRefresh = async () => {
-    toast.info("Rafraîchissement des données...");
+    setIsRefreshing(true);
+    try {
+      // Recharger toutes les données nécessaires
+      await Promise.all([
+        // Les catégories et localités sont rechargées automatiquement via leurs hooks
+        fetchAllKeywordsForWordPressConfig(selectedConfigId).then(k => setKeywords(k || []))
+      ]);
+      
+      toast.success("Données rafraîchies avec succès");
+    } catch (error) {
+      console.error("Erreur lors du rafraîchissement des données:", error);
+      toast.error("Erreur lors du rafraîchissement des données");
+    } finally {
+      setIsRefreshing(false);
+    }
   };
   
+  const isLoading = isLoadingConfigs || isLoadingCategories || isLoadingLocalities || isLoadingAllKeywords;
   const hasAccess = isAdmin || isClient;
   
   if (!hasAccess) {
@@ -40,19 +100,30 @@ const TomEManagement = () => {
     );
   }
   
+  const contentGeneratorProps: ContentGeneratorProps = {
+    wordpressConfigId: selectedConfigId,
+    categories: categories || [],
+    localities: localities || [],
+    keywords: keywords || []
+  };
+  
   return (
     <PageLayout 
       title="Tom-E - Générateur de contenu"
-      description="Fonctionnalité temporairement indisponible"
+      description="Créez et publiez du contenu optimisé pour le SEO"
       titleAction={
         selectedConfigId && (
           <Button 
             variant="outline" 
             size="sm" 
             onClick={handleRefresh} 
-            disabled={false}
+            disabled={isRefreshing}
           >
-            <RefreshCw className="h-4 w-4 mr-2" />
+            {isRefreshing ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
             Rafraîchir
           </Button>
         )
@@ -60,7 +131,7 @@ const TomEManagement = () => {
     >
       <AnimatedContainer delay={200}>
         <div className="space-y-6">
-          {isAdmin && configs && configs.length > 0 && (
+          {configs && configs.length > 0 && (
             <div className="w-full max-w-xs">
               <Select
                 value={selectedConfigId}
@@ -81,18 +152,58 @@ const TomEManagement = () => {
             </div>
           )}
           
-          <Card>
-            <CardContent className="p-6 text-center">
-              <AlertCircle className="h-10 w-10 text-amber-500 mx-auto mb-4" />
-              <h2 className="text-lg font-medium mb-2">Fonctionnalité temporairement indisponible</h2>
-              <p className="text-muted-foreground mb-4">
-                Le générateur de contenu Tom-E est en cours de maintenance. Nous travaillons à résoudre les problèmes de connexion à la base de données.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Veuillez réessayer plus tard ou contactez l'administrateur système.
-              </p>
-            </CardContent>
-          </Card>
+          {selectedConfigId ? (
+            isLoading ? (
+              <Card>
+                <CardContent className="p-6 flex justify-center items-center min-h-[300px]">
+                  <div className="text-center">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+                    <p className="text-muted-foreground">Chargement des données...</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="mb-4">
+                  <TabsTrigger value="generator">Générateur</TabsTrigger>
+                  <TabsTrigger value="keywords">Mots-clés</TabsTrigger>
+                  <TabsTrigger value="localities">Localités</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="generator">
+                  <ContentGenerator {...contentGeneratorProps} />
+                </TabsContent>
+                
+                <TabsContent value="keywords">
+                  <KeywordsManager 
+                    wordpressConfigId={selectedConfigId} 
+                    categories={categories || []} 
+                  />
+                </TabsContent>
+                
+                <TabsContent value="localities">
+                  <LocalitiesManager />
+                </TabsContent>
+              </Tabs>
+            )
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>Aucune configuration WordPress</CardTitle>
+                <CardDescription>
+                  Veuillez sélectionner une configuration WordPress pour continuer
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6 text-center">
+                <AlertCircle className="h-10 w-10 text-amber-500 mx-auto mb-4" />
+                <p className="text-muted-foreground">
+                  {configs && configs.length === 0 
+                    ? "Aucune configuration WordPress n'est disponible. Veuillez en créer une dans la section WordPress."
+                    : "Veuillez sélectionner une configuration WordPress dans la liste déroulante ci-dessus."}
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </AnimatedContainer>
     </PageLayout>

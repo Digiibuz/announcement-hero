@@ -17,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2, AlertCircle } from "lucide-react";
 import { useLocalities } from "@/hooks/useLocalities";
 import { 
   AlertDialog,
@@ -31,25 +31,25 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const LocalitiesManager = () => {
-  const {
-    localities,
-    isLoading,
-    isSubmitting,
-    createLocality,
-    deleteLocality,
-  } = useLocalities();
-  
-  const [newLocalityName, setNewLocalityName] = useState("");
+  const [newLocality, setNewLocality] = useState("");
   const [deleteLocalityId, setDeleteLocalityId] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
+  const {
+    localities,
+    isLoading,
+    error,
+    addLocality,
+    deleteLocality
+  } = useLocalities();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newLocalityName.trim()) return;
+    if (!newLocality.trim()) return;
     
     try {
-      await createLocality(newLocalityName.trim());
-      setNewLocalityName("");
+      await addLocality(newLocality.trim());
+      setNewLocality("");
     } catch (error) {
       // L'erreur est déjà gérée dans le hook
     }
@@ -79,20 +79,22 @@ const LocalitiesManager = () => {
         <CardHeader>
           <CardTitle>Gestion des localités</CardTitle>
           <CardDescription>
-            Ajoutez ou supprimez des localités pour la génération de contenu
+            Ajoutez les villes et localités pour lesquelles vous souhaitez générer du contenu
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="flex items-center gap-2 mb-6">
             <Input
-              placeholder="Nouvelle localité (ex: Paris, Lyon, etc.)"
-              value={newLocalityName}
-              onChange={(e) => setNewLocalityName(e.target.value)}
+              placeholder="Nouvelle localité (ex: Paris, Lyon, Marseille...)"
+              value={newLocality}
+              onChange={(e) => setNewLocality(e.target.value)}
               className="flex-1"
-              disabled={isSubmitting}
             />
-            <Button type="submit" disabled={!newLocalityName.trim() || isSubmitting}>
-              {isSubmitting ? (
+            <Button 
+              type="submit" 
+              disabled={!newLocality.trim() || isLoading}
+            >
+              {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
                 <Plus className="h-4 w-4 mr-2" />
@@ -105,6 +107,11 @@ const LocalitiesManager = () => {
             <div className="flex justify-center p-4">
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
+          ) : error ? (
+            <div className="text-center py-4 text-destructive">
+              <AlertCircle className="h-5 w-5 inline-block mr-2" />
+              Erreur lors du chargement des localités
+            </div>
           ) : localities.length === 0 ? (
             <div className="text-center py-4 text-muted-foreground">
               Aucune localité n'a été ajoutée
@@ -113,7 +120,7 @@ const LocalitiesManager = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nom</TableHead>
+                  <TableHead>Localité</TableHead>
                   <TableHead className="w-24 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>

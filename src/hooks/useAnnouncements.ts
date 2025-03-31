@@ -1,61 +1,55 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Announcement, AnnouncementStatus } from "@/types/announcement";
-import { toast } from "sonner";
+import { Announcement, FilterState } from "@/types/announcement";
 
-interface UseAnnouncementsParams {
-  status?: AnnouncementStatus | null;
-  search?: string;
-  isPremium?: boolean;
-  wordpressCategory?: string;
-}
+type AnnouncementResult = {
+  announcements: Announcement[];
+  isLoading: boolean;
+  error: Error | null;
+  refetch: () => Promise<void>;
+};
 
-export const useAnnouncements = (params: UseAnnouncementsParams = {}) => {
+export const useAnnouncements = (filter: FilterState): AnnouncementResult => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   const fetchAnnouncements = async () => {
     try {
       setIsLoading(true);
-      
+      setError(null);
+
       let query = supabase
-        .from("announcements")
-        .select(`
-          *,
-          profiles:user_id (name, email)
-        `)
-        .order("created_at", { ascending: false });
-      
-      // Apply filters
-      if (params.status) {
-        query = query.eq("status", params.status);
+        .from('announcements')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      // Filtrer par catégorie
+      if (filter.category) {
+        query = query.eq('wordpress_category_id', filter.category);
       }
-      
-      // Use a simplified approach for text filters
-      if (params.search && params.search.trim() !== '') {
-        query = query.ilike("title", `%${params.search}%`);
+
+      // Filtrer par statut
+      if (filter.status && filter.status !== 'all') {
+        query = query.eq('status', filter.status);
       }
-      
-      if (params.isPremium === true) {
-        query = query.eq("is_premium", true);
+
+      // Filtrer par texte de recherche
+      if (filter.searchText) {
+        query = query.or(`title.ilike.%${filter.searchText}%,description.ilike.%${filter.searchText}%`);
       }
-      
-      if (params.wordpressCategory && params.wordpressCategory.trim() !== '') {
-        query = query.eq("wordpress_category", params.wordpressCategory);
-      }
-      
-      const { data, error } = await query;
-      
-      if (error) {
-        throw error;
+
+      const { data, error: fetchError } = await query;
+
+      if (fetchError) {
+        throw new Error(`Error fetching announcements: ${fetchError.message}`);
       }
 
       setAnnouncements(data || []);
-    } catch (error: any) {
-      console.error("Erreur lors de la récupération des annonces:", error);
-      toast.error(`Erreur: ${error.message}`);
-      setAnnouncements([]);
+    } catch (err) {
+      console.error("Error in useAnnouncements:", err);
+      setError(err instanceof Error ? err : new Error('An unknown error occurred'));
     } finally {
       setIsLoading(false);
     }
@@ -63,18 +57,12 @@ export const useAnnouncements = (params: UseAnnouncementsParams = {}) => {
 
   useEffect(() => {
     fetchAnnouncements();
-  // Using explicit dependency list to avoid TypeScript issue
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    params.status, 
-    params.search, 
-    params.isPremium, 
-    params.wordpressCategory
-  ]);
+  }, [filter.category, filter.status, filter.searchText]);
 
   return {
     announcements,
     isLoading,
-    refetch: fetchAnnouncements
+    error,
+    refetch: fetchAnnouncements,
   };
 };
