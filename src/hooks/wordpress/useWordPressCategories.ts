@@ -53,6 +53,8 @@ export const useWordPressCategories = () => {
       // Construct the WordPress API URL for Divipixel categories
       const apiUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt_category`;
       
+      console.log("Fetching Divipixel categories from:", apiUrl);
+      
       // Prepare headers
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
@@ -69,8 +71,6 @@ export const useWordPressCategories = () => {
       } else {
         console.log("No authentication credentials provided");
       }
-      
-      console.log("Fetching Divipixel categories from:", apiUrl);
       
       // Ajouter un délai d'expiration à la requête
       const controller = new AbortController();
