@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { WordPressConfig } from "@/types/wordpress";
 import { Loader2, Pencil, Trash2, Users } from "lucide-react";
 import WordPressConfigForm from "./WordPressConfigForm";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
