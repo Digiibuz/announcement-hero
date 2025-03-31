@@ -1,3 +1,4 @@
+
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
@@ -192,14 +193,21 @@ const AppRoutes = () => {
         {/* Fallback route */}
         <Route path="*" element={<NotFound />} />
         
-        {/* Ajouter la route pour le générateur de contenu simple */}
-        <Route path="/generateur-contenu" element={<SimpleContentGenerator />} />
+        {/* Route for simple content generator */}
+        <Route 
+          path="/generateur-contenu" 
+          element={
+            <AdminRoute>
+              <SimpleContentGenerator />
+            </AdminRoute>
+          } 
+        />
       </Routes>
     </Suspense>
   );
 };
 
-// L'ordre des providers est important pour que les hooks fonctionnent correctement
+// The order of providers is important for hooks to work correctly
 const App = () => (
   <BrowserRouter>
     <QueryClientProvider client={queryClient}>

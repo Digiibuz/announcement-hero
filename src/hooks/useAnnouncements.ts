@@ -27,12 +27,12 @@ export const useAnnouncements = (params: UseAnnouncementsParams = {}) => {
         `)
         .order("created_at", { ascending: false });
       
-      // Appliquer les filtres
+      // Apply filters
       if (params.status) {
         query = query.eq("status", params.status);
       }
       
-      // Utiliser une approche simplifiée pour les filtres de texte
+      // Use a simplified approach for text filters
       if (params.search && params.search.trim() !== '') {
         query = query.ilike("title", `%${params.search}%`);
       }

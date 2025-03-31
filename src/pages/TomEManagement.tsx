@@ -1,28 +1,14 @@
-
 import React, { useState, useEffect } from "react";
 import PageLayout from "@/components/ui/layout/PageLayout";
-import AnimatedContainer from "@/components/ui/AnimatedContainer";
-import { useAuth } from "@/context/AuthContext";
-import AccessDenied from "@/components/users/AccessDenied";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import LocalitiesManager from "@/components/tom-e/LocalitiesManager";
-import KeywordsManager from "@/components/tom-e/KeywordsManager";
-import ContentGenerator from "@/components/tom-e/ContentGenerator";
-import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
-import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
-import { useLocalities } from "@/hooks/useLocalities";
-import { useCategoryKeywords } from "@/hooks/useCategoryKeywords";
-import { CategoryKeyword } from "@/types/wordpress";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import ContentGenerator from "@/components/tom-e/ContentGenerator";
+import KeywordsManager from "@/components/tom-e/KeywordsManager";
+import LocalitiesManager from "@/components/tom-e/LocalitiesManager";
+import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
 import { Button } from "@/components/ui/button";
+import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
+import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
 const TomEManagement = () => {
@@ -43,26 +29,21 @@ const TomEManagement = () => {
     refetch: refetchCategories 
   } = useWordPressCategories(selectedConfigId);
   
-  // Pour récupérer tous les mots-clés
   const { fetchAllKeywordsForWordPressConfig } = useCategoryKeywords(selectedConfigId, "");
   
-  // Définir la config WordPress en fonction de l'utilisateur
   useEffect(() => {
     if (isLoadingConfigs || didInitialize) return;
     
     if (configs.length > 0) {
       if (isClient && user?.wordpressConfigId) {
-        // Pour un client, on utilise sa config WordPress attribuée
         setSelectedConfigId(user.wordpressConfigId);
       } else if (isAdmin && configs[0]?.id) {
-        // Pour un admin, on prend la première config par défaut
         setSelectedConfigId(configs[0].id);
       }
       setDidInitialize(true);
     }
   }, [isLoadingConfigs, configs, isClient, isAdmin, user, didInitialize]);
   
-  // Charger tous les mots-clés quand la config est sélectionnée
   useEffect(() => {
     if (!selectedConfigId) return;
     
@@ -74,7 +55,6 @@ const TomEManagement = () => {
         console.info(`Loading keywords for WordPress config ID: ${selectedConfigId}`);
         const keywords = await fetchAllKeywordsForWordPressConfig(selectedConfigId);
         
-        // Check if keywords is an array before setting state
         if (Array.isArray(keywords)) {
           setAllKeywords(keywords);
           console.info(`Successfully loaded ${keywords.length} keywords`);
@@ -94,22 +74,18 @@ const TomEManagement = () => {
     loadKeywords();
   }, [selectedConfigId, fetchAllKeywordsForWordPressConfig]);
   
-  // Gérer le changement de config WordPress
   const handleConfigChange = (configId: string) => {
     setSelectedConfigId(configId);
   };
   
-  // Gérer le rafraîchissement des données
   const handleRefresh = async () => {
     if (!selectedConfigId) return;
     
     setIsRefreshing(true);
     
     try {
-      // Rafraîchir les catégories
       await refetchCategories();
       
-      // Rafraîchir les mots-clés
       try {
         setIsLoadingKeywords(true);
         const keywords = await fetchAllKeywordsForWordPressConfig(selectedConfigId);
@@ -130,17 +106,14 @@ const TomEManagement = () => {
     }
   };
   
-  // Vérifier si tout est prêt pour la génération de contenu
   const isReadyForGeneration = 
     selectedConfigId && 
     categories?.length > 0 && 
     localities?.length > 0 && 
     allKeywords?.length > 0;
   
-  // Loading state
   const isLoading = isLoadingConfigs || isLoadingCategories || isLoadingLocalities || isLoadingKeywords || isRefreshing;
   
-  // Définir l'accès
   const hasAccess = isAdmin || isClient;
   
   if (!hasAccess) {

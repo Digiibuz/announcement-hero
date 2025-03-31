@@ -50,22 +50,24 @@ const PageLayout = ({
   }
 
   return (
-    <div className="flex h-screen w-full">
-      <AppSidebar />
-      <div className={cn("flex flex-col flex-1 overflow-auto", className)}>
-        <Header 
-          title={title} 
-          description={description} 
-          titleAction={titleAction}
-          onRefresh={onRefresh}
-        />
-        <main className={cn("flex-1 p-4 md:p-6", contentClassName)}>
-          <div className={containerClassName}>
-            {children}
-          </div>
-        </main>
+    <SidebarProvider>
+      <div className="flex h-screen w-full">
+        <AppSidebar />
+        <div className={cn("flex flex-col flex-1 overflow-auto", className)}>
+          <Header 
+            title={title} 
+            description={description} 
+            titleAction={titleAction}
+            onRefresh={onRefresh}
+          />
+          <main className={cn("flex-1 p-4 md:p-6", contentClassName)}>
+            <div className={containerClassName}>
+              {children}
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 };
 
