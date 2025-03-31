@@ -119,17 +119,17 @@ const AppRoutes = () => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <AuthProvider>
-        <TooltipProvider>
-          <BrowserRouter>
+    <BrowserRouter>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <AuthProvider>
+          <TooltipProvider>
             <AppRoutes />
             <Toaster />
             <SonnerToaster />
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
-    </ThemeProvider>
+          </TooltipProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </BrowserRouter>
   </QueryClientProvider>
 );
 
