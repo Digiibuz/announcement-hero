@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { WordPressCategory } from "@/types/announcement";
 
-export const useWordPressCategories = (isDivipixel: boolean = false) => {
+export const useWordPressCategories = () => {
   const [categories, setCategories] = useState<WordPressCategory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -13,7 +13,7 @@ export const useWordPressCategories = (isDivipixel: boolean = false) => {
 
   const fetchCategories = useCallback(async () => {
     if (!user?.wordpressConfigId) {
-      console.log("No WordPress configuration ID found for user", user);
+      console.error("No WordPress configuration ID found for user", user);
       setError("No WordPress configuration found for this user");
       return;
     }
@@ -21,7 +21,7 @@ export const useWordPressCategories = (isDivipixel: boolean = false) => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log(`Fetching ${isDivipixel ? 'Divipixel' : 'WordPress'} categories for WordPress config ID:`, user.wordpressConfigId);
+      console.log("Fetching categories for WordPress config ID:", user.wordpressConfigId);
 
       // First get the WordPress config for the user
       const { data: wpConfig, error: wpConfigError } = await supabase
@@ -50,12 +50,8 @@ export const useWordPressCategories = (isDivipixel: boolean = false) => {
       // Normaliser l'URL (supprimer les doubles slashes)
       const siteUrl = wpConfig.site_url.replace(/([^:]\/)\/+/g, "$1");
 
-      // Construct the WordPress API URL based on the type of categories needed
-      const apiUrl = isDivipixel 
-        ? `${siteUrl}/wp-json/wp/v2/dipi_cpt_category` 
-        : `${siteUrl}/wp-json/wp/v2/categories`;
-      
-      console.log(`Fetching ${isDivipixel ? 'Divipixel' : 'WordPress'} categories from:`, apiUrl);
+      // Construct the WordPress API URL
+      const apiUrl = `${siteUrl}/wp-json/wp/v2/categories`;
       
       // Prepare headers
       const headers: Record<string, string> = {
@@ -73,6 +69,8 @@ export const useWordPressCategories = (isDivipixel: boolean = false) => {
       } else {
         console.log("No authentication credentials provided");
       }
+      
+      console.log("Fetching categories from:", apiUrl);
       
       // Ajouter un délai d'expiration à la requête
       const controller = new AbortController();
@@ -95,11 +93,11 @@ export const useWordPressCategories = (isDivipixel: boolean = false) => {
             throw new Error("Identifiants incorrects ou autorisations insuffisantes");
           }
           
-          throw new Error(`Failed to fetch ${isDivipixel ? 'Divipixel' : 'WordPress'} categories: ${response.statusText}`);
+          throw new Error(`Failed to fetch categories: ${response.statusText}`);
         }
   
         const categoriesData = await response.json();
-        console.log(`${isDivipixel ? 'Divipixel' : 'WordPress'} categories fetched successfully:`, categoriesData.length);
+        console.log("Categories fetched successfully:", categoriesData.length);
         setCategories(categoriesData);
       } catch (fetchError: any) {
         if (fetchError.name === 'AbortError') {
@@ -108,9 +106,9 @@ export const useWordPressCategories = (isDivipixel: boolean = false) => {
         throw fetchError;
       }
     } catch (err: any) {
-      console.error(`Error fetching ${isDivipixel ? 'Divipixel' : 'WordPress'} categories:`, err);
+      console.error("Error fetching WordPress categories:", err);
       
-      let errorMessage = err.message || `Failed to fetch ${isDivipixel ? 'Divipixel' : 'WordPress'} categories`;
+      let errorMessage = err.message || "Failed to fetch WordPress categories";
       
       // Améliorer les messages d'erreur
       if (err.message.includes("Failed to fetch")) {
@@ -122,18 +120,18 @@ export const useWordPressCategories = (isDivipixel: boolean = false) => {
       }
       
       setError(errorMessage);
-      toast.error(`Erreur lors de la récupération des catégories ${isDivipixel ? 'Divipixel' : 'WordPress'}`);
+      toast.error("Erreur lors de la récupération des catégories WordPress");
     } finally {
       setIsLoading(false);
     }
-  }, [user?.wordpressConfigId, isDivipixel]);
+  }, [user?.wordpressConfigId]);
 
   useEffect(() => {
-    console.log(`useWordPressCategories effect running, user:`, user?.id, `wordpressConfigId:`, user?.wordpressConfigId, `isDivipixel:`, isDivipixel);
+    console.log("useWordPressCategories effect running, user:", user?.id, "wordpressConfigId:", user?.wordpressConfigId);
     if (user?.wordpressConfigId) {
       fetchCategories();
     }
-  }, [user?.wordpressConfigId, fetchCategories, isDivipixel]);
+  }, [user?.wordpressConfigId, fetchCategories]);
 
   return { 
     categories, 

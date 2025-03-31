@@ -1,180 +1,173 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
+import { ImageIcon, Camera, UploadCloud, Loader2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { X, Upload, Image as ImageIcon, AlertCircle } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { UseFormReturn } from "react-hook-form";
-
 interface ImageUploaderProps {
-  value?: string[];
-  onChange: (value: string[]) => void;
-  form?: UseFormReturn<any>;
+  form: UseFormReturn<any>;
 }
-
-const ImageUploader = ({ value = [], onChange, form }: ImageUploaderProps) => {
+const ImageUploader = ({
+  form
+}: ImageUploaderProps) => {
+  const [uploadedImages, setUploadedImages] = useState<string[]>(form.getValues('images') || []);
   const [isUploading, setIsUploading] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
-  const { toast } = useToast();
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFiles(e.dataTransfer.files);
-    }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    if (e.target.files && e.target.files.length > 0) {
-      handleFiles(e.target.files);
-    }
-  };
-
-  const handleFiles = async (files: FileList) => {
-    setIsUploading(true);
-    const newImages: string[] = [];
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          variant: "destructive",
-          title: "Erreur",
-          description: `Le fichier ${file.name} dépasse la taille maximale de 5MB.`,
-        });
-        setIsUploading(false);
-        return;
-      }
-
-      if (!file.type.startsWith("image/")) {
-        toast({
-          variant: "destructive",
-          title: "Erreur",
-          description: `Le fichier ${file.name} n'est pas une image.`,
-        });
-        setIsUploading(false);
-        return;
-      }
-
-      try {
-        const reader = new FileReader();
-        reader.onload = (e: any) => {
-          newImages.push(e.target.result);
-          if (newImages.length === files.length) {
-            onChange([...value, ...newImages]);
-            setIsUploading(false);
-            toast({
-              title: "Succès",
-              description: "Images téléchargées avec succès!",
-            });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const compressAndConvertToWebp = async (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = event => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const MAX_WIDTH = 1920;
+          const MAX_HEIGHT = 1920;
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
           }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(blob => {
+            if (!blob) {
+              reject(new Error("La conversion a échoué"));
+              return;
+            }
+            const fileName = file.name.split('.')[0] + '.webp';
+            const newFile = new File([blob], fileName, {
+              type: 'image/webp'
+            });
+            resolve(newFile);
+          }, 'image/webp', 0.8);
         };
-        reader.readAsDataURL(file);
-      } catch (error) {
-        console.error("Error uploading image:", error);
-        toast({
-          variant: "destructive",
-          title: "Erreur",
-          description: "Erreur lors du téléchargement de l'image.",
-        });
-        setIsUploading(false);
-        return;
-      }
+        img.onerror = () => {
+          reject(new Error("Erreur lors du chargement de l'image"));
+        };
+      };
+      reader.onerror = () => {
+        reject(new Error("Erreur lors de la lecture du fichier"));
+      };
+    });
+  };
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    try {
+      setIsUploading(true);
+      const processedFiles = await Promise.all(Array.from(files).map(async file => {
+        try {
+          return await compressAndConvertToWebp(file);
+        } catch (error) {
+          console.error("Erreur de compression:", error);
+          return file;
+        }
+      }));
+      const uploadedImageUrls = await uploadImages(processedFiles);
+      setUploadedImages(prev => [...prev, ...uploadedImageUrls]);
+      form.setValue('images', [...(form.getValues('images') || []), ...uploadedImageUrls]);
+      toast.success(`${uploadedImageUrls.length} image(s) téléversée(s) avec succès`);
+    } catch (error: any) {
+      console.error("Error uploading images:", error);
+      toast.error("Erreur lors du téléversement des images: " + error.message);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
     }
   };
-
-  const removeImage = (index: number) => {
-    const newImages = [...value];
-    newImages.splice(index, 1);
-    onChange(newImages);
+  const uploadImages = async (files: File[]): Promise<string[]> => {
+    const uploadPromises = files.map(async file => {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const filePath = `announcements/${fileName}`;
+      console.log(`Uploading file ${file.name} to path ${filePath}`);
+      const {
+        data,
+        error
+      } = await supabase.storage.from('images').upload(filePath, file);
+      if (error) {
+        console.error("Storage upload error:", error);
+        throw error;
+      }
+      console.log("Upload successful, getting public URL");
+      const {
+        data: urlData
+      } = supabase.storage.from('images').getPublicUrl(filePath);
+      console.log("Public URL obtained:", urlData.publicUrl);
+      return urlData.publicUrl;
+    });
+    return Promise.all(uploadPromises);
   };
-
-  const handleButtonClick = () => {
-    fileInputRef.current?.click();
+  const removeImage = (indexToRemove: number) => {
+    const newImages = uploadedImages.filter((_, index) => index !== indexToRemove);
+    setUploadedImages(newImages);
+    form.setValue('images', newImages);
   };
-
-  return (
-    <div className="space-y-4">
-      <div
-        className={`border-2 border-dashed rounded-lg p-6 transition-colors 
-          ${dragActive ? "border-primary bg-primary/10" : "border-border"}
-          hover:border-primary hover:bg-primary/5 cursor-pointer flex flex-col items-center justify-center`}
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
-        onClick={handleButtonClick}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept="image/*"
-          className="hidden"
-          onChange={handleChange}
-        />
-        <div className="flex flex-col items-center justify-center text-center space-y-2">
-          <div className="p-3 rounded-full bg-primary/10">
-            <Upload className="h-6 w-6 text-primary" />
-          </div>
-          <div className="text-sm text-muted-foreground">
-            {isUploading ? (
-              <p>Téléchargement en cours...</p>
-            ) : (
-              <>
-                <p className="font-medium">Cliquez ou déposez les images ici</p>
-                <p>Formats acceptés: PNG, JPG, ou GIF (max 5MB)</p>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {value.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {value.map((url, index) => (
-            <div
-              key={index}
-              className="group relative aspect-square rounded-md border overflow-hidden"
-            >
-              <img
-                src={url}
-                alt={`Uploaded image ${index + 1}`}
-                className="object-cover w-full h-full"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = "/placeholder.svg";
-                }}
-              />
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeImage(index);
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
+  const triggerFileUpload = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+  const triggerCameraUpload = () => {
+    if (cameraInputRef.current) {
+      cameraInputRef.current.click();
+    }
+  };
+  return <div>
+      <Label>Images</Label>
+      <div className="mt-2 border-2 border-dashed rounded-lg p-6">
+        <input type="file" ref={fileInputRef} multiple accept="image/*" className="hidden" onChange={handleFileUpload} />
+        <input type="file" ref={cameraInputRef} accept="image/*" capture="environment" className="hidden" onChange={handleFileUpload} />
+        
+        <div className="text-center">
+          <div className="flex justify-center mb-4">
+            <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+              <ImageIcon className="h-6 w-6 text-muted-foreground" />
             </div>
-          ))}
+          </div>
+          <p className="mb-4 text-gray-950">
+            Glissez-déposez vos images ici, ou sélectionnez une option ci-dessous
+          </p>
+          <div className="flex flex-col sm:flex-row justify-center gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={triggerFileUpload} disabled={isUploading}>
+              <UploadCloud className="mr-2 h-4 w-4" />
+              Sélectionner des fichiers
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={triggerCameraUpload} disabled={isUploading}>
+              <Camera className="mr-2 h-4 w-4" />
+              Prendre une photo
+            </Button>
+          </div>
+          {isUploading && <div className="mt-4 flex items-center justify-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm">Téléversement en cours...</span>
+            </div>}
         </div>
-      )}
-    </div>
-  );
-};
 
+        {uploadedImages.length > 0 && <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {uploadedImages.map((imageUrl, index) => <div key={index} className="relative group">
+                <img src={imageUrl} alt={`Uploaded image ${index + 1}`} className="h-24 w-full object-cover rounded-md" />
+                <button type="button" className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeImage(index)}>
+                  <XCircle size={16} />
+                </button>
+              </div>)}
+          </div>}
+      </div>
+    </div>;
+};
 export default ImageUploader;

@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import AnnouncementForm from "@/components/announcements/AnnouncementForm";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import PageLayout from "@/components/ui/layout/PageLayout";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 import { Announcement } from "@/types/announcement";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
 import { ArrowLeft, Wand2 } from "lucide-react";
@@ -17,9 +17,14 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 
 const CreateAnnouncement = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const {
+    user
+  } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { publishToWordPress, isPublishing } = useWordPressPublishing();
+  const {
+    publishToWordPress,
+    isPublishing
+  } = useWordPressPublishing();
   const isMobile = useMediaQuery("(max-width: 767px)");
 
   const handleSubmit = async (data: any) => {
@@ -31,7 +36,7 @@ const CreateAnnouncement = () => {
         user_id: user?.id,
         title: data.title,
         description: data.description,
-        status: data.status as "draft" | "published" | "scheduled",
+        status: data.status as "draft" | "published" | "scheduled", // Explicit casting to ensure type safety
         images: data.images || [],
         wordpress_category_id: data.wordpressCategory,
         publish_date: data.publishDate ? new Date(data.publishDate).toISOString() : null,
@@ -42,12 +47,10 @@ const CreateAnnouncement = () => {
       console.log("Enregistrement de l'annonce:", announcementData);
 
       // Save to Supabase
-      const { data: newAnnouncement, error } = await supabase
-        .from("announcements")
-        .insert(announcementData)
-        .select()
-        .single();
-      
+      const {
+        data: newAnnouncement,
+        error
+      } = await supabase.from("announcements").insert(announcementData).select().single();
       if (error) throw error;
       console.log("Annonce enregistrée dans Supabase:", newAnnouncement);
 
@@ -67,16 +70,27 @@ const CreateAnnouncement = () => {
       }
       
       if (wordpressResult.success) {
-        toast.success("Annonce enregistrée avec succès");
+        toast({
+          title: "Succès",
+          description: "Annonce enregistrée avec succès"
+        });
       } else {
-        toast.error("Annonce enregistrée dans la base de données, mais la publication WordPress a échoué: " + (wordpressResult.message || "Erreur inconnue"));
+        toast({
+          title: "Attention",
+          description: "Annonce enregistrée dans la base de données, mais la publication WordPress a échoué: " + (wordpressResult.message || "Erreur inconnue"),
+          variant: "destructive"
+        });
       }
 
       // Redirect to the announcements list
       navigate("/announcements");
     } catch (error: any) {
       console.error("Error saving announcement:", error);
-      toast.error("Erreur lors de l'enregistrement: " + error.message);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de l'enregistrement: " + error.message,
+        variant: "destructive"
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -113,7 +127,6 @@ const CreateAnnouncement = () => {
             onSubmit={handleSubmit} 
             isSubmitting={isSubmitting || isPublishing} 
             isMobile={isMobile} 
-            formType="announcement"
           />
         </div>
       </AnimatedContainer>
