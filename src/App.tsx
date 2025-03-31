@@ -20,6 +20,7 @@ const UserManagement = lazy(() => import("./pages/UserManagement"));
 const WordPressManagement = lazy(() => import("./pages/WordPressManagement"));
 const TomEManagement = lazy(() => import("./pages/TomEManagement"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const SimpleContentGenerator = lazy(() => import("./pages/SimpleContentGenerator"));
 
 // Composant de chargement
 const LoadingFallback = () => (
@@ -190,6 +191,9 @@ const AppRoutes = () => {
         
         {/* Fallback route */}
         <Route path="*" element={<NotFound />} />
+        
+        {/* Ajouter la route pour le générateur de contenu simple */}
+        <Route path="/generateur-contenu" element={<SimpleContentGenerator />} />
       </Routes>
     </Suspense>
   );

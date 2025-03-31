@@ -32,9 +32,9 @@ export const useAnnouncements = (params: UseAnnouncementsParams = {}) => {
         query = query.eq("status", params.status);
       }
       
+      // Utiliser une approche simplifiée pour les filtres de texte
       if (params.search && params.search.trim() !== '') {
-        // Simplifier la requête pour éviter les problèmes de types
-        query = query.or(`title.ilike.%${params.search}%,description.ilike.%${params.search}%`);
+        query = query.ilike("title", `%${params.search}%`);
       }
       
       if (params.isPremium === true) {
