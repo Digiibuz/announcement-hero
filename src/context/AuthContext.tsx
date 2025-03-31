@@ -25,7 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (session?.user) {
           // First set user from metadata for immediate UI feedback
-          const initialProfile = createProfileFromMetadata(session.user);
+          const initialProfile = await createProfileFromMetadata(session.user);
           setUserProfile(initialProfile);
           console.log("Initial profile from metadata:", initialProfile);
           
@@ -56,7 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (session?.user) {
         console.log("Session found during initialization");
         // First set user from metadata
-        const initialProfile = createProfileFromMetadata(session.user);
+        const initialProfile = await createProfileFromMetadata(session.user);
         
         // Apply cached role if available for immediate UI
         if (cachedUserRole && cachedUserId === session.user.id) {

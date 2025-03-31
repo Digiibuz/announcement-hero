@@ -9,11 +9,11 @@ import { saveToCache, getFromCache } from "@/utils/cacheStorage";
 export const createProfileFromMetadata = async (authUser: User | null): Promise<UserProfile | null> => {
   if (!authUser) return null;
   
-  // Récupérer le rôle depuis le cache en priorité pour éviter les rechargements inutiles
+  // Retrieve role from cache first to avoid unnecessary reloads
   const cachedRole = await getFromCache<Role>('userRole');
   const cachedUserId = await getFromCache<string>('userId');
   
-  // Si l'ID utilisateur correspond et que nous avons un rôle en cache, utilisons-le
+  // If user ID matches and we have a cached role, use it
   const role = (cachedUserId === authUser.id && cachedRole) 
     ? cachedRole 
     : (authUser.user_metadata?.role as Role) || 'client';
@@ -37,18 +37,18 @@ export const useUserProfile = () => {
     try {
       console.log("Fetching full profile for user:", userId);
       
-      // Utiliser d'abord le profil en cache si disponible
+      // Use cached profile if available first
       const cachedProfile = await getFromCache<UserProfile>(`profile-${userId}`);
       if (cachedProfile) {
         console.log("Using cached profile:", cachedProfile);
         setUserProfile(cachedProfile);
       }
       
-      // Utiliser d'abord le rôle en cache pour éviter tout problème
+      // Use cached role first to avoid any issues
       const cachedRole = await getFromCache<Role>('userRole');
       const cachedUserId = await getFromCache<string>('userId');
       
-      // Si nous avons un profil utilisateur mais sans rôle défini, utilisons le rôle en cache
+      // If we have a user profile but no defined role, use cached role
       if (userProfile && !userProfile.role && cachedRole && cachedUserId === userId) {
         console.log("Using cached role before fetch:", cachedRole);
         setUserProfile({...userProfile, role: cachedRole});
