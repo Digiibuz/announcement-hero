@@ -7,9 +7,6 @@
 // Vérifier si le service worker est supporté
 const isServiceWorkerSupported = 'serviceWorker' in navigator;
 
-// Clé pour le stockage des données de session
-const SESSION_KEY_PREFIX = 'app-session-';
-
 /**
  * Sauvegarde une valeur dans le cache
  */
@@ -102,107 +99,4 @@ export const removeFromCache = async (key: string): Promise<boolean> => {
     console.error('Erreur lors de la suppression du cache:', error);
     return false;
   }
-};
-
-/**
- * Sauvegarde des données de page dans le cache
- * @param pageId - Identifiant unique de la page
- * @param data - Données à sauvegarder
- */
-export const cachePageData = async (pageId: string, data: any): Promise<boolean> => {
-  const key = `page-data-${pageId}`;
-  const pageData = {
-    data,
-    timestamp: Date.now()
-  };
-  return saveToCache(key, pageData);
-};
-
-/**
- * Récupère des données de page depuis le cache avec gestion de la fraîcheur
- * @param pageId - Identifiant unique de la page
- * @param maxAge - Durée maximale en millisecondes avant que les données soient considérées comme obsolètes (1 heure par défaut)
- */
-export const getPageDataFromCache = async <T>(pageId: string, maxAge: number = 1000 * 60 * 60): Promise<T | null> => {
-  const key = `page-data-${pageId}`;
-  const cachedData = await getFromCache<{data: T, timestamp: number}>(key);
-  
-  if (!cachedData) return null;
-  
-  // Vérifier la fraîcheur des données
-  const age = Date.now() - cachedData.timestamp;
-  if (age > maxAge) {
-    console.log(`Données en cache pour ${pageId} trop anciennes (${Math.round(age/1000/60)} min)`);
-    return null;
-  }
-  
-  console.log(`Utilisation des données en cache pour ${pageId} (${Math.round(age/1000)} sec)`);
-  return cachedData.data;
-};
-
-/**
- * Sauvegarde l'état d'une liste (comme la liste des annonces) dans le cache
- */
-export const cacheListData = async (listId: string, data: any): Promise<boolean> => {
-  const key = `list-data-${listId}`;
-  const listData = {
-    data,
-    timestamp: Date.now()
-  };
-  return saveToCache(key, listData);
-};
-
-/**
- * Récupère l'état d'une liste depuis le cache
- */
-export const getListDataFromCache = async <T>(listId: string, maxAge: number = 1000 * 60 * 5): Promise<T | null> => {
-  const key = `list-data-${listId}`;
-  const cachedData = await getFromCache<{data: T, timestamp: number}>(key);
-  
-  if (!cachedData) return null;
-  
-  // Vérifier la fraîcheur des données (5 minutes par défaut)
-  const age = Date.now() - cachedData.timestamp;
-  if (age > maxAge) {
-    console.log(`Liste en cache ${listId} trop ancienne (${Math.round(age/1000/60)} min)`);
-    return null;
-  }
-  
-  console.log(`Utilisation de la liste en cache ${listId} (${Math.round(age/1000)} sec)`);
-  return cachedData.data;
-};
-
-/**
- * Sauvegarde les données d'une session pour éviter les rechargements inutiles entre les onglets
- * @param key - Identifiant unique de la session
- * @param data - Données à sauvegarder
- */
-export const saveSessionData = async (key: string, data: any): Promise<boolean> => {
-  // Utiliser un préfixe spécial pour les données de session
-  return saveToCache(`${SESSION_KEY_PREFIX}${key}`, {
-    data,
-    timestamp: Date.now()
-  });
-};
-
-/**
- * Récupère les données d'une session pour éviter les rechargements inutiles entre les onglets
- * @param key - Identifiant unique de la session
- */
-export const getSessionData = async <T>(key: string): Promise<T | null> => {
-  const sessionKey = `${SESSION_KEY_PREFIX}${key}`;
-  const cachedData = await getFromCache<{data: T, timestamp: number}>(sessionKey);
-  
-  if (!cachedData) return null;
-  
-  // Les données de session restent valides plus longtemps (1 jour)
-  const maxAge = 1000 * 60 * 60 * 24; // 24 heures
-  const age = Date.now() - cachedData.timestamp;
-  
-  if (age > maxAge) {
-    console.log(`Données de session pour ${key} trop anciennes (${Math.round(age/1000/60/60)} heures)`);
-    return null;
-  }
-  
-  return cachedData.data;
 };
