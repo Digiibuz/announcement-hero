@@ -18,7 +18,16 @@ export const useTicketNotifications = () => {
       const storedReadTickets = localStorage.getItem(`${READ_TICKETS_STORAGE_KEY}_${user.id}`);
       if (storedReadTickets) {
         try {
-          setReadTicketIds(JSON.parse(storedReadTickets));
+          // Parse the stored JSON and convert string dates back to Date objects
+          const parsedTickets = JSON.parse(storedReadTickets);
+          const ticketsWithDateObjects: Record<string, Date> = {};
+          
+          // Convert string dates to Date objects
+          Object.keys(parsedTickets).forEach(ticketId => {
+            ticketsWithDateObjects[ticketId] = new Date(parsedTickets[ticketId]);
+          });
+          
+          setReadTicketIds(ticketsWithDateObjects);
         } catch (e) {
           console.error("Erreur lors du chargement des tickets lus:", e);
           // En cas d'erreur, réinitialiser le stockage
@@ -66,18 +75,25 @@ export const useTicketNotifications = () => {
   const markTicketAsRead = (ticketId: string) => {
     if (!user?.id) return;
     
-    const updatedReadTickets = {
+    // Create a new object with the updated read timestamp
+    const updatedReadTickets: Record<string, Date> = {
       ...readTicketIds,
-      [ticketId]: new Date().toISOString()
+      [ticketId]: new Date()
     };
     
     // Mettre à jour l'état local
     setReadTicketIds(updatedReadTickets);
     
+    // When saving to localStorage, we need to convert Date objects to ISO strings
+    const storageReadTickets: Record<string, string> = {};
+    Object.keys(updatedReadTickets).forEach(id => {
+      storageReadTickets[id] = updatedReadTickets[id].toISOString();
+    });
+    
     // Sauvegarder dans localStorage
     localStorage.setItem(
       `${READ_TICKETS_STORAGE_KEY}_${user.id}`, 
-      JSON.stringify(updatedReadTickets)
+      JSON.stringify(storageReadTickets)
     );
   };
 
