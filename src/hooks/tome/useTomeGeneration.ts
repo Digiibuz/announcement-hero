@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -47,7 +46,6 @@ export const useTomeGeneration = (configId: string | null) => {
         return;
       }
 
-      // Transformer les données pour inclure l'URL du site WordPress
       const typedData = data.map(item => ({
         ...item,
         wordpress_site_url: item.wordpress_config?.site_url
@@ -55,15 +53,12 @@ export const useTomeGeneration = (configId: string | null) => {
       
       setGenerations(typedData);
       
-      // Identify generations that are in progress
       const pendingIds = typedData
         .filter(gen => gen.status === 'pending' || gen.status === 'processing')
         .map(gen => gen.id);
       
-      // Update polling list
       setPollingGenerations(pendingIds);
       
-      // Fetch content for completed generations with content field
       for (const generation of typedData) {
         if (generation.content) {
           setGeneratedContent(prev => ({
@@ -79,7 +74,6 @@ export const useTomeGeneration = (configId: string | null) => {
     }
   }, [configId]);
 
-  // Setup polling for in-progress generations
   useEffect(() => {
     if (pollingGenerations.length === 0) return;
     
@@ -98,10 +92,8 @@ export const useTomeGeneration = (configId: string | null) => {
 
   const fetchGeneratedContent = async (generationId: string, postId: number) => {
     try {
-      // First check if we already have the content for this generation
       if (generatedContent[generationId]) return;
       
-      // Get WordPress config to determine the site URL
       const { data: wpConfig, error: wpConfigError } = await supabase
         .from("wordpress_configs")
         .select("site_url")
@@ -117,7 +109,6 @@ export const useTomeGeneration = (configId: string | null) => {
         return;
       }
       
-      // Fetch the content
       const { data: contentData, error: contentError } = await supabase.functions.invoke('fetch-tome-content', {
         body: { 
           siteUrl: wpConfig.site_url,
@@ -149,7 +140,6 @@ export const useTomeGeneration = (configId: string | null) => {
           [generationId]: contentData.content
         }));
         
-        // Clear any previous errors
         setContentErrors(prev => {
           const newErrors = {...prev};
           delete newErrors[generationId];
@@ -170,6 +160,86 @@ export const useTomeGeneration = (configId: string | null) => {
     }
   };
 
+  const getGenerationById = async (id: string): Promise<ExtendedTomeGeneration | null> => {
+    try {
+      if (!id) return null;
+      
+      const { data, error } = await supabase
+        .from("tome_generations")
+        .select(`
+          *,
+          category:categories_keywords!tome_generations_category_id_fkey(category_name),
+          keyword:categories_keywords(keyword),
+          locality:localities(name, region),
+          wordpress_config:wordpress_configs(site_url)
+        `)
+        .eq("id", id)
+        .single();
+
+      if (error) {
+        console.error("Error fetching generation:", error);
+        toast.error("Erreur lors du chargement de la publication: " + error.message);
+        return null;
+      }
+
+      const typedData = {
+        ...data,
+        wordpress_site_url: data.wordpress_config?.site_url
+      } as ExtendedTomeGeneration;
+      
+      return typedData;
+    } catch (error: any) {
+      console.error("Error in getGenerationById:", error);
+      toast.error(`Erreur: ${error.message || "Erreur inconnue"}`);
+      return null;
+    }
+  };
+
+  const updateGeneration = async (
+    generationId: string, 
+    data: { 
+      title?: string; 
+      content?: string;
+      description?: string;
+    }
+  ): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from("tome_generations")
+        .update({ 
+          title: data.title,
+          content: data.content,
+          description: data.description
+        })
+        .eq("id", generationId);
+
+      if (error) {
+        console.error("Error updating generation:", error);
+        toast.error("Erreur lors de la mise à jour: " + error.message);
+        return false;
+      }
+      
+      setGenerations(prev => 
+        prev.map(gen => 
+          gen.id === generationId 
+            ? { 
+                ...gen, 
+                title: data.title !== undefined ? data.title : gen.title,
+                content: data.content !== undefined ? data.content : gen.content,
+                description: data.description !== undefined ? data.description : gen.description
+              } 
+            : gen
+        )
+      );
+      
+      return true;
+    } catch (error: any) {
+      console.error("Error in updateGeneration:", error);
+      toast.error(`Erreur: ${error.message || "Erreur inconnue"}`);
+      return false;
+    }
+  };
+
   const createGeneration = async (
     categoryId: string,
     keyword: CategoryKeyword | null,
@@ -187,11 +257,9 @@ export const useTomeGeneration = (configId: string | null) => {
       const isScheduled = scheduleDate !== null;
       const formattedDate = scheduleDate ? format(scheduleDate, "yyyy-MM-dd'T'HH:mm:ss") : null;
       
-      // Check if keyword or locality is "none" and set to null
       const keywordId = keyword?.id === "none" ? null : keyword?.id || null;
       const localityId = locality?.id === "none" ? null : locality?.id || null;
       
-      // Statut déterminé par les paramètres ou la planification
       const effectiveStatus = isScheduled ? "scheduled" : status;
       
       const newGeneration = {
@@ -222,13 +290,11 @@ export const useTomeGeneration = (configId: string | null) => {
       const newData = data as ExtendedTomeGeneration;
       setGenerations([newData, ...generations]);
       
-      // Si c'est un brouillon, générer le contenu sans publier
       if (effectiveStatus === "draft") {
         toast.info("Génération du contenu en cours. Cela peut prendre quelques minutes.", { 
           duration: 5000
         });
         
-        // Appeler la fonction edge pour démarrer la génération sans publication
         const { data: genData, error: genError } = await supabase.functions.invoke('tome-generate-draft', {
           body: { 
             generationId: data.id,
@@ -244,7 +310,6 @@ export const useTomeGeneration = (configId: string | null) => {
           console.error("Generation API returned error:", genData.error);
           toast.error("Erreur lors de la génération: " + genData.error);
           
-          // Mettre à jour le statut avec l'erreur
           await supabase
             .from("tome_generations")
             .update({ 
@@ -253,7 +318,6 @@ export const useTomeGeneration = (configId: string | null) => {
             })
             .eq("id", data.id);
             
-          // Mettre à jour la génération locale
           setGenerations(prev => 
             prev.map(gen => 
               gen.id === data.id 
@@ -264,7 +328,6 @@ export const useTomeGeneration = (configId: string | null) => {
           
           return false;
         } else if (genData && genData.success) {
-          // Mettre à jour la génération locale avec le contenu généré
           setGenerations(prev => 
             prev.map(gen => 
               gen.id === data.id 
@@ -278,7 +341,6 @@ export const useTomeGeneration = (configId: string | null) => {
             )
           );
           
-          // Mettre à jour dans Supabase
           await supabase
             .from("tome_generations")
             .update({ 
@@ -291,12 +353,10 @@ export const useTomeGeneration = (configId: string | null) => {
           toast.success("Brouillon créé avec succès");
         }
       } else if (!isScheduled) {
-        // Pour les générations immédiates
         toast.info("Génération lancée. Cela peut prendre plusieurs minutes. Le statut sera mis à jour automatiquement.", { 
           duration: 5000
         });
         
-        // Appeler la fonction edge pour démarrer la génération
         const { data: genData, error: genError } = await supabase.functions.invoke('tome-generate', {
           body: { generationId: data.id }
         });
@@ -308,7 +368,6 @@ export const useTomeGeneration = (configId: string | null) => {
           console.error("Generation API returned error:", genData.error);
           toast.error("Erreur lors de la génération: " + genData.error);
           
-          // Mettre à jour le statut avec l'erreur
           await supabase
             .from("tome_generations")
             .update({ 
@@ -317,7 +376,6 @@ export const useTomeGeneration = (configId: string | null) => {
             })
             .eq("id", data.id);
             
-          // Mettre à jour la génération locale
           setGenerations(prev => 
             prev.map(gen => 
               gen.id === data.id 
@@ -328,7 +386,6 @@ export const useTomeGeneration = (configId: string | null) => {
           
           return false;
         } else {
-          // Add to polling list
           setPollingGenerations(prev => [...prev, data.id]);
         }
       } else {
@@ -349,12 +406,11 @@ export const useTomeGeneration = (configId: string | null) => {
     try {
       setIsSubmitting(true);
       
-      // Update status first
       const { error: updateError } = await supabase
         .from("tome_generations")
         .update({ 
           status: "pending", 
-          error_message: null // Réinitialiser le message d'erreur
+          error_message: null
         })
         .eq("id", generationId);
         
@@ -368,7 +424,6 @@ export const useTomeGeneration = (configId: string | null) => {
         duration: 5000
       });
       
-      // Appeler la fonction edge pour relancer la génération
       const { data: genData, error: genError } = await supabase.functions.invoke('tome-generate', {
         body: { generationId }
       });
@@ -381,7 +436,6 @@ export const useTomeGeneration = (configId: string | null) => {
         console.error("Regeneration API returned error:", genData.error);
         toast.error("Erreur lors de la régénération: " + genData.error);
         
-        // Mettre à jour le statut avec l'erreur
         await supabase
           .from("tome_generations")
           .update({ 
@@ -390,7 +444,6 @@ export const useTomeGeneration = (configId: string | null) => {
           })
           .eq("id", generationId);
           
-        // Mettre à jour la génération locale
         setGenerations(prev => 
           prev.map(gen => 
             gen.id === generationId 
@@ -402,10 +455,8 @@ export const useTomeGeneration = (configId: string | null) => {
         return false;
       }
       
-      // Add to polling list
       setPollingGenerations(prev => [...prev, generationId]);
       
-      // Update local state
       setGenerations(prev => 
         prev.map(gen => 
           gen.id === generationId ? { ...gen, status: 'pending', error_message: null } : gen
@@ -431,6 +482,8 @@ export const useTomeGeneration = (configId: string | null) => {
     fetchGenerations,
     generatedContent,
     contentErrors,
-    fetchGeneratedContent
+    fetchGeneratedContent,
+    getGenerationById,
+    updateGeneration
   };
 };
