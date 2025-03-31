@@ -17,6 +17,7 @@ export type Announcement = {
   seo_description?: string;
   seo_slug?: string;
   is_divipixel?: boolean; // Ajout d'un flag pour indiquer si c'est une publication Divipixel
+  is_publication?: boolean; // Ajout d'un flag pour indiquer si c'est une publication
 };
 
 // Ajout du type WordPressCategory

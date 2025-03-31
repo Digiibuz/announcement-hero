@@ -7,17 +7,23 @@ import { Textarea } from "@/components/ui/textarea";
 // Create a simple version of the DescriptionField that doesn't rely on TinyMCE
 const DescriptionField = ({ 
   form, 
-  isForDiviPixel = false 
+  isForDiviPixel = false,
+  isForPublication = false
 }: { 
   form: any;
   isForDiviPixel?: boolean;
+  isForPublication?: boolean;
 }) => {
   const isMobile = useMediaQuery("(max-width: 767px)");
   
   // Placeholder specific to content type
-  const placeholder = isForDiviPixel 
-    ? "Entrez la description de votre page DiviPixel..." 
-    : "Entrez la description de votre annonce...";
+  let placeholder = "Entrez la description de votre annonce...";
+  
+  if (isForDiviPixel) {
+    placeholder = "Entrez la description de votre page DiviPixel...";
+  } else if (isForPublication) {
+    placeholder = "Entrez la description de votre publication...";
+  }
 
   return (
     <FormField

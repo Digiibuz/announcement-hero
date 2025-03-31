@@ -40,6 +40,7 @@ interface AnnouncementFormProps {
   onCancel?: () => void;
   isMobile?: boolean;
   isDivipixel?: boolean;
+  isPublication?: boolean;
 }
 
 const currentDatePlus7Days = () => {
@@ -54,7 +55,8 @@ const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
   initialValues,
   onCancel,
   isMobile = false,
-  isDivipixel = false
+  isDivipixel = false,
+  isPublication = false
 }) => {
   const [activeTab, setActiveTab] = useState("content");
   const { categories: wpCategories, isLoading: isLoadingCategories } = useWordPressCategories();
@@ -62,6 +64,13 @@ const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
   
   const categories = isDivipixel ? divipixelCategories : wpCategories;
   const isLoadingCategoryData = isDivipixel ? isLoadingDivipixelCategories : isLoadingCategories;
+
+  // Adapt the form title based on content type
+  const contentTypeLabels = {
+    title: isPublication ? "Titre de la publication" : isDivipixel ? "Titre de la page DiviPixel" : "Titre de l'annonce",
+    placeholderTitle: isPublication ? "Entrez un titre pour votre publication" : isDivipixel ? "Entrez un titre pour votre page DiviPixel" : "Entrez un titre accrocheur",
+    categoryLabel: isDivipixel ? "Catégorie Divipixel" : "Catégorie WordPress"
+  };
 
   const formSchema = z.object({
     title: z.string().min(5, { message: "Le titre doit contenir au moins 5 caractères" }),
@@ -144,9 +153,9 @@ const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Titre</FormLabel>
+                  <FormLabel>{contentTypeLabels.title}</FormLabel>
                   <FormControl>
-                    <Input placeholder="Entrez un titre accrocheur" {...field} />
+                    <Input placeholder={contentTypeLabels.placeholderTitle} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -156,6 +165,7 @@ const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
             <DescriptionField 
               form={form} 
               isForDiviPixel={isDivipixel}
+              isForPublication={isPublication}
             />
 
             <FormField
@@ -242,7 +252,7 @@ const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
               name="wordpressCategory"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{isDivipixel ? "Catégorie Divipixel" : "Catégorie WordPress"}</FormLabel>
+                  <FormLabel>{contentTypeLabels.categoryLabel}</FormLabel>
                   <select
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                     value={field.value}

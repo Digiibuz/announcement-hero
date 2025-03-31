@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import CreateAnnouncement from "./pages/CreateAnnouncement";
 import CreateDivipixelPublication from "./pages/CreateDivipixelPublication";
+import CreatePublication from "./pages/CreatePublication";
 import Announcements from "./pages/Announcements";
 import AnnouncementDetail from "./pages/AnnouncementDetail";
 import UserManagement from "./pages/UserManagement";
@@ -90,6 +91,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <CreateAnnouncement />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/create-publication" 
+        element={
+          <ProtectedRoute>
+            <CreatePublication />
           </ProtectedRoute>
         } 
       />

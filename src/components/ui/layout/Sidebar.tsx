@@ -18,7 +18,8 @@ import {
   Globe,
   FileText,
   Menu,
-  BookText
+  BookText,
+  FileEdit
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -50,6 +51,12 @@ const Sidebar = () => {
     },
     {
       name: "Créer une publication",
+      href: "/create-publication",
+      icon: <FileEdit className="h-5 w-5" />,
+      isActive: pathname === "/create-publication",
+    },
+    {
+      name: "Créer une page DiviPixel",
       href: "/create-divipixel",
       icon: <BookText className="h-5 w-5" />,
       isActive: pathname === "/create-divipixel",
