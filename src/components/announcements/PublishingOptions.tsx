@@ -20,6 +20,13 @@ interface PublishingOptionsProps {
 const PublishingOptions = ({ form }: PublishingOptionsProps) => {
   const { categories, isLoading: isCategoriesLoading, error: categoriesError, hasCategories } = useWordPressCategories();
   
+  React.useEffect(() => {
+    // Si le status n'est pas défini, définir par défaut à "published"
+    if (!form.getValues("status")) {
+      form.setValue("status", "published");
+    }
+  }, [form]);
+  
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <FormField
@@ -33,6 +40,7 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
               onValueChange={field.onChange}
               defaultValue={field.value}
               disabled={isCategoriesLoading}
+              required
             >
               <FormControl>
                 <SelectTrigger>
@@ -75,7 +83,7 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
             <Label>Statut de publication</Label>
             <Select
               onValueChange={field.onChange}
-              defaultValue={field.value}
+              defaultValue={field.value || "published"}
             >
               <FormControl>
                 <SelectTrigger>

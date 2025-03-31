@@ -39,7 +39,7 @@ const CreateAnnouncement = () => {
       const announcementData = {
         user_id: user?.id,
         title: data.title,
-        description: data.description,
+        description: data.description || "",
         status: data.status || "published", // Utilisez "published" comme valeur par défaut
         images: data.images || [],
         wordpress_category_id: data.wordpressCategory,
@@ -131,6 +131,17 @@ const CreateAnnouncement = () => {
             onSubmit={handleSubmit} 
             isSubmitting={isSubmitting || isPublishing} 
             isMobile={isMobile} 
+            initialValues={{
+              title: "",
+              description: "",
+              wordpressCategory: "",
+              publishDate: undefined,
+              status: "published", // Définir le statut par défaut à "published"
+              images: [],
+              seoTitle: "",
+              seoDescription: "",
+              seoSlug: ""
+            }}
           />
         </div>
       </AnimatedContainer>
