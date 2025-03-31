@@ -9,14 +9,14 @@ import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login, isAuthenticated, isImpersonating, stopImpersonating, originalUser } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -49,24 +49,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
-      {isImpersonating && (
-        <div className="fixed top-0 left-0 right-0 bg-primary p-2 text-primary-foreground text-center text-sm z-50">
-          <div className="container flex items-center justify-between">
-            <p>
-              Vous êtes connecté en tant que <strong>{originalUser?.name}</strong> (mode administrateur)
-            </p>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={stopImpersonating}
-              className="bg-primary-foreground hover:bg-primary-foreground/90 text-primary"
-            >
-              Revenir à mon compte
-            </Button>
-          </div>
-        </div>
-      )}
-
+      <ImpersonationBanner />
       <AnimatedContainer direction="up" className="w-full max-w-md">
         <Card className="glass-panel shadow-lg border-white/20">
           <div className="flex justify-center pt-6">

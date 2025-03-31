@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLocation } from "react-router-dom";
+import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -29,7 +30,7 @@ const PageLayout = ({
   onRefresh
 }: PageLayoutProps) => {
   const isMobile = useMediaQuery("(max-width: 767px)");
-  const { isAdmin, isClient } = useAuth();
+  const { isAdmin, isClient, isImpersonating } = useAuth();
   const location = useLocation();
   
   // Vérifier si nous sommes sur une page d'administration
@@ -46,12 +47,16 @@ const PageLayout = ({
   // Afficher le bouton de rafraîchissement uniquement sur les pages d'administration
   const showRefreshButton = (isAdmin || isClient) && isAdminPage;
 
+  // Calculer le padding-top supplémentaire si la bannière d'impersonation est visible
+  const bannerPadding = isImpersonating ? "pt-12" : "";
+
   return (
     <div className="min-h-screen bg-background">
+      <ImpersonationBanner />
       <Header />
       <Sidebar />
 
-      <main className="pt-16 md:pl-64">
+      <main className={`pt-16 md:pl-64 ${bannerPadding}`}>
         <div className={`container ${fullWidthMobile && isMobile ? 'px-0 sm:px-4' : 'px-4'} py-0 ${containerClassName || ''}`}>
           {(title || titleAction || showRefreshButton) && (
             <AnimatedContainer delay={100} className={containerClassName?.includes('max-w-full') ? 'w-full' : ''}>
