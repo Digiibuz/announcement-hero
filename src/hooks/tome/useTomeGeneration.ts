@@ -45,8 +45,22 @@ export const useTomeGeneration = (configId: string | null) => {
         return;
       }
 
+      // Properly map the data to ensure it matches the ExtendedTomeGeneration interface
       const typedData = data.map(item => ({
-        ...item,
+        id: item.id,
+        wordpress_config_id: item.wordpress_config_id,
+        category_id: item.category_id,
+        keyword_id: item.keyword_id,
+        locality_id: item.locality_id,
+        status: item.status,
+        created_at: item.created_at,
+        scheduled_at: item.scheduled_at,
+        published_at: item.published_at,
+        wordpress_post_id: item.wordpress_post_id,
+        title: item.title,
+        content: item.content,
+        description: item.description,
+        error_message: item.error_message,
         wordpress_site_url: item.wordpress_config?.site_url
       })) as ExtendedTomeGeneration[];
       
@@ -181,10 +195,24 @@ export const useTomeGeneration = (configId: string | null) => {
         return null;
       }
 
-      const typedData = {
-        ...data,
+      // Explicitly map properties to match the ExtendedTomeGeneration interface
+      const typedData: ExtendedTomeGeneration = {
+        id: data.id,
+        wordpress_config_id: data.wordpress_config_id,
+        category_id: data.category_id,
+        keyword_id: data.keyword_id,
+        locality_id: data.locality_id,
+        status: data.status,
+        created_at: data.created_at,
+        scheduled_at: data.scheduled_at,
+        published_at: data.published_at,
+        wordpress_post_id: data.wordpress_post_id,
+        title: data.title,
+        content: data.content,
+        description: data.description,
+        error_message: data.error_message,
         wordpress_site_url: data.wordpress_config?.site_url
-      } as ExtendedTomeGeneration;
+      };
       
       return typedData;
     } catch (error: any) {
