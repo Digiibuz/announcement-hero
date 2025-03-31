@@ -1,10 +1,10 @@
+
 import React, { useState, useEffect } from "react";
 import { useTomeGeneration } from "@/hooks/tome";
 import { useCategoriesKeywords, useLocalities } from "@/hooks/tome";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, Calendar, ExternalLink, Clock, Eye } from "lucide-react";
+import { Loader2, RefreshCw, Calendar, ExternalLink, Clock, Eye, AlertTriangle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import GeneratedContentDialog from "./GeneratedContentDialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface TomeGenerationsProps {
   configId: string;
@@ -97,7 +98,7 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
     // Get site URL from the category
     const categoryDetails = categories.find(c => c.id.toString() === generation.category_id);
     const siteUrl = categoryDetails?.link?.split('/wp-json/')[0] || 
-                   (categories.length > 0 && categories[0]?.link?.split('/wp-json/')[0]);
+                  (categories.length > 0 && categories[0]?.link?.split('/wp-json/')[0]);
     
     setViewingGeneration({
       id: generationId,
@@ -416,6 +417,16 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
                           )}
                         </div>
                         
+                        {/* Afficher le message d'erreur si présent */}
+                        {generation.status === 'failed' && generation.error_message && (
+                          <Alert variant="destructive" className="mb-3 py-2">
+                            <AlertTriangle className="h-4 w-4 mr-1" />
+                            <AlertDescription className="text-xs">
+                              {generation.error_message}
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                        
                         {showProgress && (
                           <div className="mb-3">
                             <Progress 
@@ -425,7 +436,7 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
                             <p className="text-xs text-muted-foreground mt-1">
                               {generation.status === 'pending' 
                                 ? "En file d'attente, la génération va démarrer bientôt..." 
-                                : "Génération et publication en cours..."}
+                                : "Génération et publication en cours (3-5 minutes)..."}
                             </p>
                           </div>
                         )}
@@ -447,12 +458,25 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
                           )}
                         </div>
                       </div>
-                      <div className="flex space-x-2">
+                      <div className="flex flex-wrap space-x-2">
+                        {generation.status === 'failed' && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex items-center gap-2 mb-2 md:mb-0"
+                            onClick={() => regenerate(generation.id)}
+                            disabled={isSubmitting}
+                          >
+                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                            Réessayer
+                          </Button>
+                        )}
+                        
                         {generation.status === 'published' && (
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="flex items-center gap-2"
+                            className="flex items-center gap-2 mb-2 md:mb-0"
                             onClick={() => handleViewContent(
                               generation.id, 
                               generation.wordpress_post_id,
@@ -465,7 +489,7 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
                         )}
                         
                         {generation.wordpress_post_id && (
-                          <Button variant="outline" size="sm" className="flex items-center gap-2" asChild>
+                          <Button variant="outline" size="sm" className="flex items-center gap-2 mb-2 md:mb-0" asChild>
                             <a 
                               href={`${categoryDetails?.link?.split('/wp-json/')[0] || 
                                 (categories.length > 0 && categories[0]?.link?.split('/wp-json/')[0]) || 

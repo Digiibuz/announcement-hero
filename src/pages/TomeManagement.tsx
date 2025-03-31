@@ -11,6 +11,9 @@ import TomeLocalities from "@/components/tome/TomeLocalities";
 import TomeGenerations from "@/components/tome/TomeGenerations";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
+import WordPressConnectionStatus from "@/components/wordpress/WordPressConnectionStatus";
+import { AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const TomeManagement = () => {
   const { isAdmin, user } = useAuth();
@@ -89,6 +92,22 @@ const TomeManagement = () => {
       onRefresh={handleRefresh}
     >
       <AnimatedContainer delay={200}>
+        {/* Informations sur l'état de la connexion WordPress */}
+        <div className="mb-4 flex justify-between items-center">
+          {selectedConfigId && <WordPressConnectionStatus configId={selectedConfigId} showDetails={true} />}
+        </div>
+        
+        {/* Alerte d'information concernant le WAF */}
+        <Alert variant="warning" className="mb-4">
+          <AlertTriangle className="h-5 w-5" />
+          <AlertTitle>Protection anti-bot WordPress</AlertTitle>
+          <AlertDescription>
+            Certains hébergeurs WordPress (comme o2switch) utilisent un pare-feu (WAF) qui peut bloquer 
+            la publication automatisée. Si les générations échouent, vous devrez peut-être publier manuellement 
+            depuis l'interface WordPress ou désactiver temporairement le WAF.
+          </AlertDescription>
+        </Alert>
+
         {/* Pour les clients, on ne montre pas le sélecteur de configuration */}
         {!isClient && (
           <div className="mb-6">
