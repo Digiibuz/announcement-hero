@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -30,7 +29,7 @@ const TomePublicationDetail = () => {
         setIsLoading(true);
         const fetchedGeneration = await getGenerationById(id);
         if (fetchedGeneration) {
-          setGeneration(fetchedGeneration);
+          setGeneration(fetchedGeneration as TomeGeneration);
           form.reset({
             title: fetchedGeneration.title || "",
             content: fetchedGeneration.content || "",
@@ -111,12 +110,12 @@ const TomePublicationDetail = () => {
     <Card>
       <CardHeader>
         <CardTitle>
-          {generation.status === "draft" 
+          {generation?.status === "draft" 
             ? "Modifier la publication" 
             : "Détails de la publication"}
         </CardTitle>
         <CardDescription>
-          {generation.status === "draft" 
+          {generation?.status === "draft" 
             ? "Modifiez le contenu avant publication" 
             : "Consultez les détails de cette publication"}
         </CardDescription>
@@ -134,7 +133,7 @@ const TomePublicationDetail = () => {
                     <Input 
                       placeholder="Titre de la publication" 
                       {...field} 
-                      disabled={generation.status !== "draft"}
+                      disabled={generation?.status !== "draft"}
                     />
                   </FormControl>
                   <FormMessage />
@@ -154,7 +153,7 @@ const TomePublicationDetail = () => {
                       value={field.value}
                       onChange={field.onChange}
                       className="min-h-[300px]"
-                      disabled={generation.status !== "draft"}
+                      disabled={generation?.status !== "draft"}
                     />
                   </FormControl>
                   <FormMessage />
@@ -180,7 +179,7 @@ const TomePublicationDetail = () => {
               )}
             />
             
-            {generation.status === "draft" && (
+            {generation?.status === "draft" && (
               <div className="flex justify-end space-x-2 pt-4">
                 <Button
                   type="button"

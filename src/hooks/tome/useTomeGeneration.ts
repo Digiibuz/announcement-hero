@@ -5,10 +5,8 @@ import { toast } from "sonner";
 import { TomeGeneration, CategoryKeyword, Locality } from "@/types/tome";
 import { format } from "date-fns";
 
+// Extend TomeGeneration with optional additional fields
 interface ExtendedTomeGeneration extends TomeGeneration {
-  error_message?: string | null;
-  title?: string | null;
-  content?: string | null;
   wordpress_site_url?: string | null;
 }
 
@@ -205,13 +203,16 @@ export const useTomeGeneration = (configId: string | null) => {
     }
   ): Promise<boolean> => {
     try {
+      // Create a type-safe update object
+      const updateData: Partial<TomeGeneration> = {};
+      
+      if (data.title !== undefined) updateData.title = data.title;
+      if (data.content !== undefined) updateData.content = data.content;
+      if (data.description !== undefined) updateData.description = data.description;
+      
       const { error } = await supabase
         .from("tome_generations")
-        .update({
-          title: data.title,
-          content: data.content,
-          description: data.description
-        })
+        .update(updateData)
         .eq("id", generationId);
 
       if (error) {
