@@ -1,3 +1,4 @@
+
 "use client"
 
 import React from "react";
@@ -15,7 +16,8 @@ import {
   Newspaper, 
   Globe,
   FileText,
-  Menu
+  Menu,
+  UserCircle
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -44,6 +46,12 @@ const Sidebar = () => {
       href: "/create",
       icon: <Newspaper className="h-5 w-5" />,
       isActive: pathname === "/create",
+    },
+    {
+      name: "Mon Profil",
+      href: "/profile",
+      icon: <UserCircle className="h-5 w-5" />,
+      isActive: pathname === "/profile",
     },
   ];
 
