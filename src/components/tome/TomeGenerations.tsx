@@ -170,7 +170,8 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
                     } />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Aucun mot-clé</SelectItem>
+                    {/* Fix: Change empty string to a non-empty string with a special value */}
+                    <SelectItem key="no-keyword" value="none">Aucun mot-clé</SelectItem>
                     {selectedCategoryKeywords.map((keyword) => (
                       <SelectItem key={keyword.id} value={keyword.id}>
                         {keyword.keyword}
@@ -195,7 +196,8 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
                     } />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Aucune localité</SelectItem>
+                    {/* Fix: Change empty string to a non-empty string with a special value */}
+                    <SelectItem key="no-locality" value="none">Aucune localité</SelectItem>
                     {activeLocalities.map((locality) => (
                       <SelectItem key={locality.id} value={locality.id}>
                         {locality.name} {locality.region ? `(${locality.region})` : ''}

@@ -57,11 +57,15 @@ export const useTomeGeneration = (configId: string | null) => {
       const isScheduled = scheduleDate !== null;
       const formattedDate = scheduleDate ? format(scheduleDate, "yyyy-MM-dd'T'HH:mm:ss") : null;
       
+      // Check if keyword or locality is "none" and set to null
+      const keywordId = keyword?.id === "none" ? null : keyword?.id || null;
+      const localityId = locality?.id === "none" ? null : locality?.id || null;
+      
       const newGeneration = {
         wordpress_config_id: configId,
         category_id: categoryId,
-        keyword_id: keyword?.id || null,
-        locality_id: locality?.id || null,
+        keyword_id: keywordId,
+        locality_id: localityId,
         status: isScheduled ? "scheduled" : "pending",
         scheduled_at: formattedDate
       };
