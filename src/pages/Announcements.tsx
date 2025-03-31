@@ -10,12 +10,11 @@ import AnnouncementFilter from "@/components/announcements/AnnouncementFilter";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Announcement } from "@/types/announcement";
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
 import FloatingActionButton from "@/components/ui/FloatingActionButton";
 import { deleteAnnouncement as apiDeleteAnnouncement } from "@/api/announcementApi";
-import { cacheListData, getListDataFromCache } from "@/utils/cacheStorage";
 
 // Helper function to strip HTML tags
 const stripHtmlTags = (html: string): string => {
@@ -25,7 +24,6 @@ const stripHtmlTags = (html: string): string => {
 
 const Announcements = () => {
   const { isAdmin, user } = useAuth();
-  const location = useLocation();
   const [filter, setFilter] = useState({
     search: "",
     status: "all",
@@ -43,22 +41,10 @@ const Announcements = () => {
     }
   }, [user?.wordpressConfigId, refetchCategories]);
 
-  // Fetch announcements from Supabase with cache support
+  // Fetch announcements from Supabase
   const { data: announcements, isLoading, refetch } = useQuery({
     queryKey: ["announcements"],
     queryFn: async () => {
-      // Générer un ID de cache basé sur l'utilisateur
-      const cacheId = `announcements-${user?.id || 'anonymous'}-${isAdmin ? 'admin' : 'user'}`;
-      
-      // Essayer d'abord le cache
-      const cachedAnnouncements = await getListDataFromCache<Announcement[]>(cacheId);
-      if (cachedAnnouncements) {
-        console.log("Using cached announcements");
-        return cachedAnnouncements;
-      }
-      
-      // Sinon, faire la requête à Supabase
-      console.log("Fetching announcements from Supabase");
       let query = supabase
         .from("announcements")
         .select("*");
@@ -76,7 +62,7 @@ const Announcements = () => {
       }
       
       // Map WordPress category IDs to names and strip HTML from descriptions for list view only
-      const processedData = data.map(announcement => {
+      return data.map(announcement => {
         // Create a new object with all properties from announcement
         const processed: Announcement = { ...announcement } as Announcement;
         
@@ -98,15 +84,8 @@ const Announcements = () => {
         
         return processed;
       });
-      
-      // Mettre en cache les résultats
-      await cacheListData(cacheId, processedData);
-      
-      return processedData;
     },
     enabled: !!user,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchOnWindowFocus: false,
   });
 
   // Filter announcements based on search and status
@@ -132,24 +111,6 @@ const Announcements = () => {
       refetch();
     }
   }, [categories, refetch]);
-
-  // Cache current route for faster navigation
-  useEffect(() => {
-    if (location.pathname === '/announcements') {
-      // Signal au service worker de se souvenir de cette page
-      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage({
-          type: 'CACHE_PAGE_CONTENT',
-          path: location.pathname,
-          content: {
-            announcements,
-            filter,
-            viewMode
-          }
-        });
-      }
-    }
-  }, [announcements, filter, viewMode, location.pathname]);
 
   // Handle announcement deletion
   const handleDelete = async (id: string) => {

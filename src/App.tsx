@@ -1,4 +1,5 @@
 
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -186,17 +187,18 @@ const AppRoutes = () => {
   );
 };
 
-// Fixed App component by properly nesting providers 
-// The order of providers is important for hooks to work correctly
+// L'ordre des providers est important pour que les hooks fonctionnent correctement
 const App = () => (
   <BrowserRouter>
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <AuthProvider>
-          <AppRoutes />
-          <Toaster />
-          <SonnerToaster />
-        </AuthProvider>
+        <TooltipProvider>
+          <AuthProvider>
+            <AppRoutes />
+            <Toaster />
+            <SonnerToaster />
+          </AuthProvider>
+        </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
   </BrowserRouter>
