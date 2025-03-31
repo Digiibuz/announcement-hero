@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { useMediaQuery } from "@/hooks/use-media-query"
+import { useMediaQuery, useIsMobile } from "@/hooks/use-media-query"
 
 const SIDEBAR_COOKIE_NAME = "sidebar:state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -27,10 +27,6 @@ export function useSidebar() {
   }
 
   return context
-}
-
-function useIsMobile(): boolean {
-  return useMediaQuery("(max-width: 767px)");
 }
 
 export const SidebarProvider = React.forwardRef<
