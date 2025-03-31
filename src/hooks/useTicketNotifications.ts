@@ -40,8 +40,7 @@ export const useTicketNotifications = () => {
   }, [user?.id]);
 
   // Vérifier si un ticket a des réponses non lues pour un client
-  const checkUnreadResponsesForClient = (tickets: Ticket[], readIds: Record<string, Date>) => {
-    // Si l'utilisateur a déjà vu le tab, retourner 0
+  const checkUnreadResponsesForClient = useCallback((tickets: Ticket[], readIds: Record<string, Date>) => {
     if (viewedTicketTab) {
       return 0;
     }
@@ -69,10 +68,10 @@ export const useTicketNotifications = () => {
     });
 
     return count;
-  };
+  }, [user?.id, viewedTicketTab]);
 
   // Vérifier les tickets non lus pour un admin
-  const checkUnreadTicketsForAdmin = (tickets: Ticket[], readIds: Record<string, Date>) => {
+  const checkUnreadTicketsForAdmin = useCallback((tickets: Ticket[], readIds: Record<string, Date>) => {
     let count = 0;
     
     tickets.forEach(ticket => {
@@ -101,7 +100,7 @@ export const useTicketNotifications = () => {
     });
 
     return count;
-  };
+  }, []);
 
   // Recalculer le nombre de notifications non lues
   const updateUnreadCount = useCallback(() => {
@@ -118,7 +117,7 @@ export const useTicketNotifications = () => {
       
       setUnreadCount(count);
     }
-  }, [userTickets, allTickets, readTicketIds, user?.id, isAdmin, viewedTicketTab]);
+  }, [userTickets, allTickets, readTicketIds, user?.id, isAdmin, checkUnreadResponsesForClient, checkUnreadTicketsForAdmin]);
 
   // Mettre à jour le compteur quand les dépendances changent
   useEffect(() => {
@@ -126,7 +125,7 @@ export const useTicketNotifications = () => {
   }, [updateUnreadCount]);
 
   // Fonction pour marquer un ticket comme lu
-  const markTicketAsRead = (ticketId: string) => {
+  const markTicketAsRead = useCallback((ticketId: string) => {
     if (!user?.id) return;
     
     // Create a new object with the updated read timestamp
@@ -150,15 +149,16 @@ export const useTicketNotifications = () => {
       JSON.stringify(storageReadTickets)
     );
     
-    // Forcer la mise à jour du compteur après avoir marqué un ticket comme lu
-    setTimeout(() => updateUnreadCount(), 0);
-  };
+    // Force immediate update of unread count
+    updateUnreadCount();
+  }, [readTicketIds, user?.id, updateUnreadCount]);
 
   // Fonction pour marquer le tab des tickets comme vu
   const markTicketTabAsViewed = useCallback(() => {
     setViewedTicketTab(true);
-    // Forcer la mise à jour immédiate du compteur
-    setTimeout(() => updateUnreadCount(), 0);
+    
+    // Force immediate update of unread count
+    updateUnreadCount();
   }, [updateUnreadCount]);
 
   // Réinitialiser cette valeur quand on quitte la page
@@ -171,6 +171,6 @@ export const useTicketNotifications = () => {
     markTicketAsRead, 
     markTicketTabAsViewed, 
     resetTicketTabView,
-    readTicketIds // Exposer l'état de lecture des tickets
+    readTicketIds
   };
 };

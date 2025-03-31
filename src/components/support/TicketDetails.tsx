@@ -32,11 +32,12 @@ const TicketDetails: React.FC<TicketDetailsProps> = ({ ticketId }) => {
   const { markTicketAsRead } = useTicketNotifications();
 
   // Marquer automatiquement le ticket comme lu dès qu'il est affiché
+  // Use strict dependency list to prevent infinite loop
   useEffect(() => {
-    if (ticket) {
+    if (ticket && ticketId) {
       markTicketAsRead(ticketId);
     }
-  }, [ticket, ticketId, markTicketAsRead]);
+  }, [ticketId, ticket, markTicketAsRead]);
 
   if (isLoading || !ticket) {
     return <p className="text-center py-8">Chargement des détails du ticket...</p>;
@@ -138,7 +139,7 @@ const TicketDetails: React.FC<TicketDetailsProps> = ({ ticketId }) => {
       <CardHeader>
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-2">
-            <MailOpen className="h-5 w-5 text-primary" /> {/* Icône indiquant que le ticket est lu */}
+            <MailOpen className="h-5 w-5 text-primary" />
             <div>
               <CardTitle className="text-xl">{ticket.subject}</CardTitle>
               <CardDescription className="mt-1">
