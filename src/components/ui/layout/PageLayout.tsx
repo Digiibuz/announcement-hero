@@ -7,7 +7,7 @@ import Sidebar from "@/components/ui/layout/Sidebar";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLocation } from "react-router-dom";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
@@ -19,6 +19,7 @@ interface PageLayoutProps {
   fullWidthMobile?: boolean;
   containerClassName?: string;
   onRefresh?: () => void;
+  onBack?: () => void;
 }
 
 const PageLayout = ({ 
@@ -27,7 +28,8 @@ const PageLayout = ({
   titleAction, 
   fullWidthMobile = false,
   containerClassName,
-  onRefresh
+  onRefresh,
+  onBack
 }: PageLayoutProps) => {
   const isMobile = useMediaQuery("(max-width: 767px)");
   const { isAdmin, isClient, isImpersonating } = useAuth();
@@ -58,10 +60,21 @@ const PageLayout = ({
 
       <main className={`pt-16 md:pl-64 ${bannerPadding}`}>
         <div className={`container ${fullWidthMobile && isMobile ? 'px-0 sm:px-4' : 'px-4'} py-0 pb-16 ${containerClassName || ''}`}>
-          {(title || titleAction || showRefreshButton) && (
+          {(title || titleAction || showRefreshButton || onBack) && (
             <AnimatedContainer delay={100} className={containerClassName?.includes('max-w-full') ? 'w-full' : ''}>
               <div className={`flex flex-col ${!isMobile ? "sm:flex-row sm:items-center sm:justify-between" : ""} mb-4 ${isMobile ? "pt-0 px-4" : "pt-2"} gap-3`}>
                 <div className="flex flex-row items-center gap-4">
+                  {onBack && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={onBack}
+                      className="flex items-center gap-1"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      <span>Retour</span>
+                    </Button>
+                  )}
                   {title && <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>}
                   {showRefreshButton && (
                     <Button 
