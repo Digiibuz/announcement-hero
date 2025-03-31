@@ -90,116 +90,84 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const AppRoutes = () => {
-  const { isAuthenticated, isAdmin, isClient, isLoading } = useAuth();
-  const location = useLocation();
-  
-  // Fix: Simplified path restoration logic to prevent redirection loops
-  useEffect(() => {
-    // Only restore paths if we're on the home page or login page
-    // This prevents redirection loops from dashboard to admin pages
-    if (isAuthenticated && !isLoading && (location.pathname === '/' || location.pathname === '/login')) {
-      console.log("Checking for path restoration");
-      
-      // First try to restore the last authenticated path
-      const lastAuthPath = sessionStorage.getItem('lastAuthenticatedPath');
-      
-      if (lastAuthPath && lastAuthPath !== '/' && lastAuthPath !== '/login') {
-        console.log("Redirecting to last authenticated path:", lastAuthPath);
-        window.history.replaceState(null, '', lastAuthPath);
-        window.location.href = lastAuthPath;
-        return;
-      }
-      
-      // If no authenticated path, default to dashboard
-      if (location.pathname === '/' || location.pathname === '/login') {
-        console.log("Defaulting to dashboard");
-        window.history.replaceState(null, '', '/dashboard');
-        window.location.href = '/dashboard';
-      }
-    }
-  }, [isAuthenticated, isAdmin, isClient, isLoading, location.pathname]);
-
+// Contents of AppRoutes moved directly into App component to avoid
+// AuthProvider context issues and fix the useAuth error
+const App = () => {
   return (
-    <Suspense fallback={<LoadingFallback />}>
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/login" element={<Login />} />
-        
-        {/* Protected routes */}
-        <Route 
-          path="/dashboard" 
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/announcements" 
-          element={
-            <ProtectedRoute>
-              <Announcements />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/announcements/:id" 
-          element={
-            <ProtectedRoute>
-              <AnnouncementDetail />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/create" 
-          element={
-            <ProtectedRoute>
-              <CreateAnnouncement />
-            </ProtectedRoute>
-          } 
-        />
-        
-        {/* Admin/Client only routes */}
-        <Route 
-          path="/users" 
-          element={
-            <AdminRoute>
-              <UserManagement />
-            </AdminRoute>
-          } 
-        />
-        <Route 
-          path="/wordpress" 
-          element={
-            <AdminRoute>
-              <WordPressManagement />
-            </AdminRoute>
-          } 
-        />
-        
-        {/* Fallback route */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </Suspense>
+    <BrowserRouter>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <TooltipProvider>
+              <Suspense fallback={<LoadingFallback />}>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/login" element={<Login />} />
+                  
+                  {/* Protected routes */}
+                  <Route 
+                    path="/dashboard" 
+                    element={
+                      <ProtectedRoute>
+                        <Dashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/announcements" 
+                    element={
+                      <ProtectedRoute>
+                        <Announcements />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/announcements/:id" 
+                    element={
+                      <ProtectedRoute>
+                        <AnnouncementDetail />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/create" 
+                    element={
+                      <ProtectedRoute>
+                        <CreateAnnouncement />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  
+                  {/* Admin/Client only routes */}
+                  <Route 
+                    path="/users" 
+                    element={
+                      <AdminRoute>
+                        <UserManagement />
+                      </AdminRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/wordpress" 
+                    element={
+                      <AdminRoute>
+                        <WordPressManagement />
+                      </AdminRoute>
+                    } 
+                  />
+                  
+                  {/* Fallback route */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                <Toaster />
+                <SonnerToaster />
+              </Suspense>
+            </TooltipProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </BrowserRouter>
   );
 };
-
-// L'ordre des providers est important pour que les hooks fonctionnent correctement
-const App = () => (
-  <BrowserRouter>
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <TooltipProvider>
-          <AuthProvider>
-            <AppRoutes />
-            <Toaster />
-            <SonnerToaster />
-          </AuthProvider>
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  </BrowserRouter>
-);
 
 export default App;

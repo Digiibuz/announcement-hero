@@ -1,6 +1,6 @@
 
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v5';
+const CACHE_NAME = 'digiibuz-cache-v6';
 
 // Liste des ressources à mettre en cache
 const urlsToCache = [
@@ -74,12 +74,14 @@ self.addEventListener('activate', event => {
 
 // Gestion des requêtes avec stratégie pour éviter les rechargements complets
 self.addEventListener('fetch', event => {
-  // Ne pas intercepter les requêtes API, assets non essentiels ou JavaScript
+  // IMPORTANT: Ne jamais intercepter les requêtes JavaScript ou assets
+  // Cela peut causer des problèmes avec les modules dynamiques
   if (event.request.url.includes('/api/') || 
       event.request.url.includes('supabase.co') ||
       event.request.url.includes('wp-json') ||
       !isValidCacheUrl(event.request.url) ||
-      isJavaScriptAsset(event.request.url)) {
+      isJavaScriptAsset(event.request.url) ||
+      event.request.url.includes('assets/')) {
     return;
   }
   
@@ -97,7 +99,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Pour les autres requêtes - stratégie "stale-while-revalidate"
+  // Pour les autres requêtes non-JS - stratégie "stale-while-revalidate"
   event.respondWith(
     caches.match(event.request)
       .then(cachedResponse => {
