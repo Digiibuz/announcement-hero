@@ -9,6 +9,7 @@ import { ThemeProvider } from "next-themes";
 import { Suspense, lazy, useEffect } from 'react';
 
 // Lazy loading des pages pour améliorer les performances
+const Index = lazy(() => import("./pages/Index"));
 const Login = lazy(() => import("./pages/Login"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const CreateAnnouncement = lazy(() => import("./pages/CreateAnnouncement"));
@@ -100,8 +101,7 @@ const App = () => {
             <TooltipProvider>
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>
-                  {/* Default route now redirects to login */}
-                  <Route path="/" element={<Navigate to="/login" replace />} />
+                  <Route path="/" element={<Index />} />
                   <Route path="/login" element={<Login />} />
                   
                   {/* Protected routes */}
