@@ -30,8 +30,14 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
 }) => {
   const isDraft = announcement?.status === 'draft';
   
+  // Utilisez une fonction pour changer d'onglet qui empêche le comportement par défaut
+  const handleTabChange = (value: string) => {
+    // Prévenir tout comportement de rechargement
+    setActiveTab(value);
+  };
+  
   return (
-    <Tabs value={activeTab} onValueChange={setActiveTab}>
+    <Tabs value={activeTab} onValueChange={handleTabChange}>
       <TabsList>
         <TabsTrigger value="preview">Aperçu</TabsTrigger>
         <TabsTrigger value="edit" disabled={!isEditing}>

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -22,34 +22,8 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
   const [activeTab, setActiveTab] = useState("preview");
   const [formData, setFormData] = useState<any>(null);
 
-  useEffect(() => {
-    fetchAnnouncement();
-  }, [id]);
-
-  useEffect(() => {
-    // Automatically switch to edit mode when viewing a draft announcement
-    if (announcement && announcement.status === 'draft' && !isEditing) {
-      setIsEditing(true);
-      setActiveTab("edit");
-    }
-
-    // Prepare form data from announcement
-    if (announcement) {
-      setFormData({
-        title: announcement.title || "",
-        description: announcement.description || "",
-        wordpressCategory: announcement.wordpress_category_id || "",
-        publishDate: announcement.publish_date ? new Date(announcement.publish_date) : undefined,
-        status: announcement.status || "draft",
-        images: announcement.images || [],
-        seoTitle: announcement.seo_title || "",
-        seoDescription: announcement.seo_description || "",
-        seoSlug: announcement.seo_slug || ""
-      });
-    }
-  }, [announcement]);
-
-  const fetchAnnouncement = async () => {
+  // Utiliser useCallback pour éviter les rendus inutiles
+  const fetchAnnouncement = useCallback(async () => {
     try {
       setIsLoading(true);
       if (!id) return;
@@ -74,7 +48,34 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchAnnouncement();
+  }, [fetchAnnouncement]);
+
+  useEffect(() => {
+    // Automatically switch to edit mode when viewing a draft announcement
+    if (announcement && announcement.status === 'draft' && !isEditing) {
+      setIsEditing(true);
+      setActiveTab("edit");
+    }
+
+    // Prepare form data from announcement
+    if (announcement) {
+      setFormData({
+        title: announcement.title || "",
+        description: announcement.description || "",
+        wordpressCategory: announcement.wordpress_category_id || "",
+        publishDate: announcement.publish_date ? new Date(announcement.publish_date) : undefined,
+        status: announcement.status || "draft",
+        images: announcement.images || [],
+        seoTitle: announcement.seo_title || "",
+        seoDescription: announcement.seo_description || "",
+        seoSlug: announcement.seo_slug || ""
+      });
+    }
+  }, [announcement, isEditing]);
 
   const handleSubmit = async (formData: any) => {
     if (!id || !userId) return;
@@ -91,7 +92,7 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
       if (error) throw error;
       
       toast.success("Annonce mise à jour avec succès");
-      fetchAnnouncement();
+      await fetchAnnouncement();
       setIsEditing(false);
       setActiveTab("preview");
     } catch (error: any) {
