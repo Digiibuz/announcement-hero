@@ -32,6 +32,10 @@ export const useWordPressConfigsList = () => {
         
         setConfigs(data ? [data as WordPressConfig] : []);
       } 
+      // Si c'est un client sans configuration assignée, on définit un tableau vide
+      else if (isClient && !user?.wordpressConfigId) {
+        setConfigs([]);
+      }
       // Pour les autres rôles, on récupère toutes les configurations
       else {
         const { data, error } = await supabase

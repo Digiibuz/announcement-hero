@@ -17,9 +17,10 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import AccessDenied from "@/components/users/AccessDenied";
 import { WordPressConfig } from "@/types/wordpress";
+import { Card, CardContent } from "@/components/ui/card";
 
 const WordPressManagement = () => {
-  const { isAdmin, isClient } = useAuth();
+  const { isAdmin, isClient, user } = useAuth();
   const {
     configs,
     isLoading,
@@ -69,6 +70,20 @@ const WordPressManagement = () => {
   // Change page title based on user role
   const pageTitle = isClient ? "Mon site" : "Gestion WordPress";
 
+  // Message to display when client has no site assigned
+  const NoSiteMessage = () => (
+    <Card className="mt-4">
+      <CardContent className="p-6 text-center">
+        <p className="text-muted-foreground mb-2">
+          Aucun site WordPress n'est actuellement attribué à votre compte.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Veuillez contacter votre administrateur pour obtenir un accès.
+        </p>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <PageLayout title={pageTitle} titleAction={titleAction}>
       {!(isAdmin || isClient) ? (
@@ -76,14 +91,18 @@ const WordPressManagement = () => {
       ) : (
         <AnimatedContainer delay={200}>
           <div className="w-full">
-            <WordPressConfigList
-              configs={configs}
-              isLoading={isLoading}
-              isSubmitting={isSubmitting}
-              onUpdateConfig={handleUpdateConfig}
-              onDeleteConfig={deleteConfig}
-              readOnly={isClient} // Mode lecture seule pour les clients
-            />
+            {isClient && configs.length === 0 ? (
+              <NoSiteMessage />
+            ) : (
+              <WordPressConfigList
+                configs={configs}
+                isLoading={isLoading}
+                isSubmitting={isSubmitting}
+                onUpdateConfig={handleUpdateConfig}
+                onDeleteConfig={deleteConfig}
+                readOnly={isClient} // Mode lecture seule pour les clients
+              />
+            )}
           </div>
         </AnimatedContainer>
       )}
