@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { useTickets, useAllTickets, Ticket } from "./useTickets";
 import { useAuth } from "@/context/AuthContext";
@@ -56,10 +55,6 @@ export const useTicketNotifications = () => {
 
   // Vérifier si un ticket a des réponses non lues pour un client
   const checkUnreadResponsesForClient = useCallback((tickets: Ticket[], readIds: Record<string, Date>) => {
-    if (viewedTicketTab) {
-      return 0;
-    }
-    
     let count = 0;
     
     tickets.forEach(ticket => {
@@ -83,7 +78,7 @@ export const useTicketNotifications = () => {
     });
 
     return count;
-  }, [user?.id, viewedTicketTab]);
+  }, [user?.id]);
 
   // Vérifier les tickets non lus pour un admin
   const checkUnreadTicketsForAdmin = useCallback((tickets: Ticket[], readIds: Record<string, Date>) => {
@@ -216,19 +211,30 @@ export const useTicketNotifications = () => {
       })
       .subscribe();
     
+    // Add a subscription to ticket_responses to detect new responses
+    const responsesChannel = supabase
+      .channel('ticket_responses_changes')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'ticket_responses'
+      }, () => {
+        // Force an update of the unread count when any new response is added
+        setTimeout(() => updateUnreadCount(), 500);
+      })
+      .subscribe();
+    
     // Nettoyer l'abonnement à la déconnexion
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(responsesChannel);
     };
   }, [user?.id, updateUnreadCount]);
 
   // Fonction pour marquer le tab des tickets comme vu
   const markTicketTabAsViewed = useCallback(() => {
     setViewedTicketTab(true);
-    
-    // Force immediate update of unread count
-    updateUnreadCount();
-  }, [updateUnreadCount]);
+  }, []);
 
   // Réinitialiser cette valeur quand on quitte la page
   const resetTicketTabView = useCallback(() => {

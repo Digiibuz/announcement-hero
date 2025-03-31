@@ -15,10 +15,13 @@ const Support = () => {
 
   // Réinitialiser la vue du tab quand on quitte la page
   useEffect(() => {
+    // Mark the ticket tab as viewed when the support page loads
+    markTicketTabAsViewed();
+    
     return () => {
       resetTicketTabView();
     };
-  }, [resetTicketTabView]);
+  }, [resetTicketTabView, markTicketTabAsViewed]);
 
   // Gérer le changement de tab
   const handleTabChange = (value: string) => {
