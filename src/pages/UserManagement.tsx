@@ -40,7 +40,7 @@ const UserManagement = () => {
     toast.success("Liste des utilisateurs mise à jour");
   };
 
-  // Add impersonation handler (empty for now since this requirement was removed)
+  // Add impersonation handler (empty for now)
   const handleImpersonateUser = (user: UserProfile) => {
     // This functionality is not implemented but required by the UserList component
     console.log("Impersonation feature not implemented");
@@ -69,7 +69,7 @@ const UserManagement = () => {
             onResetPassword={handleResetPassword}
             onUpdateUser={updateUser}
             onDeleteUser={deleteUser}
-            onImpersonateUser={handleImpersonateUser} // Add the missing prop
+            onImpersonateUser={handleImpersonateUser}
           />
         </AnimatedContainer>
       )}
