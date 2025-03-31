@@ -47,12 +47,6 @@ const Sidebar = () => {
       icon: <Newspaper className="h-5 w-5" />,
       isActive: pathname === "/create",
     },
-    {
-      name: "Mon Profil",
-      href: "/profile",
-      icon: <UserCircle className="h-5 w-5" />,
-      isActive: pathname === "/profile",
-    },
   ];
 
   // Modified adminItems to separate admin-only and client-accessible items
@@ -140,6 +134,20 @@ const Sidebar = () => {
 
         <div className={`mt-auto pt-4 ${isMobile ? "pb-4" : "absolute bottom-4 left-0 right-0"} px-3`}>
           <div className="border-t border-border pt-4">
+            {/* Profile link now in the footer section */}
+            <Link to="/profile" onClick={() => isMobile && setIsOpen(false)}>
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start mb-2",
+                  pathname === "/profile" && "bg-accent text-accent-foreground"
+                )}
+              >
+                <UserCircle className="h-5 w-5" />
+                <span className="ml-3">Mon Profil</span>
+              </Button>
+            </Link>
+            
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{user?.name}</p>
