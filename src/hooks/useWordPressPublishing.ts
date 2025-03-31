@@ -117,6 +117,25 @@ export const useWordPressPublishing = () => {
       
       console.log("Using WordPress endpoint:", postEndpoint, "with custom taxonomy:", useCustomTaxonomy);
       
+      // Prepare headers with authentication
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Check for authentication credentials
+      if (wpConfig.app_username && wpConfig.app_password) {
+        // Application Password Format: "Basic base64(username:password)"
+        const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
+        headers['Authorization'] = `Basic ${basicAuth}`;
+        console.log("Using Application Password authentication");
+      } else {
+        return { 
+          success: false, 
+          message: "Aucune méthode d'authentification disponible", 
+          wordpressPostId: null 
+        };
+      }
+      
       // Prepare post data
       const wpPostData: any = {
         title: announcement.title,
@@ -148,26 +167,7 @@ export const useWordPressPublishing = () => {
       }
       
       console.log("WordPress post data:", wpPostData);
-      
-      // Prepare headers with authentication
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      
-      // Check for authentication credentials
-      if (wpConfig.app_username && wpConfig.app_password) {
-        // Application Password Format: "Basic base64(username:password)"
-        const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
-        headers['Authorization'] = `Basic ${basicAuth}`;
-        console.log("Using Application Password authentication");
-      } else {
-        return { 
-          success: false, 
-          message: "Aucune méthode d'authentification disponible", 
-          wordpressPostId: null 
-        };
-      }
-      
+
       // Send request to WordPress
       console.log("Sending POST request to WordPress:", postEndpoint);
       const response = await fetch(postEndpoint, {
@@ -221,6 +221,75 @@ export const useWordPressPublishing = () => {
       // Check if the response contains the WordPress post ID
       if (wpResponseData && typeof wpResponseData.id === 'number') {
         console.log("WordPress post ID received:", wpResponseData.id);
+        
+        // Now, if we have images, upload the first one as featured image
+        if (announcement.images && announcement.images.length > 0) {
+          const featuredImageUrl = announcement.images[0];
+          console.log("Uploading featured image from URL:", featuredImageUrl);
+          
+          try {
+            // 1. Download the image from the URL
+            const imageResponse = await fetch(featuredImageUrl);
+            if (!imageResponse.ok) {
+              console.error("Failed to fetch image from URL:", featuredImageUrl);
+              throw new Error("Failed to fetch image");
+            }
+            
+            const imageBlob = await imageResponse.blob();
+            const fileName = featuredImageUrl.split('/').pop() || 'image.jpg';
+            const imageFile = new File([imageBlob], fileName, { 
+              type: imageBlob.type || 'image/jpeg' 
+            });
+            
+            // 2. Upload to WordPress Media Library
+            console.log("Uploading image to WordPress media library");
+            const mediaFormData = new FormData();
+            mediaFormData.append('file', imageFile);
+            
+            const mediaEndpoint = `${siteUrl}/wp-json/wp/v2/media`;
+            const mediaResponse = await fetch(mediaEndpoint, {
+              method: 'POST',
+              headers: {
+                'Authorization': headers.Authorization
+              },
+              body: mediaFormData
+            });
+            
+            if (!mediaResponse.ok) {
+              const mediaError = await mediaResponse.text();
+              console.error("Media upload error:", mediaError);
+              throw new Error(`Failed to upload media: ${mediaError}`);
+            }
+            
+            const mediaData = await mediaResponse.json();
+            console.log("Media upload response:", mediaData);
+            
+            if (mediaData && mediaData.id) {
+              // 3. Set as featured image for the post
+              console.log("Setting featured image for post", wpResponseData.id, "with media ID", mediaData.id);
+              
+              const updatePostEndpoint = `${postEndpoint}/${wpResponseData.id}`;
+              const updateResponse = await fetch(updatePostEndpoint, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                  featured_media: mediaData.id
+                })
+              });
+              
+              if (!updateResponse.ok) {
+                const updateError = await updateResponse.text();
+                console.error("Error setting featured image:", updateError);
+                // We'll continue even if featured image setting fails
+              } else {
+                console.log("Featured image set successfully");
+              }
+            }
+          } catch (imageError: any) {
+            console.error("Error processing image:", imageError);
+            // We'll continue even if image upload fails
+          }
+        }
         
         // Update the announcement in Supabase with the WordPress post ID
         const { error: updateError } = await supabase
