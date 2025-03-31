@@ -81,13 +81,16 @@ const AnnouncementForm = ({
 
   useEffect(() => {
     if (title) {
+      // Generate slug from title
       const normalizedTitle = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
       setValue("seoSlug", normalizedTitle);
-      if (!form.getValues("seoTitle")) {
+      
+      // Fix: Set the full title as seoTitle rather than just first letter
+      if (!form.getValues("seoTitle") || form.getValues("seoTitle") === "") {
         setValue("seoTitle", title);
       }
     }
-  }, [title, setValue]);
+  }, [title, setValue, form]);
 
   const optimizeSeoContent = async (field: 'seoTitle' | 'seoDescription') => {
     try {
