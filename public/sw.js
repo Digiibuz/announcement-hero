@@ -1,6 +1,6 @@
 
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v5';
+const CACHE_NAME = 'digiibuz-cache-v6';
 
 // Liste des ressources à mettre en cache
 const urlsToCache = [
@@ -13,7 +13,8 @@ const urlsToCache = [
   '/announcements',
   '/create',
   '/users',
-  '/wordpress'
+  '/wordpress',
+  '/login'
 ];
 
 // Cache de données par page visité (état de page)
@@ -34,7 +35,7 @@ self.addEventListener('install', event => {
 
 // Activation et contrôle immédiat des clients
 self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME, 'localstore-cache', 'page-content-cache'];
+  const cacheWhitelist = [CACHE_NAME, 'localstore-cache', 'page-content-cache', 'session-cache'];
 
   event.waitUntil(
     Promise.all([
@@ -43,6 +44,7 @@ self.addEventListener('activate', event => {
         return Promise.all(
           cacheNames.map(cacheName => {
             if (cacheWhitelist.indexOf(cacheName) === -1) {
+              console.log('Suppression de l\'ancien cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
@@ -60,6 +62,13 @@ const sessionStore = {};
 // Fonctions pour la gestion du localStorage via le service worker
 const getFromCache = async (key) => {
   try {
+    // D'abord vérifier si c'est une clé de session
+    if (key.startsWith('app-session-')) {
+      const cache = await caches.open('session-cache');
+      const response = await cache.match(`store/${key}`);
+      return response ? response.json() : null;
+    }
+    
     const cache = await caches.open('localstore-cache');
     const response = await cache.match(`store/${key}`);
     return response ? response.json() : null;
@@ -71,6 +80,18 @@ const getFromCache = async (key) => {
 
 const saveToCache = async (key, value) => {
   try {
+    // Pour les données de session, utiliser un cache spécial qui ne sera pas effacé entre les rechargements
+    if (key.startsWith('app-session-')) {
+      const cache = await caches.open('session-cache');
+      await cache.put(
+        `store/${key}`, 
+        new Response(JSON.stringify(value), {
+          headers: { 'Content-Type': 'application/json' }
+        })
+      );
+      return;
+    }
+    
     const cache = await caches.open('localstore-cache');
     await cache.put(
       `store/${key}`, 
@@ -163,9 +184,10 @@ self.addEventListener('fetch', event => {
               path.startsWith('/announcements') || 
               path === '/create' || 
               path === '/users' || 
-              path === '/wordpress'
+              path === '/wordpress' ||
+              path === '/login'
             )) {
-            console.log('Route connue servie depuis le cache:', path);
+            console.log('Route SPA servie depuis le cache:', path);
             return cachedResponse;
           }
           
@@ -264,6 +286,25 @@ self.addEventListener('message', event => {
     const { path, content } = event.data;
     if (path && content) {
       savePageContent(path, content);
+    }
+  }
+  
+  // Nouveau: écouter les messages de synchronisation de session
+  if (event.data && event.data.type === 'SYNC_SESSION_DATA') {
+    const { key, data } = event.data;
+    if (key && data) {
+      saveToCache(`app-session-${key}`, data);
+      // Informer les autres clients qu'une mise à jour est disponible
+      self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          if (client.id !== event.source.id) {
+            client.postMessage({
+              type: 'SESSION_DATA_UPDATED',
+              key: key
+            });
+          }
+        });
+      });
     }
   }
 });

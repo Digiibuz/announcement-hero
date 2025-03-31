@@ -7,6 +7,9 @@
 // Vérifier si le service worker est supporté
 const isServiceWorkerSupported = 'serviceWorker' in navigator;
 
+// Clé pour le stockage des données de session
+const SESSION_KEY_PREFIX = 'app-session-';
+
 /**
  * Sauvegarde une valeur dans le cache
  */
@@ -166,5 +169,40 @@ export const getListDataFromCache = async <T>(listId: string, maxAge: number = 1
   }
   
   console.log(`Utilisation de la liste en cache ${listId} (${Math.round(age/1000)} sec)`);
+  return cachedData.data;
+};
+
+/**
+ * Sauvegarde les données d'une session pour éviter les rechargements inutiles entre les onglets
+ * @param key - Identifiant unique de la session
+ * @param data - Données à sauvegarder
+ */
+export const saveSessionData = async (key: string, data: any): Promise<boolean> => {
+  // Utiliser un préfixe spécial pour les données de session
+  return saveToCache(`${SESSION_KEY_PREFIX}${key}`, {
+    data,
+    timestamp: Date.now()
+  });
+};
+
+/**
+ * Récupère les données d'une session pour éviter les rechargements inutiles entre les onglets
+ * @param key - Identifiant unique de la session
+ */
+export const getSessionData = async <T>(key: string): Promise<T | null> => {
+  const sessionKey = `${SESSION_KEY_PREFIX}${key}`;
+  const cachedData = await getFromCache<{data: T, timestamp: number}>(sessionKey);
+  
+  if (!cachedData) return null;
+  
+  // Les données de session restent valides plus longtemps (1 jour)
+  const maxAge = 1000 * 60 * 60 * 24; // 24 heures
+  const age = Date.now() - cachedData.timestamp;
+  
+  if (age > maxAge) {
+    console.log(`Données de session pour ${key} trop anciennes (${Math.round(age/1000/60/60)} heures)`);
+    return null;
+  }
+  
   return cachedData.data;
 };

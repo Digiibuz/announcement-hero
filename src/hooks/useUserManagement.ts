@@ -1,8 +1,12 @@
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { UserProfile, Role } from "@/types/auth";
+import { getSessionData, saveSessionData } from "@/utils/cacheStorage";
+
+// ID unique pour la mise en cache des données utilisateurs
+const USERS_CACHE_KEY = 'admin-users-list';
 
 export const useUserManagement = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -14,6 +18,30 @@ export const useUserManagement = () => {
     try {
       setIsLoading(true);
       
+      // Essayer d'abord de récupérer les utilisateurs depuis le cache de session
+      const cachedUsers = await getSessionData<UserProfile[]>(USERS_CACHE_KEY);
+      if (cachedUsers && cachedUsers.length > 0) {
+        console.log("Utilisation des données utilisateurs en cache:", cachedUsers.length);
+        setUsers(cachedUsers);
+        setIsLoading(false);
+        
+        // Continuer à charger en arrière-plan pour maintenir les données à jour
+        setTimeout(() => fetchFromDatabase(false), 100);
+        return;
+      }
+      
+      // Si pas de cache, charger depuis la base de données
+      await fetchFromDatabase(true);
+    } catch (error: any) {
+      console.error('Error fetching users:', error);
+      toast.error("Erreur lors de la récupération des utilisateurs");
+      setIsLoading(false);
+    }
+  }, []);
+  
+  // Fonction séparée pour charger depuis la base de données
+  const fetchFromDatabase = async (updateLoadingState: boolean) => {
+    try {
       // Fetch user profiles
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
@@ -40,15 +68,22 @@ export const useUserManagement = () => {
         };
       });
       
+      // Sauvegarder dans le cache de session pour les autres onglets
+      await saveSessionData(USERS_CACHE_KEY, processedUsers);
+      
       setUsers(processedUsers);
       console.log("Utilisateurs chargés avec succès:", processedUsers.length);
     } catch (error: any) {
-      console.error('Error fetching users:', error);
-      toast.error("Erreur lors de la récupération des utilisateurs");
+      console.error('Error fetching users from database:', error);
+      if (updateLoadingState) {
+        toast.error("Erreur lors de la récupération des utilisateurs");
+      }
     } finally {
-      setIsLoading(false);
+      if (updateLoadingState) {
+        setIsLoading(false);
+      }
     }
-  }, []);
+  };
 
   const handleResetPassword = async (email: string) => {
     try {
@@ -86,8 +121,13 @@ export const useUserManagement = () => {
         throw profileError;
       }
       
-      // Fallback si la fonction Edge ne fonctionne pas
-      // Cette approche ne modifie pas l'email dans auth mais met à jour uniquement le profil
+      // Mettre à jour le cache de session
+      const updatedUsers = users.map(user => 
+        user.id === userId 
+          ? { ...user, ...userData } 
+          : user
+      );
+      await saveSessionData(USERS_CACHE_KEY, updatedUsers);
       
       toast.success("Profil utilisateur mis à jour avec succès");
       await fetchUsers(); // Recharger la liste des utilisateurs
@@ -104,8 +144,6 @@ export const useUserManagement = () => {
       setIsDeleting(true);
       
       // Alternative à la fonction Edge: supprimer seulement le profil
-      // Note: Cela ne supprime pas l'utilisateur dans auth.users 
-      // mais désactive son accès à l'application
       const { error } = await supabase
         .from('profiles')
         .delete()
@@ -116,7 +154,12 @@ export const useUserManagement = () => {
       }
       
       // Mise à jour de la liste locale d'utilisateurs
-      setUsers(users.filter(user => user.id !== userId));
+      const updatedUsers = users.filter(user => user.id !== userId);
+      setUsers(updatedUsers);
+      
+      // Mettre à jour le cache de session
+      await saveSessionData(USERS_CACHE_KEY, updatedUsers);
+      
       toast.success("Utilisateur supprimé avec succès");
     } catch (error: any) {
       console.error("Error deleting user:", error);
@@ -127,9 +170,9 @@ export const useUserManagement = () => {
   };
 
   // Chargement des utilisateurs au montage
-  useState(() => {
+  useEffect(() => {
     fetchUsers();
-  });
+  }, [fetchUsers]);
 
   return {
     users,

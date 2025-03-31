@@ -6,8 +6,12 @@ import { toast } from "sonner";
 import { useUserProfile, createProfileFromMetadata } from "@/hooks/useUserProfile";
 import { useImpersonation } from "@/hooks/useImpersonation";
 import { UserProfile, AuthContextType } from "@/types/auth";
+import { saveSessionData, getSessionData } from "@/utils/cacheStorage";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Clé de cache pour l'état d'auth entre les onglets
+const AUTH_SESSION_KEY = 'auth-session-state';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -17,6 +21,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Initialize auth state and set up listeners with improved persistence
   useEffect(() => {
     console.log("Setting up auth state listener");
+    
     // Set up the auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -28,6 +33,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const initialProfile = await createProfileFromMetadata(session.user);
           setUserProfile(initialProfile);
           console.log("Initial profile from metadata:", initialProfile);
+          
+          // Mémoriser l'état d'authentification pour les autres onglets
+          await saveSessionData(AUTH_SESSION_KEY, {
+            isAuthenticated: true,
+            userId: session.user.id,
+            timestamp: Date.now()
+          });
           
           // Then asynchronously fetch the complete profile
           setTimeout(() => {
@@ -41,44 +53,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           setUserProfile(null);
           setIsLoading(false);
+          
+          // Signaler la déconnexion aux autres onglets
+          await saveSessionData(AUTH_SESSION_KEY, {
+            isAuthenticated: false,
+            timestamp: Date.now()
+          });
         }
       }
     );
 
     // Get initial session with improved caching
     const initializeAuth = async () => {
-      // First check if we have a locally cached user role
-      const cachedUserRole = localStorage.getItem('userRole');
-      const cachedUserId = localStorage.getItem('userId');
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        console.log("Session found during initialization");
-        // First set user from metadata
-        const initialProfile = await createProfileFromMetadata(session.user);
+      try {
+        // Vérifier s'il y a une session commune entre les onglets
+        const cachedSession = await getSessionData<{isAuthenticated: boolean, userId: string, timestamp: number}>(AUTH_SESSION_KEY);
         
-        // Apply cached role if available for immediate UI
-        if (cachedUserRole && cachedUserId === session.user.id) {
-          initialProfile.role = cachedUserRole as any;
-          console.log("Applied cached role:", cachedUserRole);
-        }
+        // Utiliser directement la session Supabase
+        const { data: { session } } = await supabase.auth.getSession();
         
-        setUserProfile(initialProfile);
-        
-        // Then get complete profile
-        setTimeout(() => {
-          fetchFullProfile(session.user.id).then((success) => {
-            if (success) {
-              console.log("Successfully fetched complete profile");
-            } else {
-              console.warn("Failed to fetch complete profile, using metadata only");
-            }
-            setIsLoading(false);
+        if (session?.user) {
+          console.log("Session found during initialization");
+          // First set user from metadata
+          const initialProfile = await createProfileFromMetadata(session.user);
+          setUserProfile(initialProfile);
+          
+          // Mémoriser l'état d'authentification pour les autres onglets
+          await saveSessionData(AUTH_SESSION_KEY, {
+            isAuthenticated: true,
+            userId: session.user.id,
+            timestamp: Date.now()
           });
-        }, 100);
-      } else {
-        console.log("No session found during initialization");
+          
+          // Récupérer le profil complet
+          setTimeout(() => {
+            fetchFullProfile(session.user.id).then((success) => {
+              if (success) {
+                console.log("Successfully fetched complete profile");
+              } else {
+                console.warn("Failed to fetch complete profile, using metadata only");
+              }
+              setIsLoading(false);
+            });
+          }, 100);
+        } else if (cachedSession?.isAuthenticated && cachedSession.userId) {
+          // Si pas de session locale mais session dans un autre onglet, on rafraîchit
+          console.log("Using cached session from another tab");
+          
+          // Déclencher un rafraîchissement de la page pour restaurer la session
+          if (typeof window !== 'undefined') {
+            window.location.reload();
+          }
+        } else {
+          console.log("No session found during initialization");
+          setUserProfile(null);
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error("Error during auth initialization:", error);
         setUserProfile(null);
         setIsLoading(false);
       }
@@ -90,6 +122,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subscription.unsubscribe();
     };
   }, []);
+
+  // Écouter les événements de synchronisation entre onglets
+  useEffect(() => {
+    // Fonction pour gérer les changements de stockage
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key?.startsWith('app-session-')) {
+        console.log("Session data changed in another tab");
+        
+        if (event.key === `app-session-${AUTH_SESSION_KEY}`) {
+          // Rafraîchir l'état d'authentification si nécessaire
+          const newValue = event.newValue ? JSON.parse(event.newValue) : null;
+          
+          if (newValue?.data?.isAuthenticated === false && userProfile) {
+            console.log("User logged out in another tab");
+            // L'utilisateur s'est déconnecté dans un autre onglet
+            setUserProfile(null);
+          } else if (newValue?.data?.isAuthenticated === true && !userProfile) {
+            console.log("User logged in in another tab");
+            // L'utilisateur s'est connecté dans un autre onglet
+            window.location.reload();
+          }
+        }
+      }
+    };
+    
+    // Écouter les événements de stockage
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [userProfile]);
 
   // Cache the user role when it changes
   useEffect(() => {
@@ -129,6 +193,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('userId');
       sessionStorage.removeItem('lastAdminPath');
       sessionStorage.removeItem('lastAuthenticatedPath');
+      
+      // Signaler la déconnexion aux autres onglets
+      await saveSessionData(AUTH_SESSION_KEY, {
+        isAuthenticated: false,
+        timestamp: Date.now()
+      });
       
       await supabase.auth.signOut();
       setUserProfile(null);
