@@ -72,8 +72,31 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
         ? wpConfig.site_url.slice(0, -1)
         : wpConfig.site_url;
       
-      // Construct the WordPress API URL for DipiPixel custom post type
-      const apiUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt/${announcement.wordpress_post_id}`;
+      // Try to detect which endpoint to use
+      let apiEndpoint = 'dipi_cpt';
+      
+      // Check if dipi_cpt endpoint exists
+      const checkEndpoint = async (endpoint: string): Promise<boolean> => {
+        try {
+          const response = await fetch(`${siteUrl}/wp-json/wp/v2/${endpoint}/1`, {
+            method: 'HEAD',
+          });
+          // If we get a 404, the endpoint may not exist (or post #1 might not exist, but this is a reasonable check)
+          return response.status !== 404 || response.status === 401; // 401 means endpoint exists but not authorized
+        } catch (error) {
+          return false;
+        }
+      };
+      
+      const dipiEndpointExists = await checkEndpoint('dipi_cpt');
+      
+      if (!dipiEndpointExists) {
+        console.log("DipiPixel endpoint not found, using standard posts endpoint");
+        apiEndpoint = 'posts';
+      }
+      
+      // Construct the WordPress API URL
+      const apiUrl = `${siteUrl}/wp-json/wp/v2/${apiEndpoint}/${announcement.wordpress_post_id}`;
       console.log("WordPress deletion URL:", apiUrl);
       
       // Prepare headers with authentication

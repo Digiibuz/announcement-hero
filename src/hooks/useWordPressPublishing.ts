@@ -52,29 +52,65 @@ export const useWordPressPublishing = () => {
         ? wpConfig.site_url.slice(0, -1)
         : wpConfig.site_url;
       
-      // Construct the WordPress REST API URL - Utiliser les types personnalisés DipiPixel
-      const apiUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt`;
+      // Try to detect if we should use posts endpoint or DipiPixel endpoint
+      // First try the DipiPixel custom API endpoint
+      let apiUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt`;
+      let useCustomTaxonomy = true;
       
-      // Prepare post data
-      const wpPostData = {
-        title: announcement.title,
-        content: announcement.description || "",
-        status: announcement.status === 'published' ? 'publish' : announcement.status === 'scheduled' ? 'future' : 'draft',
-        // Utiliser la taxonomie personnalisée dipi_cpt_category
-        dipi_cpt_category: [parseInt(wordpressCategoryId)],
-        // Add date if scheduled
-        date: announcement.status === 'scheduled' && announcement.publish_date
-          ? new Date(announcement.publish_date).toISOString()
-          : undefined,
-        // Add SEO metadata
-        meta: {
-          _yoast_wpseo_title: announcement.seo_title || "",
-          _yoast_wpseo_metadesc: announcement.seo_description || "",
-          _yoast_wpseo_focuskw: announcement.title
+      // Check if we need to fall back to standard posts
+      const checkEndpoint = async (url: string): Promise<boolean> => {
+        try {
+          const response = await fetch(`${url}?per_page=1`, {
+            method: 'OPTIONS',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          return response.status !== 404;
+        } catch (error) {
+          console.log("Error checking endpoint:", error);
+          return false;
         }
       };
       
-      console.log("WordPress post data for DipiPixel:", wpPostData);
+      const dipiEndpointExists = await checkEndpoint(apiUrl);
+      
+      if (!dipiEndpointExists) {
+        console.log("DipiPixel endpoint not found, falling back to standard posts endpoint");
+        apiUrl = `${siteUrl}/wp-json/wp/v2/posts`;
+        useCustomTaxonomy = false;
+      }
+      
+      console.log("Using WordPress endpoint:", apiUrl, "with custom taxonomy:", useCustomTaxonomy);
+      
+      // Prepare post data
+      const wpPostData: any = {
+        title: announcement.title,
+        content: announcement.description || "",
+        status: announcement.status === 'published' ? 'publish' : announcement.status === 'scheduled' ? 'future' : 'draft',
+        // Date for scheduled posts
+        date: announcement.status === 'scheduled' && announcement.publish_date
+          ? new Date(announcement.publish_date).toISOString()
+          : undefined,
+      };
+      
+      // Add category based on endpoint type
+      if (useCustomTaxonomy) {
+        // Use the custom taxonomy for DipiPixel
+        wpPostData.dipi_cpt_category = [parseInt(wordpressCategoryId)];
+      } else {
+        // Use standard categories for posts
+        wpPostData.categories = [parseInt(wordpressCategoryId)];
+      }
+      
+      // Add SEO metadata if available
+      if (announcement.seo_title || announcement.seo_description) {
+        wpPostData.meta = {
+          _yoast_wpseo_title: announcement.seo_title || "",
+          _yoast_wpseo_metadesc: announcement.seo_description || "",
+          _yoast_wpseo_focuskw: announcement.title
+        };
+      }
+      
+      console.log("WordPress post data:", wpPostData);
       
       // Prepare headers with authentication
       const headers: Record<string, string> = {
@@ -133,7 +169,7 @@ export const useWordPressPublishing = () => {
         
         return { 
           success: true, 
-          message: "Publié avec succès sur WordPress (DipiPixel)", 
+          message: "Publié avec succès sur WordPress", 
           wordpressPostId: wpResponseData.id 
         };
       } else {

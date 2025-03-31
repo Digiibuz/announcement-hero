@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -27,7 +27,7 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
         name="wordpressCategory"
         render={({ field }) => (
           <FormItem>
-            <Label>Catégorie DipiPixel</Label>
+            <Label>Catégorie</Label>
             <Select
               onValueChange={field.onChange}
               defaultValue={field.value}
@@ -56,7 +56,7 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
                   ))
                 ) : (
                   <div className="p-2 text-center text-sm text-muted-foreground">
-                    Aucune catégorie DipiPixel disponible
+                    Aucune catégorie disponible
                   </div>
                 )}
               </SelectContent>

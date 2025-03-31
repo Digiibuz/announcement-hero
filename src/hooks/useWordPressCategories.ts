@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { DipiCptCategory } from "@/types/announcement";
+import { DipiCptCategory, WordPressCategory } from "@/types/announcement";
 
 export const useWordPressCategories = () => {
   const [categories, setCategories] = useState<DipiCptCategory[]>([]);
@@ -34,8 +34,8 @@ export const useWordPressCategories = () => {
       // Normalize the URL (remove double slashes)
       const siteUrl = wpConfig.site_url.replace(/([^:]\/)\/+/g, "$1");
       
-      // Use the custom taxonomy endpoint for DipiPixel
-      const apiUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt_category`;
+      // Try to use the custom taxonomy endpoint for DipiPixel first
+      let apiUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt_category`;
       
       // Prepare headers
       const headers: Record<string, string> = {
@@ -50,11 +50,23 @@ export const useWordPressCategories = () => {
         headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
       }
       
-      const response = await fetch(apiUrl, {
+      // First try the DipiPixel custom taxonomy endpoint
+      let response = await fetch(apiUrl, {
         method: 'GET',
         headers: headers
       });
 
+      // If DipiPixel endpoint not found, fall back to standard categories
+      if (response.status === 404) {
+        console.log("DipiPixel category endpoint not found, falling back to standard categories");
+        apiUrl = `${siteUrl}/wp-json/wp/v2/categories`;
+        
+        response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: headers
+        });
+      }
+      
       if (!response.ok) {
         throw new Error(`Failed to fetch categories: ${response.statusText}`);
       }
@@ -64,7 +76,7 @@ export const useWordPressCategories = () => {
     } catch (err: any) {
       console.error("Error fetching WordPress categories:", err);
       setError(err.message || "Failed to fetch WordPress categories");
-      toast.error("Erreur lors de la récupération des catégories DipiPixel");
+      toast.error("Erreur lors de la récupération des catégories");
     } finally {
       setIsLoading(false);
     }
