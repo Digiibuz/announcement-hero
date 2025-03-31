@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -258,13 +259,13 @@ const AnnouncementForm = ({
                           <Search className="h-4 w-4" />
                           Aperçu dans Google
                         </h3>
-                        <div className="text-blue-600 text-lg font-medium truncate">
+                        <div className="text-blue-600 text-lg font-medium truncate seo-preview-text">
                           {form.getValues('seoTitle') || form.getValues('title') || "Titre de votre annonce"}
                         </div>
-                        <div className="text-green-700 text-sm mb-1">
+                        <div className="text-green-700 text-sm mb-1 seo-preview-text">
                           yoursite.com/annonces/{form.getValues('seoSlug') || "url-de-lannonce"}
                         </div>
-                        <div className="text-slate-700 text-sm line-clamp-2">
+                        <div className="text-slate-700 text-sm line-clamp-2 seo-preview-text">
                           {form.getValues('seoDescription') || "Ajoutez une méta description pour qu'elle apparaisse ici."}
                         </div>
                       </CardContent>

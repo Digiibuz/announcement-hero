@@ -146,19 +146,19 @@ const AnnouncementPreview = ({ data }: AnnouncementPreviewProps) => {
           
           {/* SEO Preview */}
           {(data.seoTitle || data.seoDescription) && (
-            <div className="mt-8 border rounded-md p-4 bg-slate-50">
-              <div className="flex items-center gap-2 mb-2 text-sm font-medium text-slate-600">
+            <div className="mt-8 border rounded-md p-4 bg-slate-50 dark:bg-slate-800">
+              <div className="flex items-center gap-2 mb-2 text-sm font-medium text-slate-600 dark:text-slate-300">
                 <Search size={16} />
                 <span>Aperçu SEO Google</span>
               </div>
               
-              <div className="text-blue-600 text-lg font-medium truncate">
+              <div className="text-blue-600 text-lg font-medium truncate seo-preview-text">
                 {data.seoTitle || data.title}
               </div>
-              <div className="text-green-700 text-sm mb-1">
+              <div className="text-green-700 text-sm mb-1 seo-preview-text">
                 yoursite.com/annonces/{data.seoSlug || "url-de-lannonce"}
               </div>
-              <div className="text-slate-700 text-sm line-clamp-2">
+              <div className="text-slate-700 text-sm line-clamp-2 seo-preview-text">
                 {data.seoDescription || "Aucune méta-description fournie."}
               </div>
             </div>
