@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import { useLocalities } from "@/hooks/tome";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2, Trash2, RefreshCw } from "lucide-react";
@@ -22,9 +22,10 @@ import {
 
 interface TomeLocalitiesProps {
   configId: string;
+  isClientView?: boolean;
 }
 
-const TomeLocalities: React.FC<TomeLocalitiesProps> = ({ configId }) => {
+const TomeLocalities: React.FC<TomeLocalitiesProps> = ({ configId, isClientView = false }) => {
   const { 
     localities, 
     isLoading, 
@@ -68,21 +69,37 @@ const TomeLocalities: React.FC<TomeLocalitiesProps> = ({ configId }) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => fetchLocalities()}
-          disabled={isLoading}
-        >
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Rafraîchir
-        </Button>
-      </div>
+      {!isClientView && (
+        <div className="flex justify-end">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => fetchLocalities()}
+            disabled={isLoading}
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Rafraîchir
+          </Button>
+        </div>
+      )}
+      
+      {isClientView && (
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold mb-2">Gestion de vos localités</h2>
+          <p className="text-muted-foreground">
+            Personnalisez les localités pour optimiser votre référencement local. Ces localités seront utilisées pour générer du contenu ciblé géographiquement.
+          </p>
+        </div>
+      )}
       
       <Card>
         <CardHeader>
           <CardTitle>Ajouter une localité</CardTitle>
+          {isClientView && (
+            <CardDescription>
+              Ajoutez les villes et régions où vous souhaitez être visible dans les recherches locales
+            </CardDescription>
+          )}
         </CardHeader>
         <CardContent>
           <div className="flex flex-col md:flex-row gap-4">
@@ -127,6 +144,11 @@ const TomeLocalities: React.FC<TomeLocalitiesProps> = ({ configId }) => {
       <Card>
         <CardHeader>
           <CardTitle>Liste des localités</CardTitle>
+          {isClientView && (
+            <CardDescription>
+              Activez ou désactivez les localités selon vos besoins de référencement
+            </CardDescription>
+          )}
         </CardHeader>
         <CardContent>
           {localities.length === 0 ? (
@@ -157,7 +179,7 @@ const TomeLocalities: React.FC<TomeLocalitiesProps> = ({ configId }) => {
                             updateLocalityStatus(locality.id, checked)
                           }
                         />
-                        <Label htmlFor={`active-${locality.id}`}>Active</Label>
+                        <Label htmlFor={`active-${locality.id}`}>{isClientView ? "Utiliser" : "Active"}</Label>
                       </div>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
