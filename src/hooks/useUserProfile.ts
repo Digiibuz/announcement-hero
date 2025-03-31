@@ -3,14 +3,15 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { UserProfile, Role } from "@/types/auth";
+import { saveToCache, getFromCache } from "@/utils/cacheStorage";
 
 // Function to create a profile from user metadata
-export const createProfileFromMetadata = (authUser: User | null): UserProfile | null => {
+export const createProfileFromMetadata = async (authUser: User | null): Promise<UserProfile | null> => {
   if (!authUser) return null;
   
-  // Récupérer le rôle depuis le localStorage en priorité pour éviter les rechargements inutiles
-  const cachedRole = localStorage.getItem('userRole') as Role | null;
-  const cachedUserId = localStorage.getItem('userId');
+  // Récupérer le rôle depuis le cache en priorité pour éviter les rechargements inutiles
+  const cachedRole = await getFromCache<Role>('userRole');
+  const cachedUserId = await getFromCache<string>('userId');
   
   // Si l'ID utilisateur correspond et que nous avons un rôle en cache, utilisons-le
   const role = (cachedUserId === authUser.id && cachedRole) 
@@ -36,9 +37,16 @@ export const useUserProfile = () => {
     try {
       console.log("Fetching full profile for user:", userId);
       
+      // Utiliser d'abord le profil en cache si disponible
+      const cachedProfile = await getFromCache<UserProfile>(`profile-${userId}`);
+      if (cachedProfile) {
+        console.log("Using cached profile:", cachedProfile);
+        setUserProfile(cachedProfile);
+      }
+      
       // Utiliser d'abord le rôle en cache pour éviter tout problème
-      const cachedRole = localStorage.getItem('userRole') as Role | null;
-      const cachedUserId = localStorage.getItem('userId');
+      const cachedRole = await getFromCache<Role>('userRole');
+      const cachedUserId = await getFromCache<string>('userId');
       
       // Si nous avons un profil utilisateur mais sans rôle défini, utilisons le rôle en cache
       if (userProfile && !userProfile.role && cachedRole && cachedUserId === userId) {
@@ -85,9 +93,10 @@ export const useUserProfile = () => {
             console.log("Updated profile with role:", updatedProfile.role);
             setUserProfile(updatedProfile);
             
-            // Cache the role for future reference
-            localStorage.setItem('userRole', updatedProfile.role);
-            localStorage.setItem('userId', updatedProfile.id);
+            // Cache the profile and role for future reference
+            await saveToCache(`profile-${userId}`, updatedProfile);
+            await saveToCache('userRole', updatedProfile.role);
+            await saveToCache('userId', updatedProfile.id);
             
             return true;
           }
@@ -108,6 +117,12 @@ export const useUserProfile = () => {
       
       // If we reach here without returning, we failed to get data
       console.warn("Could not fetch complete profile after retries");
+      
+      // Use the cached profile if we have one
+      if (cachedProfile) {
+        console.log("Using cached profile after failed fetches");
+        return true;
+      }
       
       // Use the cached role if we have one
       if (cachedRole && cachedUserId === userId) {

@@ -1,6 +1,6 @@
 
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v3';
+const CACHE_NAME = 'digiibuz-cache-v4';
 
 // Liste des ressources à mettre en cache
 const urlsToCache = [
@@ -51,7 +51,27 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Gestion des requêtes avec stratégie pour éviter les rechargements complets
+// Stockage des données de session pour éviter les rechargements
+const sessionStore = {};
+
+// Fonctions pour la gestion du localStorage via le service worker
+const getFromCache = async (key) => {
+  const cache = await caches.open('localstore-cache');
+  const response = await cache.match(`store/${key}`);
+  return response ? response.json() : null;
+};
+
+const saveToCache = async (key, value) => {
+  const cache = await caches.open('localstore-cache');
+  await cache.put(
+    `store/${key}`, 
+    new Response(JSON.stringify(value), {
+      headers: { 'Content-Type': 'application/json' }
+    })
+  );
+};
+
+// Gestion des requêtes avec stratégie améliorée pour éviter les rechargements
 self.addEventListener('fetch', event => {
   // Ne pas intercepter les requêtes API ou assets non essentiels
   if (event.request.url.includes('/api/') || 
@@ -60,21 +80,63 @@ self.addEventListener('fetch', event => {
     return;
   }
   
+  // Gérer les messages spéciaux pour le stockage de données
+  if (event.request.url.includes('/__store')) {
+    event.respondWith(handleStoreRequest(event.request));
+    return;
+  }
+  
   // Pour les requêtes de navigation (HTML)
   if (event.request.mode === 'navigate') {
-    // On utilise principalement le cache pour éviter un rechargement complet
+    // S'il y a déjà eu une navigation, on utilise le cache
+    const url = new URL(event.request.url);
+    const path = url.pathname;
+    
+    // Vérifier si nous avons déjà chargé cette page
+    const pageVisited = sessionStore[path];
+    
+    // Stratégie optimisée pour les navigations répétées
     event.respondWith(
-      caches.match('/index.html')
-        .then(response => {
-          // Utiliser le cache en priorité pour les navigations
-          return response || fetch(event.request)
-            .catch(() => caches.match('/index.html'));
-        })
+      (async () => {
+        try {
+          // Si la page a déjà été visitée, on utilise le cache en priorité
+          if (pageVisited) {
+            const cachedResponse = await caches.match('/index.html');
+            if (cachedResponse) {
+              console.log('Utilisation du cache pour:', path);
+              // Enregistrer l'heure de la dernière visite
+              sessionStore[path] = Date.now();
+              return cachedResponse;
+            }
+          }
+          
+          // Sinon, on fait une requête réseau puis on met en cache
+          console.log('Requête réseau pour:', path);
+          const networkResponse = await fetch(event.request);
+          
+          // Mettre à jour le cache avec la nouvelle réponse
+          if (networkResponse.ok) {
+            const cache = await caches.open(CACHE_NAME);
+            const responseToCache = networkResponse.clone();
+            await cache.put('/index.html', responseToCache);
+            // Marquer cette page comme visitée
+            sessionStore[path] = Date.now();
+          }
+          
+          return networkResponse;
+        } catch (error) {
+          console.error('Erreur de navigation:', error);
+          // En cas d'erreur réseau, on essaie de servir depuis le cache
+          const cachedResponse = await caches.match('/index.html');
+          if (cachedResponse) return cachedResponse;
+          throw error;
+        }
+      })()
     );
     return;
   }
 
-  // Pour les autres requêtes - stratégie "stale-while-revalidate"
+  // Pour les autres requêtes - stratégie "stale-while-revalidate" optimisée
   event.respondWith(
     caches.match(event.request)
       .then(cachedResponse => {
@@ -105,3 +167,34 @@ self.addEventListener('fetch', event => {
       })
   );
 });
+
+// Gestion des requêtes de stockage pour persister les données entre les rechargements
+async function handleStoreRequest(request) {
+  const url = new URL(request.url);
+  const key = url.searchParams.get('key');
+  
+  if (!key) {
+    return new Response(JSON.stringify({ error: 'Missing key parameter' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+  
+  if (request.method === 'GET') {
+    const data = await getFromCache(key);
+    return new Response(JSON.stringify(data), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } else if (request.method === 'POST') {
+    const value = await request.json();
+    await saveToCache(key, value);
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+  
+  return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+    status: 405,
+    headers: { 'Content-Type': 'application/json' }
+  });
+}

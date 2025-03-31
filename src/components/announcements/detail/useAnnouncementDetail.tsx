@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
 import { Announcement } from "@/types/announcement";
+import { saveToCache, getFromCache } from "@/utils/cacheStorage";
 
 export interface ExtendedAnnouncement extends Omit<Announcement, 'wordpress_post_id'> {
   wordpress_post_id?: number | null;
@@ -28,6 +29,15 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
       setIsLoading(true);
       if (!id) return;
 
+      // Vérifier d'abord si l'annonce est dans le cache
+      const cachedAnnouncement = await getFromCache<ExtendedAnnouncement>(`announcement-${id}`);
+      if (cachedAnnouncement) {
+        console.log("Using cached announcement data");
+        setAnnouncement(cachedAnnouncement);
+        setIsLoading(false);
+      }
+
+      // Toujours chercher les données fraîches depuis le serveur
       const { data, error } = await supabase
         .from("announcements")
         .select("*")
@@ -39,8 +49,11 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
       if (data) {
         console.log("Loaded announcement:", data);
         console.log("WordPress post ID:", data.wordpress_post_id);
-        // Format data for the form
-        setAnnouncement(data as ExtendedAnnouncement);
+        
+        // Mettre à jour les données et le cache
+        const announcementData = data as ExtendedAnnouncement;
+        setAnnouncement(announcementData);
+        saveToCache(`announcement-${id}`, announcementData);
       }
     } catch (error: any) {
       console.error("Error fetching announcement:", error);
@@ -92,9 +105,15 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
       if (error) throw error;
       
       toast.success("Annonce mise à jour avec succès");
+      
+      // Supprimer du cache pour forcer un rechargement à frais
+      await saveToCache(`announcement-${id}`, null);
       await fetchAnnouncement();
+      
       setIsEditing(false);
       setActiveTab("preview");
+      // Mettre à jour le cache pour l'onglet
+      saveToCache(`announcementTab-${id}`, 'preview');
     } catch (error: any) {
       console.error("Error updating announcement:", error);
       toast.error(`Erreur: ${error.message}`);
