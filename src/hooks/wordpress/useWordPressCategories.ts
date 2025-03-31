@@ -13,7 +13,7 @@ export const useWordPressCategories = () => {
 
   const fetchCategories = useCallback(async () => {
     if (!user?.wordpressConfigId) {
-      console.error("No WordPress configuration ID found for user", user);
+      console.log("No WordPress configuration ID found for user", user);
       setError("No WordPress configuration found for this user");
       return;
     }
