@@ -1,6 +1,6 @@
 
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v4';
+const CACHE_NAME = 'digiibuz-cache-v5';
 
 // Liste des ressources à mettre en cache
 const urlsToCache = [
@@ -15,6 +15,9 @@ const urlsToCache = [
   '/users',
   '/wordpress'
 ];
+
+// Cache de données par page visité (état de page)
+const pageDataCache = new Map();
 
 // Installation du service worker
 self.addEventListener('install', event => {
@@ -31,7 +34,7 @@ self.addEventListener('install', event => {
 
 // Activation et contrôle immédiat des clients
 self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
+  const cacheWhitelist = [CACHE_NAME, 'localstore-cache', 'page-content-cache'];
 
   event.waitUntil(
     Promise.all([
@@ -51,28 +54,80 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Stockage des données de session pour éviter les rechargements
+// Stockage des données pour éviter les rechargements
 const sessionStore = {};
 
 // Fonctions pour la gestion du localStorage via le service worker
 const getFromCache = async (key) => {
-  const cache = await caches.open('localstore-cache');
-  const response = await cache.match(`store/${key}`);
-  return response ? response.json() : null;
+  try {
+    const cache = await caches.open('localstore-cache');
+    const response = await cache.match(`store/${key}`);
+    return response ? response.json() : null;
+  } catch (error) {
+    console.error('Erreur de lecture dans le cache:', error);
+    return null;
+  }
 };
 
 const saveToCache = async (key, value) => {
-  const cache = await caches.open('localstore-cache');
-  await cache.put(
-    `store/${key}`, 
-    new Response(JSON.stringify(value), {
-      headers: { 'Content-Type': 'application/json' }
-    })
-  );
+  try {
+    const cache = await caches.open('localstore-cache');
+    await cache.put(
+      `store/${key}`, 
+      new Response(JSON.stringify(value), {
+        headers: { 'Content-Type': 'application/json' }
+      })
+    );
+  } catch (error) {
+    console.error('Erreur de sauvegarde dans le cache:', error);
+  }
+};
+
+// Cache pour le contenu dynamique des pages (pour éviter les rechargements)
+const getPageContent = async (path) => {
+  try {
+    const cache = await caches.open('page-content-cache');
+    const response = await cache.match(`page-content/${path}`);
+    if (response) {
+      const data = await response.json();
+      // Vérifier que les données ne sont pas trop anciennes (30 minutes)
+      const maxAge = 30 * 60 * 1000; // 30 minutes
+      if (Date.now() - data.timestamp < maxAge) {
+        console.log('Contenu de page récupéré du cache:', path);
+        return data.content;
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error('Erreur de lecture du contenu de page:', error);
+    return null;
+  }
+};
+
+const savePageContent = async (path, content) => {
+  try {
+    const cache = await caches.open('page-content-cache');
+    const data = {
+      content,
+      timestamp: Date.now()
+    };
+    await cache.put(
+      `page-content/${path}`, 
+      new Response(JSON.stringify(data), {
+        headers: { 'Content-Type': 'application/json' }
+      })
+    );
+    console.log('Contenu de page sauvegardé en cache:', path);
+  } catch (error) {
+    console.error('Erreur de sauvegarde du contenu de page:', error);
+  }
 };
 
 // Gestion des requêtes avec stratégie améliorée pour éviter les rechargements
 self.addEventListener('fetch', event => {
+  // Créer une URL pour analyse
+  const url = new URL(event.request.url);
+  
   // Ne pas intercepter les requêtes API ou assets non essentiels
   if (event.request.url.includes('/api/') || 
       event.request.url.includes('supabase.co') ||
@@ -88,47 +143,51 @@ self.addEventListener('fetch', event => {
   
   // Pour les requêtes de navigation (HTML)
   if (event.request.mode === 'navigate') {
-    // S'il y a déjà eu une navigation, on utilise le cache
-    const url = new URL(event.request.url);
     const path = url.pathname;
     
-    // Vérifier si nous avons déjà chargé cette page
-    const pageVisited = sessionStore[path];
-    
-    // Stratégie optimisée pour les navigations répétées
+    // Stratégie optimisée pour les navigations - utilise le cache et le pageDataCache
     event.respondWith(
       (async () => {
         try {
-          // Si la page a déjà été visitée, on utilise le cache en priorité
-          if (pageVisited) {
-            const cachedResponse = await caches.match('/index.html');
-            if (cachedResponse) {
-              console.log('Utilisation du cache pour:', path);
-              // Enregistrer l'heure de la dernière visite
-              sessionStore[path] = Date.now();
-              return cachedResponse;
+          // Enregistrer l'heure de la dernière visite
+          sessionStore[path] = Date.now();
+          
+          // Essayer de servir depuis l'index HTML en cache
+          const cachedResponse = await caches.match('/index.html');
+          
+          // Toujours retourner l'index.html en cache pour les routes connues
+          // Cela évite les rechargements complets
+          if (cachedResponse && (
+              path === '/' || 
+              path === '/dashboard' || 
+              path.startsWith('/announcements') || 
+              path === '/create' || 
+              path === '/users' || 
+              path === '/wordpress'
+            )) {
+            console.log('Route connue servie depuis le cache:', path);
+            return cachedResponse;
+          }
+          
+          // Pour les autres routes, essayer le réseau puis le cache
+          try {
+            const networkResponse = await fetch(event.request);
+            
+            // Mettre à jour le cache avec la nouvelle réponse
+            if (networkResponse.ok) {
+              const cache = await caches.open(CACHE_NAME);
+              await cache.put(event.request, networkResponse.clone());
             }
+            
+            return networkResponse;
+          } catch (error) {
+            console.error('Erreur réseau, utilisation du cache:', error);
+            // En cas d'erreur réseau, utiliser le cache
+            if (cachedResponse) return cachedResponse;
+            throw error;
           }
-          
-          // Sinon, on fait une requête réseau puis on met en cache
-          console.log('Requête réseau pour:', path);
-          const networkResponse = await fetch(event.request);
-          
-          // Mettre à jour le cache avec la nouvelle réponse
-          if (networkResponse.ok) {
-            const cache = await caches.open(CACHE_NAME);
-            const responseToCache = networkResponse.clone();
-            await cache.put('/index.html', responseToCache);
-            // Marquer cette page comme visitée
-            sessionStore[path] = Date.now();
-          }
-          
-          return networkResponse;
         } catch (error) {
           console.error('Erreur de navigation:', error);
-          // En cas d'erreur réseau, on essaie de servir depuis le cache
-          const cachedResponse = await caches.match('/index.html');
-          if (cachedResponse) return cachedResponse;
           throw error;
         }
       })()
@@ -154,7 +213,7 @@ self.addEventListener('fetch', event => {
             return networkResponse;
           })
           .catch(error => {
-            console.error('Fetch failed:', error);
+            console.error('Erreur réseau:', error);
             // Si le réseau échoue et qu'il n'y a pas de réponse en cache, on renvoie une erreur
             if (!cachedResponse) {
               throw error;
@@ -198,3 +257,13 @@ async function handleStoreRequest(request) {
     headers: { 'Content-Type': 'application/json' }
   });
 }
+
+// Écouter les messages du client pour mettre à jour le cache de données de page
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'CACHE_PAGE_CONTENT') {
+    const { path, content } = event.data;
+    if (path && content) {
+      savePageContent(path, content);
+    }
+  }
+});
