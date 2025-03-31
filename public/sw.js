@@ -1,6 +1,6 @@
 
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v10';
+const CACHE_NAME = 'digiibuz-cache-v11';
 
 // Liste des ressources à mettre en cache
 const urlsToCache = [
@@ -45,6 +45,7 @@ function shouldSkipCaching(url) {
       url.includes('image/') || // Éviter les problèmes avec les routes d'images
       url.includes('upload') || // Éviter les conflits avec les téléversements
       url.includes('media') || // Éviter les conflits avec les médias WordPress
+      url.includes('openai.com') || // Ne jamais mettre en cache les appels à OpenAI
       !isValidCacheUrl(url)
     );
   } catch (e) {

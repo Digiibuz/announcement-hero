@@ -20,7 +20,10 @@ serve(async (req) => {
     
     const { type, title, description } = await req.json();
     
-    console.log(`Paramètres reçus - Type: ${type}, Titre: "${title.substring(0, 20)}...", Description: "${description.substring(0, 30)}..."`);
+    console.log(`Paramètres reçus - Type: ${type}, Titre: "${title.substring(0, 20)}..."`);
+    if (description) {
+      console.log(`Description: "${description.substring(0, 30)}..."`);
+    }
     
     let prompt = "";
     let systemMessage = "";
@@ -30,6 +33,21 @@ serve(async (req) => {
       case "description":
         systemMessage = "Tu es un rédacteur professionnel. Reprend le texte et améliore seulement les tournures de phrase. Conserve la structure et les informations d'origine. IMPORTANT: Fournis UNIQUEMENT le texte réécrit, sans préface ni commentaire.";
         prompt = `Voici un contenu à améliorer: "${description}". Reprend ce texte et améliore seulement les tournures de phrase. Ne change pas le sens du texte, ne rajoute pas d'informations supplémentaires, n'ajoute pas de titre, ne mets aucun mot en gras, ne crée pas d'exemples, n'ajoute pas d'icônes, et ne change pas le formatage original. Ne commence pas ta réponse par une phrase d'introduction et n'ajoute pas de commentaires à la fin.`;
+        break;
+      case "generateDescription":
+        systemMessage = "Tu es un rédacteur professionnel spécialisé dans la création de contenu pour des annonces. Rédige un texte informatif, structuré et engageant d'environ 200 mots basé sur le titre fourni. IMPORTANT: Fournis UNIQUEMENT le texte généré, sans préface ni commentaire.";
+        prompt = `Titre de l'annonce: "${title}".
+        ${description ? `Voici un exemple de contenu ou notes: "${description}"` : ""}
+        
+        Rédige un texte structuré, informatif et engageant d'environ 200 mots qui servira de description pour cette annonce. 
+        Ton texte doit:
+        - Avoir une structure claire avec des paragraphes
+        - Inclure des points importants qui valorisent l'annonce
+        - Utiliser un ton professionnel mais chaleureux
+        - Ne pas contenir de titre ni sous-titres
+        - Ne pas inclure de formatage spécial (pas de gras, italique...)
+        
+        Renvoie uniquement le texte généré sans aucune introduction ou commentaire supplémentaire.`;
         break;
       case "seoTitle":
         systemMessage = "Tu es un expert en SEO. Crée un titre optimisé pour les moteurs de recherche basé sur le contenu fourni. Le titre doit être accrocheur, pertinent et contenir des mots-clés importants. Maximum 60 caractères. IMPORTANT: Fournis UNIQUEMENT le titre, sans préface ni commentaire.";
@@ -61,7 +79,7 @@ serve(async (req) => {
           { role: 'system', content: systemMessage },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.7,
+        temperature: type === "generateDescription" ? 0.8 : 0.7, // Un peu plus de créativité pour la génération
       }),
     });
 
@@ -94,7 +112,7 @@ serve(async (req) => {
       .replace(/:[a-z_]+:|🔍|✅|⚠️|❗|📝|💡|🔑|📊|🎯|⭐|👉|✨|🚀|💪|⚡|📌|🔖|📢|🔔/g, '')
       .trim();
 
-    console.log("Contenu optimisé traité: ", optimizedContent);
+    console.log("Contenu optimisé traité: ", optimizedContent.substring(0, 100) + "...");
 
     return new Response(JSON.stringify({ 
       success: true, 
