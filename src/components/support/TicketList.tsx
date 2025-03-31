@@ -1,21 +1,23 @@
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageSquare, Clock, MailOpen, Mail } from "lucide-react";
+import { MessageSquare, Clock, MailOpen, Mail, RefreshCw } from "lucide-react";
 import { useTickets } from "@/hooks/useTickets";
 import { useTicketNotifications } from "@/hooks/useTicketNotifications";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import TicketDetails from "@/components/support/TicketDetails";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const TicketList = () => {
   const { user } = useAuth();
-  const { data: tickets, isLoading, error } = useTickets(user?.id);
+  const { data: tickets, isLoading, error, refetch } = useTickets(user?.id);
   const { markTicketAsRead, markTicketTabAsViewed, readTicketIds } = useTicketNotifications();
   const [selectedTicket, setSelectedTicket] = React.useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Mark the tab as viewed as soon as the component mounts
   useEffect(() => {
@@ -25,6 +27,12 @@ const TicketList = () => {
   const handleSelectTicket = (ticketId: string) => {
     setSelectedTicket(ticketId);
     markTicketAsRead(ticketId);
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refetch();
+    setIsRefreshing(false);
   };
 
   const isTicketRead = (ticketId: string, lastResponseDate?: Date) => {
@@ -40,12 +48,48 @@ const TicketList = () => {
     return true;
   };
 
-  if (isLoading) {
-    return <p className="text-center py-8">Chargement de vos tickets...</p>;
+  if (isLoading || isRefreshing) {
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <Card key={index} className="overflow-hidden">
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-start">
+                <Skeleton className="h-6 w-64" />
+                <Skeleton className="h-6 w-20" />
+              </div>
+              <div className="flex items-center mt-1">
+                <Skeleton className="h-4 w-40 mt-2" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-4 w-full mb-4" />
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
   }
 
   if (error) {
-    return <p className="text-center py-8 text-red-500">Erreur lors du chargement des tickets: {error.message}</p>;
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-center py-8 text-red-500">
+            <p>Erreur lors du chargement des tickets: {error.message}</p>
+            <Button 
+              variant="outline" 
+              className="mt-4"
+              onClick={handleRefresh}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Réessayer
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   if (!tickets || tickets.length === 0) {
@@ -88,6 +132,20 @@ const TicketList = () => {
 
   return (
     <div>
+      {!selectedTicket && (
+        <div className="flex justify-end mb-4">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Actualiser
+          </Button>
+        </div>
+      )}
+      
       {selectedTicket ? (
         <div>
           <Button
