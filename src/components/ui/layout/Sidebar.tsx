@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useIsMobile } from "@/hooks/use-media-query";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { 
   Loader2, 
@@ -20,12 +21,14 @@ import {
   UserCircle,
   Ticket
 } from "lucide-react";
+import { useTicketNotifications } from "@/hooks/useTicketNotifications";
 
 const Sidebar = () => {
   const isMobile = useIsMobile();
   const { pathname } = useLocation();
   const { user, logout, isLoading, isAuthenticated, isAdmin, isClient } = useAuth();
   const [isOpen, setIsOpen] = React.useState(false);
+  const { unreadCount } = useTicketNotifications();
 
   if (!isAuthenticated) return null;
 
@@ -149,7 +152,7 @@ const Sidebar = () => {
               </Button>
             </Link>
             
-            {/* Support link below profile */}
+            {/* Support link below profile - with notification badge */}
             <Link to="/support" onClick={() => isMobile && setIsOpen(false)}>
               <Button
                 variant="ghost"
@@ -160,6 +163,14 @@ const Sidebar = () => {
               >
                 <Ticket className="h-5 w-5" />
                 <span className="ml-3">Support & Assistance</span>
+                {unreadCount > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="ml-2 px-1.5 py-0.5 text-xs"
+                  >
+                    {unreadCount}
+                  </Badge>
+                )}
               </Button>
             </Link>
             

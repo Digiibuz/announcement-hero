@@ -3,12 +3,15 @@ import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import TicketList from "@/components/support/TicketList";
 import CreateTicketForm from "@/components/support/CreateTicketForm";
 import AdminTickets from "@/components/support/AdminTickets";
+import { useTicketNotifications } from "@/hooks/useTicketNotifications";
 
 const Support = () => {
   const { isAdmin, isClient } = useAuth();
+  const { unreadCount } = useTicketNotifications();
 
   return (
     <PageLayout 
@@ -36,7 +39,17 @@ const Support = () => {
           <Tabs defaultValue="create" className="w-full">
             <TabsList className="mb-4">
               <TabsTrigger value="create">Nouveau ticket</TabsTrigger>
-              <TabsTrigger value="previous">Mes tickets</TabsTrigger>
+              <TabsTrigger value="previous" className="relative">
+                Mes tickets
+                {unreadCount > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="ml-2 px-1.5 py-0.5 text-xs"
+                  >
+                    {unreadCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="create">
               <CreateTicketForm />
