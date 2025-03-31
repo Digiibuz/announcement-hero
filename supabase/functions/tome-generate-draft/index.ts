@@ -39,21 +39,47 @@ serve(async (req) => {
       throw new Error('Generation ID is required');
     }
 
-    // Get generation data
+    // Get generation data directly without complex joins
     const { data: generation, error: generationError } = await supabase
       .from('tome_generations')
-      .select(`
-        *,
-        category:categories_keywords!tome_generations_category_id_fkey(category_name),
-        keyword:categories_keywords(keyword),
-        locality:localities(name, region)
-      `)
+      .select('*')
       .eq('id', generationId)
       .single();
 
     if (generationError || !generation) {
       throw new Error('Generation not found: ' + (generationError?.message || 'Unknown error'));
     }
+
+    // Get additional data separately
+    const [categoryResult, keywordResult, localityResult] = await Promise.all([
+      // Get category name
+      supabase
+        .from('categories_keywords')
+        .select('category_name')
+        .eq('id', generation.category_id)
+        .single()
+        .then(({ data }) => data?.category_name || 'Non spécifiée'),
+
+      // Get keyword if exists
+      generation.keyword_id 
+        ? supabase
+            .from('categories_keywords')
+            .select('keyword')
+            .eq('id', generation.keyword_id)
+            .single()
+            .then(({ data }) => data?.keyword || null)
+        : Promise.resolve(null),
+
+      // Get locality if exists
+      generation.locality_id
+        ? supabase
+            .from('localities')
+            .select('name, region')
+            .eq('id', generation.locality_id)
+            .single()
+            .then(({ data }) => data || null)
+        : Promise.resolve(null)
+    ]);
 
     // Update status to processing
     await supabase
@@ -72,10 +98,10 @@ serve(async (req) => {
       throw new Error('WordPress config not found');
     }
 
-    const categoryName = generation.category?.category_name || 'Non spécifiée';
-    const keyword = generation.keyword?.keyword || null;
-    const localityName = generation.locality?.name || null;
-    const localityRegion = generation.locality?.region || null;
+    const categoryName = categoryResult || 'Non spécifiée';
+    const keyword = keywordResult || null;
+    const localityName = localityResult?.name || null;
+    const localityRegion = localityResult?.region || null;
     const fullLocalityName = localityName && localityRegion ? `${localityName} (${localityRegion})` : localityName;
 
     // Format the prompt
@@ -108,6 +134,8 @@ serve(async (req) => {
     }
     
     prompt += "\n\nFormat souhaité: HTML avec balises pour les titres (h1, h2, h3), paragraphes (p) et listes (ul, li).";
+    
+    console.log("Sending prompt to OpenAI:", prompt.substring(0, 100) + "...");
     
     // Generate content with OpenAI
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
