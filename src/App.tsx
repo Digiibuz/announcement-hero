@@ -10,13 +10,14 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import CreateAnnouncement from "./pages/CreateAnnouncement";
-import CreateDiviPixelPage from "./pages/CreateDiviPixelPage"; // Ajout de la nouvelle page
+import CreateDiviPixelPage from "./pages/CreateDiviPixelPage";
 import Announcements from "./pages/Announcements";
-import DiviPixelPages from "./pages/DiviPixelPages"; // Ajout de la nouvelle page
+import DiviPixelPages from "./pages/DiviPixelPages";
 import AnnouncementDetail from "./pages/AnnouncementDetail";
 import UserManagement from "./pages/UserManagement";
 import WordPressManagement from "./pages/WordPressManagement";
 import NotFound from "./pages/NotFound";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,11 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppRoutes = () => {
+  // Debug log pour les routes
+  useEffect(() => {
+    console.log("Routes chargées");
+  }, []);
+
   return (
     <Routes>
       <Route path="/" element={<Index />} />
@@ -138,20 +144,27 @@ const AppRoutes = () => {
 };
 
 // L'ordre des providers est important pour que les hooks fonctionnent correctement
-const App = () => (
-  <BrowserRouter>
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <TooltipProvider>
-          <AuthProvider>
-            <AppRoutes />
-            <Toaster />
-            <SonnerToaster />
-          </AuthProvider>
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  </BrowserRouter>
-);
+const App = () => {
+  // Débug log pour l'initialisation de l'application
+  useEffect(() => {
+    console.log("Application initialisée");
+  }, []);
+
+  return (
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <TooltipProvider>
+            <AuthProvider>
+              <AppRoutes />
+              <Toaster />
+              <SonnerToaster />
+            </AuthProvider>
+          </TooltipProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </BrowserRouter>
+  );
+};
 
 export default App;
