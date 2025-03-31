@@ -1,19 +1,13 @@
-
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v4';
+const CACHE_NAME = 'digiibuz-cache-v5'; // Increment cache version
 
 // Liste des ressources à mettre en cache
 const urlsToCache = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png',
-  // Ajout des routes principales pour éviter les rechargements
-  '/dashboard',
-  '/announcements',
-  '/create',
-  '/users',
-  '/wordpress'
+  '/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png'
+  // Removed specific routes to prevent caching issues with dynamic imports
 ];
 
 // Installation du service worker
@@ -29,9 +23,9 @@ self.addEventListener('install', event => {
   self.skipWaiting();
 });
 
-// Activation et contrôle immédiat des clients
+// Activation et nettoyage des anciens caches
 self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
+  const cacheWhitelist = [CACHE_NAME, 'localstore-cache'];
 
   event.waitUntil(
     Promise.all([
@@ -40,6 +34,7 @@ self.addEventListener('activate', event => {
         return Promise.all(
           cacheNames.map(cacheName => {
             if (cacheWhitelist.indexOf(cacheName) === -1) {
+              console.log('Suppression de l\'ancien cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
@@ -51,7 +46,7 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Stockage des données de session pour éviter les rechargements
+// Stockage des données de session
 const sessionStore = {};
 
 // Fonctions pour la gestion du localStorage via le service worker
@@ -71,12 +66,14 @@ const saveToCache = async (key, value) => {
   );
 };
 
-// Gestion des requêtes avec stratégie améliorée pour éviter les rechargements
+// Improved fetch handler to prevent module caching issues
 self.addEventListener('fetch', event => {
-  // Ne pas intercepter les requêtes API ou assets non essentiels
+  // Ne pas intercepter les requêtes API, assets non essentiels ou JavaScript dynamique
   if (event.request.url.includes('/api/') || 
       event.request.url.includes('supabase.co') ||
-      event.request.url.includes('wp-json')) {
+      event.request.url.includes('wp-json') ||
+      (event.request.url.includes('.js') && !event.request.url.includes('sw.js')) // Don't cache JS modules
+  ) {
     return;
   }
   
@@ -136,15 +133,17 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Pour les autres requêtes - stratégie "stale-while-revalidate" optimisée
+  // Pour les autres requêtes - stratégie améliorée
   event.respondWith(
     caches.match(event.request)
       .then(cachedResponse => {
         // Créer une promesse pour la requête réseau
         const fetchPromise = fetch(event.request)
           .then(networkResponse => {
-            // Mettre à jour le cache avec la nouvelle réponse si valide
-            if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+            // Ne pas mettre en cache les fichiers JavaScript dynamiques
+            if (networkResponse && networkResponse.status === 200 && 
+                networkResponse.type === 'basic' &&
+                !event.request.url.includes('.js')) {
               const responseToCache = networkResponse.clone();
               caches.open(CACHE_NAME)
                 .then(cache => {
@@ -155,7 +154,6 @@ self.addEventListener('fetch', event => {
           })
           .catch(error => {
             console.error('Fetch failed:', error);
-            // Si le réseau échoue et qu'il n'y a pas de réponse en cache, on renvoie une erreur
             if (!cachedResponse) {
               throw error;
             }

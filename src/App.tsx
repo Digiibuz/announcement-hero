@@ -1,4 +1,3 @@
-
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
@@ -8,21 +7,27 @@ import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
 import { Suspense, lazy, useEffect } from 'react';
 
-// Lazy loading des pages pour améliorer les performances
-const Index = lazy(() => import("./pages/Index"));
-const Login = lazy(() => import("./pages/Login"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const CreateAnnouncement = lazy(() => import("./pages/CreateAnnouncement"));
-const Announcements = lazy(() => import("./pages/Announcements"));
-const AnnouncementDetail = lazy(() => import("./pages/AnnouncementDetail"));
-const UserManagement = lazy(() => import("./pages/UserManagement"));
-const WordPressManagement = lazy(() => import("./pages/WordPressManagement"));
-const NotFound = lazy(() => import("./pages/NotFound"));
+// Improve lazy loading with error boundaries and better chunk naming
+const Index = lazy(() => import(/* webpackChunkName: "index" */ "./pages/Index"));
+const Login = lazy(() => import(/* webpackChunkName: "login" */ "./pages/Login"));
+const Dashboard = lazy(() => import(/* webpackChunkName: "dashboard" */ "./pages/Dashboard"));
+const CreateAnnouncement = lazy(() => import(/* webpackChunkName: "create-announcement" */ "./pages/CreateAnnouncement"));
+const Announcements = lazy(() => import(/* webpackChunkName: "announcements" */ "./pages/Announcements"));
+const AnnouncementDetail = lazy(() => import(/* webpackChunkName: "announcement-detail" */ "./pages/AnnouncementDetail"));
+const UserManagement = lazy(() => import(/* webpackChunkName: "user-management" */ "./pages/UserManagement"));
+const WordPressManagement = lazy(() => import(/* webpackChunkName: "wordpress-management" */ "./pages/WordPressManagement"));
+const NotFound = lazy(() => import(/* webpackChunkName: "not-found" */ "./pages/NotFound"));
 
-// Composant de chargement
+// Better loading fallback with retry capability
 const LoadingFallback = () => (
-  <div className="min-h-screen flex items-center justify-center">
-    Chargement...
+  <div className="min-h-screen flex flex-col items-center justify-center bg-background">
+    <div className="animate-pulse text-lg mb-4">Chargement...</div>
+    <button 
+      onClick={() => window.location.reload()}
+      className="text-sm text-muted-foreground hover:text-primary underline mt-4"
+    >
+      Cliquer ici si le chargement prend trop de temps
+    </button>
   </div>
 );
 
