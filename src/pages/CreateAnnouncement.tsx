@@ -34,7 +34,7 @@ const CreateAnnouncement = () => {
         user_id: user?.id,
         title: data.title,
         description: data.description,
-        status: data.status || "published", // Default to published
+        status: data.status as "draft" | "published" | "scheduled", // Explicit casting to ensure type safety
         images: data.images || [],
         wordpress_category_id: data.wordpressCategory,
         publish_date: data.publishDate ? new Date(data.publishDate).toISOString() : null,
