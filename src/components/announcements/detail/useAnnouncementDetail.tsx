@@ -64,6 +64,7 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
 
       if (data) {
         console.log("Loaded announcement:", data);
+        console.log("WordPress post ID:", data.wordpress_post_id);
         // Format data for the form
         setAnnouncement(data as ExtendedAnnouncement);
       }

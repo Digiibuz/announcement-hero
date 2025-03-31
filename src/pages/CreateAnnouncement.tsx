@@ -65,8 +65,14 @@ const CreateAnnouncement = () => {
         console.log("Tentative de publication sur WordPress...");
         wordpressResult = await publishToWordPress(newAnnouncement as Announcement, data.wordpressCategory, user.id);
         
-        // WordPress post ID is now updated directly in the publishToWordPress function
+        // WordPress post ID is updated directly in the publishToWordPress function
         console.log("Résultat de la publication WordPress:", wordpressResult);
+        
+        if (wordpressResult.wordpressPostId) {
+          console.log("WordPress post ID returned:", wordpressResult.wordpressPostId);
+        } else {
+          console.warn("No WordPress post ID was returned");
+        }
       }
       
       if (wordpressResult.success) {

@@ -70,7 +70,8 @@ export const useWordPressPublishing = () => {
           return false;
         }
       };
-      
+
+      console.log("Checking DipiPixel endpoint:", apiUrl);
       const dipiEndpointExists = await checkEndpoint(apiUrl);
       
       if (!dipiEndpointExists) {
@@ -86,11 +87,12 @@ export const useWordPressPublishing = () => {
         title: announcement.title,
         content: announcement.description || "",
         status: announcement.status === 'published' ? 'publish' : announcement.status === 'scheduled' ? 'future' : 'draft',
-        // Date for scheduled posts
-        date: announcement.status === 'scheduled' && announcement.publish_date
-          ? new Date(announcement.publish_date).toISOString()
-          : undefined,
       };
+      
+      // Add date for scheduled posts
+      if (announcement.status === 'scheduled' && announcement.publish_date) {
+        wpPostData.date = new Date(announcement.publish_date).toISOString();
+      }
       
       // Add category based on endpoint type
       if (useCustomTaxonomy) {
@@ -154,10 +156,15 @@ export const useWordPressPublishing = () => {
       
       // Check if the response contains the WordPress post ID
       if (wpResponseData && wpResponseData.id) {
+        console.log("Updating announcement with WordPress post ID:", wpResponseData.id);
+        
         // Update the announcement in Supabase with the WordPress post ID
         const { error: updateError } = await supabase
           .from("announcements")
-          .update({ wordpress_post_id: wpResponseData.id })
+          .update({ 
+            wordpress_post_id: wpResponseData.id,
+            is_divipixel: useCustomTaxonomy 
+          })
           .eq("id", announcement.id);
           
         if (updateError) {

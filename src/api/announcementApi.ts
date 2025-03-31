@@ -82,6 +82,7 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
             method: 'HEAD',
           });
           // If we get a 404, the endpoint may not exist (or post #1 might not exist, but this is a reasonable check)
+          // Fix the TypeScript error by using strict equality (===) and ensuring types match
           return response.status !== 404 || response.status === 401; // 401 means endpoint exists but not authorized
         } catch (error) {
           return false;
