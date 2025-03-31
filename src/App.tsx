@@ -64,12 +64,15 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading, isAdmin, isClient } = useAuth();
   const location = useLocation();
 
-  // Store current admin path in session storage to survive tab changes
+  // Enhanced admin route persistence
   useEffect(() => {
-    if ((isAdmin || isClient) && !isLoading) {
-      sessionStorage.setItem('lastAdminPath', location.pathname);
+    if (isAuthenticated && !isLoading) {
+      if (isAdmin || isClient) {
+        console.log("Saving admin path:", location.pathname);
+        sessionStorage.setItem('lastAdminPath', location.pathname);
+      }
     }
-  }, [location.pathname, isAdmin, isClient, isLoading]);
+  }, [location.pathname, isAuthenticated, isAdmin, isClient, isLoading]);
 
   if (isLoading) {
     return <LoadingFallback />;
@@ -88,21 +91,36 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppRoutes = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isAdmin, isClient, isLoading } = useAuth();
   const location = useLocation();
   
-  // Effect to restore last path on initial load or tab switch
+  // Enhanced path restoration with improved role checking and timing
   useEffect(() => {
-    if (isAuthenticated) {
-      const isAdminRoute = location.pathname === '/users' || location.pathname === '/wordpress';
-      if (location.pathname === '/dashboard' && isAdminRoute) {
+    if (isAuthenticated && !isLoading) {
+      console.log("Current path:", location.pathname);
+      console.log("Is admin:", isAdmin, "Is client:", isClient);
+      
+      // If we're at dashboard (potential redirect destination), check if we should go to admin page
+      if (location.pathname === '/dashboard' || location.pathname === '/') {
         const lastAdminPath = sessionStorage.getItem('lastAdminPath');
-        if (lastAdminPath) {
-          window.history.replaceState(null, '', lastAdminPath);
+        console.log("Last admin path from session:", lastAdminPath);
+        
+        if (lastAdminPath && (isAdmin || isClient)) {
+          // Admin paths we should restore to
+          const adminPaths = ['/users', '/wordpress'];
+          
+          if (adminPaths.includes(lastAdminPath)) {
+            console.log("Redirecting to last admin path:", lastAdminPath);
+            // Use a small timeout to ensure auth state is fully processed
+            setTimeout(() => {
+              window.history.replaceState(null, '', lastAdminPath);
+              window.location.href = lastAdminPath;
+            }, 100);
+          }
         }
       }
     }
-  }, [isAuthenticated, location.pathname]);
+  }, [isAuthenticated, isAdmin, isClient, isLoading, location.pathname]);
 
   return (
     <Suspense fallback={<LoadingFallback />}>

@@ -1,6 +1,6 @@
 
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v1';
+const CACHE_NAME = 'digiibuz-cache-v2';
 
 // Liste des ressources à mettre en cache
 const urlsToCache = [
@@ -51,7 +51,7 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Gestion des requêtes avec stratégie "Network first, fallback to cache"
+// Gestion des requêtes avec stratégie améliorée pour les routes d'administration
 self.addEventListener('fetch', event => {
   // Ne pas intercepter les requêtes API ou assets non essentiels
   if (event.request.url.includes('/api/') || 
@@ -60,14 +60,25 @@ self.addEventListener('fetch', event => {
     return;
   }
   
+  // Vérifier si c'est une route d'admin
+  const isAdminRoute = event.request.url.includes('/users') || 
+                       event.request.url.includes('/wordpress');
+  
   // Pour les requêtes de navigation (HTML)
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request)
-        .catch(() => {
-          // Si le réseau échoue, retourner le index.html depuis le cache
-          return caches.match('/index.html');
-        })
+      // Pour les routes d'admin, essayer d'abord le cache pour éviter les rechargements complets
+      isAdminRoute ? 
+        caches.match(event.request)
+          .then(response => {
+            return response || fetch(event.request)
+              .catch(() => caches.match('/index.html'));
+          }) :
+        fetch(event.request)
+          .catch(() => {
+            // Si le réseau échoue, retourner le index.html depuis le cache
+            return caches.match('/index.html');
+          })
     );
     return;
   }
@@ -79,7 +90,7 @@ self.addEventListener('fetch', event => {
         // Créer une promesse pour la requête réseau
         const fetchPromise = fetch(event.request)
           .then(networkResponse => {
-            // Mettre à jour le cache avec la nouvelle réponse
+            // Mettre à jour le cache avec la nouvelle réponse si valide
             if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
               const responseToCache = networkResponse.clone();
               caches.open(CACHE_NAME)
