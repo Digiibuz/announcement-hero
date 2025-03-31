@@ -28,7 +28,10 @@ function App() {
         <Route path="/support" element={<Support />} />
         <Route path="/profile" element={<UserProfile />} />
         <Route path="/wordpress" element={<WordPressManagement />} />
-        <Route path="/tome" element={<TomeManagement />} />
+        
+        {/* Modification des routes Tome pour utiliser une structure parent-enfant */}
+        <Route path="/tome/*" element={<TomeManagement />} />
+        
         {/* Ajout d'une redirection de /create vers /announcements/create */}
         <Route path="/create" element={<Navigate to="/announcements/create" replace />} />
         {/* Ajout d'une redirection de /dashboard vers / */}
