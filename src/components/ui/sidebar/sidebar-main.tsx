@@ -1,6 +1,7 @@
 
 import * as React from "react"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { useSidebar, SIDEBAR_WIDTH_MOBILE } from "./sidebar-context"
 
