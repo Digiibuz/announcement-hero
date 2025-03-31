@@ -1,6 +1,6 @@
 
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v7';
+const CACHE_NAME = 'digiibuz-cache-v8';
 
 // Liste des ressources à mettre en cache
 const urlsToCache = [
@@ -27,13 +27,24 @@ function isValidCacheUrl(url) {
   }
 }
 
-// Ne jamais mettre en cache les fichiers JavaScript pour éviter les problèmes de chargement de modules
-function isJavaScriptAsset(url) {
+// Ne jamais mettre en cache ces types de fichiers
+function shouldSkipCaching(url) {
   try {
     const urlObj = new URL(url);
-    return urlObj.pathname.endsWith('.js') || url.includes('assets/');
+    return (
+      urlObj.pathname.endsWith('.js') || 
+      urlObj.pathname.endsWith('.ts') || 
+      urlObj.pathname.endsWith('.tsx') || 
+      url.includes('assets/') ||
+      url.includes('/api/') || 
+      url.includes('supabase.co') || 
+      url.includes('wp-json') ||
+      url.includes('storage.googleapis.com') || // Pour éviter les conflits avec les images Supabase
+      url.includes('images/') ||
+      !isValidCacheUrl(url)
+    );
   } catch (e) {
-    return false;
+    return true;
   }
 }
 
@@ -74,14 +85,8 @@ self.addEventListener('activate', event => {
 
 // Gestion des requêtes avec stratégie pour éviter les rechargements complets
 self.addEventListener('fetch', event => {
-  // IMPORTANT: Ne jamais intercepter les requêtes JavaScript ou assets
-  // Cela peut causer des problèmes avec les modules dynamiques
-  if (event.request.url.includes('/api/') || 
-      event.request.url.includes('supabase.co') ||
-      event.request.url.includes('wp-json') ||
-      !isValidCacheUrl(event.request.url) ||
-      isJavaScriptAsset(event.request.url) ||
-      event.request.url.includes('assets/')) {
+  // IMPORTANT: Ne jamais intercepter certaines requêtes qui poseraient problème
+  if (shouldSkipCaching(event.request.url)) {
     return;
   }
   
@@ -99,7 +104,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Pour les autres requêtes non-JS - stratégie "stale-while-revalidate"
+  // Pour les autres requêtes - stratégie "stale-while-revalidate"
   event.respondWith(
     caches.match(event.request)
       .then(cachedResponse => {
@@ -111,7 +116,7 @@ self.addEventListener('fetch', event => {
                 networkResponse.status === 200 && 
                 networkResponse.type === 'basic' && 
                 isValidCacheUrl(event.request.url) &&
-                !isJavaScriptAsset(event.request.url)) { // Ne jamais mettre en cache les JS
+                !shouldSkipCaching(event.request.url)) {
               const responseToCache = networkResponse.clone();
               caches.open(CACHE_NAME)
                 .then(cache => {
@@ -138,4 +143,3 @@ self.addEventListener('fetch', event => {
       })
   );
 });
-
