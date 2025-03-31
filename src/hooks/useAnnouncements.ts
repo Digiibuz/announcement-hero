@@ -32,15 +32,16 @@ export const useAnnouncements = (params: UseAnnouncementsParams = {}) => {
         query = query.eq("status", params.status);
       }
       
-      if (params.search) {
+      if (params.search && params.search.trim() !== '') {
+        // Simplifier la requête pour éviter les problèmes de types
         query = query.or(`title.ilike.%${params.search}%,description.ilike.%${params.search}%`);
       }
       
-      if (params.isPremium) {
+      if (params.isPremium === true) {
         query = query.eq("is_premium", true);
       }
       
-      if (params.wordpressCategory) {
+      if (params.wordpressCategory && params.wordpressCategory.trim() !== '') {
         query = query.eq("wordpress_category", params.wordpressCategory);
       }
       
@@ -62,7 +63,12 @@ export const useAnnouncements = (params: UseAnnouncementsParams = {}) => {
 
   useEffect(() => {
     fetchAnnouncements();
-  }, [params.status, params.search, params.isPremium, params.wordpressCategory]);
+  }, [
+    params.status, 
+    params.search, 
+    params.isPremium, 
+    params.wordpressCategory
+  ]);
 
   return {
     announcements,

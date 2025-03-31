@@ -20,17 +20,23 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+interface WordPressConfigItemProps {
+  config: WordPressConfig;
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
+  onUpdateConfig?: (id: string, data: Partial<WordPressConfig>) => void;
+  isSubmitting?: boolean;
+  readOnly?: boolean;
+}
+
 const WordPressConfigItem = ({ 
   config, 
   onEdit, 
   onDelete, 
+  onUpdateConfig,
+  isSubmitting = false,
   readOnly = false 
-}: { 
-  config: WordPressConfig, 
-  onEdit?: (id: string) => void, 
-  onDelete?: (id: string) => void,
-  readOnly?: boolean
-}) => {
+}: WordPressConfigItemProps) => {
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
 
   const handleEditClick = () => {
@@ -88,7 +94,6 @@ const WordPressConfigItem = ({
                 <WordPressConfigForm
                   config={config}
                   onSubmit={(data) => {
-                    // Supposons que onUpdateConfig est disponible même si onEdit ne l'est pas
                     if (onUpdateConfig) {
                       onUpdateConfig(config.id, data);
                       setIsEditDialogOpen(false);

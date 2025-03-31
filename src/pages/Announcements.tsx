@@ -14,11 +14,19 @@ import { Badge } from "@/components/ui/badge";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { useWordPressPages } from "@/hooks/wordpress/useWordPressPages";
 
+// Ajoutez ce type pour correspondre aux props attendus par AnnouncementFilter
+type FilterState = {
+  status: AnnouncementStatus | "";
+  search: string;
+  isPremium: boolean;
+  category: string;
+};
+
 export default function Announcements() {
   const { isAdmin, isClient } = useAuth();
   const canCreateAnnouncement = isAdmin || isClient;
   
-  const [filter, setFilter] = useState({
+  const [filter, setFilter] = useState<FilterState>({
     status: "" as AnnouncementStatus | "",
     search: "",
     isPremium: false,
