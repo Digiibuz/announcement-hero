@@ -82,10 +82,10 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
             method: 'HEAD',
           });
           
-          // Fix the TypeScript error by using number type for status
-          // and correct comparison
-          const status = response.status;
-          return status !== 404 || status === 401; // 401 means endpoint exists but not authorized
+          // Stocker le status dans une variable pour éviter les erreurs de type
+          const statusCode = response.status;
+          // 401 signifie que l'endpoint existe mais qu'une authentification est nécessaire
+          return statusCode !== 404 || statusCode === 401;
         } catch (error) {
           return false;
         }

@@ -52,12 +52,11 @@ export const useWordPressPublishing = () => {
         ? wpConfig.site_url.slice(0, -1)
         : wpConfig.site_url;
       
-      // Try to detect if we should use posts endpoint or DipiPixel endpoint
-      // First try the DipiPixel custom API endpoint
+      // Vérifier si l'endpoint DipiPixel existe, sinon utiliser l'endpoint pages
       let apiUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt`;
       let useCustomTaxonomy = true;
       
-      // Check if we need to fall back to standard posts
+      // Check if we need to fall back to standard pages
       const checkEndpoint = async (url: string): Promise<boolean> => {
         try {
           const response = await fetch(`${url}?per_page=1`, {
@@ -75,8 +74,8 @@ export const useWordPressPublishing = () => {
       const dipiEndpointExists = await checkEndpoint(apiUrl);
       
       if (!dipiEndpointExists) {
-        console.log("DipiPixel endpoint not found, falling back to standard posts endpoint");
-        apiUrl = `${siteUrl}/wp-json/wp/v2/posts`;
+        console.log("DipiPixel endpoint not found, falling back to pages endpoint");
+        apiUrl = `${siteUrl}/wp-json/wp/v2/pages`;
         useCustomTaxonomy = false;
       }
       
@@ -99,8 +98,8 @@ export const useWordPressPublishing = () => {
         // Use the custom taxonomy for DipiPixel
         wpPostData.dipi_cpt_category = [parseInt(wordpressCategoryId)];
       } else {
-        // Use standard categories for posts
-        wpPostData.categories = [parseInt(wordpressCategoryId)];
+        // Pour les pages standard, pas besoin d'ajouter de catégorie
+        // Si nécessaire, vous pouvez ajouter des tags ou d'autres taxonomies ici
       }
       
       // Add SEO metadata if available
