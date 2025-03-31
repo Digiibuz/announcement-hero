@@ -306,37 +306,49 @@ export type Database = {
       tome_generations: {
         Row: {
           category_id: string
+          content: string | null
           created_at: string
+          description: string | null
+          error_message: string | null
           id: string
           keyword_id: string | null
           locality_id: string | null
           published_at: string | null
           scheduled_at: string | null
           status: string
+          title: string | null
           wordpress_config_id: string
           wordpress_post_id: number | null
         }
         Insert: {
           category_id: string
+          content?: string | null
           created_at?: string
+          description?: string | null
+          error_message?: string | null
           id?: string
           keyword_id?: string | null
           locality_id?: string | null
           published_at?: string | null
           scheduled_at?: string | null
           status: string
+          title?: string | null
           wordpress_config_id: string
           wordpress_post_id?: number | null
         }
         Update: {
           category_id?: string
+          content?: string | null
           created_at?: string
+          description?: string | null
+          error_message?: string | null
           id?: string
           keyword_id?: string | null
           locality_id?: string | null
           published_at?: string | null
           scheduled_at?: string | null
           status?: string
+          title?: string | null
           wordpress_config_id?: string
           wordpress_post_id?: number | null
         }

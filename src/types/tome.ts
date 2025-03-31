@@ -30,8 +30,8 @@ export interface TomeGeneration {
   wordpress_post_id: number | null;
   title: string | null;
   content: string | null;
-  error_message?: string | null;
-  description?: string | null;
+  description: string | null;
+  error_message: string | null;
 }
 
 export interface DipiCptCategory {
