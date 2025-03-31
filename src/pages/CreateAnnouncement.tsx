@@ -17,14 +17,9 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 
 const CreateAnnouncement = () => {
   const navigate = useNavigate();
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const {
-    publishToWordPress,
-    isPublishing
-  } = useWordPressPublishing();
+  const { publishToWordPress, isPublishing } = useWordPressPublishing();
   const isMobile = useMediaQuery("(max-width: 767px)");
 
   const handleSubmit = async (data: any) => {
@@ -47,10 +42,12 @@ const CreateAnnouncement = () => {
       console.log("Enregistrement de l'annonce:", announcementData);
 
       // Save to Supabase
-      const {
-        data: newAnnouncement,
-        error
-      } = await supabase.from("announcements").insert(announcementData).select().single();
+      const { data: newAnnouncement, error } = await supabase
+        .from("announcements")
+        .insert(announcementData)
+        .select()
+        .single();
+      
       if (error) throw error;
       console.log("Annonce enregistrée dans Supabase:", newAnnouncement);
 
@@ -70,27 +67,16 @@ const CreateAnnouncement = () => {
       }
       
       if (wordpressResult.success) {
-        toast({
-          title: "Succès",
-          description: "Annonce enregistrée avec succès"
-        });
+        toast.success("Annonce enregistrée avec succès");
       } else {
-        toast({
-          title: "Attention",
-          description: "Annonce enregistrée dans la base de données, mais la publication WordPress a échoué: " + (wordpressResult.message || "Erreur inconnue"),
-          variant: "destructive"
-        });
+        toast.error("Annonce enregistrée dans la base de données, mais la publication WordPress a échoué: " + (wordpressResult.message || "Erreur inconnue"));
       }
 
       // Redirect to the announcements list
       navigate("/announcements");
     } catch (error: any) {
       console.error("Error saving announcement:", error);
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de l'enregistrement: " + error.message,
-        variant: "destructive"
-      });
+      toast.error("Erreur lors de l'enregistrement: " + error.message);
     } finally {
       setIsSubmitting(false);
     }

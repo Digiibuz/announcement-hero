@@ -11,7 +11,7 @@ import { ArrowLeft, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useDivipixelPublications } from "@/hooks/useDivipixelPublications";
-import AnnouncementForm from "@/components/announcements/AnnouncementForm"; // Réutilisation du même formulaire
+import AnnouncementForm from "@/components/announcements/AnnouncementForm"; 
 
 const CreateDivipixelPublication = () => {
   const navigate = useNavigate();

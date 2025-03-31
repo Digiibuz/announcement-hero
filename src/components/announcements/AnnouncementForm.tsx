@@ -26,14 +26,14 @@ const formSchema = z.object({
   seoSlug: z.string().optional(),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+export type FormValues = z.infer<typeof formSchema>;
 
 interface AnnouncementFormProps {
   initialData?: any;
   onSubmit: (data: FormValues) => void;
   isSubmitting: boolean;
   isMobile?: boolean;
-  formType?: "announcement" | "divipixel"; // Nouveau paramètre pour indiquer le type de formulaire
+  formType?: "announcement" | "divipixel"; // Type de formulaire
 }
 
 const AnnouncementForm = ({
@@ -106,23 +106,12 @@ const AnnouncementForm = ({
             />
 
             {/* Champ description */}
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <DescriptionField 
-                      value={field.value || ""} 
-                      onChange={field.onChange}
-                      isMobile={isMobile}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <FormItem>
+              <DescriptionField 
+                form={form}
+                isMobile={isMobile}
+              />
+            </FormItem>
 
             {/* Téléchargement d'images */}
             <FormField
@@ -133,8 +122,9 @@ const AnnouncementForm = ({
                   <FormLabel>Images</FormLabel>
                   <FormControl>
                     <ImageUploader 
-                      images={field.value || []} 
+                      value={field.value || []} 
                       onChange={field.onChange}
+                      form={form}
                     />
                   </FormControl>
                   <FormMessage />

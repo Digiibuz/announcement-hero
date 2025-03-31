@@ -58,26 +58,15 @@ export const useDivipixelPublications = () => {
       }
       
       if (wordpressResult.success) {
-        toast({
-          title: "Succès",
-          description: "Publication Divipixel enregistrée avec succès"
-        });
+        toast.success("Publication Divipixel enregistrée avec succès");
         return newPublication;
       } else {
-        toast({
-          title: "Attention",
-          description: "Publication enregistrée dans la base de données, mais la publication WordPress a échoué: " + (wordpressResult.message || "Erreur inconnue"),
-          variant: "destructive"
-        });
+        toast.error("Publication enregistrée dans la base de données, mais la publication WordPress a échoué: " + (wordpressResult.message || "Erreur inconnue"));
         return newPublication;
       }
     } catch (error: any) {
       console.error("Error saving Divipixel publication:", error);
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de l'enregistrement: " + error.message,
-        variant: "destructive"
-      });
+      toast.error("Erreur lors de l'enregistrement: " + error.message);
       throw error;
     } finally {
       setIsSubmitting(false);
