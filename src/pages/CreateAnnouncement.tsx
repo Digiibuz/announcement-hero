@@ -111,7 +111,7 @@ const CreateAnnouncement = () => {
     description: "",
     wordpressCategory: "",
     publishDate: undefined,
-    status: "published", // Statut par défaut explicitement défini
+    status: "published" as "published" | "draft" | "scheduled", // Correction du type ici
     images: [],
     seoTitle: "",
     seoDescription: "",
