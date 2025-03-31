@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
@@ -11,7 +12,10 @@ import {
   Clock,
   ChevronRight,
   Calendar,
-  Plus
+  Plus,
+  Users,
+  TicketCheck,
+  Server
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
@@ -20,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Announcement } from "@/types/announcement";
 import { Button } from "@/components/ui/button";
 import FloatingActionButton from "@/components/ui/FloatingActionButton";
+import { useTickets, useAllTickets } from "@/hooks/useTickets";
 
 const stripHtmlTags = (html: string): string => {
   if (!html) return '';
@@ -29,7 +34,8 @@ const stripHtmlTags = (html: string): string => {
 const Dashboard = () => {
   const { user, isAdmin } = useAuth();
 
-  const { data: statsData, isLoading: isLoadingStats } = useQuery({
+  // Client stats - announcements
+  const { data: announcementStats, isLoading: isLoadingAnnouncementStats } = useQuery({
     queryKey: ["announcements-stats"],
     queryFn: async () => {
       const query = supabase.from("announcements").select("*");
@@ -85,6 +91,58 @@ const Dashboard = () => {
     enabled: !!user,
   });
 
+  // Admin stats - users
+  const { data: usersCount, isLoading: isLoadingUsersCount } = useQuery({
+    queryKey: ["users-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("profiles")
+        .select("*", { count: 'exact', head: true });
+      
+      if (error) {
+        console.error("Error fetching users count:", error);
+        return 0;
+      }
+      
+      return count || 0;
+    },
+    enabled: !!user && isAdmin,
+  });
+
+  // Admin stats - wordpress configs
+  const { data: wordpressCount, isLoading: isLoadingWordpressCount } = useQuery({
+    queryKey: ["wordpress-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("wordpress_configs")
+        .select("*", { count: 'exact', head: true });
+      
+      if (error) {
+        console.error("Error fetching wordpress count:", error);
+        return 0;
+      }
+      
+      return count || 0;
+    },
+    enabled: !!user && isAdmin,
+  });
+
+  // Admin stats - support tickets
+  const { data: allTickets = [] } = useAllTickets();
+  const ticketStats = React.useMemo(() => {
+    const openTickets = allTickets.filter(t => t.status === "open").length;
+    const inProgressTickets = allTickets.filter(t => t.status === "in_progress").length;
+    const closedTickets = allTickets.filter(t => t.status === "closed").length;
+    
+    return {
+      open: openTickets,
+      inProgress: inProgressTickets,
+      closed: closedTickets,
+      total: allTickets.length
+    };
+  }, [allTickets]);
+
+  // Recent announcements - common for both roles
   const { data: recentAnnouncements, isLoading: isLoadingRecent } = useQuery({
     queryKey: ["recent-announcements"],
     queryFn: async () => {
@@ -118,6 +176,27 @@ const Dashboard = () => {
     enabled: !!user,
   });
 
+  // Recent tickets for admin
+  const { data: recentTickets, isLoading: isLoadingRecentTickets } = useQuery({
+    queryKey: ["recent-tickets"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tickets")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      
+      if (error) {
+        console.error("Error fetching recent tickets:", error);
+        return [];
+      }
+      
+      return data;
+    },
+    enabled: !!user && isAdmin,
+  });
+
+  // Client-specific data - upcoming announcements
   const { data: upcomingAnnouncements, isLoading: isLoadingUpcoming } = useQuery({
     queryKey: ["upcoming-announcements"],
     queryFn: async () => {
@@ -144,7 +223,7 @@ const Dashboard = () => {
       
       return data;
     },
-    enabled: !!user,
+    enabled: !!user && !isAdmin,
   });
 
   const formatDate = (dateString: string) => {
@@ -161,6 +240,12 @@ const Dashboard = () => {
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100";
       case "scheduled":
         return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100";
+      case "open":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100";
+      case "in_progress":
+        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100";
+      case "closed":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100";
       default:
         return "bg-muted text-muted-foreground";
     }
@@ -184,38 +269,79 @@ const Dashboard = () => {
 
       <AnimatedContainer delay={200}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <DashboardCard
-            title="Publiées"
-            icon={<FileText size={20} />}
-            value={isLoadingStats ? "..." : statsData?.published || 0}
-            description="Annonces actives"
-            to="/announcements?status=published"
-            className="card-shadow"
-          />
-          <DashboardCard
-            title="Programmées"
-            icon={<Clock size={20} />}
-            value={isLoadingStats ? "..." : statsData?.scheduled || 0}
-            description="Publications à venir"
-            to="/announcements?status=scheduled"
-            className="card-shadow"
-          />
-          <DashboardCard
-            title="Brouillons"
-            icon={<FileText size={20} />}
-            value={isLoadingStats ? "..." : statsData?.draft || 0}
-            description="En cours de rédaction"
-            to="/announcements?status=draft"
-            className="card-shadow"
-          />
-          <DashboardCard
-            title="Total"
-            icon={<FileText size={20} />}
-            value={isLoadingStats ? "..." : statsData?.total || 0}
-            description="Toutes les annonces"
-            to="/announcements"
-            className="card-shadow"
-          />
+          {isAdmin ? (
+            // Admin dashboard cards
+            <>
+              <DashboardCard
+                title="Utilisateurs"
+                icon={<Users size={20} />}
+                value={isLoadingUsersCount ? "..." : usersCount || 0}
+                description="Comptes utilisateurs"
+                to="/users"
+                className="card-shadow"
+              />
+              <DashboardCard
+                title="WordPress"
+                icon={<Server size={20} />}
+                value={isLoadingWordpressCount ? "..." : wordpressCount || 0}
+                description="Configurations WordPress"
+                to="/wordpress"
+                className="card-shadow"
+              />
+              <DashboardCard
+                title="Tickets Support"
+                icon={<TicketCheck size={20} />}
+                value={isLoadingRecentTickets ? "..." : ticketStats.total}
+                description={`${ticketStats.open} ouvert${ticketStats.open > 1 ? 's' : ''}`}
+                to="/support"
+                className="card-shadow"
+              />
+              <DashboardCard
+                title="Annonces"
+                icon={<FileText size={20} />}
+                value={isLoadingAnnouncementStats ? "..." : announcementStats?.total || 0}
+                description="Toutes plateformes"
+                to="/announcements"
+                className="card-shadow"
+              />
+            </>
+          ) : (
+            // Client dashboard cards
+            <>
+              <DashboardCard
+                title="Publiées"
+                icon={<FileText size={20} />}
+                value={isLoadingAnnouncementStats ? "..." : announcementStats?.published || 0}
+                description="Annonces actives"
+                to="/announcements?status=published"
+                className="card-shadow"
+              />
+              <DashboardCard
+                title="Programmées"
+                icon={<Clock size={20} />}
+                value={isLoadingAnnouncementStats ? "..." : announcementStats?.scheduled || 0}
+                description="Publications à venir"
+                to="/announcements?status=scheduled"
+                className="card-shadow"
+              />
+              <DashboardCard
+                title="Brouillons"
+                icon={<FileText size={20} />}
+                value={isLoadingAnnouncementStats ? "..." : announcementStats?.draft || 0}
+                description="En cours de rédaction"
+                to="/announcements?status=draft"
+                className="card-shadow"
+              />
+              <DashboardCard
+                title="Total"
+                icon={<FileText size={20} />}
+                value={isLoadingAnnouncementStats ? "..." : announcementStats?.total || 0}
+                description="Toutes les annonces"
+                to="/announcements"
+                className="card-shadow"
+              />
+            </>
+          )}
         </div>
       </AnimatedContainer>
 
@@ -294,50 +420,106 @@ const Dashboard = () => {
         </AnimatedContainer>
 
         <AnimatedContainer delay={400}>
-          <Card className="h-full card-shadow">
-            <CardHeader>
-              <CardTitle className="text-lg font-medium flex items-center">
-                <Calendar size={18} className="mr-2" />
-                Prochaines Publications
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {isLoadingUpcoming ? (
-                <div className="space-y-4">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="p-3 rounded-lg bg-muted/50">
-                      <Skeleton className="h-4 w-40 mb-2" />
-                      <Skeleton className="h-3 w-full max-w-[180px]" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <>
-                  {upcomingAnnouncements && upcomingAnnouncements.length > 0 ? (
-                    upcomingAnnouncements.map((announcement) => (
-                      <Link
-                        to={`/announcements/${announcement.id}`}
-                        key={announcement.id}
-                        className="block p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                      >
-                        <div className="font-medium">{announcement.title}</div>
-                        <div className="flex justify-between items-center mt-1">
-                          <div className="text-sm text-muted-foreground flex items-center">
-                            <Clock size={14} className="mr-1" />
-                            {announcement.publish_date ? formatDate(announcement.publish_date) : "Date non définie"}
+          {isAdmin ? (
+            // Admin side panel: Recent tickets
+            <Card className="h-full card-shadow">
+              <CardHeader>
+                <CardTitle className="text-lg font-medium flex items-center">
+                  <TicketCheck size={18} className="mr-2" />
+                  Derniers Tickets Support
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isLoadingRecentTickets ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="p-3 rounded-lg bg-muted/50">
+                        <Skeleton className="h-4 w-40 mb-2" />
+                        <Skeleton className="h-3 w-full max-w-[180px]" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <>
+                    {recentTickets && recentTickets.length > 0 ? (
+                      recentTickets.map((ticket) => (
+                        <Link
+                          to={`/support?ticket=${ticket.id}`}
+                          key={ticket.id}
+                          className="block p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                        >
+                          <div className="font-medium">{ticket.subject}</div>
+                          <div className="flex justify-between items-center mt-1">
+                            <div className="text-sm text-muted-foreground">
+                              {ticket.username}
+                            </div>
+                            <span 
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                getStatusBadgeClass(ticket.status)
+                              }`}
+                            >
+                              {ticket.status === "open" ? "Ouvert" : 
+                               ticket.status === "in_progress" ? "En cours" : "Résolu"}
+                            </span>
                           </div>
-                        </div>
-                      </Link>
-                    ))
-                  ) : (
-                    <div className="text-center p-6 text-muted-foreground">
-                      Aucune publication programmée
-                    </div>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
+                        </Link>
+                      ))
+                    ) : (
+                      <div className="text-center p-6 text-muted-foreground">
+                        Aucun ticket récent
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            // Client side panel: Upcoming publications
+            <Card className="h-full card-shadow">
+              <CardHeader>
+                <CardTitle className="text-lg font-medium flex items-center">
+                  <Calendar size={18} className="mr-2" />
+                  Prochaines Publications
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isLoadingUpcoming ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="p-3 rounded-lg bg-muted/50">
+                        <Skeleton className="h-4 w-40 mb-2" />
+                        <Skeleton className="h-3 w-full max-w-[180px]" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <>
+                    {upcomingAnnouncements && upcomingAnnouncements.length > 0 ? (
+                      upcomingAnnouncements.map((announcement) => (
+                        <Link
+                          to={`/announcements/${announcement.id}`}
+                          key={announcement.id}
+                          className="block p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                        >
+                          <div className="font-medium">{announcement.title}</div>
+                          <div className="flex justify-between items-center mt-1">
+                            <div className="text-sm text-muted-foreground flex items-center">
+                              <Clock size={14} className="mr-1" />
+                              {announcement.publish_date ? formatDate(announcement.publish_date) : "Date non définie"}
+                            </div>
+                          </div>
+                        </Link>
+                      ))
+                    ) : (
+                      <div className="text-center p-6 text-muted-foreground">
+                        Aucune publication programmée
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </AnimatedContainer>
       </div>
 
