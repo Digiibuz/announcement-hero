@@ -177,7 +177,7 @@ const CreateAnnouncement = () => {
           {isMobile && (
             <div className="bg-muted/30 px-4 py-3 mb-4 text-sm text-muted-foreground flex items-center">
               <Wand2 className="h-4 w-4 mr-2 flex-shrink-0" />
-              <span>Utilisez les boutons <b>Optimiser</b> pour améliorer votre contenu avec l'IA.</span>
+              <span>Utilisez les boutons <b>Générer</b> pour améliorer votre contenu avec l'IA.</span>
             </div>
           )}
           

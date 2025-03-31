@@ -204,7 +204,7 @@ const AnnouncementForm = ({
                                 <span className="text-xs">Optimisation...</span>
                               </> : <>
                                 <Sparkles size={14} />
-                                <span className="text-xs">Optimiser</span>
+                                <span className="text-xs">Générer</span>
                               </>}
                           </Button>
                         </div>
@@ -228,7 +228,7 @@ const AnnouncementForm = ({
                                 <span className="text-xs">Optimisation...</span>
                               </> : <>
                                 <Sparkles size={14} />
-                                <span className="text-xs">Optimiser</span>
+                                <span className="text-xs">Générer</span>
                               </>}
                           </Button>
                         </div>
