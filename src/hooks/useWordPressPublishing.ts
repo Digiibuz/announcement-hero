@@ -236,7 +236,8 @@ export const useWordPressPublishing = () => {
             }
             
             const imageBlob = await imageResponse.blob();
-            const fileName = featuredImageUrl.split('/').pop() || 'image.jpg';
+            // Extract filename from URL or generate a unique name
+            const fileName = featuredImageUrl.split('/').pop() || `image-${Date.now()}.jpg`;
             const imageFile = new File([imageBlob], fileName, { 
               type: imageBlob.type || 'image/jpeg' 
             });
@@ -245,20 +246,31 @@ export const useWordPressPublishing = () => {
             console.log("Uploading image to WordPress media library");
             const mediaFormData = new FormData();
             mediaFormData.append('file', imageFile);
+            mediaFormData.append('title', announcement.title);
+            mediaFormData.append('alt_text', announcement.title);
             
             const mediaEndpoint = `${siteUrl}/wp-json/wp/v2/media`;
+            console.log("Media endpoint:", mediaEndpoint);
+            
+            // Create headers for media upload without Content-Type (browser will set it with boundary)
+            const mediaHeaders = new Headers();
+            if (headers.Authorization) {
+              mediaHeaders.append('Authorization', headers.Authorization);
+            }
+            
+            console.log("Sending media upload request...");
             const mediaResponse = await fetch(mediaEndpoint, {
               method: 'POST',
-              headers: {
-                'Authorization': headers.Authorization
-              },
+              headers: mediaHeaders,
               body: mediaFormData
             });
             
+            console.log("Media upload response status:", mediaResponse.status);
+            
             if (!mediaResponse.ok) {
-              const mediaError = await mediaResponse.text();
-              console.error("Media upload error:", mediaError);
-              throw new Error(`Failed to upload media: ${mediaError}`);
+              const mediaErrorText = await mediaResponse.text();
+              console.error("Media upload error:", mediaErrorText);
+              throw new Error(`Failed to upload media: ${mediaErrorText}`);
             }
             
             const mediaData = await mediaResponse.json();
@@ -269,6 +281,8 @@ export const useWordPressPublishing = () => {
               console.log("Setting featured image for post", wpResponseData.id, "with media ID", mediaData.id);
               
               const updatePostEndpoint = `${postEndpoint}/${wpResponseData.id}`;
+              console.log("Update post endpoint:", updatePostEndpoint);
+              
               const updateResponse = await fetch(updatePostEndpoint, {
                 method: 'POST',
                 headers: headers,
@@ -277,9 +291,11 @@ export const useWordPressPublishing = () => {
                 })
               });
               
+              console.log("Update post response status:", updateResponse.status);
+              
               if (!updateResponse.ok) {
-                const updateError = await updateResponse.text();
-                console.error("Error setting featured image:", updateError);
+                const updateErrorText = await updateResponse.text();
+                console.error("Error setting featured image:", updateErrorText);
                 // We'll continue even if featured image setting fails
               } else {
                 console.log("Featured image set successfully");
