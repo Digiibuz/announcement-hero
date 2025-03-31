@@ -82,10 +82,11 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
             method: 'HEAD',
           });
           
-          // Stocker le status dans une variable pour éviter les erreurs de type
-          const statusCode = response.status;
+          // Correction de l'erreur TypeScript en utilisant une variable
+          const status = response.status;
           // 401 signifie que l'endpoint existe mais qu'une authentification est nécessaire
-          return statusCode !== 404 || statusCode === 401;
+          // On doit utiliser ici une condition correcte
+          return status === 401 || (status !== 404);
         } catch (error) {
           return false;
         }
@@ -94,8 +95,8 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
       const dipiEndpointExists = await checkEndpoint('dipi_cpt');
       
       if (!dipiEndpointExists) {
-        console.log("DipiPixel endpoint not found, using standard posts endpoint");
-        apiEndpoint = 'posts';
+        console.log("DipiPixel endpoint not found, using standard pages endpoint");
+        apiEndpoint = 'pages';
       }
       
       // Construct the WordPress API URL

@@ -133,29 +133,55 @@ export const useWordPressPublishing = () => {
       }
       
       // Send request to WordPress
+      console.log("Sending POST request to WordPress:", apiUrl);
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: headers,
         body: JSON.stringify(wpPostData)
       });
       
-      // Handle response
+      const responseStatus = response.status;
+      console.log("WordPress API response status:", responseStatus);
+      
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error("WordPress API error:", errorText);
+        let errorText;
+        try {
+          // Essayer de lire le corps de la réponse comme JSON
+          const errorData = await response.json();
+          console.error("WordPress API error (JSON):", errorData);
+          errorText = JSON.stringify(errorData);
+        } catch (jsonError) {
+          // Si ce n'est pas du JSON, lire comme texte
+          errorText = await response.text();
+          console.error("WordPress API error (text):", errorText);
+        }
+        
         return { 
           success: false, 
-          message: `Erreur lors de la publication WordPress (${response.status}): ${errorText}`, 
+          message: `Erreur lors de la publication WordPress (${responseStatus}): ${errorText}`, 
           wordpressPostId: null 
         };
       }
       
-      const wpResponseData = await response.json();
-      console.log("WordPress response:", wpResponseData);
+      // Utiliser try/catch pour la lecture du JSON de réponse
+      let wpResponseData;
+      try {
+        wpResponseData = await response.json();
+        console.log("WordPress response data:", wpResponseData);
+      } catch (jsonError) {
+        console.error("Error parsing WordPress response:", jsonError);
+        const rawResponse = await response.text();
+        console.log("Raw WordPress response:", rawResponse);
+        return {
+          success: false,
+          message: "Erreur lors de l'analyse de la réponse WordPress",
+          wordpressPostId: null
+        };
+      }
       
       // Check if the response contains the WordPress post ID
       if (wpResponseData && wpResponseData.id) {
-        console.log("Updating announcement with WordPress post ID:", wpResponseData.id);
+        console.log("WordPress post ID received:", wpResponseData.id);
         
         // Update the announcement in Supabase with the WordPress post ID
         const { error: updateError } = await supabase

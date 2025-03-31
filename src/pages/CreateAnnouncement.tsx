@@ -65,11 +65,25 @@ const CreateAnnouncement = () => {
         console.log("Tentative de publication sur WordPress...");
         wordpressResult = await publishToWordPress(newAnnouncement as Announcement, data.wordpressCategory, user.id);
         
-        // WordPress post ID is updated directly in the publishToWordPress function
         console.log("Résultat de la publication WordPress:", wordpressResult);
         
         if (wordpressResult.wordpressPostId) {
           console.log("WordPress post ID returned:", wordpressResult.wordpressPostId);
+          
+          // Vérification supplémentaire - mettre à jour l'annonce si l'ID n'a pas été déjà enregistré
+          if (!newAnnouncement.wordpress_post_id) {
+            console.log("Mise à jour de l'ID du post WordPress dans l'annonce...");
+            const { error: updateError } = await supabase
+              .from("announcements")
+              .update({ wordpress_post_id: wordpressResult.wordpressPostId })
+              .eq("id", newAnnouncement.id);
+              
+            if (updateError) {
+              console.error("Erreur lors de la mise à jour de l'ID WordPress:", updateError);
+            } else {
+              console.log("ID WordPress mis à jour avec succès:", wordpressResult.wordpressPostId);
+            }
+          }
         } else {
           console.warn("No WordPress post ID was returned");
         }
@@ -78,7 +92,7 @@ const CreateAnnouncement = () => {
       if (wordpressResult.success) {
         toast({
           title: "Succès",
-          description: "Annonce enregistrée avec succès"
+          description: "Annonce enregistrée avec succès" + (wordpressResult.wordpressPostId ? " et publiée sur WordPress (ID: " + wordpressResult.wordpressPostId + ")" : "")
         });
       } else {
         toast({
