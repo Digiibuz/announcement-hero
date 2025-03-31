@@ -13,6 +13,7 @@ import Support from "@/pages/Support";
 import UserProfile from "@/pages/UserProfile";
 import WordPressManagement from "@/pages/WordPressManagement";
 import TomeManagement from "@/pages/TomeManagement";
+import { Navigate } from "react-router-dom";
 
 function App() {
   return (
@@ -28,6 +29,8 @@ function App() {
         <Route path="/profile" element={<UserProfile />} />
         <Route path="/wordpress" element={<WordPressManagement />} />
         <Route path="/tome" element={<TomeManagement />} />
+        {/* Ajout d'une redirection de /create vers /announcements/create */}
+        <Route path="/create" element={<Navigate to="/announcements/create" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Toaster />
