@@ -4,8 +4,49 @@ import { supabase } from "@/integrations/supabase/client";
 import { Announcement } from "@/types/announcement";
 import { toast } from "sonner";
 
+export type PublishingStatus = "idle" | "loading" | "success" | "error";
+
+export interface PublishingState {
+  currentStep: string | null;
+  steps: {
+    [key: string]: {
+      status: PublishingStatus;
+      message?: string;
+    }
+  };
+  progress: number;
+}
+
+const initialPublishingState: PublishingState = {
+  currentStep: null,
+  steps: {
+    prepare: { status: "idle" },
+    image: { status: "idle" },
+    wordpress: { status: "idle" },
+    database: { status: "idle" }
+  },
+  progress: 0
+};
+
 export const useWordPressPublishing = () => {
   const [isPublishing, setIsPublishing] = useState(false);
+  const [publishingState, setPublishingState] = useState<PublishingState>(initialPublishingState);
+  
+  const updatePublishingStep = (stepId: string, status: PublishingStatus, message?: string, progress?: number) => {
+    setPublishingState(prev => ({
+      ...prev,
+      currentStep: stepId,
+      steps: {
+        ...prev.steps,
+        [stepId]: { status, message: message || prev.steps[stepId]?.message }
+      },
+      progress: progress !== undefined ? progress : prev.progress
+    }));
+  };
+  
+  const resetPublishingState = () => {
+    setPublishingState(initialPublishingState);
+  };
   
   const publishToWordPress = async (
     announcement: Announcement, 
@@ -13,7 +54,10 @@ export const useWordPressPublishing = () => {
     userId: string
   ): Promise<{ success: boolean; message: string; wordpressPostId: number | null }> => {
     setIsPublishing(true);
-    toast.info("Publication sur WordPress en cours...");
+    resetPublishingState();
+    
+    // Start with preparation step
+    updatePublishingStep("prepare", "loading", "Préparation de la publication", 10);
     
     try {
       // Get user's WordPress config
@@ -25,6 +69,7 @@ export const useWordPressPublishing = () => {
 
       if (profileError || !userProfile?.wordpress_config_id) {
         console.error("Error fetching WordPress config:", profileError || "No WordPress config ID found");
+        updatePublishingStep("prepare", "error", "Configuration WordPress non trouvée");
         return { 
           success: false, 
           message: "WordPress configuration non trouvée",
@@ -41,12 +86,15 @@ export const useWordPressPublishing = () => {
         
       if (wpConfigError || !wpConfig) {
         console.error("Error fetching WordPress config details:", wpConfigError || "No config found");
+        updatePublishingStep("prepare", "error", "Configuration WordPress non trouvée");
         return { 
           success: false, 
           message: "Configuration WordPress non trouvée", 
           wordpressPostId: null 
         };
       }
+      
+      updatePublishingStep("prepare", "success", "Préparation terminée", 25);
       
       // Ensure site_url has proper format
       const siteUrl = wpConfig.site_url.endsWith('/')
@@ -129,6 +177,7 @@ export const useWordPressPublishing = () => {
         const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
         headers['Authorization'] = `Basic ${basicAuth}`;
       } else {
+        updatePublishingStep("prepare", "error", "Aucune méthode d'authentification disponible");
         return { 
           success: false, 
           message: "Aucune méthode d'authentification disponible", 
@@ -142,7 +191,7 @@ export const useWordPressPublishing = () => {
       // Si des images sont disponibles, traiter l'image principale d'abord
       if (announcement.images && announcement.images.length > 0) {
         try {
-          toast.info("Préparation de l'image principale...");
+          updatePublishingStep("image", "loading", "Téléversement de l'image principale", 40);
           
           // 1. Télécharger l'image depuis l'URL
           const imageUrl = announcement.images[0];
@@ -150,6 +199,7 @@ export const useWordPressPublishing = () => {
           
           if (!imageResponse.ok) {
             console.error("Échec de la récupération de l'image depuis l'URL:", imageUrl);
+            updatePublishingStep("image", "error", "Échec de récupération de l'image");
             toast.warning("L'image principale n'a pas pu être préparée, publication sans image");
           } else {
             const imageBlob = await imageResponse.blob();
@@ -182,21 +232,28 @@ export const useWordPressPublishing = () => {
             if (!mediaResponse.ok) {
               const mediaErrorText = await mediaResponse.text();
               console.error("Erreur lors du téléversement du média:", mediaErrorText);
+              updatePublishingStep("image", "error", "Échec du téléversement de l'image");
               toast.warning("L'image principale n'a pas pu être téléversée, publication sans image");
             } else {
               const mediaData = await mediaResponse.json();
               
               if (mediaData && mediaData.id) {
                 featuredMediaId = mediaData.id;
-                toast.success("Image principale téléversée avec succès");
+                updatePublishingStep("image", "success", "Image téléversée avec succès", 60);
               }
             }
           }
         } catch (error) {
           console.error("Erreur lors du traitement de l'image principale:", error);
+          updatePublishingStep("image", "error", "Erreur lors du traitement de l'image");
           toast.warning("Erreur lors du traitement de l'image principale, publication sans image");
         }
+      } else {
+        updatePublishingStep("image", "success", "Aucune image à téléverser", 60);
       }
+      
+      // Update WordPress step status
+      updatePublishingStep("wordpress", "loading", "Publication sur WordPress", 70);
       
       // Prepare post data - simplify for mobile
       const wpPostData: any = {
@@ -240,6 +297,7 @@ export const useWordPressPublishing = () => {
       if (!postResponse.ok) {
         let errorText = await postResponse.text();
         console.error("WordPress API error:", errorText);
+        updatePublishingStep("wordpress", "error", "Erreur lors de la publication");
         return { 
           success: false, 
           message: `Erreur lors de la publication WordPress (${postResponse.status}): ${errorText}`, 
@@ -252,14 +310,19 @@ export const useWordPressPublishing = () => {
       try {
         wpResponseData = await postResponse.json();
         console.log("WordPress response data:", wpResponseData);
+        updatePublishingStep("wordpress", "success", "Publication WordPress réussie", 85);
       } catch (error) {
         console.error("Error parsing WordPress response:", error);
+        updatePublishingStep("wordpress", "error", "Erreur d'analyse de la réponse");
         return {
           success: false,
           message: "Erreur lors de l'analyse de la réponse WordPress",
           wordpressPostId: null
         };
       }
+      
+      // Final database update
+      updatePublishingStep("database", "loading", "Mise à jour de la base de données", 90);
       
       // Check if the response contains the WordPress post ID
       if (wpResponseData && typeof wpResponseData.id === 'number') {
@@ -277,7 +340,10 @@ export const useWordPressPublishing = () => {
           
         if (updateError) {
           console.error("Error updating announcement with WordPress post ID:", updateError);
+          updatePublishingStep("database", "error", "Erreur de mise à jour de la base de données");
           toast.error("L'annonce a été publiée sur WordPress mais l'ID n'a pas pu être enregistré dans la base de données");
+        } else {
+          updatePublishingStep("database", "success", "Mise à jour finalisée", 100);
         }
         
         return { 
@@ -287,6 +353,7 @@ export const useWordPressPublishing = () => {
         };
       } else {
         console.error("WordPress response does not contain post ID or ID is not a number", wpResponseData);
+        updatePublishingStep("database", "error", "Données incomplètes");
         return { 
           success: false, 
           message: "La réponse WordPress ne contient pas l'ID du post", 
@@ -295,6 +362,10 @@ export const useWordPressPublishing = () => {
       }
     } catch (error: any) {
       console.error("Error publishing to WordPress:", error);
+      // Update the current step with error status
+      if (publishingState.currentStep) {
+        updatePublishingStep(publishingState.currentStep, "error", `Erreur: ${error.message}`);
+      }
       return { 
         success: false, 
         message: `Erreur lors de la publication: ${error.message}`, 
@@ -307,6 +378,8 @@ export const useWordPressPublishing = () => {
   
   return {
     publishToWordPress,
-    isPublishing
+    isPublishing,
+    publishingState,
+    resetPublishingState
   };
 };

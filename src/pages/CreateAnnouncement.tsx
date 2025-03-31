@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState } from "react";
@@ -10,20 +11,51 @@ import PageLayout from "@/components/ui/layout/PageLayout";
 import { toast } from "@/hooks/use-toast";
 import { Announcement } from "@/types/announcement";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
-import { ArrowLeft, Wand2 } from "lucide-react";
+import { ArrowLeft, Wand2, FileImage, Server, Database, FileCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import PublishingLoadingOverlay, { PublishingStep } from "@/components/announcements/PublishingLoadingOverlay";
 
 const CreateAnnouncement = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { publishToWordPress, isPublishing } = useWordPressPublishing();
+  const { publishToWordPress, isPublishing, publishingState, resetPublishingState } = useWordPressPublishing();
   const isMobile = useMediaQuery("(max-width: 767px)");
+  const [showPublishingOverlay, setShowPublishingOverlay] = useState(false);
+
+  // Define the publishing steps
+  const publishingSteps: PublishingStep[] = [
+    {
+      id: "prepare",
+      label: "Préparation de la publication",
+      status: publishingState.steps.prepare?.status || "idle",
+      icon: <FileCheck className="h-5 w-5 text-muted-foreground" />
+    },
+    {
+      id: "image",
+      label: "Téléversement de l'image principale",
+      status: publishingState.steps.image?.status || "idle",
+      icon: <FileImage className="h-5 w-5 text-muted-foreground" />
+    },
+    {
+      id: "wordpress",
+      label: "Publication sur WordPress",
+      status: publishingState.steps.wordpress?.status || "idle",
+      icon: <Server className="h-5 w-5 text-muted-foreground" />
+    },
+    {
+      id: "database",
+      label: "Mise à jour de la base de données",
+      status: publishingState.steps.database?.status || "idle",
+      icon: <Database className="h-5 w-5 text-muted-foreground" />
+    }
+  ];
 
   const handleSubmit = async (data: any) => {
     try {
       setIsSubmitting(true);
+      setShowPublishingOverlay(true);
       
       // Show immediate feedback on mobile
       if (isMobile) {
@@ -100,8 +132,14 @@ const CreateAnnouncement = () => {
         }
       }
 
-      // Redirect to the announcements list
-      navigate("/announcements");
+      // Hide the overlay after a short delay to allow the user to see the completion
+      setTimeout(() => {
+        setShowPublishingOverlay(false);
+        resetPublishingState();
+        // Redirect to the announcements list
+        navigate("/announcements");
+      }, 1500);
+      
     } catch (error: any) {
       console.error("Error saving announcement:", error);
       toast({
@@ -109,6 +147,8 @@ const CreateAnnouncement = () => {
         description: "Erreur lors de l'enregistrement: " + error.message,
         variant: "destructive"
       });
+      setShowPublishingOverlay(false);
+      resetPublishingState();
     } finally {
       setIsSubmitting(false);
     }
@@ -148,6 +188,13 @@ const CreateAnnouncement = () => {
           />
         </div>
       </AnimatedContainer>
+      
+      <PublishingLoadingOverlay
+        isOpen={showPublishingOverlay}
+        steps={publishingSteps}
+        currentStepId={publishingState.currentStep}
+        progress={publishingState.progress}
+      />
     </PageLayout>
   );
 };
