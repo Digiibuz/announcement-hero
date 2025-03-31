@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -32,9 +33,9 @@ interface UserListProps {
   isDeleting: boolean;
   isUpdating: boolean;
   onResetPassword: (email: string) => void;
-  onImpersonateUser: (user: UserProfile) => void;
   onUpdateUser: (userId: string, userData: Partial<UserProfile>) => Promise<void>;
   onDeleteUser: (userId: string) => Promise<void>;
+  onImpersonateUser: (user: UserProfile) => void; // Add this prop to match what UserManagement is passing
 }
 
 const UserList: React.FC<UserListProps> = ({ 
