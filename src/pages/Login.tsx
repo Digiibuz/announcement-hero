@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Eye, EyeOff, Lock, LogIn, UserPlus, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
@@ -16,8 +16,6 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [name, setName] = useState("");
   const { login, isAuthenticated, isImpersonating, stopImpersonating, originalUser } = useAuth();
   const navigate = useNavigate();
 
@@ -33,36 +31,13 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      if (isSignUp) {
-        // Sign up process
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              name: name,
-            }
-          }
-        });
-
-        if (error) throw error;
-        
-        toast.success("Compte créé avec succès");
-        setIsSignUp(false); // Switch back to login view
-      } else {
-        // Login process
-        try {
-          await login(email, password);
-          toast.success("Connexion réussie");
-          navigate("/dashboard");
-        } catch (error: any) {
-          console.error("Erreur de connexion:", error);
-          toast.error(error.message || "Échec de la connexion");
-        }
-      }
+      // Login process
+      await login(email, password);
+      toast.success("Connexion réussie");
+      navigate("/dashboard");
     } catch (error: any) {
-      console.error("Erreur d'authentification:", error);
-      toast.error(error.message || "Une erreur est survenue");
+      console.error("Erreur de connexion:", error);
+      toast.error(error.message || "Échec de la connexion");
     } finally {
       setIsLoading(false);
     }
@@ -70,10 +45,6 @@ const Login = () => {
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
-  };
-
-  const toggleSignUp = () => {
-    setIsSignUp(!isSignUp);
   };
 
   return (
@@ -113,32 +84,14 @@ const Login = () => {
           <CardHeader className="space-y-1 text-center">
             <CardTitle className="text-2xl flex items-center justify-center gap-2">
               <Lock className="h-6 w-6" />
-              {isSignUp ? "Créer un compte" : "Connexion"}
+              Connexion
             </CardTitle>
             <CardDescription>
-              {isSignUp 
-                ? "Entrez vos informations pour créer un compte" 
-                : "Entrez vos identifiants pour accéder à votre compte"}
+              Entrez vos identifiants pour accéder à votre compte
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {isSignUp && (
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nom</Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Votre nom"
-                    required={isSignUp}
-                    autoComplete="name"
-                    disabled={isLoading}
-                  />
-                </div>
-              )}
-              
+            <form onSubmit={handleSubmit} className="space-y-4">              
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -155,11 +108,9 @@ const Login = () => {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Mot de passe</Label>
-                  {!isSignUp && (
-                    <Button variant="link" className="p-0 h-auto text-xs" type="button" disabled={isLoading}>
-                      Mot de passe oublié ?
-                    </Button>
-                  )}
+                  <Button variant="link" className="p-0 h-auto text-xs" type="button" disabled={isLoading}>
+                    Mot de passe oublié ?
+                  </Button>
                 </div>
                 <div className="relative">
                   <Input
@@ -169,7 +120,7 @@ const Login = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     required
-                    autoComplete={isSignUp ? "new-password" : "current-password"}
+                    autoComplete="current-password"
                     disabled={isLoading}
                   />
                   <Button
@@ -189,58 +140,20 @@ const Login = () => {
                 {isLoading ? (
                   <div className="flex items-center">
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {isSignUp ? "Création en cours..." : "Connexion en cours..."}
+                    Connexion en cours...
                   </div>
                 ) : (
                   <>
-                    {isSignUp ? (
-                      <>
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Créer un compte
-                      </>
-                    ) : (
-                      <>
-                        <LogIn className="mr-2 h-4 w-4" />
-                        Se connecter
-                      </>
-                    )}
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Se connecter
                   </>
                 )}
               </Button>
             </form>
           </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <div className="relative w-full">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Ou
-                </span>
-              </div>
-            </div>
-            
-            <Button variant="outline" className="w-full" onClick={toggleSignUp} disabled={isLoading}>
-              {isSignUp ? (
-                <>Déjà un compte ? Se connecter</>
-              ) : (
-                <>
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Créer un nouveau compte
-                </>
-              )}
-            </Button>
-            
-            <p className="text-xs text-center text-muted-foreground">
-              En vous connectant, vous acceptez nos{" "}
-              <a href="#" className="underline underline-offset-4 hover:text-primary">
-                Conditions d'utilisation
-              </a>{" "}
-              et notre{" "}
-              <a href="#" className="underline underline-offset-4 hover:text-primary">
-                Politique de confidentialité
-              </a>
+          <CardFooter>
+            <p className="text-xs text-center text-muted-foreground w-full">
+              Contactez votre administrateur si vous n'avez pas de compte
             </p>
           </CardFooter>
         </Card>
