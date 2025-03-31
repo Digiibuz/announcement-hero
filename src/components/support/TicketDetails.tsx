@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,7 @@ import { fr } from "date-fns/locale";
 import { useTicketDetails, useReplyToTicket, useUpdateTicketStatus } from "@/hooks/useTickets";
 import { useTicketNotifications } from "@/hooks/useTicketNotifications";
 import { toast } from "sonner";
+import { MailOpen } from "lucide-react";
 
 interface TicketDetailsProps {
   ticketId: string;
@@ -29,11 +31,12 @@ const TicketDetails: React.FC<TicketDetailsProps> = ({ ticketId }) => {
   const { mutate: updateStatus, isPending: isUpdatingStatus } = useUpdateTicketStatus();
   const { markTicketAsRead } = useTicketNotifications();
 
+  // Marquer automatiquement le ticket comme lu dès qu'il est affiché
   useEffect(() => {
-    if (ticket && !isAdmin) {
+    if (ticket) {
       markTicketAsRead(ticketId);
     }
-  }, [ticket, ticketId, isAdmin, markTicketAsRead]);
+  }, [ticket, ticketId, markTicketAsRead]);
 
   if (isLoading || !ticket) {
     return <p className="text-center py-8">Chargement des détails du ticket...</p>;
@@ -134,12 +137,15 @@ const TicketDetails: React.FC<TicketDetailsProps> = ({ ticketId }) => {
     <Card>
       <CardHeader>
         <div className="flex justify-between items-start">
-          <div>
-            <CardTitle className="text-xl">{ticket.subject}</CardTitle>
-            <CardDescription className="mt-1">
-              Créé le {format(new Date(ticket.created_at), 'PPP à HH:mm', { locale: fr })}
-              {' '} par {ticket.username}
-            </CardDescription>
+          <div className="flex items-center gap-2">
+            <MailOpen className="h-5 w-5 text-primary" /> {/* Icône indiquant que le ticket est lu */}
+            <div>
+              <CardTitle className="text-xl">{ticket.subject}</CardTitle>
+              <CardDescription className="mt-1">
+                Créé le {format(new Date(ticket.created_at), 'PPP à HH:mm', { locale: fr })}
+                {' '} par {ticket.username}
+              </CardDescription>
+            </div>
           </div>
           <div className="flex gap-2">
             {getStatusBadge(ticket.status)}

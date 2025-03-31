@@ -149,6 +149,9 @@ export const useTicketNotifications = () => {
       `${READ_TICKETS_STORAGE_KEY}_${user.id}`, 
       JSON.stringify(storageReadTickets)
     );
+    
+    // Forcer la mise à jour du compteur après avoir marqué un ticket comme lu
+    setTimeout(() => updateUnreadCount(), 0);
   };
 
   // Fonction pour marquer le tab des tickets comme vu
@@ -163,5 +166,11 @@ export const useTicketNotifications = () => {
     setViewedTicketTab(false);
   }, []);
 
-  return { unreadCount, markTicketAsRead, markTicketTabAsViewed, resetTicketTabView };
+  return { 
+    unreadCount, 
+    markTicketAsRead, 
+    markTicketTabAsViewed, 
+    resetTicketTabView,
+    readTicketIds // Exposer l'état de lecture des tickets
+  };
 };
