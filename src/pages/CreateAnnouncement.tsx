@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import AnnouncementForm from "@/components/announcements/AnnouncementForm";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import PageLayout from "@/components/ui/layout/PageLayout";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 import { Announcement } from "@/types/announcement";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
 import { ArrowLeft, Wand2 } from "lucide-react";
@@ -34,7 +34,7 @@ const CreateAnnouncement = () => {
         user_id: user?.id,
         title: data.title,
         description: data.description,
-        status: data.status || "draft",
+        status: data.status || "published", // Default to published
         images: data.images || [],
         wordpress_category_id: data.wordpressCategory,
         publish_date: data.publishDate ? new Date(data.publishDate).toISOString() : null,
@@ -79,16 +79,27 @@ const CreateAnnouncement = () => {
       }
       
       if (wordpressResult.success) {
-        toast.success("Annonce enregistrée avec succès");
+        toast({
+          title: "Succès",
+          description: "Annonce enregistrée avec succès"
+        });
       } else {
-        toast.warning("Annonce enregistrée dans la base de données, mais la publication WordPress a échoué: " + (wordpressResult.message || "Erreur inconnue"));
+        toast({
+          title: "Attention",
+          description: "Annonce enregistrée dans la base de données, mais la publication WordPress a échoué: " + (wordpressResult.message || "Erreur inconnue"),
+          variant: "destructive"
+        });
       }
 
       // Redirect to the announcements list
       navigate("/announcements");
     } catch (error: any) {
       console.error("Error saving announcement:", error);
-      toast.error("Erreur lors de l'enregistrement: " + error.message);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de l'enregistrement: " + error.message,
+        variant: "destructive"
+      });
     } finally {
       setIsSubmitting(false);
     }
