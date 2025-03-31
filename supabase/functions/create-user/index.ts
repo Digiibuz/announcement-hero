@@ -108,6 +108,7 @@ serve(async (req) => {
       }
       
       newUserData = data;
+      console.log("Utilisateur créé dans auth:", newUserData.user.id);
     } catch (error) {
       console.error("Erreur lors de la création de l'utilisateur:", error);
       return new Response(
@@ -121,6 +122,7 @@ serve(async (req) => {
 
     // After creating the user in Auth, create their profile
     try {
+      console.log("Création du profil pour l'utilisateur:", newUserData.user.id);
       const { error: profileError } = await supabaseAdmin
         .from('profiles')
         .insert({
@@ -137,6 +139,7 @@ serve(async (req) => {
         
         // If profile creation fails, delete the user to avoid inconsistencies
         try {
+          console.log("Suppression de l'utilisateur après échec de création de profil:", newUserData.user.id);
           await supabaseAdmin.auth.admin.deleteUser(newUserData.user.id);
         } catch (deleteError) {
           console.error("Erreur lors de la suppression de l'utilisateur après échec de création de profil:", deleteError);

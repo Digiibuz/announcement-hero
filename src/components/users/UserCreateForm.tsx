@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -76,7 +77,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       console.log("Envoi des données:", values);
       
       // Call the Edge function with better error handling
-      const { data, error } = await supabase.functions.invoke("create-user", {
+      const { data, error: functionCallError } = await supabase.functions.invoke("create-user", {
         body: {
           email: values.email,
           name: values.name,
@@ -86,10 +87,10 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
         },
       });
       
-      if (error) {
-        console.error("Erreur renvoyée par la fonction Edge:", error);
+      if (functionCallError) {
+        console.error("Erreur d'appel à la fonction Edge:", functionCallError);
         toast.dismiss(toastId);
-        toast.error(`Erreur: ${error.message || "Échec de la création de l'utilisateur"}`);
+        toast.error(`Erreur: ${functionCallError.message || "Échec de la création de l'utilisateur"}`);
         return;
       }
       
@@ -98,7 +99,13 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       if (!data || (data as any).error) {
         const errorMessage = (data as any)?.error || "Erreur lors de la création de l'utilisateur";
         toast.dismiss(toastId);
-        toast.error(errorMessage);
+        
+        // Messages d'erreur plus précis pour les cas courants
+        if (errorMessage.includes("L'utilisateur existe déjà")) {
+          toast.error("Cet email est déjà utilisé par un autre utilisateur");
+        } else {
+          toast.error(errorMessage);
+        }
         return;
       }
       

@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
@@ -22,6 +22,13 @@ const UserManagement = () => {
     updateUser,
     deleteUser
   } = useUserManagement();
+  
+  // Fetch users on component mount
+  useEffect(() => {
+    if (isAdmin) {
+      fetchUsers();
+    }
+  }, [isAdmin, fetchUsers]);
   
   const handleImpersonateUser = (userToImpersonate: UserProfile) => {
     impersonateUser(userToImpersonate);
