@@ -18,6 +18,7 @@ import { useAuth } from "@/context/AuthContext";
 import AccessDenied from "@/components/users/AccessDenied";
 import { WordPressConfig } from "@/types/wordpress";
 import { Card, CardContent } from "@/components/ui/card";
+import { toast } from "sonner";
 
 const WordPressManagement = () => {
   const { isAdmin, isClient, user } = useAuth();
@@ -44,6 +45,12 @@ const WordPressManagement = () => {
     await updateConfig(id, data);
     // La fonction updateConfig retourne un WordPressConfig, mais nous ignorons la valeur retournée
     // pour rendre la fonction compatible avec le type attendu
+  };
+
+  // Fonction de rafraîchissement pour le bouton
+  const handleRefresh = () => {
+    fetchConfigs();
+    toast.success("Configurations WordPress mises à jour");
   };
 
   // Le bouton d'ajout n'est disponible que pour les administrateurs, pas pour les clients
@@ -85,7 +92,11 @@ const WordPressManagement = () => {
   );
 
   return (
-    <PageLayout title={pageTitle} titleAction={titleAction}>
+    <PageLayout 
+      title={pageTitle} 
+      titleAction={titleAction}
+      onRefresh={handleRefresh}
+    >
       {!(isAdmin || isClient) ? (
         <AccessDenied />
       ) : (

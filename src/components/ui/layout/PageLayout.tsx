@@ -6,6 +6,10 @@ import Header from "@/components/ui/layout/Header";
 import Sidebar from "@/components/ui/layout/Sidebar";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { useLocation } from "react-router-dom";
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -13,6 +17,7 @@ interface PageLayoutProps {
   titleAction?: React.ReactNode;
   fullWidthMobile?: boolean;
   containerClassName?: string;
+  onRefresh?: () => void;
 }
 
 const PageLayout = ({ 
@@ -20,9 +25,26 @@ const PageLayout = ({
   title, 
   titleAction, 
   fullWidthMobile = false,
-  containerClassName
+  containerClassName,
+  onRefresh
 }: PageLayoutProps) => {
   const isMobile = useMediaQuery("(max-width: 767px)");
+  const { isAdmin, isClient } = useAuth();
+  const location = useLocation();
+  
+  // Vérifier si nous sommes sur une page d'administration
+  const isAdminPage = location.pathname === '/users' || location.pathname === '/wordpress';
+  
+  // Fonction par défaut pour le rafraîchissement
+  const handleDefaultRefresh = () => {
+    window.location.reload();
+  };
+
+  // Déterminer quelle fonction de rafraîchissement utiliser
+  const handleRefresh = onRefresh || handleDefaultRefresh;
+
+  // Afficher le bouton de rafraîchissement uniquement sur les pages d'administration
+  const showRefreshButton = (isAdmin || isClient) && isAdminPage;
 
   return (
     <div className="min-h-screen bg-background">
@@ -31,10 +53,24 @@ const PageLayout = ({
 
       <main className="pt-16 md:pl-64">
         <div className={`container ${fullWidthMobile && isMobile ? 'px-0 sm:px-4' : 'px-4'} py-0 ${containerClassName || ''}`}>
-          {(title || titleAction) && (
+          {(title || titleAction || showRefreshButton) && (
             <AnimatedContainer delay={100} className={containerClassName?.includes('max-w-full') ? 'w-full' : ''}>
               <div className={`flex flex-col ${!isMobile ? "sm:flex-row sm:items-center sm:justify-between" : ""} mb-4 ${isMobile ? "pt-0 px-4" : "pt-2"} gap-3`}>
-                {title && <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>}
+                <div className="flex flex-row items-center gap-4">
+                  {title && <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>}
+                  {showRefreshButton && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="ml-2"
+                      onClick={handleRefresh}
+                      title="Rafraîchir la page"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Rafraîchir
+                    </Button>
+                  )}
+                </div>
                 {titleAction && <div className={`${isMobile ? "w-full" : ""}`}>{titleAction}</div>}
               </div>
             </AnimatedContainer>

@@ -40,12 +40,22 @@ const UserManagement = () => {
     fetchUsers();
   };
 
+  const handleRefresh = () => {
+    fetchUsers();
+    toast.success("Liste des utilisateurs mise à jour");
+  };
+
   const titleAction = isAdmin ? (
     <UserCreateForm onUserCreated={handleUserCreated} />
   ) : null;
 
   return (
-    <PageLayout title="Gestion des utilisateurs" titleAction={titleAction} containerClassName="max-w-full">
+    <PageLayout 
+      title="Gestion des utilisateurs" 
+      titleAction={titleAction} 
+      containerClassName="max-w-full"
+      onRefresh={handleRefresh}
+    >
       {!isAdmin ? (
         <AccessDenied />
       ) : (

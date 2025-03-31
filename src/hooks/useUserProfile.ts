@@ -8,11 +8,20 @@ import { UserProfile, Role } from "@/types/auth";
 export const createProfileFromMetadata = (authUser: User | null): UserProfile | null => {
   if (!authUser) return null;
   
+  // Récupérer le rôle depuis le localStorage en priorité pour éviter les rechargements inutiles
+  const cachedRole = localStorage.getItem('userRole') as Role | null;
+  const cachedUserId = localStorage.getItem('userId');
+  
+  // Si l'ID utilisateur correspond et que nous avons un rôle en cache, utilisons-le
+  const role = (cachedUserId === authUser.id && cachedRole) 
+    ? cachedRole 
+    : (authUser.user_metadata?.role as Role) || 'editor';
+  
   return {
     id: authUser.id,
     email: authUser.email || '',
     name: authUser.user_metadata?.name || authUser.email || '',
-    role: (authUser.user_metadata?.role as Role) || 'editor',
+    role: role,
     clientId: authUser.user_metadata?.clientId,
     wordpressConfigId: authUser.user_metadata?.wordpressConfigId,
   };
@@ -27,9 +36,19 @@ export const useUserProfile = () => {
     try {
       console.log("Fetching full profile for user:", userId);
       
+      // Utiliser d'abord le rôle en cache pour éviter tout problème
+      const cachedRole = localStorage.getItem('userRole') as Role | null;
+      const cachedUserId = localStorage.getItem('userId');
+      
+      // Si nous avons un profil utilisateur mais sans rôle défini, utilisons le rôle en cache
+      if (userProfile && !userProfile.role && cachedRole && cachedUserId === userId) {
+        console.log("Using cached role before fetch:", cachedRole);
+        setUserProfile({...userProfile, role: cachedRole});
+      }
+      
       // Add a small retry mechanism for network issues
       let attempts = 0;
-      const maxAttempts = 2;
+      const maxAttempts = 3;
       
       while (attempts < maxAttempts) {
         try {
@@ -40,6 +59,7 @@ export const useUserProfile = () => {
             .maybeSingle();
           
           if (error) {
+            console.error("Error fetching profile:", error);
             throw error;
           }
           
@@ -47,13 +67,13 @@ export const useUserProfile = () => {
             console.log("Profile data received:", data);
             
             // Get cached role as fallback
-            const cachedRole = localStorage.getItem('userRole') as Role | null;
+            const roleToUse = data.role as Role || cachedRole || 'editor';
             
             const updatedProfile: UserProfile = {
               id: data.id,
               email: data.email,
               name: data.name,
-              role: data.role as Role || cachedRole || 'editor',
+              role: roleToUse,
               clientId: data.client_id,
               wordpressConfigId: data.wordpress_config_id,
               wordpressConfig: data.wordpress_configs ? {
@@ -62,6 +82,7 @@ export const useUserProfile = () => {
               } : null
             };
             
+            console.log("Updated profile with role:", updatedProfile.role);
             setUserProfile(updatedProfile);
             
             // Cache the role for future reference
@@ -72,6 +93,7 @@ export const useUserProfile = () => {
           }
           
           // No data but no error either - break the retry loop
+          console.warn("No profile data found, using cached data if available");
           break;
         } catch (e) {
           console.error(`Attempt ${attempts + 1} failed:`, e);
@@ -79,7 +101,7 @@ export const useUserProfile = () => {
           
           // If we have more attempts, wait before retrying
           if (attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 1000));
           }
         }
       }
@@ -88,11 +110,8 @@ export const useUserProfile = () => {
       console.warn("Could not fetch complete profile after retries");
       
       // Use the cached role if we have one
-      const cachedRole = localStorage.getItem('userRole') as Role | null;
-      const cachedUserId = localStorage.getItem('userId');
-      
       if (cachedRole && cachedUserId === userId) {
-        console.log("Using cached role:", cachedRole);
+        console.log("Using cached role after failed fetches:", cachedRole);
         
         // Update the current profile with the cached role
         if (userProfile) {

@@ -1,6 +1,6 @@
 
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v2';
+const CACHE_NAME = 'digiibuz-cache-v3';
 
 // Liste des ressources à mettre en cache
 const urlsToCache = [
@@ -51,7 +51,7 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Gestion des requêtes avec stratégie améliorée pour les routes d'administration
+// Gestion des requêtes avec stratégie pour éviter les rechargements complets
 self.addEventListener('fetch', event => {
   // Ne pas intercepter les requêtes API ou assets non essentiels
   if (event.request.url.includes('/api/') || 
@@ -60,25 +60,16 @@ self.addEventListener('fetch', event => {
     return;
   }
   
-  // Vérifier si c'est une route d'admin
-  const isAdminRoute = event.request.url.includes('/users') || 
-                       event.request.url.includes('/wordpress');
-  
   // Pour les requêtes de navigation (HTML)
   if (event.request.mode === 'navigate') {
+    // On utilise principalement le cache pour éviter un rechargement complet
     event.respondWith(
-      // Pour les routes d'admin, essayer d'abord le cache pour éviter les rechargements complets
-      isAdminRoute ? 
-        caches.match(event.request)
-          .then(response => {
-            return response || fetch(event.request)
-              .catch(() => caches.match('/index.html'));
-          }) :
-        fetch(event.request)
-          .catch(() => {
-            // Si le réseau échoue, retourner le index.html depuis le cache
-            return caches.match('/index.html');
-          })
+      caches.match('/index.html')
+        .then(response => {
+          // Utiliser le cache en priorité pour les navigations
+          return response || fetch(event.request)
+            .catch(() => caches.match('/index.html'));
+        })
     );
     return;
   }
@@ -109,8 +100,7 @@ self.addEventListener('fetch', event => {
             return cachedResponse;
           });
 
-        // Renvoyer immédiatement la réponse en cache si elle existe 
-        // ou attendre la requête réseau
+        // Renvoyer immédiatement la réponse en cache si elle existe
         return cachedResponse || fetchPromise;
       })
   );
