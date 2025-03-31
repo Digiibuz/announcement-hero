@@ -31,6 +31,8 @@ function App() {
         <Route path="/tome" element={<TomeManagement />} />
         {/* Ajout d'une redirection de /create vers /announcements/create */}
         <Route path="/create" element={<Navigate to="/announcements/create" replace />} />
+        {/* Ajout d'une redirection de /dashboard vers / */}
+        <Route path="/dashboard" element={<Navigate to="/" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Toaster />
