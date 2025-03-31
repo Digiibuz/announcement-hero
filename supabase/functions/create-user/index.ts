@@ -38,7 +38,7 @@ serve(async (req) => {
       );
     }
     
-    const { email, password, name, role, clientId, wordpressConfigId } = requestData;
+    const { email, password, name, role, wordpressConfigId } = requestData;
 
     // Check required data
     if (!email || !password || !name || !role) {
@@ -155,8 +155,7 @@ serve(async (req) => {
         user_metadata: {
           name,
           role,
-          clientId: role === "editor" ? clientId : null,
-          wordpressConfigId: (role === "editor" || role === "client") ? wordpressConfigId : null,
+          wordpressConfigId: role === "client" ? wordpressConfigId : null,
         },
       });
 
@@ -188,8 +187,7 @@ serve(async (req) => {
           email: email,
           name: name,
           role: role,
-          client_id: role === "editor" ? clientId : null,
-          wordpress_config_id: (role === "editor" || role === "client") ? wordpressConfigId : null,
+          wordpress_config_id: role === "client" ? wordpressConfigId : null,
         });
 
       if (profileError) {

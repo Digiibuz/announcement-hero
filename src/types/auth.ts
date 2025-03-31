@@ -1,6 +1,7 @@
+
 import { User } from "@supabase/supabase-js";
 
-export type Role = "admin" | "editor" | "client";
+export type Role = "admin" | "client";
 
 export interface UserProfile {
   id: string;
@@ -23,7 +24,6 @@ export interface AuthContextType {
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   isAdmin: boolean;
-  isEditor: boolean;
   isClient: boolean;
   impersonateUser: (userToImpersonate: UserProfile) => void;
   stopImpersonating: () => void;

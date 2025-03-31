@@ -164,7 +164,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logout,
     isAuthenticated: !!userProfile,
     isAdmin: userProfile?.role === "admin",
-    isEditor: userProfile?.role === "editor",
     isClient: userProfile?.role === "client",
     impersonateUser,
     stopImpersonating,

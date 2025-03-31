@@ -2,7 +2,6 @@
 import React, { useEffect } from "react";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { useAuth } from "@/context/AuthContext";
-import { toast } from "sonner";
 import UserCreateForm from "@/components/users/UserCreateForm";
 import UserList from "@/components/users/UserList";
 import AccessDenied from "@/components/users/AccessDenied";
@@ -11,7 +10,7 @@ import { useUserManagement } from "@/hooks/useUserManagement";
 import { UserProfile } from "@/types/auth";
 
 const UserManagement = () => {
-  const { user, isAdmin, impersonateUser } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { 
     users, 
     isLoading, 
@@ -29,11 +28,6 @@ const UserManagement = () => {
       fetchUsers();
     }
   }, [isAdmin, fetchUsers]);
-  
-  const handleImpersonateUser = (userToImpersonate: UserProfile) => {
-    impersonateUser(userToImpersonate);
-    toast.success(`Vous êtes maintenant connecté en tant que ${userToImpersonate.name}`);
-  };
 
   const handleUserCreated = () => {
     console.log("Rafraîchissement de la liste des utilisateurs après création");
@@ -66,7 +60,6 @@ const UserManagement = () => {
             isDeleting={isDeleting}
             isUpdating={isUpdating}
             onResetPassword={handleResetPassword}
-            onImpersonateUser={handleImpersonateUser}
             onUpdateUser={updateUser}
             onDeleteUser={deleteUser}
           />

@@ -78,8 +78,7 @@ export const useUserManagement = () => {
           name: userData.name,
           email: userData.email,
           role: userData.role,
-          client_id: userData.role === 'editor' ? userData.clientId : null,
-          wordpress_config_id: (userData.role === 'editor' || userData.role === 'client') ? userData.wordpressConfigId : null
+          wordpress_config_id: userData.role === 'client' ? userData.wordpressConfigId : null
         })
         .eq('id', userId);
       

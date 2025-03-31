@@ -15,7 +15,7 @@ export const createProfileFromMetadata = (authUser: User | null): UserProfile | 
   // Si l'ID utilisateur correspond et que nous avons un rôle en cache, utilisons-le
   const role = (cachedUserId === authUser.id && cachedRole) 
     ? cachedRole 
-    : (authUser.user_metadata?.role as Role) || 'editor';
+    : (authUser.user_metadata?.role as Role) || 'client';
   
   return {
     id: authUser.id,
@@ -67,7 +67,7 @@ export const useUserProfile = () => {
             console.log("Profile data received:", data);
             
             // Get cached role as fallback
-            const roleToUse = data.role as Role || cachedRole || 'editor';
+            const roleToUse = data.role as Role || cachedRole || 'client';
             
             const updatedProfile: UserProfile = {
               id: data.id,
