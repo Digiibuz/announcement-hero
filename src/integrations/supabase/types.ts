@@ -63,38 +63,6 @@ export type Database = {
         }
         Relationships: []
       }
-      categories_keywords: {
-        Row: {
-          category_id: string
-          created_at: string
-          id: string
-          keyword: string
-          wordpress_config_id: string
-        }
-        Insert: {
-          category_id: string
-          created_at?: string
-          id?: string
-          keyword: string
-          wordpress_config_id: string
-        }
-        Update: {
-          category_id?: string
-          created_at?: string
-          id?: string
-          keyword?: string
-          wordpress_config_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "categories_keywords_wordpress_config_id_fkey"
-            columns: ["wordpress_config_id"]
-            isOneToOne: false
-            referencedRelation: "wordpress_configs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       client_wordpress_configs: {
         Row: {
           client_id: string
@@ -123,24 +91,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      localities: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-        }
-        Relationships: []
       }
       profiles: {
         Row: {
@@ -191,7 +141,6 @@ export type Database = {
           id: string
           name: string
           password: string | null
-          prompt: string | null
           rest_api_key: string | null
           site_url: string
           updated_at: string
@@ -204,7 +153,6 @@ export type Database = {
           id?: string
           name: string
           password?: string | null
-          prompt?: string | null
           rest_api_key?: string | null
           site_url: string
           updated_at?: string
@@ -217,7 +165,6 @@ export type Database = {
           id?: string
           name?: string
           password?: string | null
-          prompt?: string | null
           rest_api_key?: string | null
           site_url?: string
           updated_at?: string

@@ -1,132 +1,250 @@
 
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
-import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
+import { Eye, EyeOff, Lock, LogIn, UserPlus, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
-  const { login, isLoading } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [name, setName] = useState("");
+  const { login, isAuthenticated, isImpersonating, stopImpersonating, originalUser } = useAuth();
   const navigate = useNavigate();
-  const [authError, setAuthError] = useState<string | null>(null);
-  const { register, handleSubmit, formState: { errors } } = useForm({
-    defaultValues: {
-      email: "",
-      password: ""
-    }
-  });
 
-  const onSubmit = async (data: { email: string; password: string }) => {
-    try {
-      setAuthError(null);
-      const result = await login(data.email, data.password);
-      if (result.error) {
-        setAuthError(result.error.message);
-        toast.error(result.error.message || "Échec de la connexion");
-        return;
-      }
-      toast.success("Connexion réussie");
+  useEffect(() => {
+    // Redirect if already authenticated
+    if (isAuthenticated) {
       navigate("/dashboard");
+    }
+  }, [isAuthenticated, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    
+    try {
+      if (isSignUp) {
+        // Sign up process
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              name: name,
+            }
+          }
+        });
+
+        if (error) throw error;
+        
+        toast.success("Compte créé avec succès");
+        setIsSignUp(false); // Switch back to login view
+      } else {
+        // Login process
+        try {
+          await login(email, password);
+          toast.success("Connexion réussie");
+          navigate("/dashboard");
+        } catch (error: any) {
+          console.error("Erreur de connexion:", error);
+          toast.error(error.message || "Échec de la connexion");
+        }
+      }
     } catch (error: any) {
-      console.error("Login error:", error);
-      setAuthError(error.message);
-      toast.error("Échec de la connexion");
+      console.error("Erreur d'authentification:", error);
+      toast.error(error.message || "Une erreur est survenue");
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const toggleSignUp = () => {
+    setIsSignUp(!isSignUp);
+  };
+
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center p-4 bg-muted/30">
-      <AnimatedContainer 
-        className="w-full max-w-md bg-card rounded-lg shadow-lg p-8 border border-border"
-      >
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-2">
-            <img 
-              src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
-              alt="Digiibuz" 
-              className="h-12 w-auto" 
-            />
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
+      {isImpersonating && (
+        <div className="fixed top-0 left-0 right-0 bg-primary p-2 text-primary-foreground text-center text-sm z-50">
+          <div className="container flex items-center justify-between">
+            <p>
+              Vous êtes connecté en tant que <strong>{originalUser?.name}</strong> (mode administrateur)
+            </p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={stopImpersonating}
+              className="bg-primary-foreground hover:bg-primary-foreground/90 text-primary"
+            >
+              Revenir à mon compte
+            </Button>
           </div>
-          <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-digibuz-navy to-digibuz-navy/70">
-            Digiibuz
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Connectez-vous pour accéder à votre espace
-          </p>
         </div>
-        
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {authError && (
-            <div className="p-3 text-sm bg-destructive/10 text-destructive rounded border border-destructive/20">
-              {authError}
+      )}
+
+      <AnimatedContainer direction="up" className="w-full max-w-md">
+        <Card className="glass-panel shadow-lg border-white/20">
+          <div className="flex justify-center pt-6">
+            <div className="flex flex-col items-center">
+              <img 
+                src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
+                alt="DigiiBuz" 
+                className="h-16 w-auto mb-2"
+              />
+              <span className="text-xl font-bold text-digibuz-navy dark:text-digibuz-yellow">
+                DigiiBuz
+              </span>
             </div>
-          )}
-          
-          <div className="space-y-2">
-            <label htmlFor="email" className="text-sm font-medium">
-              Adresse e-mail
-            </label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="exemple@domaine.com"
-              {...register("email", { 
-                required: "L'adresse e-mail est requise",
-                pattern: {
-                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                  message: "Adresse e-mail invalide"
-                }
-              })}
-              className={errors.email ? "border-destructive" : ""}
-            />
-            {errors.email && (
-              <p className="text-destructive text-xs mt-1">{errors.email.message}</p>
-            )}
           </div>
-          
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label htmlFor="password" className="text-sm font-medium">
-                Mot de passe
-              </label>
+          <CardHeader className="space-y-1 text-center">
+            <CardTitle className="text-2xl flex items-center justify-center gap-2">
+              <Lock className="h-6 w-6" />
+              {isSignUp ? "Créer un compte" : "Connexion"}
+            </CardTitle>
+            <CardDescription>
+              {isSignUp 
+                ? "Entrez vos informations pour créer un compte" 
+                : "Entrez vos identifiants pour accéder à votre compte"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {isSignUp && (
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nom</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Votre nom"
+                    required={isSignUp}
+                    autoComplete="name"
+                    disabled={isLoading}
+                  />
+                </div>
+              )}
+              
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="email@example.com"
+                  required
+                  autoComplete="email"
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Mot de passe</Label>
+                  {!isSignUp && (
+                    <Button variant="link" className="p-0 h-auto text-xs" type="button" disabled={isLoading}>
+                      Mot de passe oublié ?
+                    </Button>
+                  )}
+                </div>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    autoComplete={isSignUp ? "new-password" : "current-password"}
+                    disabled={isLoading}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={togglePasswordVisibility}
+                    disabled={isLoading}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+              
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <div className="flex items-center">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {isSignUp ? "Création en cours..." : "Connexion en cours..."}
+                  </div>
+                ) : (
+                  <>
+                    {isSignUp ? (
+                      <>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Créer un compte
+                      </>
+                    ) : (
+                      <>
+                        <LogIn className="mr-2 h-4 w-4" />
+                        Se connecter
+                      </>
+                    )}
+                  </>
+                )}
+              </Button>
+            </form>
+          </CardContent>
+          <CardFooter className="flex flex-col space-y-4">
+            <div className="relative w-full">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Ou
+                </span>
+              </div>
             </div>
-            <Input
-              id="password"
-              type="password"
-              {...register("password", { 
-                required: "Le mot de passe est requis",
-                minLength: {
-                  value: 6,
-                  message: "Le mot de passe doit contenir au moins 6 caractères"
-                }
-              })}
-              className={errors.password ? "border-destructive" : ""}
-            />
-            {errors.password && (
-              <p className="text-destructive text-xs mt-1">{errors.password.message}</p>
-            )}
-          </div>
-          
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Connexion en cours...
-              </>
-            ) : (
-              "Se connecter"
-            )}
-          </Button>
-        </form>
+            
+            <Button variant="outline" className="w-full" onClick={toggleSignUp} disabled={isLoading}>
+              {isSignUp ? (
+                <>Déjà un compte ? Se connecter</>
+              ) : (
+                <>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Créer un nouveau compte
+                </>
+              )}
+            </Button>
+            
+            <p className="text-xs text-center text-muted-foreground">
+              En vous connectant, vous acceptez nos{" "}
+              <a href="#" className="underline underline-offset-4 hover:text-primary">
+                Conditions d'utilisation
+              </a>{" "}
+              et notre{" "}
+              <a href="#" className="underline underline-offset-4 hover:text-primary">
+                Politique de confidentialité
+              </a>
+            </p>
+          </CardFooter>
+        </Card>
       </AnimatedContainer>
-      
-      <p className="mt-8 text-center text-sm text-muted-foreground">
-        &copy; {new Date().getFullYear()} Digiibuz. Tous droits réservés.
-      </p>
     </div>
   );
 };
