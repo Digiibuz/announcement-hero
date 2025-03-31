@@ -52,15 +52,16 @@ export const useWordPressPublishing = () => {
         ? wpConfig.site_url.slice(0, -1)
         : wpConfig.site_url;
       
-      // Construct the WordPress REST API URL
-      const apiUrl = `${siteUrl}/wp-json/wp/v2/posts`;
+      // Construct the WordPress REST API URL - Utiliser les types personnalisés DipiPixel
+      const apiUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt`;
       
       // Prepare post data
       const wpPostData = {
         title: announcement.title,
         content: announcement.description || "",
         status: announcement.status === 'published' ? 'publish' : announcement.status === 'scheduled' ? 'future' : 'draft',
-        categories: [parseInt(wordpressCategoryId)],
+        // Utiliser la taxonomie personnalisée dipi_cpt_category
+        dipi_cpt_category: [parseInt(wordpressCategoryId)],
         // Add date if scheduled
         date: announcement.status === 'scheduled' && announcement.publish_date
           ? new Date(announcement.publish_date).toISOString()
@@ -73,7 +74,7 @@ export const useWordPressPublishing = () => {
         }
       };
       
-      console.log("WordPress post data:", wpPostData);
+      console.log("WordPress post data for DipiPixel:", wpPostData);
       
       // Prepare headers with authentication
       const headers: Record<string, string> = {
@@ -132,7 +133,7 @@ export const useWordPressPublishing = () => {
         
         return { 
           success: true, 
-          message: "Publié avec succès sur WordPress", 
+          message: "Publié avec succès sur WordPress (DipiPixel)", 
           wordpressPostId: wpResponseData.id 
         };
       } else {

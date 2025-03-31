@@ -15,6 +15,7 @@ export type Database = {
           description: string | null
           id: string
           images: string[] | null
+          is_divipixel: boolean | null
           publish_date: string | null
           seo_description: string | null
           seo_slug: string | null
@@ -31,6 +32,7 @@ export type Database = {
           description?: string | null
           id?: string
           images?: string[] | null
+          is_divipixel?: boolean | null
           publish_date?: string | null
           seo_description?: string | null
           seo_slug?: string | null
@@ -47,6 +49,7 @@ export type Database = {
           description?: string | null
           id?: string
           images?: string[] | null
+          is_divipixel?: boolean | null
           publish_date?: string | null
           seo_description?: string | null
           seo_slug?: string | null

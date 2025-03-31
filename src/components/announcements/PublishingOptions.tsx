@@ -27,7 +27,7 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
         name="wordpressCategory"
         render={({ field }) => (
           <FormItem>
-            <Label>Catégorie WordPress</Label>
+            <Label>Catégorie DipiPixel</Label>
             <Select
               onValueChange={field.onChange}
               defaultValue={field.value}
@@ -56,7 +56,7 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
                   ))
                 ) : (
                   <div className="p-2 text-center text-sm text-muted-foreground">
-                    Aucune catégorie disponible
+                    Aucune catégorie DipiPixel disponible
                   </div>
                 )}
               </SelectContent>

@@ -18,7 +18,7 @@ export type Announcement = {
   seo_slug?: string;
 };
 
-// Ajout du type WordPressCategory
+// Type pour les catégories WordPress standard
 export type WordPressCategory = {
   id: number;
   name: string;
@@ -26,4 +26,15 @@ export type WordPressCategory = {
   description?: string;
   count?: number;
   parent?: number;
+};
+
+// Type pour les catégories personnalisées DipiPixel
+export type DipiCptCategory = {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string;
+  count?: number;
+  parent?: number;
+  // Champs supplémentaires spécifiques à la taxonomie personnalisée si nécessaire
 };
