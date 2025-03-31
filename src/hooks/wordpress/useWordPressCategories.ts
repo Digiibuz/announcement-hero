@@ -52,7 +52,7 @@ export const useWordPressCategories = () => {
 
       // Utiliser la taxonomie personnalisée dipi_cpt_category au lieu des catégories standards
       const apiUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt_category`;
-      console.log("Fetching custom taxonomy from:", apiUrl);
+      console.log("Fetching DipiPixel categories from:", apiUrl);
       
       // Prepare headers
       const headers: Record<string, string> = {
