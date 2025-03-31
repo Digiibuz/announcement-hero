@@ -27,25 +27,14 @@ const CreateAnnouncement = () => {
 
   const handleSubmit = async (data: any) => {
     try {
-      // Vérifier que la catégorie WordPress est définie
-      if (!data.wordpressCategory) {
-        toast.error("Veuillez sélectionner une catégorie WordPress");
-        return;
-      }
-      
       setIsSubmitting(true);
-      
-      // Définir le statut par défaut à "published" si non spécifié
-      if (!data.status) {
-        data.status = "published";
-      }
 
       // Prepare the announcement data
       const announcementData = {
         user_id: user?.id,
         title: data.title,
-        description: data.description || "",
-        status: data.status || "published", // Utilisez "published" comme valeur par défaut
+        description: data.description,
+        status: data.status || "draft",
         images: data.images || [],
         wordpress_category_id: data.wordpressCategory,
         publish_date: data.publishDate ? new Date(data.publishDate).toISOString() : null,
@@ -105,19 +94,6 @@ const CreateAnnouncement = () => {
     }
   };
 
-  // Valeurs initiales explicitement définies pour assurer que le statut est publié par défaut
-  const initialFormValues = {
-    title: "",
-    description: "",
-    wordpressCategory: "",
-    publishDate: undefined,
-    status: "published" as "published" | "draft" | "scheduled", // Correction du type ici
-    images: [],
-    seoTitle: "",
-    seoDescription: "",
-    seoSlug: ""
-  };
-
   return (
     <PageLayout 
       title="Créer une nouvelle annonce" 
@@ -149,7 +125,6 @@ const CreateAnnouncement = () => {
             onSubmit={handleSubmit} 
             isSubmitting={isSubmitting || isPublishing} 
             isMobile={isMobile} 
-            initialValues={initialFormValues}
           />
         </div>
       </AnimatedContainer>

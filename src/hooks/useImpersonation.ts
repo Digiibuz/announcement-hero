@@ -10,20 +10,15 @@ export const useImpersonation = (currentUser: UserProfile | null) => {
   useEffect(() => {
     const storedOriginalUser = localStorage.getItem("originalUser");
     if (storedOriginalUser) {
-      try {
-        setOriginalUser(JSON.parse(storedOriginalUser));
-        setIsImpersonating(true);
-      } catch (error) {
-        console.error("Error parsing stored original user:", error);
-        localStorage.removeItem("originalUser");
-      }
+      setOriginalUser(JSON.parse(storedOriginalUser));
+      setIsImpersonating(true);
     }
   }, []);
 
   // Function to start impersonating a user
   const impersonateUser = (userToImpersonate: UserProfile) => {
     // Only allow admins to impersonate
-    if (!currentUser || currentUser.role !== "admin") return null;
+    if (!currentUser || currentUser.role !== "admin") return;
     
     // Store the original user
     setOriginalUser(currentUser);

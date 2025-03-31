@@ -9,7 +9,6 @@ import AccessDenied from "@/components/users/AccessDenied";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import { useUserManagement } from "@/hooks/useUserManagement";
 import { UserProfile } from "@/types/auth";
-import { TooltipProvider } from "@/components/ui/tooltip";
 
 const UserManagement = () => {
   const { user, isAdmin, impersonateUser } = useAuth();
@@ -34,26 +33,24 @@ const UserManagement = () => {
   ) : null;
 
   return (
-    <TooltipProvider>
-      <PageLayout title="Gestion des utilisateurs" titleAction={titleAction} containerClassName="max-w-full">
-        {!isAdmin ? (
-          <AccessDenied />
-        ) : (
-          <AnimatedContainer delay={200} className="w-full">
-            <UserList 
-              users={users}
-              isLoading={isLoading}
-              isDeleting={isDeleting}
-              isUpdating={isUpdating}
-              onResetPassword={handleResetPassword}
-              onImpersonateUser={handleImpersonateUser}
-              onUpdateUser={updateUser}
-              onDeleteUser={deleteUser}
-            />
-          </AnimatedContainer>
-        )}
-      </PageLayout>
-    </TooltipProvider>
+    <PageLayout title="Gestion des utilisateurs" titleAction={titleAction} containerClassName="max-w-full">
+      {!isAdmin ? (
+        <AccessDenied />
+      ) : (
+        <AnimatedContainer delay={200} className="w-full">
+          <UserList 
+            users={users}
+            isLoading={isLoading}
+            isDeleting={isDeleting}
+            isUpdating={isUpdating}
+            onResetPassword={handleResetPassword}
+            onImpersonateUser={handleImpersonateUser}
+            onUpdateUser={updateUser}
+            onDeleteUser={deleteUser}
+          />
+        </AnimatedContainer>
+      )}
+    </PageLayout>
   );
 };
 

@@ -42,12 +42,12 @@ const AnnouncementForm = ({
   isMobile = false,
   initialValues
 }: AnnouncementFormProps) => {
-  const defaultValues: AnnouncementFormData = {
+  const defaultValues = {
     title: "",
     description: "",
     wordpressCategory: "",
     publishDate: undefined,
-    status: "published", // Explicitement défini ici
+    status: "draft",
     images: [],
     seoTitle: "",
     seoDescription: "",
@@ -57,13 +57,6 @@ const AnnouncementForm = ({
   const form = useForm<AnnouncementFormData>({
     defaultValues: initialValues || defaultValues
   });
-
-  // S'assurer que le statut est défini à "published" dès le début
-  useEffect(() => {
-    if (!form.getValues("status")) {
-      form.setValue("status", "published");
-    }
-  }, [form]);
 
   // Update form values when initialValues changes
   useEffect(() => {

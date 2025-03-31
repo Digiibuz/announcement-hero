@@ -5,7 +5,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { ThemeProvider } from "next-themes";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -16,14 +15,7 @@ import UserManagement from "./pages/UserManagement";
 import WordPressManagement from "./pages/WordPressManagement";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false
-    }
-  }
-});
+const queryClient = new QueryClient();
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -124,22 +116,18 @@ const AppRoutes = () => {
   );
 };
 
-// Important: L'ordre des providers est crucial pour éviter les erreurs React
 const App = () => (
-  // BrowserRouter doit être le provider le plus externe
-  <BrowserRouter>
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="light">
-        <TooltipProvider>
-          <AuthProvider>
-            <AppRoutes />
-            <Toaster />
-            <Sonner />
-          </AuthProvider>
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  </BrowserRouter>
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
+  </QueryClientProvider>
 );
 
 export default App;
