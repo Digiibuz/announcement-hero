@@ -12,8 +12,7 @@ import {
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarTrigger
+  SidebarMenuButton
 } from "@/components/ui/sidebar";
 
 const AppSidebar = () => {
@@ -61,7 +60,7 @@ const AppSidebar = () => {
   if (!user) return null;
 
   return (
-    <Sidebar>
+    <div className="h-screen border-r border-border bg-sidebar text-sidebar-foreground w-64 flex-shrink-0 overflow-y-auto">
       <div className="flex h-16 items-center px-6 border-b border-border">
         <Link to="/dashboard" className="flex items-center gap-2">
           <img 
@@ -76,48 +75,57 @@ const AppSidebar = () => {
       </div>
 
       <div className="px-3 py-4">
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
+        <div className="space-y-4">
+          <div>
+            <div className="px-4 py-2">
+              <h3 className="text-xs uppercase font-medium text-muted-foreground">
+                Navigation
+              </h3>
+            </div>
+            <nav className="space-y-1">
               {navItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild className={cn(
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-md hover:bg-accent hover:text-accent-foreground transition-colors",
                     item.isActive && "bg-accent text-accent-foreground"
-                  )}>
-                    <Link to={item.href}>
-                      {item.icon}
-                      <span>{item.name}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                  )}
+                >
+                  {item.icon}
+                  <span>{item.name}</span>
+                </Link>
               ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+            </nav>
+          </div>
 
-        {(isAdmin || isClient) && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Administration</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
+          {(isAdmin || isClient) && (
+            <div>
+              <div className="px-4 py-2">
+                <h3 className="text-xs uppercase font-medium text-muted-foreground">
+                  Administration
+                </h3>
+              </div>
+              <nav className="space-y-1">
                 {adminItems
                   .filter(item => isAdmin || (!item.adminOnly && isClient))
                   .map((item) => (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton asChild className={cn(
+                    <Link
+                      key={item.href}
+                      to={item.href}
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-md hover:bg-accent hover:text-accent-foreground transition-colors",
                         item.isActive && "bg-accent text-accent-foreground"
-                      )}>
-                        <Link to={item.href}>
-                          {item.icon}
-                          <span>{item.name}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
+                      )}
+                    >
+                      {item.icon}
+                      <span>{item.name}</span>
+                    </Link>
                   ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+              </nav>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="mt-auto px-3 py-4 border-t border-border">
@@ -131,7 +139,7 @@ const AppSidebar = () => {
           </Button>
         </div>
       </div>
-    </Sidebar>
+    </div>
   );
 };
 
