@@ -29,10 +29,15 @@ const TomEManagement = () => {
   const [selectedConfigId, setSelectedConfigId] = useState<string>("");
   const [allKeywords, setAllKeywords] = useState<CategoryKeyword[]>([]);
   const [isLoadingKeywords, setIsLoadingKeywords] = useState(false);
+  const [keywordsError, setKeywordsError] = useState<string | null>(null);
   const [didInitialize, setDidInitialize] = useState(false);
   
   const { localities, isLoading: isLoadingLocalities } = useLocalities();
-  const { categories, isLoading: isLoadingCategories } = useWordPressCategories(selectedConfigId);
+  const { 
+    categories, 
+    isLoading: isLoadingCategories, 
+    hasCategories 
+  } = useWordPressCategories(selectedConfigId);
   
   // Pour récupérer tous les mots-clés
   const { fetchAllKeywordsForWordPressConfig } = useCategoryKeywords(selectedConfigId, "");
@@ -60,10 +65,22 @@ const TomEManagement = () => {
     const loadKeywords = async () => {
       try {
         setIsLoadingKeywords(true);
+        setKeywordsError(null);
+        
+        console.info(`Loading keywords for WordPress config ID: ${selectedConfigId}`);
         const keywords = await fetchAllKeywordsForWordPressConfig(selectedConfigId);
-        setAllKeywords(keywords || []);
-      } catch (error) {
+        
+        // Check if keywords is an array before setting state
+        if (Array.isArray(keywords)) {
+          setAllKeywords(keywords);
+          console.info(`Successfully loaded ${keywords.length} keywords`);
+        } else {
+          console.warn("Keywords is not an array:", keywords);
+          setAllKeywords([]);
+        }
+      } catch (error: any) {
         console.error("Erreur lors du chargement des mots-clés:", error);
+        setKeywordsError(error.message || "Erreur inconnue");
         setAllKeywords([]);
       } finally {
         setIsLoadingKeywords(false);
@@ -141,6 +158,21 @@ const TomEManagement = () => {
                     <CardContent className="flex items-center justify-center p-6">
                       <Loader2 className="h-6 w-6 animate-spin mr-2" />
                       <span>Chargement des données...</span>
+                    </CardContent>
+                  </Card>
+                ) : keywordsError ? (
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center text-destructive mb-4">
+                        <AlertCircle className="h-5 w-5 mr-2" />
+                        <h3 className="font-medium">Erreur lors du chargement des mots-clés</h3>
+                      </div>
+                      <p className="text-muted-foreground mb-2">
+                        {keywordsError}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Essayez de rafraîchir la page ou contactez l'administrateur système.
+                      </p>
                     </CardContent>
                   </Card>
                 ) : !isReadyForGeneration ? (

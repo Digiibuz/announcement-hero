@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -18,7 +18,10 @@ interface PublishingOptionsProps {
 }
 
 const PublishingOptions = ({ form }: PublishingOptionsProps) => {
-  const { categories, isLoading: isCategoriesLoading, error: categoriesError, hasCategories } = useWordPressCategories();
+  const { categories, isLoading: isCategoriesLoading, error: categoriesError } = useWordPressCategories();
+  
+  // Determine if categories are available
+  const hasCategories = categories && categories.length > 0;
   
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -46,7 +49,7 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
                   </div>
                 ) : categoriesError ? (
                   <div className="p-2 text-center text-sm text-muted-foreground">
-                    Erreur: {categoriesError}
+                    Erreur: {categoriesError.message}
                   </div>
                 ) : hasCategories ? (
                   categories.map(category => (

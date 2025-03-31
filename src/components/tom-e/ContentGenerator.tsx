@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { Loader2, Send, Calendar, Eye } from "lucide-react";
+import { Loader2, Send, Calendar, Eye, AlertCircle } from "lucide-react";
 import { useTomEGenerator } from "@/hooks/useTomEGenerator";
 import { DipiCptCategory } from "@/types/announcement";
 import { Locality } from "@/types/wordpress";
@@ -57,6 +57,7 @@ const ContentGenerator = ({
   const [publishDate, setPublishDate] = useState<Date | undefined>(undefined);
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
   const [activeTab, setActiveTab] = useState("settings");
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   const { isGenerating, isPublishing, generateContent, publishToWordPress } = useTomEGenerator();
 
@@ -76,6 +77,8 @@ const ContentGenerator = ({
     }
 
     try {
+      setGenerationError(null);
+      
       const content = await generateContent({
         configId: wordpressConfigId,
         category: selectedCategory?.name || "",
@@ -86,9 +89,9 @@ const ContentGenerator = ({
       
       setGeneratedContent(content);
       setActiveTab("preview");
-    } catch (error) {
-      // Erreur déjà gérée dans le hook
+    } catch (error: any) {
       console.error("Erreur lors de la génération:", error);
+      setGenerationError(error.message || "Une erreur s'est produite lors de la génération du contenu");
     }
   };
 
@@ -155,6 +158,16 @@ const ContentGenerator = ({
           
           <TabsContent value="settings">
             <div className="space-y-4">
+              {generationError && (
+                <div className="p-3 bg-destructive/10 text-destructive rounded-md flex items-start">
+                  <AlertCircle className="h-5 w-5 mt-0.5 mr-2 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium">Erreur de génération</p>
+                    <p className="text-sm">{generationError}</p>
+                  </div>
+                </div>
+              )}
+              
               <div>
                 <Label htmlFor="category-select">Catégorie WordPress</Label>
                 <Select 

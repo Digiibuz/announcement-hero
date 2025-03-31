@@ -8,6 +8,8 @@ export const useWordPressCategories = (wordpressConfigId?: string) => {
   const [categories, setCategories] = useState<DipiCptCategory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
 
   const fetchCategories = useCallback(async () => {
     if (!wordpressConfigId) {
@@ -83,12 +85,25 @@ export const useWordPressCategories = (wordpressConfigId?: string) => {
     } catch (err: any) {
       console.error('Erreur lors de la récupération des catégories WordPress:', err);
       setError(err);
-      toast.error(`Erreur: ${err.message}`);
-      setCategories([]);
+      
+      // Implement retry logic with backoff
+      if (retryCount < maxRetries) {
+        const nextRetry = retryCount + 1;
+        const backoffTime = Math.pow(2, nextRetry) * 1000; // Exponential backoff
+        
+        console.info(`Retrying category fetch (${nextRetry}/${maxRetries}) in ${backoffTime}ms`);
+        setTimeout(() => {
+          setRetryCount(nextRetry);
+        }, backoffTime);
+      } else {
+        // Only show toast on final retry failure
+        toast.error(`Erreur: ${err.message}`);
+        setCategories([]);
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [wordpressConfigId]);
+  }, [wordpressConfigId, retryCount]);
 
   useEffect(() => {
     if (wordpressConfigId) {
@@ -103,6 +118,8 @@ export const useWordPressCategories = (wordpressConfigId?: string) => {
     categories,
     isLoading,
     error,
-    fetchCategories
+    fetchCategories,
+    refetch: fetchCategories,
+    hasCategories: categories.length > 0
   };
 };
