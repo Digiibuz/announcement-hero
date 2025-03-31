@@ -4,6 +4,14 @@ import { useTickets, useAllTickets, Ticket } from "./useTickets";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
+// Définition de l'interface pour le statut de lecture d'un ticket
+interface TicketReadStatus {
+  id: string;
+  user_id: string;
+  ticket_id: string;
+  read_at: string;
+}
+
 export const useTicketNotifications = () => {
   const { user, isAdmin } = useAuth();
   const { data: userTickets = [] } = useTickets(user?.id);
@@ -17,25 +25,29 @@ export const useTicketNotifications = () => {
     const fetchReadTickets = async () => {
       if (!user?.id) return;
 
-      const { data, error } = await supabase
-        .from("ticket_read_status")
-        .select("ticket_id, read_at")
-        .eq("user_id", user.id);
+      try {
+        const { data, error } = await supabase
+          .from('ticket_read_status')
+          .select('*')
+          .eq('user_id', user.id);
 
-      if (error) {
+        if (error) {
+          console.error("Erreur lors du chargement des tickets lus:", error);
+          return;
+        }
+
+        if (data) {
+          const ticketsWithDateObjects: Record<string, Date> = {};
+          
+          // Convertir les dates en objets Date
+          data.forEach((item: TicketReadStatus) => {
+            ticketsWithDateObjects[item.ticket_id] = new Date(item.read_at);
+          });
+          
+          setReadTicketIds(ticketsWithDateObjects);
+        }
+      } catch (error) {
         console.error("Erreur lors du chargement des tickets lus:", error);
-        return;
-      }
-
-      if (data) {
-        const ticketsWithDateObjects: Record<string, Date> = {};
-        
-        // Convertir les dates en objets Date
-        data.forEach(item => {
-          ticketsWithDateObjects[item.ticket_id] = new Date(item.read_at);
-        });
-        
-        setReadTicketIds(ticketsWithDateObjects);
       }
     };
 
@@ -134,28 +146,32 @@ export const useTicketNotifications = () => {
     // La date actuelle pour marquer comme lu
     const now = new Date();
     
-    // Enregistrer dans Supabase
-    const { error } = await supabase
-      .from("ticket_read_status")
-      .upsert({
-        user_id: user.id,
-        ticket_id: ticketId,
-        read_at: now.toISOString()
-      }, { onConflict: 'user_id,ticket_id' });
-    
-    if (error) {
+    try {
+      // Enregistrer dans Supabase
+      const { error } = await supabase
+        .from('ticket_read_status')
+        .upsert({
+          user_id: user.id,
+          ticket_id: ticketId,
+          read_at: now.toISOString()
+        }, { onConflict: 'user_id,ticket_id' });
+      
+      if (error) {
+        console.error("Erreur lors de l'enregistrement du statut de lecture:", error);
+        return;
+      }
+      
+      // Mettre à jour l'état local
+      setReadTicketIds(prevState => ({
+        ...prevState,
+        [ticketId]: now
+      }));
+      
+      // Force immediate update of unread count
+      updateUnreadCount();
+    } catch (error) {
       console.error("Erreur lors de l'enregistrement du statut de lecture:", error);
-      return;
     }
-    
-    // Mettre à jour l'état local
-    setReadTicketIds(prevState => ({
-      ...prevState,
-      [ticketId]: now
-    }));
-    
-    // Force immediate update of unread count
-    updateUnreadCount();
   }, [user?.id, updateUnreadCount]);
 
   // Écouter les changements dans la table ticket_read_status en temps réel
@@ -169,7 +185,7 @@ export const useTicketNotifications = () => {
         schema: 'public',
         table: 'ticket_read_status',
         filter: `user_id=eq.${user.id}`
-      }, (payload) => {
+      }, (payload: any) => {
         // Mettre à jour l'état local quand un nouveau statut est inséré
         const { ticket_id, read_at } = payload.new;
         
@@ -186,7 +202,7 @@ export const useTicketNotifications = () => {
         schema: 'public',
         table: 'ticket_read_status',
         filter: `user_id=eq.${user.id}`
-      }, (payload) => {
+      }, (payload: any) => {
         // Mettre à jour l'état local quand un statut est mis à jour
         const { ticket_id, read_at } = payload.new;
         
