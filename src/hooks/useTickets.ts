@@ -96,7 +96,7 @@ export const useTicketDetails = (ticketId: string) => {
 
       // Sort responses by creation date
       if (data.responses) {
-        data.responses.sort((a, b) => 
+        data.responses.sort((a: any, b: any) => 
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
       }
@@ -133,6 +133,7 @@ export const useCreateTicket = () => {
       queryClient.invalidateQueries({
         queryKey: ["all-tickets"],
       });
+      toast.success("Votre ticket a été créé avec succès");
     },
   });
 };
@@ -152,6 +153,12 @@ export const useReplyToTicket = () => {
       if (error) {
         console.error("Error replying to ticket:", error);
         throw error;
+      }
+
+      // If not the ticket owner (i.e. admin is responding), send a notification
+      if (response.user_id !== (await supabase.from("tickets").select("user_id").eq("id", response.ticket_id).single()).data?.user_id) {
+        // This is a response from the admin to the user's ticket
+        toast.success("Réponse envoyée. L'utilisateur sera notifié.");
       }
 
       return data;
@@ -188,7 +195,7 @@ export const useUpdateTicketStatus = () => {
         throw error;
       }
 
-      return data;
+      return data as Ticket;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({
@@ -200,6 +207,14 @@ export const useUpdateTicketStatus = () => {
       queryClient.invalidateQueries({
         queryKey: ["all-tickets"],
       });
+      
+      if (data.status === "closed") {
+        toast.success("Le ticket a été marqué comme résolu");
+      } else if (data.status === "open") {
+        toast.info("Le ticket a été réouvert");
+      } else {
+        toast.info("Le statut du ticket a été mis à jour");
+      }
     },
   });
 };

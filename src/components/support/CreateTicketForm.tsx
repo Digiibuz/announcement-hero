@@ -1,137 +1,116 @@
 
 import React from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { useAuth } from "@/context/AuthContext";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateTicket } from "@/hooks/useTickets";
-
-const formSchema = z.object({
-  subject: z.string().min(3, {
-    message: "Le sujet doit contenir au moins 3 caractères",
-  }),
-  message: z.string().min(10, {
-    message: "Le message doit contenir au moins 10 caractères",
-  }),
-  priority: z.enum(["low", "medium", "high"]),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+import { toast } from "sonner";
 
 const CreateTicketForm = () => {
   const { user } = useAuth();
+  const [subject, setSubject] = React.useState("");
+  const [message, setMessage] = React.useState("");
+  const [priority, setPriority] = React.useState<"low" | "medium" | "high">("medium");
   const { mutate: createTicket, isPending } = useCreateTicket();
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      subject: "",
-      message: "",
-      priority: "medium",
-    },
-  });
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
 
-  const onSubmit = (data: FormValues) => {
-    if (!user) return;
+    if (!subject.trim()) {
+      toast.error("Veuillez saisir un sujet pour votre demande");
+      return;
+    }
 
-    createTicket(
-      {
-        ...data,
-        user_id: user.id,
-        status: "open",
-        created_at: new Date().toISOString(),
-        username: user.name,
-      },
-      {
-        onSuccess: () => {
-          toast.success("Votre ticket a été soumis avec succès");
-          form.reset();
-        },
-        onError: (error) => {
-          toast.error(
-            `Erreur lors de la création du ticket: ${error.message}`
-          );
-        },
-      }
-    );
+    if (!message.trim()) {
+      toast.error("Veuillez détailler votre demande");
+      return;
+    }
+
+    if (!user) {
+      toast.error("Vous devez être connecté pour créer un ticket");
+      return;
+    }
+
+    createTicket({
+      user_id: user.id,
+      username: user.name || user.email.split("@")[0],
+      subject,
+      message,
+      priority,
+      status: "open",
+      created_at: new Date().toISOString()
+    });
+
+    // Reset form after submission
+    setSubject("");
+    setMessage("");
+    setPriority("medium");
   };
 
   return (
     <Card>
-      <CardContent className="pt-6">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="subject"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Sujet</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Résumé de votre demande..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+      <CardHeader>
+        <CardTitle>Nouveau ticket d'assistance</CardTitle>
+        <CardDescription>
+          Décrivez votre problème ou votre question, et notre équipe vous répondra dans les plus brefs délais.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="subject" className="text-sm font-medium">
+              Sujet
+            </label>
+            <Input
+              id="subject"
+              placeholder="Ex: Problème de connexion"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              disabled={isPending}
             />
+          </div>
 
-            <FormField
-              control={form.control}
-              name="priority"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Priorité</FormLabel>
-                  <FormControl>
-                    <select
-                      className="w-full p-2 border rounded-md"
-                      {...field}
-                    >
-                      <option value="low">Basse</option>
-                      <option value="medium">Moyenne</option>
-                      <option value="high">Haute</option>
-                    </select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+          <div className="space-y-2">
+            <label htmlFor="priority" className="text-sm font-medium">
+              Priorité
+            </label>
+            <Select
+              value={priority}
+              onValueChange={(value: "low" | "medium" | "high") => setPriority(value)}
+              disabled={isPending}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner la priorité" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Basse</SelectItem>
+                <SelectItem value="medium">Moyenne</SelectItem>
+                <SelectItem value="high">Haute</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="message" className="text-sm font-medium">
+              Votre message
+            </label>
+            <Textarea
+              id="message"
+              placeholder="Décrivez votre problème en détail..."
+              rows={6}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              disabled={isPending}
             />
+          </div>
 
-            <FormField
-              control={form.control}
-              name="message"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Message</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Décrivez votre problème ou votre question en détail..."
-                      rows={6}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <Button type="submit" className="w-full" disabled={isPending}>
-              {isPending ? "Soumission en cours..." : "Soumettre le ticket"}
-            </Button>
-          </form>
-        </Form>
+          <Button type="submit" className="w-full" disabled={isPending}>
+            {isPending ? "Envoi en cours..." : "Envoyer la demande"}
+          </Button>
+        </form>
       </CardContent>
     </Card>
   );

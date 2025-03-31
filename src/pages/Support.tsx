@@ -13,7 +13,6 @@ const Support = () => {
   return (
     <PageLayout 
       title="Support & Assistance"
-      description="Contactez notre équipe ou consultez vos tickets précédents"
     >
       <div className="max-w-5xl mx-auto">
         {isAdmin ? (

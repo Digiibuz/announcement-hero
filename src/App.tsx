@@ -1,4 +1,3 @@
-
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
@@ -7,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
 import { Suspense, lazy, useEffect } from 'react';
+import { Toaster } from "sonner";
 
 // Lazy loading des pages pour améliorer les performances
 const Login = lazy(() => import("./pages/Login"));
@@ -93,7 +93,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Contents of AppRoutes moved directly into App component to avoid
 // AuthProvider context issues and fix the useAuth error
-const App = () => {
+function App() {
   return (
     <BrowserRouter>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
@@ -177,7 +177,7 @@ const App = () => {
                   {/* Fallback route */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-                <Toaster />
+                <Toaster position="top-right" closeButton richColors />
                 <SonnerToaster />
               </Suspense>
             </TooltipProvider>
@@ -186,6 +186,6 @@ const App = () => {
       </ThemeProvider>
     </BrowserRouter>
   );
-};
+}
 
 export default App;

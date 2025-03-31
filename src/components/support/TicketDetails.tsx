@@ -76,7 +76,6 @@ const TicketDetails: React.FC<TicketDetailsProps> = ({ ticketId }) => {
       {
         onSuccess: () => {
           setReply("");
-          toast.success("Réponse envoyée avec succès");
           
           // If admin is responding and ticket is open, mark as in-progress
           if (isAdmin && ticket.status === "open") {
