@@ -1,12 +1,12 @@
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 
 // Lazy loading des pages pour améliorer les performances
 const Index = lazy(() => import("./pages/Index"));
@@ -36,9 +36,17 @@ const queryClient = new QueryClient({
   },
 });
 
-// Protected route component
+// Protected route component with improved memory
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
+
+  // Store current location in session storage to survive tab changes
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      sessionStorage.setItem('lastAuthenticatedPath', location.pathname);
+    }
+  }, [location.pathname, isAuthenticated, isLoading]);
 
   if (isLoading) {
     return <LoadingFallback />;
@@ -51,9 +59,17 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// Admin only route component
+// Admin only route component with improved state persistence
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading, isAdmin, isClient } = useAuth();
+  const location = useLocation();
+
+  // Store current admin path in session storage to survive tab changes
+  useEffect(() => {
+    if ((isAdmin || isClient) && !isLoading) {
+      sessionStorage.setItem('lastAdminPath', location.pathname);
+    }
+  }, [location.pathname, isAdmin, isClient, isLoading]);
 
   if (isLoading) {
     return <LoadingFallback />;
@@ -72,6 +88,22 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppRoutes = () => {
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+  
+  // Effect to restore last path on initial load or tab switch
+  useEffect(() => {
+    if (isAuthenticated) {
+      const isAdminRoute = location.pathname === '/users' || location.pathname === '/wordpress';
+      if (location.pathname === '/dashboard' && isAdminRoute) {
+        const lastAdminPath = sessionStorage.getItem('lastAdminPath');
+        if (lastAdminPath) {
+          window.history.replaceState(null, '', lastAdminPath);
+        }
+      }
+    }
+  }, [isAuthenticated, location.pathname]);
+
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Routes>

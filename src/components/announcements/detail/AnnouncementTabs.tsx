@@ -32,9 +32,24 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
   
   // Utilisez une fonction pour changer d'onglet qui empêche le comportement par défaut
   const handleTabChange = (value: string) => {
-    // Prévenir tout comportement de rechargement
+    // On empêche tout comportement de rechargement en utilisant preventDefault
     setActiveTab(value);
+    
+    // On mémorise l'onglet actif dans le sessionStorage pour le restaurer
+    if (announcement?.id) {
+      sessionStorage.setItem(`announcementTab-${announcement.id}`, value);
+    }
   };
+  
+  // Restaurer l'onglet actif depuis sessionStorage au chargement
+  React.useEffect(() => {
+    if (announcement?.id) {
+      const savedTab = sessionStorage.getItem(`announcementTab-${announcement.id}`);
+      if (savedTab && (savedTab === 'preview' || (savedTab === 'edit' && isEditing))) {
+        setActiveTab(savedTab);
+      }
+    }
+  }, [announcement?.id, isEditing, setActiveTab]);
   
   return (
     <Tabs value={activeTab} onValueChange={handleTabChange}>
@@ -81,6 +96,10 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
             onCancel={() => {
               setIsEditing(false);
               setActiveTab("preview");
+              // Mettre à jour sessionStorage
+              if (announcement?.id) {
+                sessionStorage.setItem(`announcementTab-${announcement.id}`, 'preview');
+              }
             }}
           />
         ) : (
