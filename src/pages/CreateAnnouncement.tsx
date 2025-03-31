@@ -27,6 +27,12 @@ const CreateAnnouncement = () => {
 
   const handleSubmit = async (data: any) => {
     try {
+      // Vérifier que la catégorie WordPress est définie
+      if (!data.wordpressCategory) {
+        toast.error("Veuillez sélectionner une catégorie WordPress");
+        return;
+      }
+      
       setIsSubmitting(true);
 
       // Prepare the announcement data
@@ -34,7 +40,7 @@ const CreateAnnouncement = () => {
         user_id: user?.id,
         title: data.title,
         description: data.description,
-        status: data.status || "draft",
+        status: data.status || "published", // Utilisez "published" comme valeur par défaut
         images: data.images || [],
         wordpress_category_id: data.wordpressCategory,
         publish_date: data.publishDate ? new Date(data.publishDate).toISOString() : null,

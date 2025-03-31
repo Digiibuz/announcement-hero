@@ -25,9 +25,10 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
       <FormField
         control={form.control}
         name="wordpressCategory"
+        rules={{ required: "La catégorie WordPress est obligatoire" }}
         render={({ field }) => (
           <FormItem>
-            <Label>Catégorie WordPress</Label>
+            <Label>Catégorie WordPress <span className="text-destructive">*</span></Label>
             <Select
               onValueChange={field.onChange}
               defaultValue={field.value}
