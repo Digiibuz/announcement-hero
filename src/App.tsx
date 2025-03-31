@@ -117,6 +117,7 @@ const AppRoutes = () => {
   );
 };
 
+// L'ordre des providers est important pour que les hooks fonctionnent correctement
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
