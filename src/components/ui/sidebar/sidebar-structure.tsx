@@ -1,86 +1,49 @@
 
-import * as React from "react"
-import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
-import { cn } from "@/lib/utils"
+import {
+  LayoutDashboard,
+  BellRing,
+  Users,
+  LogOut,
+  Globe,
+  FileEdit,
+  Bot,
+} from "lucide-react";
+import { SidebarGroup } from "./sidebar-group";
+import { SidebarMenu } from "./sidebar-menu";
+import { SidebarMenuSub } from "./sidebar-menu-sub";
+import { UserButton } from "@/components/ui/sidebar/sidebar-user";
 
-export const SidebarInput = React.forwardRef<
-  React.ElementRef<typeof Input>,
-  React.ComponentProps<typeof Input>
->(({ className, ...props }, ref) => {
-  return (
-    <Input
-      ref={ref}
-      data-sidebar="input"
-      className={cn(
-        "h-8 w-full bg-background shadow-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
-        className
-      )}
-      {...props}
-    />
-  )
-})
-SidebarInput.displayName = "SidebarInput"
+// Structure dynamique pour le sidebar en fonction du rôle
+export function useSidebarItems({
+  isAdmin = false,
+  isClient = false,
+  onLogout = () => {},
+}) {
+  // Déterminer le libellé pour la section WordPress en fonction du rôle
+  const wordpressLabel = isClient ? "Mon site" : "WordPress";
 
-export const SidebarHeader = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentProps<"div">
->(({ className, ...props }, ref) => {
-  return (
-    <div
-      ref={ref}
-      data-sidebar="header"
-      className={cn("flex flex-col gap-2 p-2", className)}
-      {...props}
-    />
-  )
-})
-SidebarHeader.displayName = "SidebarHeader"
+  return [
+    // Groupe principal - visible par tous
+    <SidebarGroup key="main">
+      <SidebarMenu href="/dashboard" label="Tableau de bord" icon={LayoutDashboard} />
+      <SidebarMenu href="/announcements" label="Annonces" icon={BellRing}>
+        <SidebarMenuSub href="/announcements">Toutes les annonces</SidebarMenuSub>
+        <SidebarMenuSub href="/create">Créer une annonce</SidebarMenuSub>
+      </SidebarMenu>
+    </SidebarGroup>,
 
-export const SidebarFooter = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentProps<"div">
->(({ className, ...props }, ref) => {
-  return (
-    <div
-      ref={ref}
-      data-sidebar="footer"
-      className={cn("flex flex-col gap-2 p-2", className)}
-      {...props}
-    />
-  )
-})
-SidebarFooter.displayName = "SidebarFooter"
+    // Groupe admin - visible uniquement par les admin et clients
+    isAdmin || isClient ? (
+      <SidebarGroup key="admin" label="Administration">
+        {isAdmin && <SidebarMenu href="/users" label="Utilisateurs" icon={Users} />}
+        <SidebarMenu href="/wordpress" label={wordpressLabel} icon={Globe} />
+        <SidebarMenu href="/tom-e" label="Tom-E" icon={Bot} tooltip="Générateur de contenu" />
+      </SidebarGroup>
+    ) : null,
 
-export const SidebarSeparator = React.forwardRef<
-  React.ElementRef<typeof Separator>,
-  React.ComponentProps<typeof Separator>
->(({ className, ...props }, ref) => {
-  return (
-    <Separator
-      ref={ref}
-      data-sidebar="separator"
-      className={cn("mx-2 w-auto bg-sidebar-border", className)}
-      {...props}
-    />
-  )
-})
-SidebarSeparator.displayName = "SidebarSeparator"
-
-export const SidebarContent = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentProps<"div">
->(({ className, ...props }, ref) => {
-  return (
-    <div
-      ref={ref}
-      data-sidebar="content"
-      className={cn(
-        "flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
-        className
-      )}
-      {...props}
-    />
-  )
-})
-SidebarContent.displayName = "SidebarContent"
+    // Groupe utilisateur - visible par tous
+    <SidebarGroup key="user">
+      <UserButton onLogout={onLogout} />
+    </SidebarGroup>,
+  ].filter(Boolean); // Filtre les éléments null
+}

@@ -17,6 +17,7 @@ const Announcements = lazy(() => import("./pages/Announcements"));
 const AnnouncementDetail = lazy(() => import("./pages/AnnouncementDetail"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
 const WordPressManagement = lazy(() => import("./pages/WordPressManagement"));
+const TomEManagement = lazy(() => import("./pages/TomEManagement"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Composant de chargement
@@ -174,6 +175,14 @@ const AppRoutes = () => {
           element={
             <AdminRoute>
               <WordPressManagement />
+            </AdminRoute>
+          } 
+        />
+        <Route 
+          path="/tom-e" 
+          element={
+            <AdminRoute>
+              <TomEManagement />
             </AdminRoute>
           } 
         />
