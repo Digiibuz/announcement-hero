@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useEffect } from "react";
@@ -21,6 +22,7 @@ import {
   Ticket
 } from "lucide-react";
 import { useTicketNotifications } from "@/hooks/useTicketNotifications";
+import { supabase } from "@/integrations/supabase/client";
 
 const Sidebar = () => {
   const isMobile = useIsMobile();
@@ -28,6 +30,56 @@ const Sidebar = () => {
   const { user, logout, isLoading, isAuthenticated, isAdmin, isClient } = useAuth();
   const [isOpen, setIsOpen] = React.useState(false);
   const { unreadCount, resetTicketTabView } = useTicketNotifications();
+  const [localUnreadCount, setLocalUnreadCount] = React.useState(0);
+
+  // Initialize local unread count with the value from the hook
+  useEffect(() => {
+    setLocalUnreadCount(unreadCount);
+  }, [unreadCount]);
+
+  // Set up real-time listener for ticket responses and read status changes
+  useEffect(() => {
+    if (!user?.id) return;
+
+    // Listen for new ticket responses
+    const responsesChannel = supabase
+      .channel('sidebar_ticket_responses')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'ticket_responses'
+      }, () => {
+        // Update the local unread count with a slight delay
+        setTimeout(() => setLocalUnreadCount(unreadCount), 300);
+      })
+      .subscribe();
+
+    // Listen for changes in ticket read status
+    const readStatusChannel = supabase
+      .channel('sidebar_ticket_read_status')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'ticket_read_status'
+      }, () => {
+        // Update the local unread count with a slight delay
+        setTimeout(() => setLocalUnreadCount(unreadCount), 300);
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'ticket_read_status'
+      }, () => {
+        // Update the local unread count with a slight delay
+        setTimeout(() => setLocalUnreadCount(unreadCount), 300);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(responsesChannel);
+      supabase.removeChannel(readStatusChannel);
+    };
+  }, [user?.id, unreadCount]);
 
   useEffect(() => {
     if (!pathname.includes('/support')) {
@@ -162,12 +214,12 @@ const Sidebar = () => {
               >
                 <Ticket className="h-5 w-5" />
                 <span className="ml-3">Support & Assistance</span>
-                {unreadCount > 0 && (
+                {localUnreadCount > 0 && (
                   <Badge 
                     variant="destructive" 
                     className="ml-2 px-1.5 py-0.5 text-xs"
                   >
-                    {unreadCount}
+                    {localUnreadCount}
                   </Badge>
                 )}
               </Button>

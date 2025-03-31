@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { useTickets, useAllTickets, Ticket } from "./useTickets";
 import { useAuth } from "@/context/AuthContext";
@@ -220,7 +221,7 @@ export const useTicketNotifications = () => {
         table: 'ticket_responses'
       }, () => {
         // Force an update of the unread count when any new response is added
-        setTimeout(() => updateUnreadCount(), 500);
+        setTimeout(() => updateUnreadCount(), 300);
       })
       .subscribe();
     
@@ -234,7 +235,9 @@ export const useTicketNotifications = () => {
   // Fonction pour marquer le tab des tickets comme vu
   const markTicketTabAsViewed = useCallback(() => {
     setViewedTicketTab(true);
-  }, []);
+    // Force immediate update of unread count
+    setTimeout(() => updateUnreadCount(), 300);
+  }, [updateUnreadCount]);
 
   // Réinitialiser cette valeur quand on quitte la page
   const resetTicketTabView = useCallback(() => {
