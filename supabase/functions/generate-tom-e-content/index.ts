@@ -38,6 +38,10 @@ serve(async (req) => {
       throw new Error("Locality is required");
     }
 
+    if (!OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY is not defined in environment variables");
+    }
+
     // Build the prompt for content generation
     const contentPrompt = `
       En tant qu'expert SEO et rédacteur pour ${prompt}, je dois créer une page optimisée.
@@ -59,10 +63,6 @@ serve(async (req) => {
       - Mentionner "nos services à ${locality}" dans le contenu
       - Répondre à l'intention de recherche liée à "${keyword}"
     `;
-
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not defined");
-    }
 
     // Call OpenAI API
     const openAIResponse = await fetch("https://api.openai.com/v1/chat/completions", {

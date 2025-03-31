@@ -22,7 +22,6 @@ import { Loader2, Send, Calendar, Eye } from "lucide-react";
 import { useTomEGenerator } from "@/hooks/useTomEGenerator";
 import { DipiCptCategory } from "@/types/announcement";
 import { Locality } from "@/types/wordpress";
-import { useCategoryKeywords } from "@/hooks/useCategoryKeywords";
 import { CategoryKeyword } from "@/types/wordpress";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -47,9 +46,9 @@ interface GeneratedContent {
 
 const ContentGenerator = ({
   wordpressConfigId,
-  categories,
-  localities,
-  keywords
+  categories = [],
+  localities = [],
+  keywords = []
 }: ContentGeneratorProps) => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
   const [selectedKeywordId, setSelectedKeywordId] = useState<string>("");
@@ -67,7 +66,7 @@ const ContentGenerator = ({
     : [];
 
   // Récupérer les détails de la catégorie sélectionnée
-  const selectedCategory = categories.find(c => c.id.toString() === selectedCategoryId);
+  const selectedCategory = categories.find(c => c.id?.toString() === selectedCategoryId);
   const selectedKeyword = keywords.find(k => k.id === selectedKeywordId);
   const selectedLocality = localities.find(l => l.id === selectedLocalityId);
 
@@ -89,6 +88,7 @@ const ContentGenerator = ({
       setActiveTab("preview");
     } catch (error) {
       // Erreur déjà gérée dans le hook
+      console.error("Erreur lors de la génération:", error);
     }
   };
 
@@ -117,8 +117,24 @@ const ContentGenerator = ({
       setActiveTab("settings");
     } catch (error) {
       // Erreur déjà gérée dans le hook
+      console.error("Erreur lors de la publication:", error);
     }
   };
+
+  // Protect against empty arrays
+  if (!categories.length || !localities.length || !keywords.length) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center text-muted-foreground">
+          <AlertCircle className="h-6 w-6 mx-auto mb-2" />
+          <p>Données insuffisantes pour générer du contenu.</p>
+          <p className="text-sm mt-2">
+            Assurez-vous d'avoir configuré des catégories, des mots-clés et des localités.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>

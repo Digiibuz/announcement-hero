@@ -74,6 +74,10 @@ export const useTomEGenerator = () => {
         throw new Error(`Erreur lors de la génération du contenu: ${error.message}`);
       }
 
+      if (!generatedContent) {
+        throw new Error("Aucun contenu n'a été généré");
+      }
+
       toast.success("Contenu généré avec succès");
       return generatedContent as TomEContent;
     } catch (error: any) {

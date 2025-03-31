@@ -20,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, AlertCircle } from "lucide-react";
 
@@ -30,27 +29,29 @@ const TomEManagement = () => {
   const [selectedConfigId, setSelectedConfigId] = useState<string>("");
   const [allKeywords, setAllKeywords] = useState<CategoryKeyword[]>([]);
   const [isLoadingKeywords, setIsLoadingKeywords] = useState(false);
+  const [didInitialize, setDidInitialize] = useState(false);
   
   const { localities, isLoading: isLoadingLocalities } = useLocalities();
-  const { categories, isLoading: isLoadingCategories } = useWordPressCategories();
+  const { categories, isLoading: isLoadingCategories } = useWordPressCategories(selectedConfigId);
   
   // Pour récupérer tous les mots-clés
-  const { fetchAllKeywordsForWordPressConfig } = useCategoryKeywords("", "");
+  const { fetchAllKeywordsForWordPressConfig } = useCategoryKeywords(selectedConfigId, "");
   
   // Définir la config WordPress en fonction de l'utilisateur
   useEffect(() => {
-    if (isLoadingConfigs) return;
+    if (isLoadingConfigs || didInitialize) return;
     
     if (configs.length > 0) {
       if (isClient && user?.wordpressConfigId) {
         // Pour un client, on utilise sa config WordPress attribuée
         setSelectedConfigId(user.wordpressConfigId);
-      } else if (isAdmin) {
+      } else if (isAdmin && configs[0]?.id) {
         // Pour un admin, on prend la première config par défaut
         setSelectedConfigId(configs[0].id);
       }
+      setDidInitialize(true);
     }
-  }, [isLoadingConfigs, configs, isClient, isAdmin, user]);
+  }, [isLoadingConfigs, configs, isClient, isAdmin, user, didInitialize]);
   
   // Charger tous les mots-clés quand la config est sélectionnée
   useEffect(() => {
@@ -60,9 +61,10 @@ const TomEManagement = () => {
       try {
         setIsLoadingKeywords(true);
         const keywords = await fetchAllKeywordsForWordPressConfig(selectedConfigId);
-        setAllKeywords(keywords);
+        setAllKeywords(keywords || []);
       } catch (error) {
         console.error("Erreur lors du chargement des mots-clés:", error);
+        setAllKeywords([]);
       } finally {
         setIsLoadingKeywords(false);
       }
@@ -79,9 +81,12 @@ const TomEManagement = () => {
   // Vérifier si tout est prêt pour la génération de contenu
   const isReadyForGeneration = 
     selectedConfigId && 
-    categories.length > 0 && 
-    localities.length > 0 && 
-    allKeywords.length > 0;
+    categories?.length > 0 && 
+    localities?.length > 0 && 
+    allKeywords?.length > 0;
+  
+  // Loading state
+  const isLoading = isLoadingConfigs || isLoadingCategories || isLoadingLocalities || isLoadingKeywords;
   
   // Définir l'accès
   const hasAccess = isAdmin || isClient;
@@ -101,7 +106,7 @@ const TomEManagement = () => {
     >
       <AnimatedContainer delay={200}>
         <div className="space-y-6">
-          {isAdmin && configs.length > 0 && (
+          {isAdmin && configs && configs.length > 0 && (
             <div className="w-full max-w-xs">
               <Select
                 value={selectedConfigId}
@@ -131,7 +136,7 @@ const TomEManagement = () => {
               </TabsList>
               
               <TabsContent value="generator">
-                {isLoadingCategories || isLoadingLocalities || isLoadingKeywords ? (
+                {isLoading ? (
                   <Card>
                     <CardContent className="flex items-center justify-center p-6">
                       <Loader2 className="h-6 w-6 animate-spin mr-2" />
@@ -149,13 +154,13 @@ const TomEManagement = () => {
                         Pour pouvoir générer du contenu avec Tom-E, vous devez d'abord configurer :
                       </p>
                       <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                        {categories.length === 0 && (
+                        {!categories || categories.length === 0 && (
                           <li>Des catégories WordPress (aucune catégorie trouvée)</li>
                         )}
-                        {allKeywords.length === 0 && (
+                        {!allKeywords || allKeywords.length === 0 && (
                           <li>Des mots-clés pour au moins une catégorie (aucun mot-clé ajouté)</li>
                         )}
-                        {localities.length === 0 && (
+                        {!localities || localities.length === 0 && (
                           <li>Des localités (aucune localité ajoutée)</li>
                         )}
                       </ul>
@@ -164,9 +169,9 @@ const TomEManagement = () => {
                 ) : (
                   <ContentGenerator
                     wordpressConfigId={selectedConfigId}
-                    categories={categories}
-                    localities={localities}
-                    keywords={allKeywords}
+                    categories={categories || []}
+                    localities={localities || []}
+                    keywords={allKeywords || []}
                   />
                 )}
               </TabsContent>
@@ -179,7 +184,7 @@ const TomEManagement = () => {
                       <span>Chargement des catégories...</span>
                     </CardContent>
                   </Card>
-                ) : categories.length === 0 ? (
+                ) : !categories || categories.length === 0 ? (
                   <Card>
                     <CardContent className="p-6 text-center text-muted-foreground">
                       <AlertCircle className="h-6 w-6 mx-auto mb-2" />
