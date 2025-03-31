@@ -1,143 +1,141 @@
 
 import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { DipiCptCategory } from "@/types/announcement";
 import { toast } from "sonner";
+import { DipiCptCategory } from "@/types/announcement";
 
-export const useWordPressCategories = (wordpressConfigId?: string) => {
+export const useWordPressCategories = () => {
   const [categories, setCategories] = useState<DipiCptCategory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
-  const [didInitialFetch, setDidInitialFetch] = useState(false);
-  const maxRetries = 3;
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   const fetchCategories = useCallback(async () => {
-    if (!wordpressConfigId) {
-      setCategories([]);
+    if (!user?.wordpressConfigId) {
+      console.error("No WordPress configuration ID found for user", user);
+      setError("No WordPress configuration found for this user");
       return;
     }
 
     try {
       setIsLoading(true);
       setError(null);
-      console.info(`Fetching categories for WordPress config ID: ${wordpressConfigId}`);
+      console.log("Fetching categories for WordPress config ID:", user.wordpressConfigId);
 
-      // Récupérer les informations de configuration WordPress
-      const { data: configData, error: configError } = await supabase
+      // First get the WordPress config for the user
+      const { data: wpConfig, error: wpConfigError } = await supabase
         .from('wordpress_configs')
-        .select('site_url, rest_api_key, app_username, app_password, username, password')
-        .eq('id', wordpressConfigId)
+        .select('site_url, rest_api_key, app_username, app_password')
+        .eq('id', user.wordpressConfigId)
         .single();
 
-      if (configError) {
-        throw new Error(`Erreur lors de la récupération de la configuration WordPress: ${configError.message}`);
+      if (wpConfigError) {
+        console.error("Error fetching WordPress config:", wpConfigError);
+        throw wpConfigError;
+      }
+      
+      if (!wpConfig) {
+        console.error("WordPress configuration not found");
+        throw new Error("WordPress configuration not found");
       }
 
-      const siteUrl = configData.site_url.replace(/\/$/, '');
-      
-      // Déterminer le type d'authentification à utiliser
-      const hasRestApiKey = !!configData.rest_api_key;
-      const hasAppCredentials = !!configData.app_username && !!configData.app_password;
-      const hasBasicCredentials = !!configData.username && !!configData.password;
-
-      console.info(`WordPress config found:`, { 
-        site_url: siteUrl,
-        hasRestApiKey,
-        hasAppUsername: !!configData.app_username,
-        hasAppPassword: !!configData.app_password
+      console.log("WordPress config found:", {
+        site_url: wpConfig.site_url,
+        hasRestApiKey: !!wpConfig.rest_api_key,
+        hasAppUsername: !!wpConfig.app_username,
+        hasAppPassword: !!wpConfig.app_password
       });
 
-      // Construire les en-têtes pour l'authentification
-      let headers: HeadersInit = {
+      // Normaliser l'URL (supprimer les doubles slashes)
+      const siteUrl = wpConfig.site_url.replace(/([^:]\/)\/+/g, "$1");
+
+      // Utiliser la taxonomie personnalisée dipi_cpt_category au lieu des catégories standards
+      const apiUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt_category`;
+      console.log("Fetching DipiPixel categories from:", apiUrl);
+      
+      // Prepare headers
+      const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       };
-
-      if (hasRestApiKey) {
-        headers['Authorization'] = `Bearer ${configData.rest_api_key}`;
-      } else if (hasAppCredentials) {
-        console.info('Using Application Password authentication');
-        const auth = btoa(`${configData.app_username}:${configData.app_password}`);
-        headers['Authorization'] = `Basic ${auth}`;
-      } else if (hasBasicCredentials) {
-        console.info('Using Basic authentication');
-        const auth = btoa(`${configData.username}:${configData.password}`);
-        headers['Authorization'] = `Basic ${auth}`;
-      }
-
-      // Appeler l'API WordPress pour récupérer les catégories DipiPixel
-      const categoryUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt_category`;
-      console.info(`Fetching DipiPixel categories from: ${categoryUrl}`);
       
-      // Définir un timeout pour la requête
+      // Prioritize Application Password authentication
+      if (wpConfig.app_username && wpConfig.app_password) {
+        console.log("Using Application Password authentication");
+        const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
+        headers['Authorization'] = `Basic ${basicAuth}`;
+      } else if (wpConfig.rest_api_key) {
+        console.log("Using REST API Key authentication");
+        headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
+      } else {
+        console.log("No authentication credentials provided");
+      }
+      
+      // Ajouter un délai d'expiration à la requête
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 secondes
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes de timeout
       
       try {
-        const response = await fetch(categoryUrl, {
+        const response = await fetch(apiUrl, {
           method: 'GET',
-          headers,
+          headers: headers,
           signal: controller.signal
         });
-
+  
         clearTimeout(timeoutId);
-
+  
         if (!response.ok) {
           const errorText = await response.text();
-          throw new Error(`Erreur lors de la récupération des catégories: ${response.status} - ${errorText}`);
+          console.error("WordPress API error:", response.status, errorText);
+          
+          if (response.status === 401 || response.status === 403) {
+            throw new Error("Identifiants incorrects ou autorisations insuffisantes");
+          }
+          
+          throw new Error(`Failed to fetch categories: ${response.statusText}`);
         }
-
-        const categoryData = await response.json();
-        console.info(`DipiPixel categories fetched successfully: ${categoryData.length}`);
-        
-        setCategories(categoryData);
-        setDidInitialFetch(true);
+  
+        const categoriesData = await response.json();
+        console.log("DipiPixel categories fetched successfully:", categoriesData.length);
+        setCategories(categoriesData);
       } catch (fetchError: any) {
-        clearTimeout(timeoutId);
-        
         if (fetchError.name === 'AbortError') {
-          throw new Error('La requête a expiré après 15 secondes');
+          throw new Error("Le délai d'attente a expiré lors de la récupération des catégories");
         }
         throw fetchError;
       }
     } catch (err: any) {
-      console.error('Erreur lors de la récupération des catégories WordPress:', err);
-      setError(err);
+      console.error("Error fetching WordPress categories:", err);
       
-      // Implement retry logic with backoff
-      if (retryCount < maxRetries) {
-        const nextRetry = retryCount + 1;
-        const backoffTime = Math.pow(2, nextRetry) * 1000; // Exponential backoff
-        
-        console.info(`Retrying category fetch (${nextRetry}/${maxRetries}) in ${backoffTime}ms`);
-        setTimeout(() => {
-          setRetryCount(nextRetry);
-        }, backoffTime);
-      } else {
-        // Only show toast on final retry failure
-        toast.error(`Erreur: ${err.message}`);
-        setCategories([]);
+      let errorMessage = err.message || "Failed to fetch WordPress categories";
+      
+      // Améliorer les messages d'erreur
+      if (err.message.includes("Failed to fetch")) {
+        errorMessage = "Erreur réseau: impossible d'accéder au site WordPress";
+      } else if (err.message.includes("NetworkError")) {
+        errorMessage = "Erreur réseau: problème de connectivité";
+      } else if (err.message.includes("CORS")) {
+        errorMessage = "Erreur CORS: le site n'autorise pas les requêtes depuis cette origine";
       }
+      
+      setError(errorMessage);
+      toast.error("Erreur lors de la récupération des catégories DipiPixel");
     } finally {
       setIsLoading(false);
     }
-  }, [wordpressConfigId, retryCount]);
+  }, [user?.wordpressConfigId]);
 
   useEffect(() => {
-    if (wordpressConfigId && !didInitialFetch) {
-      console.info(`useWordPressCategories effect running, wordpressConfigId: ${wordpressConfigId}`);
+    console.log("useWordPressCategories effect running, user:", user?.id, "wordpressConfigId:", user?.wordpressConfigId);
+    if (user?.wordpressConfigId) {
       fetchCategories();
-    } else if (!wordpressConfigId) {
-      setCategories([]);
-      setDidInitialFetch(false);
     }
-  }, [wordpressConfigId, fetchCategories, didInitialFetch]);
+  }, [user?.wordpressConfigId, fetchCategories]);
 
-  return {
-    categories,
-    isLoading,
-    error,
-    fetchCategories,
+  return { 
+    categories, 
+    isLoading, 
+    error, 
     refetch: fetchCategories,
     hasCategories: categories.length > 0
   };

@@ -7,12 +7,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
 import { Suspense, lazy, useEffect } from 'react';
-import { SidebarProvider } from "@/components/ui/sidebar";
 
-// Import Index component directly rather than lazy loading it
-import Index from "./pages/Index";
-
-// Lazy loading other pages for performance improvement
+// Lazy loading des pages pour améliorer les performances
+const Index = lazy(() => import("./pages/Index"));
 const Login = lazy(() => import("./pages/Login"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const CreateAnnouncement = lazy(() => import("./pages/CreateAnnouncement"));
@@ -20,9 +17,7 @@ const Announcements = lazy(() => import("./pages/Announcements"));
 const AnnouncementDetail = lazy(() => import("./pages/AnnouncementDetail"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
 const WordPressManagement = lazy(() => import("./pages/WordPressManagement"));
-const TomEManagement = lazy(() => import("./pages/TomEManagement"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-const SimpleContentGenerator = lazy(() => import("./pages/SimpleContentGenerator"));
 
 // Composant de chargement
 const LoadingFallback = () => (
@@ -182,44 +177,24 @@ const AppRoutes = () => {
             </AdminRoute>
           } 
         />
-        <Route 
-          path="/tom-e" 
-          element={
-            <AdminRoute>
-              <TomEManagement />
-            </AdminRoute>
-          } 
-        />
         
         {/* Fallback route */}
         <Route path="*" element={<NotFound />} />
-        
-        {/* Route for simple content generator */}
-        <Route 
-          path="/generateur-contenu" 
-          element={
-            <AdminRoute>
-              <SimpleContentGenerator />
-            </AdminRoute>
-          } 
-        />
       </Routes>
     </Suspense>
   );
 };
 
-// The order of providers is important for hooks to work correctly
+// L'ordre des providers est important pour que les hooks fonctionnent correctement
 const App = () => (
   <BrowserRouter>
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <TooltipProvider>
           <AuthProvider>
-            <SidebarProvider>
-              <AppRoutes />
-              <Toaster />
-              <SonnerToaster />
-            </SidebarProvider>
+            <AppRoutes />
+            <Toaster />
+            <SonnerToaster />
           </AuthProvider>
         </TooltipProvider>
       </ThemeProvider>

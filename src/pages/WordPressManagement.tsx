@@ -33,18 +33,11 @@ const WordPressManagement = () => {
   } = useWordPressConfigs();
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-  const [selectedConfigId, setSelectedConfigId] = React.useState<string | null>(null);
 
   const handleCreateConfig = async (data: any) => {
     await createConfig(data);
     setIsDialogOpen(false);
     fetchConfigs(); // Call fetchConfigs after creating a new config
-  };
-
-  // Fonction pour gérer l'édition d'une configuration
-  const handleEdit = (id: string) => {
-    setSelectedConfigId(id);
-    // Vous pouvez ajouter d'autres logiques ici si nécessaire
   };
 
   // Wrapper pour updateConfig pour assurer la compatibilité avec le composant
@@ -116,9 +109,8 @@ const WordPressManagement = () => {
                 configs={configs}
                 isLoading={isLoading}
                 isSubmitting={isSubmitting}
-                onEdit={handleEdit}
-                onDelete={deleteConfig}
                 onUpdateConfig={handleUpdateConfig}
+                onDeleteConfig={deleteConfig}
                 readOnly={isClient} // Mode lecture seule pour les clients
               />
             )}

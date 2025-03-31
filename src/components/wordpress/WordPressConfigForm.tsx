@@ -1,282 +1,160 @@
 
 import React from "react";
-import { useForm } from "react-hook-form";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Loader2 } from "lucide-react";
-import { WordPressConfig } from "@/types/wordpress";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogDescription,
+  DialogFooter
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { WordPressConfig } from "@/types/wordpress";
+
+const wordpressConfigSchema = z.object({
+  name: z.string().min(1, "Le nom est requis"),
+  site_url: z.string().url("L'URL doit être valide").min(1, "L'URL du site est requise"),
+  app_username: z.string().optional(),
+  app_password: z.string().optional(),
+});
+
+type WordPressConfigFormValues = z.infer<typeof wordpressConfigSchema>;
 
 interface WordPressConfigFormProps {
-  initialConfig?: Partial<WordPressConfig>;
-  config?: WordPressConfig; // Add config prop as an alternative to initialConfig
-  onSubmit: (data: any) => void;
-  isSubmitting?: boolean;
+  onSubmit: (data: WordPressConfigFormValues) => Promise<void>;
+  defaultValues?: Partial<WordPressConfig>;
   buttonText?: string;
   dialogTitle?: string;
   dialogDescription?: string;
+  isSubmitting?: boolean;
   trigger?: React.ReactNode;
+  config?: WordPressConfig;
 }
 
-const WordPressConfigForm = ({
-  initialConfig,
-  config, // Add this prop
+const WordPressConfigForm: React.FC<WordPressConfigFormProps> = ({
   onSubmit,
+  defaultValues = {},
+  buttonText = "Ajouter",
+  dialogTitle = "Ajouter une configuration WordPress",
+  dialogDescription = "Entrez les détails de votre site WordPress",
   isSubmitting = false,
-  buttonText, // Make it optional
-  dialogTitle,
-  dialogDescription,
   trigger,
-}: WordPressConfigFormProps) => {
-  // Use config if provided, otherwise use initialConfig
-  const configToUse = config || initialConfig || {};
+  config
+}) => {
+  const [open, setOpen] = React.useState(false);
   
-  // Define the values for the form
-  const defaultValues = {
-    name: configToUse.name || "",
-    site_url: configToUse.site_url || "",
-    app_username: configToUse.app_username || "",
-    app_password: configToUse.app_password || "",
-    prompt: configToUse.prompt || "",
-  };
-
-  const form = useForm({
-    defaultValues,
+  const form = useForm<WordPressConfigFormValues>({
+    resolver: zodResolver(wordpressConfigSchema),
+    defaultValues: {
+      name: config?.name || defaultValues.name || "",
+      site_url: config?.site_url || defaultValues.site_url || "",
+      app_username: config?.app_username || defaultValues.app_username || "",
+      app_password: config?.app_password || defaultValues.app_password || "",
+    }
   });
 
-  const handleSubmit = (data: any) => {
-    // Normalize the URL of the site if it doesn't end with a slash
-    if (data.site_url && !data.site_url.endsWith('/')) {
-      data.site_url = data.site_url + '/';
+  const handleSubmit = async (data: WordPressConfigFormValues) => {
+    try {
+      await onSubmit(data);
+      setOpen(false);
+      form.reset();
+    } catch (error) {
+      console.error("Error submitting form:", error);
     }
-    onSubmit(data);
   };
 
-  // If trigger is provided, render the dialog with the form
-  if (trigger) {
-    return (
-      <Dialog>
-        <DialogTrigger asChild>
-          {trigger}
-        </DialogTrigger>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{dialogTitle || "Configuration WordPress"}</DialogTitle>
-            {dialogDescription && <DialogDescription>{dialogDescription}</DialogDescription>}
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nom</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Nom de la configuration" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="site_url"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>URL du site</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="app_username"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nom d'utilisateur (Application Password)</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Nom d'utilisateur pour Application Password"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="app_password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Mot de passe (Application Password)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="Mot de passe pour Application Password"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="prompt"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description d'activité (Prompt)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Décrivez l'activité ou les services proposés (ex: plombier, électricien, etc.)"
-                        className="resize-none min-h-[120px]"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <Button type="submit" disabled={isSubmitting} className="w-full">
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {configToUse.id ? "Mise à jour..." : "Création..."}
-                  </>
-                ) : (
-                  buttonText || (configToUse.id ? "Mettre à jour" : "Créer")
-                )}
-              </Button>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  // If trigger is not provided, render just the form
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nom</FormLabel>
-              <FormControl>
-                <Input placeholder="Nom de la configuration" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {trigger || <Button variant="outline">{buttonText}</Button>}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{dialogTitle}</DialogTitle>
+          <DialogDescription>{dialogDescription}</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={form.handleSubmit(handleSubmit)}>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Nom
+              </Label>
+              <Input
+                id="name"
+                placeholder="Mon site WordPress"
+                className="col-span-3"
+                {...form.register("name")}
+              />
+              {form.formState.errors.name && (
+                <p className="col-span-4 text-sm text-red-500 text-right">
+                  {form.formState.errors.name.message}
+                </p>
+              )}
+            </div>
 
-        <FormField
-          control={form.control}
-          name="site_url"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>URL du site</FormLabel>
-              <FormControl>
-                <Input placeholder="https://example.com" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="site_url" className="text-right">
+                URL du site
+              </Label>
+              <Input
+                id="site_url"
+                placeholder="https://monsite.com"
+                className="col-span-3"
+                {...form.register("site_url")}
+              />
+              {form.formState.errors.site_url && (
+                <p className="col-span-4 text-sm text-red-500 text-right">
+                  {form.formState.errors.site_url.message}
+                </p>
+              )}
+            </div>
 
-        <FormField
-          control={form.control}
-          name="app_username"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nom d'utilisateur (Application Password)</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="Nom d'utilisateur pour Application Password"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            <div className="my-2">
+              <h3 className="text-sm font-medium mb-2">Méthode d'authentification</h3>
+              <p className="text-xs text-muted-foreground mb-4">
+                Veuillez fournir les identifiants d'Application Password pour vous connecter à WordPress.
+              </p>
+            </div>
 
-        <FormField
-          control={form.control}
-          name="app_password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Mot de passe (Application Password)</FormLabel>
-              <FormControl>
-                <Input
-                  type="password"
-                  placeholder="Mot de passe pour Application Password"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="app_username" className="text-right">
+                Nom d'utilisateur (App)
+              </Label>
+              <Input
+                id="app_username"
+                placeholder="admin"
+                className="col-span-3"
+                {...form.register("app_username")}
+              />
+            </div>
 
-        <FormField
-          control={form.control}
-          name="prompt"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description d'activité (Prompt)</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Décrivez l'activité ou les services proposés (ex: plombier, électricien, etc.)"
-                  className="resize-none min-h-[120px]"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <Button type="submit" disabled={isSubmitting} className="w-full">
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {configToUse.id ? "Mise à jour..." : "Création..."}
-            </>
-          ) : (
-            buttonText || (configToUse.id ? "Mettre à jour" : "Créer")
-          )}
-        </Button>
-      </form>
-    </Form>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="app_password" className="text-right">
+                Mot de passe (App)
+              </Label>
+              <Input
+                id="app_password"
+                type="password"
+                placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"
+                className="col-span-3"
+                {...form.register("app_password")}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Enregistrement..." : "Enregistrer"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };
 

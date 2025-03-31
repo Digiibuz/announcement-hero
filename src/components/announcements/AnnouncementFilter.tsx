@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,12 +17,10 @@ interface FilterState {
 
 interface AnnouncementFilterProps {
   filter: FilterState;
-  onFilterChange: React.Dispatch<React.SetStateAction<FilterState>>;
-  categories: DipiCptCategory[];
-  loading: boolean;
+  setFilter: React.Dispatch<React.SetStateAction<FilterState>>;
 }
 
-const AnnouncementFilter = ({ filter, onFilterChange, categories, loading }: AnnouncementFilterProps) => {
+const AnnouncementFilter = ({ filter, setFilter }: AnnouncementFilterProps) => {
   return (
     <div className="flex flex-col md:flex-row gap-4 mb-6">
       <div className="flex-1 relative">
@@ -29,14 +28,14 @@ const AnnouncementFilter = ({ filter, onFilterChange, categories, loading }: Ann
         <Input
           placeholder="Rechercher des annonces..."
           value={filter.search}
-          onChange={(e) => onFilterChange({ ...filter, search: e.target.value })}
+          onChange={(e) => setFilter({ ...filter, search: e.target.value })}
           className="pl-9"
         />
       </div>
       <div className="w-full md:w-[180px]">
         <Select
           value={filter.status}
-          onValueChange={(value) => onFilterChange({ ...filter, status: value })}
+          onValueChange={(value) => setFilter({ ...filter, status: value })}
         >
           <SelectTrigger>
             <SelectValue placeholder="Statut" />
