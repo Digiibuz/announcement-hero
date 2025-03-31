@@ -9,6 +9,7 @@ export const useWordPressCategories = (wordpressConfigId?: string) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [didInitialFetch, setDidInitialFetch] = useState(false);
   const maxRetries = 3;
 
   const fetchCategories = useCallback(async () => {
@@ -68,20 +69,37 @@ export const useWordPressCategories = (wordpressConfigId?: string) => {
       const categoryUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt_category`;
       console.info(`Fetching DipiPixel categories from: ${categoryUrl}`);
       
-      const response = await fetch(categoryUrl, {
-        method: 'GET',
-        headers
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Erreur lors de la récupération des catégories: ${response.status} - ${errorText}`);
-      }
-
-      const categoryData = await response.json();
-      console.info(`DipiPixel categories fetched successfully: ${categoryData.length}`);
+      // Définir un timeout pour la requête
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 secondes
       
-      setCategories(categoryData);
+      try {
+        const response = await fetch(categoryUrl, {
+          method: 'GET',
+          headers,
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Erreur lors de la récupération des catégories: ${response.status} - ${errorText}`);
+        }
+
+        const categoryData = await response.json();
+        console.info(`DipiPixel categories fetched successfully: ${categoryData.length}`);
+        
+        setCategories(categoryData);
+        setDidInitialFetch(true);
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        
+        if (fetchError.name === 'AbortError') {
+          throw new Error('La requête a expiré après 15 secondes');
+        }
+        throw fetchError;
+      }
     } catch (err: any) {
       console.error('Erreur lors de la récupération des catégories WordPress:', err);
       setError(err);
@@ -106,13 +124,14 @@ export const useWordPressCategories = (wordpressConfigId?: string) => {
   }, [wordpressConfigId, retryCount]);
 
   useEffect(() => {
-    if (wordpressConfigId) {
+    if (wordpressConfigId && !didInitialFetch) {
       console.info(`useWordPressCategories effect running, wordpressConfigId: ${wordpressConfigId}`);
       fetchCategories();
-    } else {
+    } else if (!wordpressConfigId) {
       setCategories([]);
+      setDidInitialFetch(false);
     }
-  }, [wordpressConfigId, fetchCategories]);
+  }, [wordpressConfigId, fetchCategories, didInitialFetch]);
 
   return {
     categories,

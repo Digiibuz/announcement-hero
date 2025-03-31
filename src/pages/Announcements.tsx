@@ -18,16 +18,18 @@ export default function Announcements() {
   const { isAdmin, isClient } = useAuth();
   const canCreateAnnouncement = isAdmin || isClient;
   
-  const [filters, setFilters] = useState({
+  const [filter, setFilter] = useState({
     status: "" as AnnouncementStatus | "",
     search: "",
     isPremium: false,
-    wordpressCategory: ""
+    category: ""
   });
 
   const { announcements, isLoading, refetch } = useAnnouncements({
-    ...filters,
-    status: filters.status as AnnouncementStatus | undefined
+    status: filter.status as AnnouncementStatus | undefined,
+    search: filter.search,
+    isPremium: filter.isPremium,
+    wordpressCategory: filter.category
   });
 
   // Fetch WordPress data
@@ -57,6 +59,13 @@ export default function Announcements() {
   // No need to show filters to non-admin users
   const showFilters = isAdmin;
 
+  // Fonction pour gérer la suppression d'une annonce
+  const handleDeleteAnnouncement = async (id: string) => {
+    // Implémenter la logique de suppression ici
+    console.log("Suppression de l'annonce:", id);
+    await refetch();
+  };
+
   return (
     <PageLayout 
       title="Annonces" 
@@ -76,10 +85,10 @@ export default function Announcements() {
         <div className="space-y-4">
           {showFilters && (
             <AnnouncementFilter
-              filters={filters}
-              onFilterChange={setFilters}
-              categories={categories}
-              isCategoriesLoading={isCategoriesLoading}
+              filter={filter}
+              onFilterChange={setFilter}
+              categories={categories || []}
+              loading={isCategoriesLoading}
             />
           )}
           
@@ -96,7 +105,8 @@ export default function Announcements() {
           
           <AnnouncementList 
             announcements={announcements || []} 
-            isLoading={isLoading} 
+            isLoading={isLoading}
+            onDelete={handleDeleteAnnouncement}
           />
         </div>
       </AnimatedContainer>

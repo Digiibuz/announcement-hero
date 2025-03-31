@@ -21,7 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const TomEManagement = () => {
   const { isAdmin, isClient, user } = useAuth();
@@ -31,12 +32,14 @@ const TomEManagement = () => {
   const [isLoadingKeywords, setIsLoadingKeywords] = useState(false);
   const [keywordsError, setKeywordsError] = useState<string | null>(null);
   const [didInitialize, setDidInitialize] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   const { localities, isLoading: isLoadingLocalities } = useLocalities();
   const { 
     categories, 
     isLoading: isLoadingCategories, 
-    hasCategories 
+    hasCategories,
+    refetch: refetchCategories 
   } = useWordPressCategories(selectedConfigId);
   
   // Pour récupérer tous les mots-clés
@@ -95,6 +98,37 @@ const TomEManagement = () => {
     setSelectedConfigId(configId);
   };
   
+  // Gérer le rafraîchissement des données
+  const handleRefresh = async () => {
+    if (!selectedConfigId) return;
+    
+    setIsRefreshing(true);
+    
+    try {
+      // Rafraîchir les catégories
+      await refetchCategories();
+      
+      // Rafraîchir les mots-clés
+      try {
+        setIsLoadingKeywords(true);
+        const keywords = await fetchAllKeywordsForWordPressConfig(selectedConfigId);
+        
+        if (Array.isArray(keywords)) {
+          setAllKeywords(keywords);
+        }
+      } catch (error) {
+        console.error("Erreur lors du rafraîchissement des mots-clés:", error);
+      } finally {
+        setIsLoadingKeywords(false);
+      }
+    } catch (error) {
+      console.error("Erreur lors du rafraîchissement des données:", error);
+      toast.error("Erreur lors du rafraîchissement des données");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+  
   // Vérifier si tout est prêt pour la génération de contenu
   const isReadyForGeneration = 
     selectedConfigId && 
@@ -103,7 +137,7 @@ const TomEManagement = () => {
     allKeywords?.length > 0;
   
   // Loading state
-  const isLoading = isLoadingConfigs || isLoadingCategories || isLoadingLocalities || isLoadingKeywords;
+  const isLoading = isLoadingConfigs || isLoadingCategories || isLoadingLocalities || isLoadingKeywords || isRefreshing;
   
   // Définir l'accès
   const hasAccess = isAdmin || isClient;
@@ -120,6 +154,19 @@ const TomEManagement = () => {
     <PageLayout 
       title="Tom-E - Générateur de contenu"
       description="Créez et publiez automatiquement du contenu SEO ciblé pour vos sites WordPress"
+      titleAction={
+        selectedConfigId && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh} 
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Rafraîchir
+          </Button>
+        )
+      }
     >
       <AnimatedContainer delay={200}>
         <div className="space-y-6">
@@ -173,6 +220,16 @@ const TomEManagement = () => {
                       <p className="text-sm text-muted-foreground">
                         Essayez de rafraîchir la page ou contactez l'administrateur système.
                       </p>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleRefresh} 
+                        className="mt-4"
+                        disabled={isRefreshing}
+                      >
+                        <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                        Réessayer
+                      </Button>
                     </CardContent>
                   </Card>
                 ) : !isReadyForGeneration ? (
@@ -224,6 +281,16 @@ const TomEManagement = () => {
                       <p className="text-sm mt-2">
                         Assurez-vous que le site WordPress est correctement configuré et que les identifiants sont valides.
                       </p>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleRefresh} 
+                        className="mt-4"
+                        disabled={isRefreshing}
+                      >
+                        <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                        Réessayer
+                      </Button>
                     </CardContent>
                   </Card>
                 ) : (
