@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,7 +11,21 @@ import { useTicketNotifications } from "@/hooks/useTicketNotifications";
 
 const Support = () => {
   const { isAdmin, isClient } = useAuth();
-  const { unreadCount } = useTicketNotifications();
+  const { unreadCount, markTicketTabAsViewed, resetTicketTabView } = useTicketNotifications();
+
+  // Réinitialiser la vue du tab quand on quitte la page
+  useEffect(() => {
+    return () => {
+      resetTicketTabView();
+    };
+  }, [resetTicketTabView]);
+
+  // Gérer le changement de tab
+  const handleTabChange = (value: string) => {
+    if (value === "previous" || value === "open") {
+      markTicketTabAsViewed();
+    }
+  };
 
   return (
     <PageLayout 
@@ -19,7 +33,7 @@ const Support = () => {
     >
       <div className="max-w-5xl mx-auto">
         {isAdmin ? (
-          <Tabs defaultValue="open" className="w-full">
+          <Tabs defaultValue="open" className="w-full" onValueChange={handleTabChange}>
             <TabsList className="mb-4">
               <TabsTrigger value="all">Tous les tickets</TabsTrigger>
               <TabsTrigger value="open" className="relative">
@@ -46,7 +60,7 @@ const Support = () => {
             </TabsContent>
           </Tabs>
         ) : (
-          <Tabs defaultValue="create" className="w-full">
+          <Tabs defaultValue="create" className="w-full" onValueChange={handleTabChange}>
             <TabsList className="mb-4">
               <TabsTrigger value="create">Nouveau ticket</TabsTrigger>
               <TabsTrigger value="previous" className="relative">
@@ -75,3 +89,4 @@ const Support = () => {
 };
 
 export default Support;
+

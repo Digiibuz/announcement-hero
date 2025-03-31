@@ -12,6 +12,7 @@ export const useTicketNotifications = () => {
   const { data: allTickets = [] } = useAllTickets();
   const [unreadCount, setUnreadCount] = useState(0);
   const [readTicketIds, setReadTicketIds] = useState<Record<string, Date>>({});
+  const [viewedTicketTab, setViewedTicketTab] = useState(false);
 
   // Charger les tickets déjà lus depuis le localStorage au chargement
   useEffect(() => {
@@ -40,6 +41,11 @@ export const useTicketNotifications = () => {
 
   // Vérifier si un ticket a des réponses non lues pour un client
   const checkUnreadResponsesForClient = (tickets: Ticket[], readIds: Record<string, Date>) => {
+    // Si l'utilisateur a déjà vu le tab, retourner 0
+    if (viewedTicketTab) {
+      return 0;
+    }
+    
     let count = 0;
     
     tickets.forEach(ticket => {
@@ -111,7 +117,7 @@ export const useTicketNotifications = () => {
       
       setUnreadCount(count);
     }
-  }, [userTickets, allTickets, readTicketIds, user?.id, isAdmin]);
+  }, [userTickets, allTickets, readTicketIds, user?.id, isAdmin, viewedTicketTab]);
 
   // Fonction pour marquer un ticket comme lu
   const markTicketAsRead = (ticketId: string) => {
@@ -139,5 +145,16 @@ export const useTicketNotifications = () => {
     );
   };
 
-  return { unreadCount, markTicketAsRead };
+  // Fonction pour marquer le tab des tickets comme vu
+  const markTicketTabAsViewed = () => {
+    setViewedTicketTab(true);
+  };
+
+  // Réinitialiser cette valeur quand on quitte la page
+  const resetTicketTabView = () => {
+    setViewedTicketTab(false);
+  };
+
+  return { unreadCount, markTicketAsRead, markTicketTabAsViewed, resetTicketTabView };
 };
+
