@@ -10,8 +10,6 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import CreateAnnouncement from "./pages/CreateAnnouncement";
-import CreateDivipixelPublication from "./pages/CreateDivipixelPublication";
-import CreatePublication from "./pages/CreatePublication";
 import Announcements from "./pages/Announcements";
 import AnnouncementDetail from "./pages/AnnouncementDetail";
 import UserManagement from "./pages/UserManagement";
@@ -94,22 +92,6 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } 
       />
-      <Route 
-        path="/create-publication" 
-        element={
-          <ProtectedRoute>
-            <CreatePublication />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/create-divipixel" 
-        element={
-          <ProtectedRoute>
-            <CreateDivipixelPublication />
-          </ProtectedRoute>
-        } 
-      />
       
       {/* Admin/Client only routes */}
       <Route 
@@ -135,23 +117,21 @@ const AppRoutes = () => {
   );
 };
 
-// The App component is where we correctly set up the providers
-function App() {
-  return (
-    <BrowserRouter>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+// L'ordre des providers est important pour que les hooks fonctionnent correctement
+const App = () => (
+  <BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <TooltipProvider>
           <AuthProvider>
-            <TooltipProvider>
-              <AppRoutes />
-              <Toaster />
-              <SonnerToaster />
-            </TooltipProvider>
+            <AppRoutes />
+            <Toaster />
+            <SonnerToaster />
           </AuthProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    </BrowserRouter>
-  );
-}
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  </BrowserRouter>
+);
 
 export default App;
