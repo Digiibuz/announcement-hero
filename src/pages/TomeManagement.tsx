@@ -98,7 +98,7 @@ const TomeManagement = () => {
         </div>
         
         {/* Alerte d'information concernant le WAF */}
-        <Alert variant="warning" className="mb-4">
+        <Alert className="mb-4">
           <AlertTriangle className="h-5 w-5" />
           <AlertTitle>Protection anti-bot WordPress</AlertTitle>
           <AlertDescription>

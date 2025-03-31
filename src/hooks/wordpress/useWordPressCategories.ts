@@ -5,14 +5,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { DipiCptCategory } from "@/types/announcement";
 
-export const useWordPressCategories = () => {
+export const useWordPressCategories = (configIdProp?: string | null) => {
   const [categories, setCategories] = useState<DipiCptCategory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
-  const fetchCategories = useCallback(async () => {
-    if (!user?.wordpressConfigId) {
+  const fetchCategories = useCallback(async (configId?: string | null) => {
+    // Utiliser la configId passée en paramètre ou celle de la prop
+    const effectiveConfigId = configId || configIdProp || user?.wordpressConfigId;
+    
+    if (!effectiveConfigId) {
       console.error("No WordPress configuration ID found for user", user);
       setError("No WordPress configuration found for this user");
       return;
@@ -21,13 +24,13 @@ export const useWordPressCategories = () => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log("Fetching categories for WordPress config ID:", user.wordpressConfigId);
+      console.log("Fetching categories for WordPress config ID:", effectiveConfigId);
 
-      // First get the WordPress config for the user
+      // First get the WordPress config for the specified ID
       const { data: wpConfig, error: wpConfigError } = await supabase
         .from('wordpress_configs')
         .select('site_url, rest_api_key, app_username, app_password')
-        .eq('id', user.wordpressConfigId)
+        .eq('id', effectiveConfigId)
         .single();
 
       if (wpConfigError) {
@@ -148,14 +151,15 @@ export const useWordPressCategories = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.wordpressConfigId]);
+  }, [configIdProp, user?.wordpressConfigId]);
 
   useEffect(() => {
-    console.log("useWordPressCategories effect running, user:", user?.id, "wordpressConfigId:", user?.wordpressConfigId);
-    if (user?.wordpressConfigId) {
-      fetchCategories();
+    const effectiveConfigId = configIdProp || user?.wordpressConfigId;
+    console.log("useWordPressCategories effect running, user:", user?.id, "configId:", effectiveConfigId);
+    if (effectiveConfigId) {
+      fetchCategories(effectiveConfigId);
     }
-  }, [user?.wordpressConfigId, fetchCategories]);
+  }, [configIdProp, user?.wordpressConfigId, fetchCategories]);
 
   return { 
     categories, 
