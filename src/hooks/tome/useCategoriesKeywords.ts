@@ -10,8 +10,9 @@ export const useCategoriesKeywords = (configId: string | null) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Utilise le hook useWordPressCategories avec configId comme paramètre
-  const { categories: wpCategories, isLoading: isCategoriesLoading } = useWordPressCategories(configId);
+  // The error is here - useWordPressCategories doesn't accept configId as an argument
+  // We need to use the hook without arguments
+  const { categories: wpCategories, isLoading: isCategoriesLoading } = useWordPressCategories();
   
   // Filter categories based on the configId if needed
   const categories = wpCategories as unknown as DipiCptCategory[];
