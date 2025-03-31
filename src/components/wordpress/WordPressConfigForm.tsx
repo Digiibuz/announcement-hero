@@ -1,217 +1,162 @@
 
-import React from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
-import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { WordPressConfig } from "@/types/wordpress";
-import { Pencil, Loader2 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-
-const formSchema = z.object({
-  name: z.string().min(2, "Le nom doit comporter au moins 2 caractères"),
-  site_url: z.string().url("L'URL du site doit être valide"),
-  app_username: z.string().optional(),
-  app_password: z.string().optional(),
-  prompt: z.string().optional(),
-});
+import { Button } from "@/components/ui/button";
+import { SaveIcon, Loader2 } from "lucide-react";
+import { WordPressConfig } from '@/types/wordpress';
+import { Separator } from '@/components/ui/separator';
 
 interface WordPressConfigFormProps {
-  config?: WordPressConfig;
   onSubmit: (data: any) => Promise<void>;
-  isSubmitting?: boolean;
-  buttonText?: string;
-  dialogTitle?: string;
-  dialogDescription?: string;
-  trigger?: React.ReactNode;
+  initialData?: WordPressConfig;
+  isLoading?: boolean;
 }
 
-const WordPressConfigForm = ({
-  config,
-  onSubmit,
-  isSubmitting = false,
-  buttonText = "Soumettre",
-  dialogTitle = "Configuration WordPress",
-  dialogDescription = "Entrez les informations de configuration WordPress.",
-  trigger,
-}: WordPressConfigFormProps) => {
-  const [isOpen, setIsOpen] = React.useState(false);
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: config?.name || "",
-      site_url: config?.site_url || "",
-      app_username: config?.app_username || "",
-      app_password: config ? "unchanged" : "",
-      prompt: config?.prompt || "",
-    },
+const WordPressConfigForm: React.FC<WordPressConfigFormProps> = ({ 
+  onSubmit, 
+  initialData,
+  isLoading = false
+}) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    site_url: '',
+    username: '',
+    password: '',
+    app_username: '',
+    app_password: '',
+    rest_api_key: '',
+    prompt: ''
   });
 
-  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
-    try {
-      // Si le mot de passe n'a pas été modifié, on le supprime pour éviter de l'écraser
-      if (config && values.app_password === "unchanged") {
-        delete values.app_password;
-      }
-
-      await onSubmit(values);
-      setIsOpen(false);
-      form.reset();
-    } catch (error) {
-      console.error("Error submitting form:", error);
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        name: initialData.name || '',
+        site_url: initialData.site_url || '',
+        username: initialData.username || '',
+        password: initialData.password || '',
+        app_username: initialData.app_username || '',
+        app_password: initialData.app_password || '',
+        rest_api_key: initialData.rest_api_key || '',
+        prompt: initialData.prompt || ''
+      });
     }
+  }, [initialData]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await onSubmit(formData);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button variant="outline" size="sm">
-            <Pencil className="h-4 w-4 mr-2" />
-            {buttonText}
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{dialogTitle}</DialogTitle>
-          <DialogDescription>{dialogDescription}</DialogDescription>
-        </DialogHeader>
+    <form onSubmit={handleSubmit}>
+      <Card>
+        <CardHeader>
+          <CardTitle>Configuration WordPress</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nom de la configuration</Label>
+              <Input
+                id="name"
+                name="name"
+                placeholder="Mon site WordPress"
+                value={formData.name}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="site_url">URL du site</Label>
+              <Input
+                id="site_url"
+                name="site_url"
+                placeholder="https://monsite.com"
+                value={formData.site_url}
+                onChange={handleChange}
+                required
+              />
+              <p className="text-sm text-muted-foreground">
+                URL complète du site sans slash final
+              </p>
+            </div>
+          </div>
 
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(handleSubmit)}
-            className="space-y-4 mt-4"
-          >
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nom</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Nom de la configuration" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Un nom pour identifier cette configuration
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="site_url"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>URL du site</FormLabel>
-                  <FormControl>
-                    <Input placeholder="https://example.com" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    L'URL complète du site WordPress
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="app_username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nom d'utilisateur (Application Password)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Username" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Nom d'utilisateur pour l'authentification via Application Passwords
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="app_password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Mot de passe (Application Password)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="password" 
-                      placeholder={config ? "••••••••" : "Mot de passe"} 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Mot de passe pour l'authentification via Application Passwords
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
+          <div className="space-y-2 pt-2">
+            <Label htmlFor="prompt">Description de l'activité (prompt pour Tom-E)</Label>
+            <Textarea
+              id="prompt"
               name="prompt"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Prompt</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Description de l'activité du client" 
-                      className="min-h-[120px]"
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Description détaillée de l'activité du client pour la génération de contenu Tom-E
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
+              placeholder="Décrivez l'activité de votre entreprise en détail..."
+              value={formData.prompt}
+              onChange={handleChange}
+              rows={5}
             />
+            <p className="text-sm text-muted-foreground">
+              Ce texte sera utilisé par Tom-E pour générer du contenu pertinent pour votre activité.
+            </p>
+          </div>
 
-            <DialogFooter>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
-                    Chargement...
-                  </>
-                ) : (
-                  buttonText
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+          <Separator className="my-4" />
+
+          <div className="space-y-2">
+            <h3 className="text-lg font-medium">Authentification REST API</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Ces informations sont nécessaires pour la publication automatique.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="app_username">Nom d'utilisateur Application</Label>
+                <Input
+                  id="app_username"
+                  name="app_username"
+                  placeholder="admin"
+                  value={formData.app_username}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="app_password">Mot de passe Application</Label>
+                <Input
+                  id="app_password"
+                  name="app_password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={formData.app_password}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-4">
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Enregistrement...
+                </>
+              ) : (
+                <>
+                  <SaveIcon className="mr-2 h-4 w-4" />
+                  Enregistrer
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </form>
   );
 };
 

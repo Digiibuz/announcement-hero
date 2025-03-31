@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useTomeGeneration } from "@/hooks/tome";
 import { useCategoriesKeywords, useLocalities } from "@/hooks/tome";
@@ -13,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { fr } from 'date-fns/locale';
+import { Switch } from "@/components/ui/switch";
 
 interface TomeGenerationsProps {
   configId: string;
@@ -76,7 +76,6 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId }) => {
       scheduleDateTime
     );
     
-    // Reset form
     setSelectedKeyword(null);
     setSelectedLocality(null);
     setScheduleDate(null);
@@ -262,7 +261,6 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId }) => {
           ) : (
             <div className="space-y-4">
               {generations.map((generation) => {
-                // Récupérer les détails du mot-clé et de la localité
                 const keywordDetails = generation.keyword_id 
                   ? keywords.find(k => k.id === generation.keyword_id) 
                   : null;
@@ -339,7 +337,13 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId }) => {
                       <div>
                         {generation.wordpress_post_id && (
                           <Button variant="outline" size="sm" asChild>
-                            <a href={`${categories[0]?.link?.split('/wp-json/')[0]}/wp-admin/post.php?post=${generation.wordpress_post_id}&action=edit`} target="_blank" rel="noopener noreferrer">
+                            <a 
+                              href={`${categoryDetails?.link?.split('/wp-json/')[0] || 
+                                (categories.length > 0 && categories[0]?.link?.split('/wp-json/')[0]) || 
+                                '#'}/wp-admin/post.php?post=${generation.wordpress_post_id}&action=edit`} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                            >
                               Voir dans WordPress
                             </a>
                           </Button>
@@ -353,36 +357,6 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId }) => {
           )}
         </CardContent>
       </Card>
-    </div>
-  );
-};
-
-// Composant Switch importé de shadcn/ui
-const Switch = ({ id, checked, onCheckedChange }: { id: string, checked: boolean, onCheckedChange: (checked: boolean) => void }) => {
-  return (
-    <div className="flex items-center space-x-2">
-      <label htmlFor={id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-        <input
-          type="checkbox"
-          id={id}
-          checked={checked}
-          onChange={(e) => onCheckedChange(e.target.checked)}
-          className="sr-only peer"
-        />
-        <div className={`
-          h-6 w-11 rounded-full transition-colors
-          ${checked ? 'bg-primary' : 'bg-input'}
-          peer-focus:outline-none peer-focus:ring-2
-          peer-focus:ring-offset-2 peer-focus:ring-primary
-          relative
-        `}>
-          <div className={`
-            h-5 w-5 rounded-full bg-white absolute 
-            top-[2px] transition-transform 
-            ${checked ? 'translate-x-5 left-5' : 'translate-x-0 left-[2px]'}
-          `} />
-        </div>
-      </label>
     </div>
   );
 };

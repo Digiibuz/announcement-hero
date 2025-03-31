@@ -1,141 +1,129 @@
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { CategoryKeyword } from "./useCategoriesKeywords";
-import { Locality } from "./useLocalities";
+import { TomeGeneration, CategoryKeyword, Locality } from "@/types/tome";
+import { format } from "date-fns";
 
-export interface TomeGeneration {
-  id: string;
-  wordpress_config_id: string;
-  category_id: string;
-  keyword_id: string | null;
-  locality_id: string | null;
-  wordpress_post_id: number | null;
-  status: string;
-  created_at: string;
-  scheduled_at: string | null;
-  published_at: string | null;
-}
-
-export const useTomeGeneration = (wordpressConfigId: string | null) => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
+export const useTomeGeneration = (configId: string | null) => {
   const [generations, setGenerations] = useState<TomeGeneration[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const fetchGenerations = async () => {
-    if (!wordpressConfigId) return;
+  const fetchGenerations = useCallback(async () => {
+    if (!configId) {
+      setGenerations([]);
+      setIsLoading(false);
+      return;
+    }
 
     try {
       setIsLoading(true);
-      
       const { data, error } = await supabase
-        .from('tome_generations')
-        .select('*')
-        .eq('wordpress_config_id', wordpressConfigId)
-        .order('created_at', { ascending: false });
-      
+        .from("tome_generations")
+        .select("*")
+        .eq("wordpress_config_id", configId)
+        .order("created_at", { ascending: false });
+
       if (error) {
-        throw error;
+        console.error("Error fetching generations:", error);
+        toast.error("Erreur lors du chargement des générations: " + error.message);
+        return;
       }
-      
+
       setGenerations(data as TomeGeneration[]);
     } catch (error: any) {
-      console.error("Error fetching generations:", error);
-      toast.error("Erreur lors de la récupération des générations");
+      console.error("Error in fetchGenerations:", error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [configId]);
+
+  useEffect(() => {
+    fetchGenerations();
+  }, [fetchGenerations]);
 
   const createGeneration = async (
     categoryId: string,
     keyword: CategoryKeyword | null,
     locality: Locality | null,
-    scheduleDate: Date | null = null
+    scheduleDate: Date | null
   ) => {
-    if (!wordpressConfigId) {
-      toast.error("Configuration WordPress non trouvée");
-      return null;
-    }
+    if (!configId) return false;
 
     try {
       setIsSubmitting(true);
       
-      const generationData = {
-        wordpress_config_id: wordpressConfigId,
+      const isScheduled = scheduleDate !== null;
+      const formattedDate = scheduleDate ? format(scheduleDate, "yyyy-MM-dd'T'HH:mm:ss") : null;
+      
+      const newGeneration = {
+        wordpress_config_id: configId,
         category_id: categoryId,
         keyword_id: keyword?.id || null,
         locality_id: locality?.id || null,
-        status: scheduleDate ? 'scheduled' : 'pending',
-        scheduled_at: scheduleDate ? scheduleDate.toISOString() : null
+        status: isScheduled ? "scheduled" : "pending",
+        scheduled_at: formattedDate
       };
-      
+
       const { data, error } = await supabase
-        .from('tome_generations')
-        .insert([generationData])
+        .from("tome_generations")
+        .insert([newGeneration])
         .select()
         .single();
-      
+
       if (error) {
-        toast.error("Erreur lors de la création de la génération");
-        throw error;
+        console.error("Error creating generation:", error);
+        toast.error("Erreur lors de la création de la génération: " + error.message);
+        return false;
+      }
+
+      setGenerations([data as TomeGeneration, ...generations]);
+      
+      // Si ce n'est pas planifié, lancer la génération immédiate
+      if (!isScheduled) {
+        // Appeler la fonction edge pour démarrer la génération
+        const { error: genError } = await supabase.functions.invoke('tome-generate', {
+          body: { generationId: data.id }
+        });
+        
+        if (genError) {
+          console.error("Error triggering generation:", genError);
+          toast.error("Erreur lors du démarrage de la génération: " + genError.message);
+        }
       }
       
-      toast.success("Génération " + (scheduleDate ? "planifiée" : "créée") + " avec succès");
-      await fetchGenerations();
-      return data as TomeGeneration;
+      toast.success(isScheduled ? "Génération planifiée avec succès" : "Génération lancée avec succès");
+      return true;
     } catch (error: any) {
-      console.error("Error creating generation:", error);
-      return null;
+      console.error("Error in createGeneration:", error);
+      return false;
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const updateGenerationStatus = async (id: string, status: string, wordpressPostId?: number) => {
-    try {
-      const updateData: any = { status };
-      
-      if (status === 'published' && wordpressPostId) {
-        updateData.wordpress_post_id = wordpressPostId;
-        updateData.published_at = new Date().toISOString();
-      }
-      
-      const { error } = await supabase
-        .from('tome_generations')
-        .update(updateData)
-        .eq('id', id);
-      
-      if (error) {
-        toast.error("Erreur lors de la mise à jour du statut");
-        throw error;
-      }
-      
-      await fetchGenerations();
-    } catch (error: any) {
-      console.error("Error updating generation status:", error);
-    }
-  };
-
-  const deleteGeneration = async (id: string) => {
+  const regenerate = async (generationId: string) => {
     try {
       setIsSubmitting(true);
       
-      const { error } = await supabase
-        .from('tome_generations')
-        .delete()
-        .eq('id', id);
+      // Appeler la fonction edge pour relancer la génération
+      const { error } = await supabase.functions.invoke('tome-generate', {
+        body: { generationId }
+      });
       
       if (error) {
-        toast.error("Erreur lors de la suppression de la génération");
-        throw error;
+        console.error("Error regenerating content:", error);
+        toast.error("Erreur lors de la régénération: " + error.message);
+        return false;
       }
       
-      toast.success("Génération supprimée avec succès");
-      setGenerations(generations.filter(g => g.id !== id));
+      toast.success("Régénération lancée avec succès");
+      await fetchGenerations(); // Rafraîchir la liste
+      return true;
     } catch (error: any) {
-      console.error("Error deleting generation:", error);
+      console.error("Error in regenerate:", error);
+      return false;
     } finally {
       setIsSubmitting(false);
     }
@@ -146,8 +134,7 @@ export const useTomeGeneration = (wordpressConfigId: string | null) => {
     isLoading,
     isSubmitting,
     createGeneration,
-    updateGenerationStatus,
-    deleteGeneration,
+    regenerate,
     fetchGenerations
   };
 };

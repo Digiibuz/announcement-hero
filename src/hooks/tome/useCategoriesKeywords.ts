@@ -1,134 +1,126 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { useWordPressCategories } from "@/hooks/wordpress";
+import { toast } from "sonner";
+import { CategoryKeyword, DipiCptCategory } from "@/types/tome";
 
-export interface CategoryKeyword {
-  id: string;
-  wordpress_config_id: string;
-  category_id: string;
-  category_name: string;
-  keyword: string;
-  created_at: string;
-}
-
-export const useCategoriesKeywords = (wordpressConfigId: string | null) => {
+export const useCategoriesKeywords = (configId: string | null) => {
   const [keywords, setKeywords] = useState<CategoryKeyword[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { categories, isLoading: isCategoriesLoading } = useWordPressCategories();
+  const { categories, isLoading: isCategoriesLoading } = useWordPressCategories(configId, true);
 
-  const fetchKeywords = async () => {
-    if (!wordpressConfigId) return;
+  const fetchKeywords = useCallback(async () => {
+    if (!configId) {
+      setKeywords([]);
+      setIsLoading(false);
+      return;
+    }
 
     try {
       setIsLoading(true);
-      
       const { data, error } = await supabase
-        .from('categories_keywords')
-        .select('*')
-        .eq('wordpress_config_id', wordpressConfigId)
-        .order('category_name', { ascending: true });
-      
+        .from("categories_keywords")
+        .select("*")
+        .eq("wordpress_config_id", configId);
+
       if (error) {
-        throw error;
+        console.error("Error fetching keywords:", error);
+        toast.error("Erreur lors du chargement des mots-clés: " + error.message);
+        return;
       }
-      
+
       setKeywords(data as CategoryKeyword[]);
     } catch (error: any) {
-      console.error("Error fetching keywords:", error);
-      toast.error("Erreur lors de la récupération des mots-clés");
+      console.error("Error in fetchKeywords:", error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [configId]);
+
+  useEffect(() => {
+    fetchKeywords();
+  }, [fetchKeywords]);
 
   const addKeyword = async (categoryId: string, categoryName: string, keyword: string) => {
-    if (!wordpressConfigId) {
-      toast.error("Configuration WordPress non trouvée");
-      return null;
-    }
+    if (!configId) return false;
 
     try {
       setIsSubmitting(true);
       
+      const newKeyword = {
+        wordpress_config_id: configId,
+        category_id: categoryId,
+        category_name: categoryName,
+        keyword: keyword
+      };
+
       const { data, error } = await supabase
-        .from('categories_keywords')
-        .insert([
-          {
-            wordpress_config_id: wordpressConfigId,
-            category_id: categoryId,
-            category_name: categoryName,
-            keyword
-          }
-        ])
+        .from("categories_keywords")
+        .insert([newKeyword])
         .select()
         .single();
-      
+
       if (error) {
-        if (error.message.includes("violates unique constraint")) {
+        if (error.code === "23505") { // Code de violation de contrainte unique
           toast.error("Ce mot-clé existe déjà pour cette catégorie");
-        } else if (error.message.includes("Une catégorie ne peut pas avoir plus de 10 mots-clés")) {
-          toast.error("Une catégorie ne peut pas avoir plus de 10 mots-clés");
         } else {
-          toast.error("Erreur lors de l'ajout du mot-clé");
+          console.error("Error adding keyword:", error);
+          toast.error("Erreur lors de l'ajout du mot-clé: " + error.message);
         }
-        throw error;
+        return false;
       }
-      
+
+      setKeywords([...keywords, data as CategoryKeyword]);
       toast.success("Mot-clé ajouté avec succès");
-      await fetchKeywords();
-      return data as CategoryKeyword;
+      return true;
     } catch (error: any) {
-      console.error("Error adding keyword:", error);
-      return null;
+      console.error("Error in addKeyword:", error);
+      return false;
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const deleteKeyword = async (id: string) => {
+  const deleteKeyword = async (keywordId: string) => {
     try {
       setIsSubmitting(true);
       
       const { error } = await supabase
-        .from('categories_keywords')
+        .from("categories_keywords")
         .delete()
-        .eq('id', id);
-      
+        .eq("id", keywordId);
+
       if (error) {
-        toast.error("Erreur lors de la suppression du mot-clé");
-        throw error;
+        console.error("Error deleting keyword:", error);
+        toast.error("Erreur lors de la suppression du mot-clé: " + error.message);
+        return false;
       }
-      
+
+      setKeywords(keywords.filter(k => k.id !== keywordId));
       toast.success("Mot-clé supprimé avec succès");
-      setKeywords(keywords.filter(k => k.id !== id));
+      return true;
     } catch (error: any) {
-      console.error("Error deleting keyword:", error);
+      console.error("Error in deleteKeyword:", error);
+      return false;
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const getKeywordsForCategory = (categoryId: string) => {
+  const getKeywordsForCategory = useCallback((categoryId: string) => {
     return keywords.filter(k => k.category_id === categoryId);
-  };
-
-  useEffect(() => {
-    if (wordpressConfigId) {
-      fetchKeywords();
-    }
-  }, [wordpressConfigId]);
+  }, [keywords]);
 
   return {
+    categories: categories as DipiCptCategory[],
     keywords,
     isLoading: isLoading || isCategoriesLoading,
     isSubmitting,
     addKeyword,
     deleteKeyword,
-    fetchKeywords,
     getKeywordsForCategory,
-    categories
+    fetchKeywords
   };
 };
