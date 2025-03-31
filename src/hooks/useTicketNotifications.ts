@@ -2,9 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTickets, useAllTickets, Ticket } from "./useTickets";
 import { useAuth } from "@/context/AuthContext";
-
-// Clé pour le stockage local des tickets consultés
-const READ_TICKETS_STORAGE_KEY = "digibuz_read_tickets";
+import { supabase } from "@/integrations/supabase/client";
 
 export const useTicketNotifications = () => {
   const { user, isAdmin } = useAuth();
@@ -14,29 +12,34 @@ export const useTicketNotifications = () => {
   const [readTicketIds, setReadTicketIds] = useState<Record<string, Date>>({});
   const [viewedTicketTab, setViewedTicketTab] = useState(false);
 
-  // Charger les tickets déjà lus depuis le localStorage au chargement
+  // Charger les tickets déjà lus depuis Supabase au chargement
   useEffect(() => {
-    if (user?.id) {
-      const storedReadTickets = localStorage.getItem(`${READ_TICKETS_STORAGE_KEY}_${user.id}`);
-      if (storedReadTickets) {
-        try {
-          // Parse the stored JSON and convert string dates back to Date objects
-          const parsedTickets = JSON.parse(storedReadTickets);
-          const ticketsWithDateObjects: Record<string, Date> = {};
-          
-          // Convert string dates to Date objects
-          Object.keys(parsedTickets).forEach(ticketId => {
-            ticketsWithDateObjects[ticketId] = new Date(parsedTickets[ticketId]);
-          });
-          
-          setReadTicketIds(ticketsWithDateObjects);
-        } catch (e) {
-          console.error("Erreur lors du chargement des tickets lus:", e);
-          // En cas d'erreur, réinitialiser le stockage
-          localStorage.removeItem(`${READ_TICKETS_STORAGE_KEY}_${user.id}`);
-        }
+    const fetchReadTickets = async () => {
+      if (!user?.id) return;
+
+      const { data, error } = await supabase
+        .from("ticket_read_status")
+        .select("ticket_id, read_at")
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Erreur lors du chargement des tickets lus:", error);
+        return;
       }
-    }
+
+      if (data) {
+        const ticketsWithDateObjects: Record<string, Date> = {};
+        
+        // Convertir les dates en objets Date
+        data.forEach(item => {
+          ticketsWithDateObjects[item.ticket_id] = new Date(item.read_at);
+        });
+        
+        setReadTicketIds(ticketsWithDateObjects);
+      }
+    };
+
+    fetchReadTickets();
   }, [user?.id]);
 
   // Vérifier si un ticket a des réponses non lues pour un client
@@ -125,33 +128,83 @@ export const useTicketNotifications = () => {
   }, [updateUnreadCount]);
 
   // Fonction pour marquer un ticket comme lu
-  const markTicketAsRead = useCallback((ticketId: string) => {
+  const markTicketAsRead = useCallback(async (ticketId: string) => {
     if (!user?.id) return;
     
-    // Create a new object with the updated read timestamp
-    const updatedReadTickets: Record<string, Date> = {
-      ...readTicketIds,
-      [ticketId]: new Date()
-    };
+    // La date actuelle pour marquer comme lu
+    const now = new Date();
+    
+    // Enregistrer dans Supabase
+    const { error } = await supabase
+      .from("ticket_read_status")
+      .upsert({
+        user_id: user.id,
+        ticket_id: ticketId,
+        read_at: now.toISOString()
+      }, { onConflict: 'user_id,ticket_id' });
+    
+    if (error) {
+      console.error("Erreur lors de l'enregistrement du statut de lecture:", error);
+      return;
+    }
     
     // Mettre à jour l'état local
-    setReadTicketIds(updatedReadTickets);
-    
-    // When saving to localStorage, we need to convert Date objects to ISO strings
-    const storageReadTickets: Record<string, string> = {};
-    Object.keys(updatedReadTickets).forEach(id => {
-      storageReadTickets[id] = updatedReadTickets[id].toISOString();
-    });
-    
-    // Sauvegarder dans localStorage
-    localStorage.setItem(
-      `${READ_TICKETS_STORAGE_KEY}_${user.id}`, 
-      JSON.stringify(storageReadTickets)
-    );
+    setReadTicketIds(prevState => ({
+      ...prevState,
+      [ticketId]: now
+    }));
     
     // Force immediate update of unread count
     updateUnreadCount();
-  }, [readTicketIds, user?.id, updateUnreadCount]);
+  }, [user?.id, updateUnreadCount]);
+
+  // Écouter les changements dans la table ticket_read_status en temps réel
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const channel = supabase
+      .channel('ticket_read_status_changes')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'ticket_read_status',
+        filter: `user_id=eq.${user.id}`
+      }, (payload) => {
+        // Mettre à jour l'état local quand un nouveau statut est inséré
+        const { ticket_id, read_at } = payload.new;
+        
+        setReadTicketIds(prevState => ({
+          ...prevState,
+          [ticket_id]: new Date(read_at)
+        }));
+        
+        // Mettre à jour le compteur
+        updateUnreadCount();
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'ticket_read_status',
+        filter: `user_id=eq.${user.id}`
+      }, (payload) => {
+        // Mettre à jour l'état local quand un statut est mis à jour
+        const { ticket_id, read_at } = payload.new;
+        
+        setReadTicketIds(prevState => ({
+          ...prevState,
+          [ticket_id]: new Date(read_at)
+        }));
+        
+        // Mettre à jour le compteur
+        updateUnreadCount();
+      })
+      .subscribe();
+    
+    // Nettoyer l'abonnement à la déconnexion
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, updateUnreadCount]);
 
   // Fonction pour marquer le tab des tickets comme vu
   const markTicketTabAsViewed = useCallback(() => {
