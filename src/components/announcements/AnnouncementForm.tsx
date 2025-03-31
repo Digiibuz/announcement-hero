@@ -1,315 +1,356 @@
 
-import React, { useState, useEffect } from "react";
+"use client"
+
+import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import { Loader2, ArrowLeft, Save, ExternalLink, Sparkles, PencilLine, Search } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import ImageUploader from "./ImageUploader";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar as CalendarIcon, Loader2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 import DescriptionField from "./DescriptionField";
 import PublishingOptions from "./PublishingOptions";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { toast } from "sonner";
-import { useContentOptimization } from "@/hooks/useContentOptimization";
+import ImageUploader from "./ImageUploader";
+import { fr } from "date-fns/locale";
+import { useWordPressCategories } from "@/hooks/useWordPressCategories";
+import { useWordPressDivipixelCategories } from "@/hooks/useWordPressDivipixelCategories";
 
-export interface AnnouncementFormProps {
-  onSubmit?: (data: AnnouncementFormData) => void;
-  isSubmitting?: boolean;
-  onCancel?: () => void;
-  isMobile?: boolean;
-  initialValues?: AnnouncementFormData;
-  isForDiviPixel?: boolean; // Nouvel attribut pour indiquer si c'est pour DiviPixel
-}
+type Category = {
+  id: string;
+  name: string;
+};
 
-export interface AnnouncementFormData {
+type FormData = {
   title: string;
   description: string;
-  wordpressCategory: string;
-  publishDate: Date | undefined;
-  status: "draft" | "published" | "scheduled";
-  images: string[];
-  seoTitle: string;
-  seoDescription: string;
-  seoSlug: string;
+  status: string;
+  wordpressCategory?: string;
+  publishDate?: Date;
+  images?: string[];
+  seoTitle?: string;
+  seoDescription?: string;
+  seoSlug?: string;
+};
+
+interface AnnouncementFormProps {
+  onSubmit: (data: FormData) => void;
+  isSubmitting?: boolean;
+  initialValues?: FormData;
+  onCancel?: () => void;
+  isMobile?: boolean;
+  isDivipixel?: boolean;
 }
 
-const AnnouncementForm = ({
+const currentDatePlus7Days = () => {
+  const date = new Date();
+  date.setDate(date.getDate() + 7);
+  return date;
+};
+
+const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
   onSubmit,
   isSubmitting = false,
+  initialValues,
   onCancel,
   isMobile = false,
-  initialValues,
-  isForDiviPixel = false
-}: AnnouncementFormProps) => {
-  const defaultValues: AnnouncementFormData = {
-    title: "",
-    description: "",
-    wordpressCategory: "",
-    publishDate: undefined,
-    status: "published", // Fixed: Now explicitly using a literal type value
-    images: [],
-    seoTitle: "",
-    seoDescription: "",
-    seoSlug: ""
-  };
+  isDivipixel = false
+}) => {
+  const [activeTab, setActiveTab] = useState("content");
+  const { categories: wpCategories, isLoading: isLoadingCategories } = useWordPressCategories();
+  const { categories: divipixelCategories, isLoading: isLoadingDivipixelCategories } = useWordPressDivipixelCategories();
+  
+  const categories = isDivipixel ? divipixelCategories : wpCategories;
+  const isLoadingCategoryData = isDivipixel ? isLoadingDivipixelCategories : isLoadingCategories;
 
-  const form = useForm<AnnouncementFormData>({
-    defaultValues: initialValues || defaultValues
+  const formSchema = z.object({
+    title: z.string().min(5, { message: "Le titre doit contenir au moins 5 caractères" }),
+    description: z.string().optional(),
+    status: z.string(),
+    wordpressCategory: z.string().optional(),
+    publishDate: z.date().optional(),
+    images: z.array(z.string()).optional(),
+    seoTitle: z.string().max(60, { message: "Le titre SEO ne doit pas dépasser 60 caractères" }).optional(),
+    seoDescription: z.string().max(160, { message: "La description SEO ne doit pas dépasser 160 caractères" }).optional(),
+    seoSlug: z.string().optional(),
   });
 
-  // Update form values when initialValues changes
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      title: initialValues?.title || "",
+      description: initialValues?.description || "",
+      status: initialValues?.status || "draft",
+      wordpressCategory: initialValues?.wordpressCategory || "",
+      publishDate: initialValues?.publishDate,
+      images: initialValues?.images || [],
+      seoTitle: initialValues?.seoTitle || "",
+      seoDescription: initialValues?.seoDescription || "",
+      seoSlug: initialValues?.seoSlug || "",
+    }
+  });
+
+  // Set publish date to today + 7 days when status changes to scheduled
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === "status" && value.status === "scheduled" && !value.publishDate) {
+        form.setValue("publishDate", currentDatePlus7Days());
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
+
+  // Sync form state with initialValues (useful for edit mode)
   useEffect(() => {
     if (initialValues) {
-      Object.keys(initialValues).forEach((key) => {
-        const typedKey = key as keyof AnnouncementFormData;
-        form.setValue(typedKey, initialValues[typedKey]);
+      Object.entries(initialValues).forEach(([key, value]) => {
+        if (value !== undefined) {
+          // @ts-ignore - we know these fields exist
+          form.setValue(key, value);
+        }
       });
     }
   }, [initialValues, form]);
 
-  const navigate = useNavigate();
-  const {
-    optimizeContent,
-    isOptimizing
-  } = useContentOptimization();
-  const {
-    watch,
-    setValue
-  } = form;
-  const title = watch("title");
-
-  useEffect(() => {
-    if (title) {
-      const normalizedTitle = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
-      setValue("seoSlug", normalizedTitle);
-      if (!form.getValues("seoTitle")) {
-        setValue("seoTitle", title);
-      }
-    }
-  }, [title, setValue]);
-
-  const optimizeSeoContent = async (field: 'seoTitle' | 'seoDescription') => {
-    try {
-      const currentTitle = form.getValues('title');
-      const currentDescription = form.getValues('description');
-      if (!currentTitle || !currentDescription) {
-        toast.warning("Veuillez d'abord saisir le titre et la description de l'annonce");
-        return;
-      }
-      const optimizedContent = await optimizeContent(field, currentTitle, currentDescription);
-      if (optimizedContent) {
-        form.setValue(field, optimizedContent);
-      }
-    } catch (error: any) {
-      console.error(`Error optimizing ${field}:`, error);
-    }
+  const handleFormSubmit = (data: z.infer<typeof formSchema>) => {
+    onSubmit(data);
   };
 
-  const handleCancel = () => {
-    if (onCancel) {
-      onCancel();
-    } else {
-      // Redirection selon le type de contenu
-      navigate(isForDiviPixel ? '/divipixel-pages' : '/announcements');
-    }
-  };
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-4">
+            <TabsTrigger value="content">Contenu</TabsTrigger>
+            <TabsTrigger value="publishing">Publication</TabsTrigger>
+            <TabsTrigger value="seo">SEO</TabsTrigger>
+          </TabsList>
 
-  const getCardStyles = (isSectionCard = false) => {
-    if (isMobile) {
-      return isSectionCard ? "border-0 border-b border-border shadow-none rounded-none bg-transparent mb-3 last:border-b-0 last:mb-0" : "border-0 shadow-none bg-transparent";
-    }
-    return "border shadow-sm";
-  };
+          <TabsContent value="content" className="space-y-6">
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Titre</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Entrez un titre accrocheur" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-  // Détermine le titre des sections en fonction du type de contenu
-  const getContentTypeTitle = () => {
-    return isForDiviPixel ? "Votre page DiviPixel" : "Votre annonce";
-  };
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <DescriptionField 
+                      value={field.value || ''} 
+                      onChange={field.onChange}
+                      isMobile={isMobile}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-  const getContentTypeDescription = () => {
-    return isForDiviPixel 
-      ? "Les informations essentielles de votre page DiviPixel" 
-      : "Les informations essentielles de votre annonce";
-  };
+            <FormField
+              control={form.control}
+              name="images"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Images</FormLabel>
+                  <FormControl>
+                    <ImageUploader 
+                      value={field.value || []} 
+                      onChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </TabsContent>
 
-  return <div className="space-y-6">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit || (() => {}))} className="space-y-6">
-          <div className="space-y-6">
-            <div className={`${isMobile ? "px-4" : ""}`}>
-              <Card className={getCardStyles(true)}>
-                <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"}`}>
-                  <CardTitle className="text-lg font-medium">{getContentTypeTitle()}</CardTitle>
-                  {!isMobile && <CardDescription className="text-amber-400">
-                      {getContentTypeDescription()}
-                    </CardDescription>}
-                </CardHeader>
-                <CardContent className={`space-y-4 ${isMobile ? "px-0 py-3" : ""}`}>
-                  <FormField control={form.control} name="title" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>Titre</FormLabel>
+          <TabsContent value="publishing" className="space-y-6">
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Statut</FormLabel>
+                  <FormControl>
+                    <PublishingOptions 
+                      value={field.value} 
+                      onChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Only show publish date if status is scheduled */}
+            {form.watch("status") === "scheduled" && (
+              <FormField
+                control={form.control}
+                name="publishDate"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Date de publication</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
                         <FormControl>
-                          <Input placeholder={`Entrez le titre de ${isForDiviPixel ? 'la page' : 'l\'annonce'}`} className="h-11" {...field} />
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP", { locale: fr })
+                            ) : (
+                              <span>Choisir une date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
                         </FormControl>
-                        <FormMessage />
-                      </FormItem>} />
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) => date < new Date()}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
-                  <DescriptionField form={form} isForDiviPixel={isForDiviPixel} />
-                </CardContent>
-              </Card>
-            </div>
-            
-            <div className={`${isMobile ? "px-4" : ""}`}>
-              <Card className={getCardStyles(true)}>
-                <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"}`}>
-                  <CardTitle className="text-lg font-medium">Images</CardTitle>
-                  {!isMobile && <CardDescription className="text-amber-400">
-                      Ajoutez des images à votre {isForDiviPixel ? 'page' : 'annonce'} pour attirer l'attention
-                    </CardDescription>}
-                </CardHeader>
-                <CardContent className={`${isMobile ? "px-0 py-3" : ""}`}>
-                  <ImageUploader form={form} />
-                </CardContent>
-              </Card>
-            </div>
-            
-            <div className={`${isMobile ? "px-4" : ""}`}>
-              <Card className={getCardStyles(true)}>
-                <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"}`}>
-                  <CardTitle className="text-lg font-medium">Options de publication</CardTitle>
-                  {!isMobile && <CardDescription className="text-amber-400">
-                      Paramètres de publication et de diffusion
-                    </CardDescription>}
-                </CardHeader>
-                <CardContent className={`${isMobile ? "px-0 py-3" : ""}`}>
-                  <PublishingOptions form={form} isForDiviPixel={isForDiviPixel} />
-                </CardContent>
-              </Card>
-            </div>
-            
-            <div className={`${isMobile ? "px-4" : ""}`}>
-              <Card className={getCardStyles(true)}>
-                <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"} flex flex-row items-center justify-between space-y-0`}>
-                  <div>
-                    <CardTitle className="text-lg font-medium">SEO</CardTitle>
-                    {!isMobile && <CardDescription className="text-amber-400">
-                        Optimisez votre {isForDiviPixel ? 'page' : 'annonce'} pour les moteurs de recherche
-                      </CardDescription>}
+            <FormField
+              control={form.control}
+              name="wordpressCategory"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{isDivipixel ? "Catégorie Divipixel" : "Catégorie WordPress"}</FormLabel>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={field.value}
+                    onChange={field.onChange}
+                    disabled={isLoadingCategoryData}
+                  >
+                    <option value="">Sélectionner une catégorie</option>
+                    {categories?.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                  {isLoadingCategoryData && (
+                    <div className="flex items-center text-sm text-muted-foreground mt-1">
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      <span>Chargement des catégories...</span>
+                    </div>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </TabsContent>
+
+          <TabsContent value="seo" className="space-y-6">
+            <FormField
+              control={form.control}
+              name="seoTitle"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Titre SEO</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Titre optimisé pour les moteurs de recherche" 
+                      {...field} 
+                      value={field.value || ''}
+                    />
+                  </FormControl>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {field.value?.length || 0}/60 caractères
                   </div>
-                  <Badge variant="outline" className="ml-2">
-                    SEO
-                  </Badge>
-                </CardHeader>
-                <CardContent className={`space-y-4 ${isMobile ? "px-0 py-3" : ""}`}>
-                  {!isMobile}
-                  
-                  <FormField control={form.control} name="seoTitle" render={({
-                  field
-                }) => <FormItem>
-                        <div className="flex justify-between items-center">
-                          <FormLabel>Titre SEO</FormLabel>
-                          <Button type="button" size="sm" variant="outline" className="flex items-center gap-1 h-8" onClick={() => optimizeSeoContent('seoTitle')} disabled={isOptimizing.seoTitle}>
-                            {isOptimizing.seoTitle ? <>
-                                <Loader2 size={14} className="animate-spin" />
-                                <span className="text-xs">Optimisation...</span>
-                              </> : <>
-                                <Sparkles size={14} />
-                                <span className="text-xs">Optimiser</span>
-                              </>}
-                          </Button>
-                        </div>
-                        <FormControl>
-                          <Input placeholder="Titre optimisé pour les moteurs de recherche" {...field} />
-                        </FormControl>
-                        <FormDescription className="font-normal">
-                          Idéalement entre 50 et 60 caractères.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>} />
-                  
-                  <FormField control={form.control} name="seoDescription" render={({
-                  field
-                }) => <FormItem>
-                        <div className="flex justify-between items-center">
-                          <FormLabel>Méta description</FormLabel>
-                          <Button type="button" size="sm" variant="outline" className="flex items-center gap-1 h-8" onClick={() => optimizeSeoContent('seoDescription')} disabled={isOptimizing.seoDescription}>
-                            {isOptimizing.seoDescription ? <>
-                                <Loader2 size={14} className="animate-spin" />
-                                <span className="text-xs">Optimisation...</span>
-                              </> : <>
-                                <Sparkles size={14} />
-                                <span className="text-xs">Optimiser</span>
-                              </>}
-                          </Button>
-                        </div>
-                        <FormControl>
-                          <Textarea placeholder="Description courte qui apparaîtra dans les résultats de recherche" className="resize-none min-h-[100px]" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          Idéalement entre 120 et 158 caractères.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>} />
-                  
-                  <FormField control={form.control} name="seoSlug" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>URL Slug</FormLabel>
-                        <FormControl>
-                          <div className="flex items-center">
-                            <span className="text-sm text-muted-foreground mr-2 hidden sm:inline">yoursite.com/{isForDiviPixel ? 'pages' : 'annonces'}/</span>
-                            <Input placeholder="slug-de-url" {...field} />
-                          </div>
-                        </FormControl>
-                        <FormDescription>
-                          L'URL qui sera utilisée pour accéder à cette {isForDiviPixel ? 'page' : 'annonce'}.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>} />
-                  
-                  {!isMobile && <Card className="border border-muted mt-4 bg-muted/10">
-                      <CardContent className="p-4">
-                        <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
-                          <Search className="h-4 w-4" />
-                          Aperçu dans Google
-                        </h3>
-                        <div className="text-blue-600 text-lg font-medium truncate">
-                          {form.getValues('seoTitle') || form.getValues('title') || `Titre de votre ${isForDiviPixel ? 'page' : 'annonce'}`}
-                        </div>
-                        <div className="text-green-700 text-sm mb-1">
-                          yoursite.com/{isForDiviPixel ? 'pages' : 'annonces'}/{form.getValues('seoSlug') || `url-de-${isForDiviPixel ? 'la-page' : 'lannonce'}`}
-                        </div>
-                        <div className="text-slate-700 text-sm line-clamp-2">
-                          {form.getValues('seoDescription') || "Ajoutez une méta description pour qu'elle apparaisse ici."}
-                        </div>
-                      </CardContent>
-                    </Card>}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <div className={`flex justify-end gap-2 pt-4 ${isMobile ? "px-4 sticky bottom-0 bg-background pb-4 border-t border-border mt-4" : ""}`}>
-            <Button type="button" variant="outline" onClick={handleCancel} className="px-4">
+            <FormField
+              control={form.control}
+              name="seoDescription"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description SEO</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Description courte apparaissant dans les résultats de recherche" 
+                      {...field} 
+                      value={field.value || ''}
+                    />
+                  </FormControl>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {field.value?.length || 0}/160 caractères
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="seoSlug"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Slug URL</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="mon-annonce-slug" 
+                      {...field} 
+                      value={field.value || ''}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </TabsContent>
+        </Tabs>
+
+        <div className="flex gap-2 justify-end">
+          {onCancel && (
+            <Button type="button" variant="outline" onClick={onCancel}>
               Annuler
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="px-4">
-              {isSubmitting ? <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Enregistrement...
-                </> : <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Publier
-                </>}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </div>;
+          )}
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {initialValues ? "Mettre à jour" : "Enregistrer"}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
 };
 
 export default AnnouncementForm;

@@ -15,7 +15,6 @@ export type Database = {
           description: string | null
           id: string
           images: string[] | null
-          is_divipixel: boolean | null
           publish_date: string | null
           seo_description: string | null
           seo_slug: string | null
@@ -32,7 +31,6 @@ export type Database = {
           description?: string | null
           id?: string
           images?: string[] | null
-          is_divipixel?: boolean | null
           publish_date?: string | null
           seo_description?: string | null
           seo_slug?: string | null
@@ -49,7 +47,6 @@ export type Database = {
           description?: string | null
           id?: string
           images?: string[] | null
-          is_divipixel?: boolean | null
           publish_date?: string | null
           seo_description?: string | null
           seo_slug?: string | null
@@ -92,64 +89,12 @@ export type Database = {
           },
         ]
       }
-      divipixel_pages: {
-        Row: {
-          components_used: Json | null
-          created_at: string
-          id: string
-          meta_description: string | null
-          organization_pixels: Json | null
-          publish_date: string | null
-          seo_slug: string | null
-          seo_title: string | null
-          status: Database["public"]["Enums"]["announcement_status"] | null
-          title: string
-          updated_at: string
-          user_id: string
-          wordpress_category_id: string | null
-          wordpress_post_id: number | null
-        }
-        Insert: {
-          components_used?: Json | null
-          created_at?: string
-          id?: string
-          meta_description?: string | null
-          organization_pixels?: Json | null
-          publish_date?: string | null
-          seo_slug?: string | null
-          seo_title?: string | null
-          status?: Database["public"]["Enums"]["announcement_status"] | null
-          title: string
-          updated_at?: string
-          user_id: string
-          wordpress_category_id?: string | null
-          wordpress_post_id?: number | null
-        }
-        Update: {
-          components_used?: Json | null
-          created_at?: string
-          id?: string
-          meta_description?: string | null
-          organization_pixels?: Json | null
-          publish_date?: string | null
-          seo_slug?: string | null
-          seo_title?: string | null
-          status?: Database["public"]["Enums"]["announcement_status"] | null
-          title?: string
-          updated_at?: string
-          user_id?: string
-          wordpress_category_id?: string | null
-          wordpress_post_id?: number | null
-        }
-        Relationships: []
-      }
       divipixel_publications: {
         Row: {
           created_at: string
           description: string | null
           id: string
           images: string[] | null
-          meta_description: string | null
           publish_date: string | null
           seo_description: string | null
           seo_slug: string | null
@@ -166,7 +111,6 @@ export type Database = {
           description?: string | null
           id?: string
           images?: string[] | null
-          meta_description?: string | null
           publish_date?: string | null
           seo_description?: string | null
           seo_slug?: string | null
@@ -183,7 +127,6 @@ export type Database = {
           description?: string | null
           id?: string
           images?: string[] | null
-          meta_description?: string | null
           publish_date?: string | null
           seo_description?: string | null
           seo_slug?: string | null
