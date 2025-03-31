@@ -1,14 +1,13 @@
 
 import { useState, useEffect } from "react";
-import { Icon } from "@/components/ui/sidebar/sidebar-structure";
-import { Home, Plus, Newspaper, Settings, Users, Database, PanelTop } from "lucide-react";
+import { Home, Plus, Newspaper, Settings, Users, Database, PanelTop, User } from "lucide-react";
 import { useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Sidebar as SidebarComponent } from "../sidebar";
 import { SidebarGroup } from "../sidebar/sidebar-group";
 import { SidebarMenu } from "../sidebar/sidebar-menu";
 import { SidebarMenuSub } from "../sidebar/sidebar-menu-sub";
-import Avatar from "../Avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const Sidebar = () => {
   const location = useLocation();
@@ -28,21 +27,29 @@ const Sidebar = () => {
     <SidebarComponent>
       <div className="flex flex-col h-full px-3 py-4">
         <div className="mb-6 flex flex-col items-center">
-          <Avatar user={user} className="h-12 w-12 mb-2" />
+          <Avatar className="h-12 w-12 mb-2">
+            {user?.avatar_url ? (
+              <AvatarImage src={user.avatar_url} alt={user?.email || ""} />
+            ) : (
+              <AvatarFallback>
+                <User className="h-6 w-6" />
+              </AvatarFallback>
+            )}
+          </Avatar>
           <div className="text-sm font-semibold">{user?.email}</div>
         </div>
 
         <SidebarGroup>
-          <SidebarMenu active={isActive("/dashboard")}>
+          <SidebarMenu>
             <Link to="/dashboard" className="flex items-center">
-              <Icon Icon={Home} />
+              <Home className="h-4 w-4 mr-2" />
               <span>Tableau de bord</span>
             </Link>
           </SidebarMenu>
 
-          <SidebarMenu active={isActiveStartsWith("/announcements") || isActive("/create")}>
+          <SidebarMenu>
             <Link to="/announcements" className="flex items-center">
-              <Icon Icon={Newspaper} />
+              <Newspaper className="h-4 w-4 mr-2" />
               <span>Annonces</span>
             </Link>
             <SidebarMenuSub>
@@ -58,10 +65,10 @@ const Sidebar = () => {
             </SidebarMenuSub>
           </SidebarMenu>
 
-          {/* Nouveau menu pour DiviPixel */}
-          <SidebarMenu active={isActiveStartsWith("/divipixel-pages") || isActive("/create-divipixel")}>
+          {/* Menu pour DiviPixel */}
+          <SidebarMenu>
             <Link to="/divipixel-pages" className="flex items-center">
-              <Icon Icon={PanelTop} />
+              <PanelTop className="h-4 w-4 mr-2" />
               <span>Pages DiviPixel</span>
             </Link>
             <SidebarMenuSub>
@@ -79,16 +86,16 @@ const Sidebar = () => {
 
           {(isAdmin || isClient) && (
             <>
-              <SidebarMenu active={isActive("/users")}>
+              <SidebarMenu>
                 <Link to="/users" className="flex items-center">
-                  <Icon Icon={Users} />
+                  <Users className="h-4 w-4 mr-2" />
                   <span>Utilisateurs</span>
                 </Link>
               </SidebarMenu>
 
-              <SidebarMenu active={isActive("/wordpress")}>
+              <SidebarMenu>
                 <Link to="/wordpress" className="flex items-center">
-                  <Icon Icon={Database} />
+                  <Database className="h-4 w-4 mr-2" />
                   <span>WordPress</span>
                 </Link>
               </SidebarMenu>
