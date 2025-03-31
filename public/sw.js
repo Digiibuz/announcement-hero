@@ -1,6 +1,6 @@
 
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v3';
+const CACHE_NAME = 'digiibuz-cache-v4';
 
 // Liste des ressources à mettre en cache
 const urlsToCache = [
@@ -15,6 +15,17 @@ const urlsToCache = [
   '/users',
   '/wordpress'
 ];
+
+// Vérification qu'une URL est valide pour la mise en cache
+function isValidCacheUrl(url) {
+  const validSchemes = ['http:', 'https:'];
+  try {
+    const urlObj = new URL(url);
+    return validSchemes.includes(urlObj.protocol);
+  } catch (e) {
+    return false;
+  }
+}
 
 // Installation du service worker
 self.addEventListener('install', event => {
@@ -56,7 +67,8 @@ self.addEventListener('fetch', event => {
   // Ne pas intercepter les requêtes API ou assets non essentiels
   if (event.request.url.includes('/api/') || 
       event.request.url.includes('supabase.co') ||
-      event.request.url.includes('wp-json')) {
+      event.request.url.includes('wp-json') ||
+      !isValidCacheUrl(event.request.url)) {
     return;
   }
   
@@ -82,11 +94,18 @@ self.addEventListener('fetch', event => {
         const fetchPromise = fetch(event.request)
           .then(networkResponse => {
             // Mettre à jour le cache avec la nouvelle réponse si valide
-            if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+            if (networkResponse && 
+                networkResponse.status === 200 && 
+                networkResponse.type === 'basic' && 
+                isValidCacheUrl(event.request.url)) {
               const responseToCache = networkResponse.clone();
               caches.open(CACHE_NAME)
                 .then(cache => {
-                  cache.put(event.request, responseToCache);
+                  try {
+                    cache.put(event.request, responseToCache);
+                  } catch (error) {
+                    console.error('Erreur lors de la mise en cache:', error);
+                  }
                 });
             }
             return networkResponse;
