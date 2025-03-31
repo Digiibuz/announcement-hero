@@ -28,8 +28,8 @@ export interface TomeGeneration {
   scheduled_at: string | null;
   published_at: string | null;
   wordpress_post_id: number | null;
-  title?: string | null;
-  content?: string | null;
+  title: string | null;
+  content: string | null;
   error_message?: string | null;
   description?: string | null;
 }
