@@ -1,139 +1,130 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.41.0";
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface RequestBody {
-  prompt: string;
-  category: string;
-  keyword: string;
-  locality: string;
-  configId: string;
-}
-
 serve(async (req) => {
-  // Gérer les requêtes OPTIONS (CORS preflight)
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+  // Handle CORS preflight requests
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      headers: corsHeaders,
+    });
   }
 
   try {
-    // Vérifier si la clé API OpenAI est configurée
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openaiApiKey) {
-      return new Response(
-        JSON.stringify({ error: "API key OpenAI non configurée" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    const { prompt, category, keyword, locality, configId } = await req.json();
+
+    console.log("Params:", { prompt, category, keyword, locality, configId });
+
+    if (!prompt) {
+      throw new Error("Prompt is required");
     }
 
-    // Extraire le corps de la requête
-    const { prompt, category, keyword, locality, configId } = await req.json() as RequestBody;
-
-    if (!prompt || !category || !keyword || !locality) {
-      return new Response(
-        JSON.stringify({ error: "Paramètres manquants (prompt, catégorie, mot-clé ou localité)" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (!category) {
+      throw new Error("Category is required");
     }
 
-    console.log(`Génération de contenu pour : "${keyword}" à "${locality}" dans la catégorie "${category}"`);
+    if (!keyword) {
+      throw new Error("Keyword is required");
+    }
 
-    // Créer le client Supabase avec les variables d'environnement
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    if (!locality) {
+      throw new Error("Locality is required");
+    }
 
-    // Construire le prompt pour l'IA
-    const completePrompt = `
-Tu es "Tom-E", un expert en rédaction de pages web SEO optimisées pour les entreprises locales. 
-    
-CONTEXTE : 
-- Description de l'entreprise/activité : "${prompt}"
-- Catégorie : "${category}"
-- Mot-clé principal : "${keyword}"
-- Localité : "${locality}"
+    // Build the prompt for content generation
+    const contentPrompt = `
+      En tant qu'expert SEO et rédacteur pour ${prompt}, je dois créer une page optimisée.
+      
+      La page concerne: ${keyword} à ${locality}
+      La catégorie est: ${category}
+      
+      Génère-moi un contenu de page SEO complet avec:
+      1. Un titre SEO (55-60 caractères)
+      2. Une meta description attractive (150-160 caractères)
+      3. Un H1 accrocheur
+      4. Un contenu HTML structuré d'environ 500 mots, avec des balises h2, h3, des paragraphes et une liste à puces
+      5. Un slug URL optimisé pour le SEO (format: mot-cle-localite)
+      
+      Le contenu doit:
+      - Être naturel, sans sur-optimisation de mots-clés
+      - Être informatif et utile pour les utilisateurs
+      - Inclure des appels à l'action pertinents
+      - Mentionner "nos services à ${locality}" dans le contenu
+      - Répondre à l'intention de recherche liée à "${keyword}"
+    `;
 
-TÂCHE :
-Crée une page web complète et optimisée pour le référencement (SEO) pour cette activité dans cette localité.
+    if (!OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY is not defined");
+    }
 
-FORMAT DE RÉPONSE (en JSON) :
-{
-  "title": "Titre SEO optimisé incluant le mot-clé et la localité, entre 50 et 60 caractères",
-  "meta_description": "Description méta optimisée entre 120 et 158 caractères, incluant mot-clé et localité",
-  "h1": "Titre H1 principal, incluant le mot-clé et la localité",
-  "content": "Contenu HTML complet avec balises h2, h3, paragraphes, listes, etc. d'environ 800-1000 mots. Pour les balises HTML, n'utilise que h2, h3, p, ul, li, ol, strong, em. Le contenu doit être naturel, informatif et utile. Inclure des appels à l'action pertinents. Ne pas utiliser d'autres balises HTML.",
-  "slug": "url-seo-optimisee-avec-le-mot-cle-et-localite"
-}
-
-CONSIGNES SEO :
-- Intègre le mot-clé principal "${keyword}" dans le titre, H1, les premiers paragraphes et 3-4 fois dans le contenu.
-- Mentionne la localité "${locality}" à plusieurs reprises de façon naturelle.
-- Crée une structure avec des sous-titres (H2, H3) pertinents.
-- Organise le contenu pour une lecture agréable (paragraphes courts, listes).
-- Optimise pour un lecteur humain tout en respectant les bonnes pratiques SEO.
-- Adapte ton style à la catégorie "${category}".
-- Le contenu doit être 100% unique, informatif et utile.
-- Inclus des appels à l'action pertinents.
-`;
-
-    // Appeler l'API OpenAI
+    // Call OpenAI API
     const openAIResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${openaiApiKey}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-4-turbo",
+        model: "gpt-4o",
         messages: [
-          { role: "system", content: "Tu es Tom-E, un expert en création de contenus SEO pour sites web." },
-          { role: "user", content: completePrompt }
+          {
+            role: "system",
+            content: "Tu es un expert SEO et rédacteur web, tu crées du contenu optimisé pour des pages web.",
+          },
+          {
+            role: "user",
+            content: contentPrompt,
+          },
         ],
         temperature: 0.7,
-        max_tokens: 2500,
       }),
     });
 
     if (!openAIResponse.ok) {
-      const errorData = await openAIResponse.json();
-      console.error("Erreur OpenAI:", errorData);
-      return new Response(
-        JSON.stringify({ error: "Erreur lors de la génération du contenu", details: errorData }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      const error = await openAIResponse.text();
+      console.error("OpenAI API error:", error);
+      throw new Error(`OpenAI API error: ${error}`);
     }
 
     const openAIData = await openAIResponse.json();
-    const content = openAIData.choices[0].message.content;
+    const generatedText = openAIData.choices[0].message.content;
+
+    // Parse the generated content
+    const titleMatch = generatedText.match(/titre seo[^\n]*:([^\n]*)/i);
+    const metaDescMatch = generatedText.match(/meta description[^\n]*:([^\n]*)/i);
+    const h1Match = generatedText.match(/h1[^\n]*:([^\n]*)/i);
+    const slugMatch = generatedText.match(/slug[^\n]*:([^\n]*)/i);
     
-    // Analyser le contenu JSON de la réponse
-    let parsedContent;
-    try {
-      parsedContent = JSON.parse(content);
-    } catch (error) {
-      console.error("Erreur lors de l'analyse de la réponse JSON:", error);
-      return new Response(
-        JSON.stringify({ error: "Erreur lors de l'analyse de la réponse", rawContent: content }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Extract content - everything after the metadata sections
+    let contentMatch = generatedText.split(/slug[^\n]*:[^\n]*/i)[1];
+    if (!contentMatch) {
+      contentMatch = generatedText.split(/h1[^\n]*:[^\n]*/i)[1];
     }
 
-    // Renvoyer la réponse formatée
-    return new Response(
-      JSON.stringify(parsedContent),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    const content = {
+      title: titleMatch ? titleMatch[1].trim() : `${keyword} à ${locality}`,
+      meta_description: metaDescMatch ? metaDescMatch[1].trim() : `Découvrez nos services de ${keyword} à ${locality}. Experts professionnels, devis gratuit, intervention rapide.`,
+      h1: h1Match ? h1Match[1].trim() : `${keyword} à ${locality} - Services professionnels`,
+      content: contentMatch ? contentMatch.trim() : generatedText,
+      slug: slugMatch ? slugMatch[1].trim().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-") : `${keyword.toLowerCase().replace(/\s+/g, "-")}-${locality.toLowerCase().replace(/\s+/g, "-")}`,
+    };
 
+    return new Response(JSON.stringify(content), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    });
   } catch (error) {
-    console.error("Erreur:", error.message);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    console.error("Error:", error.message);
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 400,
+    });
   }
 });

@@ -1,4 +1,5 @@
 
+
 // Types définis pour les annonces
 
 // Type pour les catégories Divi Pixel (dipi_cpt_category)
