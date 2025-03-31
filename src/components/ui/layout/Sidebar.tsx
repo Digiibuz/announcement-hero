@@ -28,13 +28,9 @@ const Sidebar = () => {
       <div className="flex flex-col h-full px-3 py-4">
         <div className="mb-6 flex flex-col items-center">
           <Avatar className="h-12 w-12 mb-2">
-            {user?.avatar_url ? (
-              <AvatarImage src={user.avatar_url} alt={user?.email || ""} />
-            ) : (
-              <AvatarFallback>
-                <User className="h-6 w-6" />
-              </AvatarFallback>
-            )}
+            <AvatarFallback>
+              <User className="h-6 w-6" />
+            </AvatarFallback>
           </Avatar>
           <div className="text-sm font-semibold">{user?.email}</div>
         </div>
