@@ -1,41 +1,46 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { Locality } from "@/types/wordpress";
+import { toast } from "sonner";
 
 export const useLocalities = () => {
   const [localities, setLocalities] = useState<Locality[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
 
   const fetchLocalities = async () => {
     try {
       setIsLoading(true);
+      setError(null);
+      
+      console.info("Fetching localities");
+      
       const { data, error } = await supabase
         .from('localities')
         .select('*')
-        .order('name');
+        .order('name', { ascending: true });
       
       if (error) {
-        throw error;
+        throw new Error(`Erreur lors de la récupération des localités: ${error.message}`);
       }
       
-      setLocalities(data as Locality[]);
-    } catch (error) {
-      console.error('Error fetching localities:', error);
-      toast.error("Erreur lors de la récupération des localités");
+      console.info(`Successfully fetched ${data.length} localities`);
+      setLocalities(data || []);
+    } catch (err: any) {
+      console.error('Erreur lors de la récupération des localités:', err);
+      setError(err);
+      toast.error(err.message || "Erreur lors du chargement des localités");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const createLocality = async (name: string) => {
+  const addLocality = async (name: string) => {
     try {
-      setIsSubmitting(true);
       const { data, error } = await supabase
         .from('localities')
-        .insert([{ name }])
+        .insert({ name })
         .select()
         .single();
       
@@ -43,27 +48,18 @@ export const useLocalities = () => {
         throw error;
       }
       
-      toast.success(`Localité "${name}" ajoutée avec succès`);
-      await fetchLocalities();
-      return data as Locality;
+      setLocalities(prev => [...prev, data]);
+      toast.success("Localité ajoutée avec succès");
+      return data;
     } catch (error: any) {
-      console.error('Error creating locality:', error);
-      
-      // Gérer le cas d'une localité déjà existante
-      if (error.code === '23505') { // Code PostgreSQL pour violation de contrainte d'unicité
-        toast.error(`La localité "${name}" existe déjà`);
-      } else {
-        toast.error("Erreur lors de la création de la localité");
-      }
+      console.error("Erreur lors de l'ajout de la localité:", error);
+      toast.error(error.message || "Erreur lors de l'ajout de la localité");
       throw error;
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
   const deleteLocality = async (id: string) => {
     try {
-      setIsSubmitting(true);
       const { error } = await supabase
         .from('localities')
         .delete()
@@ -73,14 +69,12 @@ export const useLocalities = () => {
         throw error;
       }
       
+      setLocalities(prev => prev.filter(l => l.id !== id));
       toast.success("Localité supprimée avec succès");
-      await fetchLocalities();
-    } catch (error) {
-      console.error('Error deleting locality:', error);
-      toast.error("Erreur lors de la suppression de la localité");
+    } catch (error: any) {
+      console.error("Erreur lors de la suppression de la localité:", error);
+      toast.error(error.message || "Erreur lors de la suppression de la localité");
       throw error;
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -91,9 +85,9 @@ export const useLocalities = () => {
   return {
     localities,
     isLoading,
-    isSubmitting,
-    fetchLocalities,
-    createLocality,
-    deleteLocality
+    error,
+    addLocality,
+    deleteLocality,
+    refetch: fetchLocalities
   };
 };
