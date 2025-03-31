@@ -1,6 +1,6 @@
 
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v8';
+const CACHE_NAME = 'digiibuz-cache-v9';
 
 // Liste des ressources à mettre en cache
 const urlsToCache = [
@@ -41,6 +41,9 @@ function shouldSkipCaching(url) {
       url.includes('wp-json') ||
       url.includes('storage.googleapis.com') || // Pour éviter les conflits avec les images Supabase
       url.includes('images/') ||
+      url.includes('camera') || // Éviter les conflits avec la capture de caméra
+      url.includes('image/') || // Éviter les problèmes avec les routes d'images
+      url.includes('upload') || // Éviter les conflits avec les téléversements
       !isValidCacheUrl(url)
     );
   } catch (e) {

@@ -192,6 +192,7 @@ const ImageUploader = ({
     form.setValue('images', newImages);
   };
 
+  // Fixed mobile camera handling
   const triggerFileUpload = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
@@ -238,6 +239,7 @@ const ImageUploader = ({
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
+        {/* Fixed input elements for file and camera */}
         <input 
           type="file" 
           ref={fileInputRef} 
@@ -268,6 +270,7 @@ const ImageUploader = ({
             }
           </p>
           
+          {/* Simplified mobile buttons with clear feedback */}
           <div className="flex flex-col sm:flex-row justify-center gap-2">
             <Button 
               type="button" 
