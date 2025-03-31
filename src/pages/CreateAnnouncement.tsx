@@ -65,19 +65,8 @@ const CreateAnnouncement = () => {
         console.log("Tentative de publication sur WordPress...");
         wordpressResult = await publishToWordPress(newAnnouncement as Announcement, data.wordpressCategory, user.id);
         
-        // Save WordPress post ID to the announcement if publishing succeeded
-        if (wordpressResult.success && wordpressResult.wordpressPostId) {
-          console.log("Mise à jour de l'annonce avec l'ID WordPress:", wordpressResult.wordpressPostId);
-          
-          const { error: updateError } = await supabase
-            .from("announcements")
-            .update({ wordpress_post_id: wordpressResult.wordpressPostId })
-            .eq("id", newAnnouncement.id);
-            
-          if (updateError) {
-            console.error("Erreur lors de la mise à jour de l'ID WordPress:", updateError);
-          }
-        }
+        // WordPress post ID is now updated directly in the publishToWordPress function
+        console.log("Résultat de la publication WordPress:", wordpressResult);
       }
       
       if (wordpressResult.success) {

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Announcement } from "@/types/announcement";
+import { toast } from "sonner";
 
 export const useWordPressPublishing = () => {
   const [isPublishing, setIsPublishing] = useState(false);
@@ -116,6 +117,19 @@ export const useWordPressPublishing = () => {
       
       // Check if the response contains the WordPress post ID
       if (wpResponseData && wpResponseData.id) {
+        // Update the announcement in Supabase with the WordPress post ID
+        const { error: updateError } = await supabase
+          .from("announcements")
+          .update({ wordpress_post_id: wpResponseData.id })
+          .eq("id", announcement.id);
+          
+        if (updateError) {
+          console.error("Error updating announcement with WordPress post ID:", updateError);
+          toast.error("L'annonce a été publiée sur WordPress mais l'ID n'a pas pu être enregistré dans la base de données");
+        } else {
+          console.log("Successfully updated announcement with WordPress post ID:", wpResponseData.id);
+        }
+        
         return { 
           success: true, 
           message: "Publié avec succès sur WordPress", 

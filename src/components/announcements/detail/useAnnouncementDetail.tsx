@@ -63,6 +63,7 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
       if (error) throw error;
 
       if (data) {
+        console.log("Loaded announcement:", data);
         // Format data for the form
         setAnnouncement(data as ExtendedAnnouncement);
       }
