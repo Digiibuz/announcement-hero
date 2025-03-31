@@ -1,12 +1,12 @@
+
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/context/AuthContext";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import Index from "@/pages";
-import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
+import Login from "@/pages/Login";
 import Announcements from "@/pages/Announcements";
 import AnnouncementDetail from "@/pages/AnnouncementDetail";
 import CreateAnnouncement from "@/pages/CreateAnnouncement";
@@ -27,7 +27,7 @@ function App() {
             <Toaster />
             <BrowserRouter>
               <Routes>
-                <Route path="/" element={<Index />} />
+                <Route path="/" element={<Dashboard />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/announcements" element={<Announcements />} />
