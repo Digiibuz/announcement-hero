@@ -21,9 +21,10 @@ import {
 
 interface TomeCategoriesProps {
   configId: string;
+  isClientView?: boolean;
 }
 
-const TomeCategories: React.FC<TomeCategoriesProps> = ({ configId }) => {
+const TomeCategories: React.FC<TomeCategoriesProps> = ({ configId, isClientView = false }) => {
   const { 
     categories, 
     keywords, 
@@ -88,17 +89,28 @@ const TomeCategories: React.FC<TomeCategoriesProps> = ({ configId }) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => fetchKeywords()}
-          disabled={isLoading}
-        >
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Rafraîchir
-        </Button>
-      </div>
+      {!isClientView && (
+        <div className="flex justify-end">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => fetchKeywords()}
+            disabled={isLoading}
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Rafraîchir
+          </Button>
+        </div>
+      )}
+      
+      {isClientView && (
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold mb-2">Gestion de vos mots-clés</h2>
+          <p className="text-muted-foreground">
+            Personnalisez les mots-clés pour chaque catégorie de votre site. Ces mots-clés seront utilisés pour générer du contenu optimisé pour votre site web.
+          </p>
+        </div>
+      )}
       
       {categories.map((category) => {
         const categoryKeywords = getKeywordsForCategory(category.id.toString());
@@ -109,14 +121,23 @@ const TomeCategories: React.FC<TomeCategoriesProps> = ({ configId }) => {
             <CardHeader className="bg-muted/20 pb-4">
               <CardTitle>{category.name}</CardTitle>
               <CardDescription>
-                ID: {category.id} - {categoryKeywords.length}/10 mots-clés
+                {isClientView ? (
+                  `${categoryKeywords.length}/10 mots-clés pour cette catégorie`
+                ) : (
+                  `ID: ${category.id} - ${categoryKeywords.length}/10 mots-clés`
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent className="p-6">
               <div className="space-y-4">
                 <div className="flex flex-wrap gap-2">
                   {categoryKeywords.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">Aucun mot-clé pour cette catégorie</p>
+                    <p className="text-muted-foreground text-sm">
+                      {isClientView ? 
+                        "Ajoutez des mots-clés pour cette catégorie afin d'optimiser la génération de contenu." :
+                        "Aucun mot-clé pour cette catégorie"
+                      }
+                    </p>
                   ) : (
                     categoryKeywords.map((keyword) => (
                       <div key={keyword.id} className="flex items-center">
@@ -156,7 +177,7 @@ const TomeCategories: React.FC<TomeCategoriesProps> = ({ configId }) => {
                 
                 <div className="flex gap-2">
                   <Input
-                    placeholder="Nouveau mot-clé..."
+                    placeholder={isClientView ? "Entrez un mot-clé pour cette catégorie..." : "Nouveau mot-clé..."}
                     value={newKeywords[category.id] || ""}
                     onChange={(e) => setNewKeywords({
                       ...newKeywords,
@@ -178,6 +199,11 @@ const TomeCategories: React.FC<TomeCategoriesProps> = ({ configId }) => {
                 {hasMaxKeywords && (
                   <p className="text-amber-500 text-sm">
                     Nombre maximum de mots-clés atteint (10)
+                  </p>
+                )}
+                {isClientView && !hasMaxKeywords && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Ajoutez des mots-clés spécifiques à votre activité pour améliorer le contenu généré pour cette catégorie.
                   </p>
                 )}
               </div>

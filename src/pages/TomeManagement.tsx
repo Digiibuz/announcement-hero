@@ -13,15 +13,21 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 
 const TomeManagement = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
+  const isClient = user?.role === "client";
   const { configs, isLoading, fetchConfigs } = useWordPressConfigs();
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoading && configs.length > 0 && !selectedConfigId) {
-      setSelectedConfigId(configs[0].id);
+      // Pour les clients, on sélectionne automatiquement leur configuration WordPress
+      if (isClient && user?.wordpressConfigId) {
+        setSelectedConfigId(user.wordpressConfigId);
+      } else {
+        setSelectedConfigId(configs[0].id);
+      }
     }
-  }, [configs, isLoading, selectedConfigId]);
+  }, [configs, isLoading, selectedConfigId, isClient, user]);
 
   // Fonction de rafraîchissement pour le bouton
   const handleRefresh = () => {
@@ -29,7 +35,8 @@ const TomeManagement = () => {
     toast.success("Configurations WordPress mises à jour");
   };
 
-  if (!isAdmin) {
+  // Si l'utilisateur n'est ni admin ni client, on affiche une page d'accès refusé
+  if (!isAdmin && !isClient) {
     return (
       <PageLayout title="Tom-E">
         <AccessDenied />
@@ -82,36 +89,48 @@ const TomeManagement = () => {
       onRefresh={handleRefresh}
     >
       <AnimatedContainer delay={200}>
-        <div className="mb-6">
-          <select 
-            className="w-full md:w-64 p-2 border rounded-md" 
-            value={selectedConfigId || ""}
-            onChange={(e) => setSelectedConfigId(e.target.value)}
-          >
-            {configs.map(config => (
-              <option key={config.id} value={config.id}>
-                {config.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Pour les clients, on ne montre pas le sélecteur de configuration */}
+        {!isClient && (
+          <div className="mb-6">
+            <select 
+              className="w-full md:w-64 p-2 border rounded-md" 
+              value={selectedConfigId || ""}
+              onChange={(e) => setSelectedConfigId(e.target.value)}
+            >
+              {configs.map(config => (
+                <option key={config.id} value={config.id}>
+                  {config.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {selectedConfigId && (
           <Tabs defaultValue="categories">
             <TabsList className="w-full mb-6">
               <TabsTrigger value="categories" className="flex-1">Catégories & Mots-clés</TabsTrigger>
-              <TabsTrigger value="localities" className="flex-1">Localités</TabsTrigger>
-              <TabsTrigger value="generations" className="flex-1">Générations</TabsTrigger>
+              {/* On masque les onglets que les clients ne doivent pas voir */}
+              {isAdmin && (
+                <>
+                  <TabsTrigger value="localities" className="flex-1">Localités</TabsTrigger>
+                  <TabsTrigger value="generations" className="flex-1">Générations</TabsTrigger>
+                </>
+              )}
             </TabsList>
             <TabsContent value="categories">
-              <TomeCategories configId={selectedConfigId} />
+              <TomeCategories configId={selectedConfigId} isClientView={isClient} />
             </TabsContent>
-            <TabsContent value="localities">
-              <TomeLocalities configId={selectedConfigId} />
-            </TabsContent>
-            <TabsContent value="generations">
-              <TomeGenerations configId={selectedConfigId} />
-            </TabsContent>
+            {isAdmin && (
+              <>
+                <TabsContent value="localities">
+                  <TomeLocalities configId={selectedConfigId} />
+                </TabsContent>
+                <TabsContent value="generations">
+                  <TomeGenerations configId={selectedConfigId} />
+                </TabsContent>
+              </>
+            )}
           </Tabs>
         )}
       </AnimatedContainer>
