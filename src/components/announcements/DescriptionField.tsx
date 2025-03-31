@@ -1,20 +1,20 @@
 
 import React, { useRef } from "react";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
-import { useMediaQuery } from "@/hooks/use-media-query";
+import { useMobile } from "@/hooks/use-mobile";
 import { Textarea } from "@/components/ui/textarea";
 
 // Import de l'éditeur uniquement s'il n'est pas en environnement mobile
-const Editor = React.lazy(() => import('@/components/announcements/editor/Editor'));
+const Editor = React.lazy(() => import('@/components/announcements/Editor'));
 
 interface DescriptionFieldProps {
   form: any;
-  isForDiviPixel?: boolean;
+  isForDiviPixel?: boolean; // Nouvel attribut pour indiquer si c'est pour DiviPixel
 }
 
 const DescriptionField = ({ form, isForDiviPixel = false }: DescriptionFieldProps) => {
   const editorRef = useRef<any>(null);
-  const isMobile = useMediaQuery("(max-width: 767px)");
+  const isMobile = useMobile();
   
   // Placeholder spécifique au type de contenu
   const placeholder = isForDiviPixel 

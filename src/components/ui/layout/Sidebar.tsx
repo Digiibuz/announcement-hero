@@ -1,105 +1,210 @@
 
-import { useState, useEffect } from "react";
-import { Home, Plus, Newspaper, Settings, Users, Database, PanelTop, User } from "lucide-react";
-import { useLocation, Link } from "react-router-dom";
+"use client"
+
+import React from "react";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Sidebar as SidebarComponent } from "../sidebar";
-import { SidebarGroup } from "../sidebar/sidebar-group";
-import { SidebarMenu } from "../sidebar/sidebar-menu";
-import { SidebarMenuSub } from "../sidebar/sidebar-menu-sub";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { useIsMobile } from "@/hooks/use-media-query";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
+import { 
+  Loader2, 
+  UserCog, 
+  LogOut, 
+  LayoutDashboard, 
+  Newspaper, 
+  AlertTriangle, 
+  Globe,
+  FileText,
+  Menu
+} from "lucide-react";
 
 const Sidebar = () => {
-  const location = useLocation();
-  const { user, isAdmin, isClient } = useAuth();
-  const [currentPath, setCurrentPath] = useState<string>(location.pathname);
+  const isMobile = useIsMobile();
+  const { pathname } = useLocation();
+  const { user, logout, isLoading, isAuthenticated, isAdmin, isClient, isImpersonating, stopImpersonating, originalUser } = useAuth();
+  const [isOpen, setIsOpen] = React.useState(false);
 
-  // Mise à jour du path actuel lorsque la location change
-  useEffect(() => {
-    setCurrentPath(location.pathname);
-  }, [location.pathname]);
+  if (!isAuthenticated) return null;
 
-  // Fonction pour déterminer si un menu est actif en fonction du chemin
-  const isActive = (path: string) => currentPath === path;
-  const isActiveStartsWith = (path: string) => currentPath.startsWith(path);
+  const navItems = [
+    {
+      name: "Mon Tableau de bord",
+      href: "/dashboard",
+      icon: <LayoutDashboard className="h-5 w-5" />,
+      isActive: pathname === "/dashboard",
+    },
+    {
+      name: "Annonces",
+      href: "/announcements",
+      icon: <FileText className="h-5 w-5" />,
+      isActive: pathname === "/announcements",
+    },
+    {
+      name: "Créer une annonce",
+      href: "/create",
+      icon: <Newspaper className="h-5 w-5" />,
+      isActive: pathname === "/create",
+    },
+  ];
 
-  return (
-    <SidebarComponent>
-      <div className="flex flex-col h-full px-3 py-4">
-        <div className="mb-6 flex flex-col items-center">
-          <Avatar className="h-12 w-12 mb-2">
-            <AvatarFallback>
-              <User className="h-6 w-6" />
-            </AvatarFallback>
-          </Avatar>
-          <div className="text-sm font-semibold">{user?.email}</div>
-        </div>
+  // Modified adminItems to separate admin-only and client-accessible items
+  const adminItems = [
+    // This item will only be visible to admin users, not clients
+    {
+      name: "Gestion utilisateurs",
+      href: "/users",
+      icon: <UserCog className="h-5 w-5" />,
+      isActive: pathname === "/users",
+      adminOnly: true, // New property to indicate admin-only access
+    },
+    {
+      // Changed the label to "Mon site" for clients, keeping "Gestion WordPress" for admins
+      name: isClient ? "Mon site" : "Gestion WordPress",
+      href: "/wordpress",
+      icon: <Globe className="h-5 w-5" />,
+      isActive: pathname === "/wordpress",
+      adminOnly: false, // Both admin and client can access this
+    },
+  ];
 
-        <SidebarGroup>
-          <SidebarMenu>
-            <Link to="/dashboard" className="flex items-center">
-              <Home className="h-4 w-4 mr-2" />
-              <span>Tableau de bord</span>
-            </Link>
-          </SidebarMenu>
-
-          <SidebarMenu>
-            <Link to="/announcements" className="flex items-center">
-              <Newspaper className="h-4 w-4 mr-2" />
-              <span>Annonces</span>
-            </Link>
-            <SidebarMenuSub>
-              <Link to="/announcements" className={`pl-5 py-2 pr-3 rounded-md text-sm ${isActive("/announcements") ? "bg-muted" : "hover:bg-muted/50"}`}>
-                Toutes les annonces
+  const SidebarContent = () => (
+    <>
+      <div className="flex h-16 items-center px-6 border-b border-border">
+        <Link to="/dashboard" className="flex items-center gap-2">
+          <img 
+            src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
+            alt="Digiibuz" 
+            className="h-8 w-auto" 
+          />
+          <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-digibuz-navy to-digibuz-navy/70">
+            Digiibuz
+          </span>
+        </Link>
+      </div>
+      <div className={`h-[calc(100vh-4rem)] overflow-y-auto px-3 py-4 ${isMobile ? "" : "relative"}`}>
+        <ul className="space-y-2">
+          {navItems.map((item) => (
+            <li key={item.href}>
+              <Link to={item.href} onClick={() => isMobile && setIsOpen(false)}>
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start",
+                    item.isActive && "bg-accent text-accent-foreground"
+                  )}
+                >
+                  {item.icon}
+                  <span className="ml-3">{item.name}</span>
+                </Button>
               </Link>
-              <Link to="/create" className={`pl-5 py-2 pr-3 rounded-md text-sm ${isActive("/create") ? "bg-muted" : "hover:bg-muted/50"}`}>
-                <div className="flex items-center">
-                  <Plus className="h-4 w-4 mr-2" />
-                  <span>Créer une annonce</span>
-                </div>
-              </Link>
-            </SidebarMenuSub>
-          </SidebarMenu>
-
-          {/* Menu pour DiviPixel */}
-          <SidebarMenu>
-            <Link to="/divipixel-pages" className="flex items-center">
-              <PanelTop className="h-4 w-4 mr-2" />
-              <span>Pages DiviPixel</span>
-            </Link>
-            <SidebarMenuSub>
-              <Link to="/divipixel-pages" className={`pl-5 py-2 pr-3 rounded-md text-sm ${isActive("/divipixel-pages") ? "bg-muted" : "hover:bg-muted/50"}`}>
-                Toutes les pages
-              </Link>
-              <Link to="/create-divipixel" className={`pl-5 py-2 pr-3 rounded-md text-sm ${isActive("/create-divipixel") ? "bg-muted" : "hover:bg-muted/50"}`}>
-                <div className="flex items-center">
-                  <Plus className="h-4 w-4 mr-2" />
-                  <span>Créer une page</span>
-                </div>
-              </Link>
-            </SidebarMenuSub>
-          </SidebarMenu>
+            </li>
+          ))}
 
           {(isAdmin || isClient) && (
             <>
-              <SidebarMenu>
-                <Link to="/users" className="flex items-center">
-                  <Users className="h-4 w-4 mr-2" />
-                  <span>Utilisateurs</span>
-                </Link>
-              </SidebarMenu>
-
-              <SidebarMenu>
-                <Link to="/wordpress" className="flex items-center">
-                  <Database className="h-4 w-4 mr-2" />
-                  <span>WordPress</span>
-                </Link>
-              </SidebarMenu>
+              <li className="pt-5">
+                <h3 className="px-3 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+                  Administration
+                </h3>
+              </li>
+              {adminItems
+                // Filter items based on user role
+                .filter(item => isAdmin || (!item.adminOnly && isClient))
+                .map((item) => (
+                  <li key={item.href}>
+                    <Link to={item.href} onClick={() => isMobile && setIsOpen(false)}>
+                      <Button
+                        variant="ghost"
+                        className={cn(
+                          "w-full justify-start",
+                          item.isActive && "bg-accent text-accent-foreground"
+                        )}
+                      >
+                        {item.icon}
+                        <span className="ml-3">{item.name}</span>
+                      </Button>
+                    </Link>
+                  </li>
+                ))}
             </>
           )}
-        </SidebarGroup>
+        </ul>
+
+        <div className={`mt-auto pt-4 ${isMobile ? "pb-4" : "absolute bottom-4 left-0 right-0"} px-3`}>
+          {isImpersonating && (
+            <div className="mb-4 p-3 rounded-md bg-yellow-100 dark:bg-yellow-900/30 text-sm">
+              <div className="flex items-center mb-1">
+                <AlertTriangle className="h-4 w-4 text-yellow-800 dark:text-yellow-400 mr-1" />
+                <p className="text-yellow-800 dark:text-yellow-400 font-medium">Mode d'emprunt d'identité</p>
+              </div>
+              <p className="text-yellow-700 dark:text-yellow-500 text-xs mb-2">
+                Vous êtes connecté en tant que {user?.name}
+              </p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full border-yellow-500 hover:bg-yellow-200 dark:hover:bg-yellow-800/40"
+                onClick={stopImpersonating}
+              >
+                Retour à {originalUser?.name}
+              </Button>
+            </div>
+          )}
+
+          <div className="border-t border-border pt-4">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{user?.name}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
+              </div>
+              <Button onClick={logout} variant="ghost" size="icon" aria-label="Déconnexion">
+                {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5" />}
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
-    </SidebarComponent>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <>
+        <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between h-16 px-4 bg-background/90 backdrop-blur-sm border-b border-border">
+          <Link to="/dashboard" className="flex items-center gap-2">
+            <img 
+              src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
+              alt="Digiibuz" 
+              className="h-7 w-auto" 
+            />
+            <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-digibuz-navy to-digibuz-navy/70">
+              Digiibuz
+            </span>
+          </Link>
+          
+          <Sheet open={isOpen} onOpenChange={setIsOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-72">
+              <SidebarContent />
+            </SheetContent>
+          </Sheet>
+        </div>
+        
+        <div className="h-16" />
+      </>
+    );
+  }
+
+  return (
+    <aside className="fixed left-0 top-0 z-40 h-screen w-64 transform border-r border-border bg-card shadow-sm transition-transform md:translate-x-0">
+      <SidebarContent />
+    </aside>
   );
 };
 
