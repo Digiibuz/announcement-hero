@@ -136,12 +136,79 @@ export const useWordPressPublishing = () => {
         };
       }
       
+      // AMÉLIORATION: Traitement de l'image principale avant la création du post
+      let featuredMediaId = null;
+      
+      // Si des images sont disponibles, traiter l'image principale d'abord
+      if (announcement.images && announcement.images.length > 0) {
+        try {
+          toast.info("Préparation de l'image principale...");
+          
+          // 1. Télécharger l'image depuis l'URL
+          const imageUrl = announcement.images[0];
+          const imageResponse = await fetch(imageUrl);
+          
+          if (!imageResponse.ok) {
+            console.error("Échec de la récupération de l'image depuis l'URL:", imageUrl);
+            toast.warning("L'image principale n'a pas pu être préparée, publication sans image");
+          } else {
+            const imageBlob = await imageResponse.blob();
+            const fileName = imageUrl.split('/').pop() || `image-${Date.now()}.jpg`;
+            const imageFile = new File([imageBlob], fileName, { 
+              type: imageBlob.type || 'image/jpeg' 
+            });
+            
+            // 2. Téléverser vers la bibliothèque média WordPress
+            console.log("Téléversement de l'image vers la bibliothèque média WordPress");
+            const mediaFormData = new FormData();
+            mediaFormData.append('file', imageFile);
+            mediaFormData.append('title', announcement.title);
+            mediaFormData.append('alt_text', announcement.title);
+            
+            const mediaEndpoint = `${postEndpoint.split('/wp-json/')[0]}/wp-json/wp/v2/media`;
+            
+            // Créer des en-têtes pour le téléversement des médias sans Content-Type
+            const mediaHeaders = new Headers();
+            if (headers.Authorization) {
+              mediaHeaders.append('Authorization', headers.Authorization);
+            }
+            
+            const mediaResponse = await fetch(mediaEndpoint, {
+              method: 'POST',
+              headers: mediaHeaders,
+              body: mediaFormData
+            });
+            
+            if (!mediaResponse.ok) {
+              const mediaErrorText = await mediaResponse.text();
+              console.error("Erreur lors du téléversement du média:", mediaErrorText);
+              toast.warning("L'image principale n'a pas pu être téléversée, publication sans image");
+            } else {
+              const mediaData = await mediaResponse.json();
+              
+              if (mediaData && mediaData.id) {
+                featuredMediaId = mediaData.id;
+                toast.success("Image principale téléversée avec succès");
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Erreur lors du traitement de l'image principale:", error);
+          toast.warning("Erreur lors du traitement de l'image principale, publication sans image");
+        }
+      }
+      
       // Prepare post data - simplify for mobile
       const wpPostData: any = {
         title: announcement.title,
         content: announcement.description || "",
         status: announcement.status === 'published' ? 'publish' : announcement.status === 'scheduled' ? 'future' : 'draft',
       };
+      
+      // Set featured image if available
+      if (featuredMediaId) {
+        wpPostData.featured_media = featuredMediaId;
+      }
       
       // Add date for scheduled posts
       if (announcement.status === 'scheduled' && announcement.publish_date) {
@@ -162,7 +229,7 @@ export const useWordPressPublishing = () => {
         };
       }
       
-      // First create post without images for speed
+      // Create post with image (if available)
       console.log("Sending POST request to WordPress:", postEndpoint);
       const postResponse = await fetch(postEndpoint, {
         method: 'POST',
@@ -213,24 +280,9 @@ export const useWordPressPublishing = () => {
           toast.error("L'annonce a été publiée sur WordPress mais l'ID n'a pas pu être enregistré dans la base de données");
         }
         
-        // Process featured image in background to avoid blocking UI
-        if (announcement.images && announcement.images.length > 0) {
-          // Show a notification that image processing is happening in background
-          toast.info("Publication réussie. L'image principale est en cours de transfert...");
-          
-          // Start background process for image upload
-          processImageInBackground(
-            announcement.images[0], 
-            announcement.title, 
-            wordpressPostId, 
-            postEndpoint, 
-            headers
-          );
-        }
-        
         return { 
           success: true, 
-          message: "Publié avec succès sur WordPress", 
+          message: "Publié avec succès sur WordPress" + (featuredMediaId ? " avec image principale" : ""), 
           wordpressPostId 
         };
       } else {
@@ -250,85 +302,6 @@ export const useWordPressPublishing = () => {
       };
     } finally {
       setIsPublishing(false);
-    }
-  };
-  
-  // Process image upload in background to improve mobile performance
-  const processImageInBackground = async (
-    imageUrl: string,
-    postTitle: string,
-    postId: number,
-    postEndpoint: string,
-    headers: Record<string, string>
-  ) => {
-    try {
-      // 1. Download the image from the URL
-      const imageResponse = await fetch(imageUrl);
-      if (!imageResponse.ok) {
-        console.error("Failed to fetch image from URL:", imageUrl);
-        toast.error("Échec du traitement de l'image principale");
-        return;
-      }
-      
-      const imageBlob = await imageResponse.blob();
-      const fileName = imageUrl.split('/').pop() || `image-${Date.now()}.jpg`;
-      const imageFile = new File([imageBlob], fileName, { 
-        type: imageBlob.type || 'image/jpeg' 
-      });
-      
-      // 2. Upload to WordPress Media Library
-      console.log("Uploading image to WordPress media library");
-      const mediaFormData = new FormData();
-      mediaFormData.append('file', imageFile);
-      mediaFormData.append('title', postTitle);
-      mediaFormData.append('alt_text', postTitle);
-      
-      const mediaEndpoint = `${postEndpoint.split('/wp-json/')[0]}/wp-json/wp/v2/media`;
-      
-      // Create headers for media upload without Content-Type (browser will set it with boundary)
-      const mediaHeaders = new Headers();
-      if (headers.Authorization) {
-        mediaHeaders.append('Authorization', headers.Authorization);
-      }
-      
-      const mediaResponse = await fetch(mediaEndpoint, {
-        method: 'POST',
-        headers: mediaHeaders,
-        body: mediaFormData
-      });
-      
-      if (!mediaResponse.ok) {
-        const mediaErrorText = await mediaResponse.text();
-        console.error("Media upload error:", mediaErrorText);
-        toast.error("Image téléversée mais impossible de l'associer à l'article");
-        return;
-      }
-      
-      const mediaData = await mediaResponse.json();
-      
-      if (mediaData && mediaData.id) {
-        // 3. Set as featured image for the post
-        const updatePostEndpoint = `${postEndpoint}/${postId}`;
-        
-        const updateResponse = await fetch(updatePostEndpoint, {
-          method: 'POST',
-          headers: headers,
-          body: JSON.stringify({
-            featured_media: mediaData.id
-          })
-        });
-        
-        if (!updateResponse.ok) {
-          const updateErrorText = await updateResponse.text();
-          console.error("Error setting featured image:", updateErrorText);
-          toast.error("Image téléversée mais impossible de la définir comme image à la une");
-        } else {
-          toast.success("Image principale téléversée avec succès");
-        }
-      }
-    } catch (error) {
-      console.error("Error in background image processing:", error);
-      toast.error("Erreur lors du traitement de l'image principale");
     }
   };
   
