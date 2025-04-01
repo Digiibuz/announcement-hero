@@ -27,6 +27,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { useTomeScheduler } from "@/hooks/tome/useTomeScheduler";
+import { PublishingLoadingOverlay } from "@/components/announcements/PublishingLoadingOverlay";
+import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
 
 const TomePublicationDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -34,10 +37,18 @@ const TomePublicationDetail = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [generation, setGeneration] = useState<TomeGeneration | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isPublishing, setIsPublishing] = useState(false);
   const [isScheduling, setIsScheduling] = useState(false);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
+  
+  // Get wordpress config id from the generation data
+  const wordpressConfigId = generation?.wordpress_config_id || null;
+  
+  // Use the useTomeScheduler hook to handle publishing
+  const { publishContent, generateContent } = useTomeScheduler(wordpressConfigId);
+  
+  // Use the useWordPressPublishing hook to access publishing state
+  const { publishingState, isPublishing } = useWordPressPublishing();
 
   useEffect(() => {
     const fetchGeneration = async () => {
@@ -158,52 +169,21 @@ const TomePublicationDetail = () => {
   const handlePublish = async () => {
     if (!generation || !id) return;
     
-    try {
-      setIsPublishing(true);
-      
-      // Vérifier que le contenu et le titre sont présents
-      if (!generation.title || !generation.content) {
-        toast.error("Le titre et le contenu sont obligatoires pour publier");
-        return;
-      }
-      
-      // Appeler la fonction Edge Supabase pour publier
-      const { data, error } = await supabase.functions.invoke('tome-publish', {
-        body: { generationId: id }
-      });
-      
-      if (error) {
-        console.error("Erreur lors de la publication:", error);
-        toast.error("Erreur lors de la publication: " + error.message);
-        return;
-      }
-      
-      if (data.success === false) {
-        toast.error(data.error || "Échec de la publication");
-        console.error("Erreur détaillée:", data.technicalError || data.error);
-        return;
-      }
-      
+    // Utiliser la fonction de publication de useTomeScheduler
+    const success = await publishContent(id);
+    
+    if (success) {
       // Mise à jour du statut dans l'interface
       setGeneration({
         ...generation,
         status: 'published',
-        published_at: new Date().toISOString(),
-        wordpress_post_id: data.wordpressPostId
+        published_at: new Date().toISOString()
       });
-      
-      toast.success("Publication réussie");
       
       // Rediriger vers la liste des publications après un court délai
       setTimeout(() => {
         navigate("/tome");
       }, 2000);
-      
-    } catch (error: any) {
-      console.error("Erreur lors de la publication:", error);
-      toast.error(`Erreur: ${error.message || "Erreur inconnue"}`);
-    } finally {
-      setIsPublishing(false);
     }
   };
 
@@ -281,7 +261,8 @@ const TomePublicationDetail = () => {
   }
 
   return (
-    <Card>
+    <Card className="relative">
+      {isPublishing && <PublishingLoadingOverlay state={publishingState} />}
       <CardHeader>
         <CardTitle>
           {generation?.status === "draft" 

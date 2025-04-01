@@ -2,9 +2,11 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
 
 export const useTomeScheduler = (wordpressConfigId: string | null) => {
   const [isLoading, setIsLoading] = useState(false);
+  const { publishToWordPress, isPublishing, publishingState } = useWordPressPublishing();
 
   const generateContent = async (generationId: string) => {
     if (!generationId) {
@@ -54,7 +56,7 @@ export const useTomeScheduler = (wordpressConfigId: string | null) => {
       
       console.log("Publishing content for generation ID:", generationId);
       
-      // Vérifier que le contenu et le titre sont présents
+      // Fetch the generation data to get details needed for WordPress
       const { data: generation, error: generationError } = await supabase
         .from('tome_generations')
         .select('*')
@@ -72,22 +74,47 @@ export const useTomeScheduler = (wordpressConfigId: string | null) => {
         return false;
       }
       
-      // Use the same approach as announcements - call the tome-publish function
-      const { data, error } = await supabase.functions.invoke('tome-publish', {
-        body: { generationId }
-      });
-      
-      if (error) {
-        console.error("Error calling tome-publish function:", error);
-        toast.error("Erreur lors de la publication: " + error.message);
+      // Use the same approach as announcements - with useWordPressPublishing hook
+      const announcement = {
+        id: generation.id,
+        title: generation.title,
+        description: generation.content,
+        status: 'published',
+        images: [],
+        seo_title: generation.title,
+        seo_description: "",
+        user_id: "",
+        wordpress_category_id: generation.category_id
+      };
+
+      // Get the user ID
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Utilisateur non identifié");
         return false;
       }
       
-      if (!data || data.success === false) {
-        console.error("Publication failed:", data?.error || "Unknown error");
-        toast.error("Échec de la publication: " + (data?.error || "Erreur inconnue"));
+      const result = await publishToWordPress(
+        announcement, 
+        generation.category_id, 
+        user.id
+      );
+      
+      if (!result.success) {
+        console.error("Publication failed:", result.message);
+        toast.error("Échec de la publication: " + result.message);
         return false;
       }
+      
+      // Update the generation status in Supabase
+      await supabase
+        .from('tome_generations')
+        .update({ 
+          status: 'published',
+          wordpress_post_id: result.wordpressPostId,
+          published_at: new Date().toISOString()
+        })
+        .eq('id', generationId);
       
       toast.success("Contenu publié avec succès");
       return true;
