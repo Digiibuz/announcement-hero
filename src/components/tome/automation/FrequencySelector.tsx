@@ -2,7 +2,7 @@
 import React from "react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { InfoCircle } from "lucide-react";
+import { Info } from "lucide-react";
 
 interface FrequencySelectorProps {
   frequency: string;
@@ -45,7 +45,7 @@ const FrequencySelector: React.FC<FrequencySelectorProps> = ({
       
       {frequency === "0.0021" && (
         <div className="flex items-start mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
-          <InfoCircle className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
+          <Info className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
           <p>
             Avec cette fréquence de 3 minutes, le planificateur vérifiera toutes les 3 minutes si une génération est nécessaire. 
             <strong> N'oubliez pas de sauvegarder vos paramètres</strong> pour que l'automatisation prenne effet.

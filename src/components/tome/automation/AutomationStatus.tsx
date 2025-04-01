@@ -1,11 +1,12 @@
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { RefreshCw, CheckCircle, AlertTriangle, Clock, XCircle } from "lucide-react";
+import { RefreshCw, CheckCircle, AlertTriangle, Clock, XCircle, Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Progress } from "@/components/ui/progress";
 
 interface AutomationStatusProps {
   isEnabled: boolean;
@@ -14,6 +15,7 @@ interface AutomationStatusProps {
   isSubmitting: boolean;
   lastAutomationCheck: Date | null;
   onRefresh: () => void;
+  frequency: string;
 }
 
 const AutomationStatus: React.FC<AutomationStatusProps> = ({
@@ -22,8 +24,12 @@ const AutomationStatus: React.FC<AutomationStatusProps> = ({
   hasNecessaryData,
   isSubmitting,
   lastAutomationCheck,
-  onRefresh
+  onRefresh,
+  frequency
 }) => {
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [progress, setProgress] = useState(0);
+  
   // Format the last check time
   const formatLastCheck = () => {
     if (!lastAutomationCheck) return "Jamais";
@@ -35,6 +41,54 @@ const AutomationStatus: React.FC<AutomationStatusProps> = ({
       second: '2-digit'
     });
   };
+  
+  // Format the countdown
+  const formatCountdown = () => {
+    if (countdown === null) return "En attente...";
+    
+    const minutes = Math.floor(countdown / 60);
+    const seconds = countdown % 60;
+    
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+  
+  // Calculate next run time
+  useEffect(() => {
+    if (!isEnabled || !lastAutomationCheck) return;
+    
+    const frequencyValue = parseFloat(frequency);
+    if (isNaN(frequencyValue) || frequencyValue <= 0) return;
+    
+    const frequencyInMinutes = frequencyValue * 24 * 60;
+    const frequencyInMs = frequencyInMinutes * 60 * 1000;
+    
+    const nextRunTime = new Date(lastAutomationCheck.getTime() + frequencyInMs);
+    
+    const updateCountdown = () => {
+      const now = new Date();
+      const diffMs = nextRunTime.getTime() - now.getTime();
+      
+      if (diffMs <= 0) {
+        setCountdown(0);
+        setProgress(100);
+        return;
+      }
+      
+      const diffSeconds = Math.floor(diffMs / 1000);
+      setCountdown(diffSeconds);
+      
+      // Calculate progress percentage (inverse, going from 0 to 100 as time passes)
+      const totalSeconds = frequencyInMinutes * 60;
+      const elapsedSeconds = totalSeconds - diffSeconds;
+      const progressPercentage = (elapsedSeconds / totalSeconds) * 100;
+      setProgress(Math.min(progressPercentage, 100));
+    };
+    
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+    
+    return () => clearInterval(timer);
+  }, [isEnabled, lastAutomationCheck, frequency]);
 
   return <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -57,6 +111,22 @@ const AutomationStatus: React.FC<AutomationStatusProps> = ({
         </div>
         <Switch id="automation-switch" checked={isEnabled} onCheckedChange={onEnabledChange} disabled={isSubmitting} />
       </div>
+      
+      {isEnabled && hasNecessaryData && countdown !== null && (
+        <div className="bg-slate-50 p-3 rounded-md border border-slate-200">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Timer className="h-4 w-4 text-blue-600" />
+              <span className="text-sm font-medium">Prochaine génération dans</span>
+            </div>
+            <span className="text-lg font-bold font-mono text-blue-700">{formatCountdown()}</span>
+          </div>
+          <Progress value={progress} className="h-2" />
+          <p className="text-xs text-slate-500 mt-2">
+            Le planificateur vérifiera automatiquement si une génération est nécessaire à la fin du compte à rebours
+          </p>
+        </div>
+      )}
       
       <div className="flex items-center justify-between text-sm text-muted-foreground border-t pt-3">
         <div className="flex items-center gap-1">

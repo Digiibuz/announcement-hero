@@ -79,6 +79,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
             isSubmitting={isSubmitting || savingStatus === 'loading'}
             lastAutomationCheck={lastAutomationCheck}
             onRefresh={refreshAutomationStatus}
+            frequency={frequency}
           />
 
           <FrequencySelector
