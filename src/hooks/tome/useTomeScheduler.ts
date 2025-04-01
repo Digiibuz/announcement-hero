@@ -63,19 +63,19 @@ export const useTomeScheduler = () => {
     try {
       setIsRunning(true);
       addLog(`Démarrage ${forceGeneration ? "forcé" : "manuel"} du planificateur...`);
-
-      // Ajout d'un timestamp aléatoire pour éviter la mise en cache de la requête
-      const timestamp = new Date().getTime();
       
-      // IMPORTANT: S'assurer que configCheck n'est PAS envoyé comme true
-      // et que forceGeneration est correctement défini
+      // DEBUG: Afficher les paramètres de la requête
+      const params = { 
+        forceGeneration: true, // Toujours forcer la génération lors de l'exécution manuelle
+        timestamp: new Date().getTime(),
+        debug: true,
+        configCheck: false // Explicitement mettre à false pour être sûr
+      };
+      
+      addLog(`Paramètres de la requête: ${JSON.stringify(params)}`);
+
       const { data, error } = await supabase.functions.invoke('tome-scheduler', {
-        body: { 
-          forceGeneration: true, // Toujours forcer la génération lors de l'exécution manuelle
-          timestamp,
-          debug: true,
-          configCheck: false // Explicitement mettre à false pour être sûr
-        }
+        body: params
       });
 
       if (error) {
@@ -106,6 +106,10 @@ export const useTomeScheduler = () => {
       if (data && data.processingDetails) {
         data.processingDetails.forEach((detail: any) => {
           addLog(`Traitement config ${detail.configId.slice(0, 8)}...: ${detail.result}`);
+          
+          if (detail.reason) {
+            addLog(`Raison: ${detail.reason}`);
+          }
         });
       }
 

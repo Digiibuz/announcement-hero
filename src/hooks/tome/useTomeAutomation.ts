@@ -284,7 +284,8 @@ export const useTomeAutomation = (configId: string) => {
   const forceRunScheduler = async (): Promise<boolean> => {
     setIsSubmitting(true);
     try {
-      addLog("Exécution forcée du planificateur");
+      addLog("Exécution forcée du planificateur avec forceGeneration=true");
+      console.log("Exécution forcée du planificateur avec forceGeneration=true");
       
       const result = await runScheduler(true);
       
@@ -293,6 +294,9 @@ export const useTomeAutomation = (configId: string) => {
         toast.error("Échec de l'exécution du planificateur");
       } else {
         addLog("Planificateur exécuté avec succès");
+        if (result) {
+          toast.success("Planificateur exécuté avec succès");
+        }
       }
       
       return result;

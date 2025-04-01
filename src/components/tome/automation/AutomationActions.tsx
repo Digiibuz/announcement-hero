@@ -39,6 +39,7 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
   const [currentAction, setCurrentAction] = useState<string | null>(null);
   const [logUpdateTimeoutId, setLogUpdateTimeoutId] = useState<number | null>(null);
 
+  // Auto-open logs when new errors are detected
   useEffect(() => {
     const hasNewErrors = logs.some(log => 
       log.toLowerCase().includes('erreur') || 
@@ -92,14 +93,16 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
     setCurrentAction("scheduler");
     setIsActionInProgress(true);
     
+    console.log("Démarrage de l'exécution forcée du planificateur dans AutomationActions");
     try {
       await onForceRunScheduler();
-      toast.success("Planificateur exécuté avec succès");
+      // Don't show toast here, it will be shown in the hook
     } catch (error) {
       console.error("Erreur lors de l'exécution du planificateur:", error);
       toast.error("Échec de l'exécution du planificateur");
       setIsLogsOpen(true); // Automatically open logs on error
     } finally {
+      // Slight delay to allow logs to update before resetting state
       setTimeout(() => {
         setIsActionInProgress(false);
         setCurrentAction(null);

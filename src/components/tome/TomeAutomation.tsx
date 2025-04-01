@@ -44,7 +44,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   
   const handleForceRunScheduler = async (): Promise<void> => {
     console.log("Exécution forcée du planificateur avec forceGeneration=true");
-    await forceRunScheduler(); // Assurez-vous que cette fonction envoie forceGeneration=true
+    await forceRunScheduler(); // Cette fonction envoie forceGeneration=true explicitement
   };
   
   const handleSaveSettings = async (): Promise<void> => {

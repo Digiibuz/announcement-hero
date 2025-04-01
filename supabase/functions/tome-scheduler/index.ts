@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.1';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import 'https://deno.land/x/xhr@0.1.0/mod.ts';
@@ -72,12 +71,13 @@ async function parseRequestParams(req: Request) {
   
   try {
     const body = await req.json();
+    debugLog("Corps de la requête:", body);
+    
     isConfigCheck = body.configCheck === true;
     forceGeneration = body.forceGeneration === true;
     apiKey = body.api_key;
     debug = body.debug === true;
     timestamp = body.timestamp || timestamp;
-    debugLog("Corps de la requête:", body);
   } catch (e) {
     // If no JSON body or parsing error, not a config check
     debugLog("Pas de corps JSON ou erreur d'analyse, exécution régulière supposée");
@@ -545,20 +545,23 @@ serve(async (req) => {
       );
     }
     
-    // For a real scheduler run, process only the first setting if forced or API key
+    // Pour un forceGeneration=true explicite ou une exécution avec API key,
+    // nous exécutons directement le traitement pour une meilleure réponse
     if (effectiveForceGeneration || apiKey) {
-      // For better performance and reliability, just process the first setting
+      debugLog(`EXÉCUTION DIRECTE AVEC forceGeneration=${effectiveForceGeneration}`);
+      
+      // Pour de meilleures performances, traitons juste le premier paramètre
       if (automationSettings.length > 0) {
         const settingToProcess = automationSettings[0];
         
         debugLog(`Lancement du planificateur - forceGeneration: ${effectiveForceGeneration}, traitement direct de la config: ${settingToProcess.wordpress_config_id}`);
         
-        // Process this one setting
+        // Traiter ce paramètre
         const processingResult = await processAutomationSetting(
           supabase, 
           settingToProcess, 
           apiKey, 
-          effectiveForceGeneration, 
+          effectiveForceGeneration || true,  // Toujours forcer la génération en mode manuel
           debug
         );
         
