@@ -23,6 +23,7 @@ export const useTomeScheduler = () => {
       const { data, error } = await supabase.functions.invoke('tome-scheduler', {
         body: { 
           configCheck: true,  // Explicitement true seulement pour la vérification
+          forceGeneration: false, // Explicitement false pour la vérification
           timestamp: new Date().getTime(), // Prevent caching
           debug: true
         }
@@ -70,9 +71,9 @@ export const useTomeScheduler = () => {
       // DEBUG: Afficher les paramètres de la requête
       const params = { 
         forceGeneration: true, // Toujours forcer la génération lors de l'exécution manuelle
+        configCheck: false, // Explicitement mettre à false pour être sûr
         timestamp: new Date().getTime(),
-        debug: true,
-        configCheck: false // Explicitement mettre à false pour être sûr
+        debug: true
       };
       
       addLog(`Paramètres de la requête: ${JSON.stringify(params)}`);
