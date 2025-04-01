@@ -39,8 +39,11 @@ export const useTomeScheduler = () => {
       setIsRunning(true);
       console.log("Démarrage manuel du planificateur", forceGeneration ? "avec génération forcée" : "");
 
+      // Ajout d'un timestamp aléatoire pour éviter la mise en cache de la requête
+      const timestamp = new Date().getTime();
+      
       const { data, error } = await supabase.functions.invoke('tome-scheduler', {
-        body: { forceGeneration }
+        body: { forceGeneration, timestamp }
       });
 
       if (error) {
@@ -73,8 +76,11 @@ export const useTomeScheduler = () => {
       setIsRunning(true);
       console.log("Génération de contenu pour:", generationId);
 
+      // Ajout d'un timestamp aléatoire pour éviter la mise en cache de la requête
+      const timestamp = new Date().getTime();
+      
       const { data, error } = await supabase.functions.invoke('tome-generate-draft', {
-        body: { generationId: generationId }
+        body: { generationId, timestamp }
       });
 
       if (error) {
@@ -109,8 +115,11 @@ export const useTomeScheduler = () => {
       setIsRunning(true);
       console.log("Publication de contenu pour:", generationId);
 
+      // Ajout d'un timestamp aléatoire pour éviter la mise en cache de la requête
+      const timestamp = new Date().getTime();
+      
       const { data, error } = await supabase.functions.invoke('tome-publish', {
-        body: { generationId: generationId }
+        body: { generationId, timestamp }
       });
 
       if (error) {

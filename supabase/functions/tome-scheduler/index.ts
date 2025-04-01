@@ -32,17 +32,21 @@ serve(async (req) => {
     let isConfigCheck = false;
     let forceGeneration = false;
     let apiKey = null;
+    let timestamp = new Date().getTime(); // Current timestamp for logging/debugging
     
     try {
       const body = await req.json();
       isConfigCheck = body.configCheck === true;
       forceGeneration = body.forceGeneration === true;
       apiKey = body.api_key;
+      timestamp = body.timestamp || timestamp;
       console.log("Request body:", body);
     } catch (e) {
       // Si pas de body JSON ou erreur de parsing, ce n'est pas une vérification de config
       console.log("No JSON body or parsing error, assuming regular execution");
     }
+    
+    console.log("Parameter values - isConfigCheck:", isConfigCheck, "forceGeneration:", forceGeneration, "timestamp:", timestamp);
     
     // Vérification de l'API key si fournie
     if (apiKey) {
@@ -153,6 +157,7 @@ serve(async (req) => {
 
       console.log(`Last generation for config ${wordpressConfigId}:`, lastGeneration);
 
+      // TOUJOURS générer du contenu si forceGeneration est vrai
       const shouldGenerate = forceGeneration || shouldGenerateContent(lastGeneration, frequency);
       
       if (!shouldGenerate) {
@@ -241,7 +246,10 @@ serve(async (req) => {
       try {
         console.log(`Invoking tome-generate-draft for generation ${generation.id}`);
         const { data: draftData, error: draftError } = await supabase.functions.invoke('tome-generate-draft', {
-          body: { generationId: generation.id }
+          body: { 
+            generationId: generation.id,
+            timestamp: new Date().getTime() // Add timestamp to avoid caching
+          }
         });
         
         if (draftError) {
@@ -296,7 +304,8 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         message: `Scheduler run completed. Created ${generationsCreated} generations.`,
-        generationsCreated
+        generationsCreated,
+        timestamp
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -309,7 +318,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || 'An error occurred during scheduling'
+        error: error.message || 'An error occurred during scheduling',
+        timestamp: new Date().getTime()
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useTomeScheduler } from "@/hooks/tome/useTomeScheduler";
 import { useCategoriesKeywords, useLocalities } from "@/hooks/tome";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 // Define the type for tome_automation table
@@ -19,6 +19,7 @@ interface TomeAutomation {
   frequency: number;
   created_at: string;
   updated_at: string;
+  api_key?: string;
 }
 
 interface TomeAutomationProps {
@@ -27,19 +28,31 @@ interface TomeAutomationProps {
 
 const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const [isEnabled, setIsEnabled] = useState(false);
-  const [frequency, setFrequency] = useState("2"); // jours
+  const [frequency, setFrequency] = useState("0.0007"); // Défaut: toutes les minutes (pour tester)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { categories, isLoading: isLoadingCategories } = useCategoriesKeywords(configId);
   const { activeLocalities, isLoading: isLoadingLocalities } = useLocalities(configId);
   const { generateContent, runScheduler, checkSchedulerConfig } = useTomeScheduler();
+  const [lastAutomationCheck, setLastAutomationCheck] = useState<Date | null>(null);
 
   // Vérifier si l'automatisation est déjà activée à l'initialisation
   useEffect(() => {
     checkAutomationSettings();
   }, [configId]);
 
+  // Ajouter un timer pour vérifier régulièrement l'état de l'automatisation
+  useEffect(() => {
+    // Vérifie toutes les 30 secondes si les paramètres d'automatisation ont changé
+    const intervalId = setInterval(() => {
+      checkAutomationSettings(false);
+      setLastAutomationCheck(new Date());
+    }, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [configId]);
+
   // Récupérer l'état d'automatisation depuis la base de données
-  const checkAutomationSettings = async () => {
+  const checkAutomationSettings = async (showToast = true) => {
     try {
       console.log("Vérification des paramètres d'automatisation pour configId:", configId);
       
@@ -56,6 +69,10 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
         const automationData = data as unknown as TomeAutomation;
         setIsEnabled(automationData.is_enabled);
         setFrequency(automationData.frequency.toString());
+        
+        if (showToast && automationData.is_enabled) {
+          toast.info(`Automatisation configurée et ${automationData.is_enabled ? 'activée' : 'désactivée'} avec succès`);
+        }
       }
     } catch (error) {
       console.error("Erreur lors de la récupération des paramètres d'automatisation:", error);
@@ -132,6 +149,14 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       const configValid = await checkSchedulerConfig();
       if (configValid) {
         toast.success("Configuration du planificateur validée avec succès");
+      }
+      
+      // Exécuter immédiatement le planificateur si l'automatisation est activée
+      if (isEnabled) {
+        const schedulerRun = await runScheduler(true);
+        if (schedulerRun) {
+          toast.success("Planificateur exécuté avec succès. Vérifiez l'onglet Publications pour voir les brouillons générés.");
+        }
       }
       
     } catch (error: any) {
@@ -297,6 +322,20 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
         {!hasNecessaryData && (
           <div className="bg-amber-100 text-amber-800 p-3 rounded-md text-sm">
             Vous devez ajouter des catégories et mots-clés avant de pouvoir utiliser l'automatisation.
+          </div>
+        )}
+        
+        {lastAutomationCheck && (
+          <div className="text-xs text-muted-foreground text-right">
+            Dernière vérification: {lastAutomationCheck.toLocaleTimeString()}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-5 w-5 ml-1" 
+              onClick={() => checkAutomationSettings(true)}
+            >
+              <RefreshCw className="h-3 w-3" />
+            </Button>
           </div>
         )}
       </CardContent>
