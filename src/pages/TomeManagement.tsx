@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import { useAuth } from "@/context/AuthContext";
@@ -17,14 +16,19 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import TomePublicationForm from "@/components/tome/TomePublicationForm";
 import TomePublicationDetail from "@/components/tome/TomePublicationDetail";
-
 const TomeManagement = () => {
-  const { isAdmin, user } = useAuth();
+  const {
+    isAdmin,
+    user
+  } = useAuth();
   const isClient = user?.role === "client";
-  const { configs, isLoading, fetchConfigs } = useWordPressConfigs();
+  const {
+    configs,
+    isLoading,
+    fetchConfigs
+  } = useWordPressConfigs();
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
   const navigate = useNavigate();
-
   useEffect(() => {
     if (!isLoading && configs.length > 0 && !selectedConfigId) {
       // Pour les clients, on sélectionne automatiquement leur configuration WordPress
@@ -44,16 +48,12 @@ const TomeManagement = () => {
 
   // Si l'utilisateur n'est ni admin ni client, on affiche une page d'accès refusé
   if (!isAdmin && !isClient) {
-    return (
-      <PageLayout title="Tom-E">
+    return <PageLayout title="Tom-E">
         <AccessDenied />
-      </PageLayout>
-    );
+      </PageLayout>;
   }
-
   if (isLoading) {
-    return (
-      <PageLayout title="Tom-E" onRefresh={handleRefresh}>
+    return <PageLayout title="Tom-E" onRefresh={handleRefresh}>
         <AnimatedContainer delay={200}>
           <Card>
             <CardContent className="p-6">
@@ -65,13 +65,10 @@ const TomeManagement = () => {
             </CardContent>
           </Card>
         </AnimatedContainer>
-      </PageLayout>
-    );
+      </PageLayout>;
   }
-
   if (configs.length === 0) {
-    return (
-      <PageLayout title="Tom-E" onRefresh={handleRefresh}>
+    return <PageLayout title="Tom-E" onRefresh={handleRefresh}>
         <AnimatedContainer delay={200}>
           <Card>
             <CardContent className="p-6">
@@ -86,19 +83,10 @@ const TomeManagement = () => {
             </CardContent>
           </Card>
         </AnimatedContainer>
-      </PageLayout>
-    );
+      </PageLayout>;
   }
-
-  return (
-    <Routes>
-      <Route 
-        path="/" 
-        element={
-          <PageLayout 
-            title="Tom-E" 
-            onRefresh={handleRefresh}
-          >
+  return <Routes>
+      <Route path="/" element={<PageLayout title="Tom-E" onRefresh={handleRefresh}>
             <AnimatedContainer delay={200}>
               {/* Informations sur l'état de la connexion WordPress */}
               <div className="mb-4 flex justify-between items-center">
@@ -106,35 +94,18 @@ const TomeManagement = () => {
               </div>
               
               {/* Alerte d'information concernant le WAF */}
-              <Alert className="mb-4">
-                <AlertTriangle className="h-5 w-5" />
-                <AlertTitle>Protection anti-bot WordPress</AlertTitle>
-                <AlertDescription>
-                  Certains hébergeurs WordPress (comme o2switch) utilisent un pare-feu (WAF) qui peut bloquer 
-                  la publication automatisée. Pour contourner cette limitation, Tom-E vous permet maintenant de 
-                  créer des brouillons que vous pourrez éditer et publier manuellement.
-                </AlertDescription>
-              </Alert>
+              
 
               {/* Pour les clients, on ne montre pas le sélecteur de configuration */}
-              {!isClient && (
-                <div className="mb-6">
-                  <select 
-                    className="w-full md:w-64 p-2 border rounded-md" 
-                    value={selectedConfigId || ""}
-                    onChange={(e) => setSelectedConfigId(e.target.value)}
-                  >
-                    {configs.map(config => (
-                      <option key={config.id} value={config.id}>
+              {!isClient && <div className="mb-6">
+                  <select className="w-full md:w-64 p-2 border rounded-md" value={selectedConfigId || ""} onChange={e => setSelectedConfigId(e.target.value)}>
+                    {configs.map(config => <option key={config.id} value={config.id}>
                         {config.name}
-                      </option>
-                    ))}
+                      </option>)}
                   </select>
-                </div>
-              )}
+                </div>}
 
-              {selectedConfigId && (
-                <Tabs defaultValue="publications">
+              {selectedConfigId && <Tabs defaultValue="publications">
                   <TabsList className="w-full mb-6">
                     <TabsTrigger value="publications" className="flex-1">Publications</TabsTrigger>
                     <TabsTrigger value="categories" className="flex-1">Catégories & Mots-clés</TabsTrigger>
@@ -149,42 +120,19 @@ const TomeManagement = () => {
                   <TabsContent value="localities">
                     <TomeLocalities configId={selectedConfigId} isClientView={isClient} />
                   </TabsContent>
-                </Tabs>
-              )}
+                </Tabs>}
             </AnimatedContainer>
-          </PageLayout>
-        } 
-      />
-      <Route 
-        path="/new" 
-        element={
-          <PageLayout 
-            title="Nouvelle publication" 
-            onBack={() => navigate("/tome")}
-          >
+          </PageLayout>} />
+      <Route path="/new" element={<PageLayout title="Nouvelle publication" onBack={() => navigate("/tome")}>
             <AnimatedContainer delay={200}>
-              {selectedConfigId && (
-                <TomePublicationForm configId={selectedConfigId} isClientView={isClient} />
-              )}
+              {selectedConfigId && <TomePublicationForm configId={selectedConfigId} isClientView={isClient} />}
             </AnimatedContainer>
-          </PageLayout>
-        } 
-      />
-      <Route 
-        path="/:id" 
-        element={
-          <PageLayout 
-            title="Détail de la publication" 
-            onBack={() => navigate("/tome")}
-          >
+          </PageLayout>} />
+      <Route path="/:id" element={<PageLayout title="Détail de la publication" onBack={() => navigate("/tome")}>
             <AnimatedContainer delay={200}>
               <TomePublicationDetail />
             </AnimatedContainer>
-          </PageLayout>
-        } 
-      />
-    </Routes>
-  );
+          </PageLayout>} />
+    </Routes>;
 };
-
 export default TomeManagement;
