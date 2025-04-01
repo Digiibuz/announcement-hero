@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -34,7 +34,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const { generateContent, runScheduler } = useTomeScheduler();
 
   // Vérifier si l'automatisation est déjà activée à l'initialisation
-  React.useEffect(() => {
+  useEffect(() => {
     checkAutomationSettings();
   }, [configId]);
 
@@ -66,17 +66,21 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const saveAutomationSettings = async () => {
     setIsSubmitting(true);
     try {
+      // Convertir frequency en nombre à virgule flottante pour supporter les minutes
+      const frequencyNumber = parseFloat(frequency);
+      
       console.log("Sauvegarde des paramètres d'automatisation:", {
         configId,
         isEnabled,
-        frequency: parseFloat(frequency)
+        frequency: frequencyNumber
       });
       
       // Vérifier si des entrées existent déjà
       const { data: existingData, error: checkError } = await supabase
         .from('tome_automation')
         .select('id')
-        .eq('wordpress_config_id', configId);
+        .eq('wordpress_config_id', configId)
+        .maybeSingle();
         
       if (checkError) {
         console.error("Erreur lors de la vérification des données existantes:", checkError);
@@ -88,19 +92,19 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       // Préparer les données à envoyer
       const automationData = {
         is_enabled: isEnabled,
-        frequency: parseFloat(frequency),
+        frequency: frequencyNumber,
         updated_at: new Date().toISOString()
       };
 
       let result;
       
-      if (existingData && existingData.length > 0) {
+      if (existingData) {
         // Mettre à jour l'entrée existante
-        console.log("Mise à jour d'une entrée existante:", existingData[0].id);
+        console.log("Mise à jour d'une entrée existante:", existingData.id);
         result = await supabase
           .from('tome_automation')
           .update(automationData)
-          .eq('wordpress_config_id', configId);
+          .eq('id', existingData.id);
       } else {
         // Créer une nouvelle entrée
         console.log("Création d'une nouvelle entrée");
@@ -109,7 +113,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
           .insert({
             wordpress_config_id: configId,
             is_enabled: isEnabled,
-            frequency: parseFloat(frequency)
+            frequency: frequencyNumber
           });
       }
 
