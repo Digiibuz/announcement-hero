@@ -17,7 +17,7 @@ const WarningMessage: React.FC<WarningMessageProps> = ({
   return (
     <div className="space-y-4">
       {!hasNecessaryData && (
-        <Alert variant="warning" className="bg-amber-100 text-amber-800 border-amber-200">
+        <Alert variant="destructive" className="bg-amber-100 text-amber-800 border-amber-200">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Configuration requise</AlertTitle>
           <AlertDescription>
