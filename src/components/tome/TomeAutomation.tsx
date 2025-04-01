@@ -182,7 +182,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       updateNextGenerationTime(frequencyNumber);
       
       // Vérifier la configuration du planificateur
-      await runScheduler(false);
+      await runScheduler();
     } catch (error: any) {
       console.error("Erreur détaillée lors de l'enregistrement des paramètres:", error);
       toast.error(`Erreur: ${error.message || "Erreur lors de l'enregistrement des paramètres"}`);
