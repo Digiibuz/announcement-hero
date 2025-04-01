@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -29,6 +30,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useTomeScheduler } from "@/hooks/tome/useTomeScheduler";
 import PublishingLoadingOverlay from "@/components/announcements/PublishingLoadingOverlay";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
+import { FileImage, Server, Database } from "lucide-react";
 
 const TomePublicationDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -45,6 +47,34 @@ const TomePublicationDetail = () => {
   const { publishContent, generateContent } = useTomeScheduler(wordpressConfigId);
   
   const { publishingState, isPublishing } = useWordPressPublishing();
+
+  // Create steps array for PublishingLoadingOverlay from publishingState
+  const publishingSteps = [
+    {
+      id: "prepare",
+      label: "Préparation de la publication",
+      status: publishingState.steps.prepare.status,
+      icon: <Server className="h-5 w-5" />
+    },
+    {
+      id: "image",
+      label: "Traitement des images",
+      status: publishingState.steps.image.status,
+      icon: <FileImage className="h-5 w-5" />
+    },
+    {
+      id: "wordpress",
+      label: "Publication sur WordPress",
+      status: publishingState.steps.wordpress.status,
+      icon: <Server className="h-5 w-5" />
+    },
+    {
+      id: "database",
+      label: "Mise à jour de la base de données",
+      status: publishingState.steps.database.status,
+      icon: <Database className="h-5 w-5" />
+    }
+  ];
 
   useEffect(() => {
     const fetchGeneration = async () => {
@@ -246,7 +276,14 @@ const TomePublicationDetail = () => {
 
   return (
     <Card className="relative">
-      {isPublishing && <PublishingLoadingOverlay publishingState={publishingState} />}
+      {isPublishing && (
+        <PublishingLoadingOverlay 
+          isOpen={isPublishing}
+          steps={publishingSteps}
+          currentStepId={publishingState.currentStep}
+          progress={publishingState.progress}
+        />
+      )}
       <CardHeader>
         <CardTitle>
           {generation?.status === "draft" 
