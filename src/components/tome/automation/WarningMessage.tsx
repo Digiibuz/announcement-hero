@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Terminal, Info } from "lucide-react";
+import { AlertCircle, Terminal, Info, Clock } from "lucide-react";
 
 interface WarningMessageProps {
   hasNecessaryData: boolean;
@@ -44,6 +44,15 @@ const WarningMessage: React.FC<WarningMessageProps> = ({ hasNecessaryData, logs 
             </AlertDescription>
           </Alert>
         )}
+        
+        <Alert variant="default" className="bg-amber-50 text-amber-700 border-amber-200">
+          <Clock className="h-4 w-4" />
+          <AlertTitle>Information importante</AlertTitle>
+          <AlertDescription>
+            L'automatisation s'exécute automatiquement toutes les 30 minutes environ pour vérifier si de nouveaux brouillons 
+            doivent être générés selon la fréquence que vous avez définie. Une fois activée, il n'est pas nécessaire de cliquer manuellement.
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
