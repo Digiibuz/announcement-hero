@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useTomeScheduler } from "@/hooks/tome/useTomeScheduler";
 import { useCategoriesKeywords, useLocalities } from "@/hooks/tome";
 import { toast } from "sonner";
-import { Loader2, Copy, RefreshCw } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 // Define the type for tome_automation table
@@ -19,7 +19,6 @@ interface TomeAutomation {
   frequency: number;
   created_at: string;
   updated_at: string;
-  api_key?: string;
 }
 
 interface TomeAutomationProps {
@@ -30,7 +29,6 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const [isEnabled, setIsEnabled] = useState(false);
   const [frequency, setFrequency] = useState("2"); // jours
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [apiKey, setApiKey] = useState<string | null>(null);
   const { categories, isLoading: isLoadingCategories } = useCategoriesKeywords(configId);
   const { activeLocalities, isLoading: isLoadingLocalities } = useLocalities(configId);
   const { generateContent, runScheduler, checkSchedulerConfig } = useTomeScheduler();
@@ -58,7 +56,6 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
         const automationData = data as unknown as TomeAutomation;
         setIsEnabled(automationData.is_enabled);
         setFrequency(automationData.frequency.toString());
-        setApiKey(automationData.api_key || null);
       }
     } catch (error) {
       console.error("Erreur lors de la récupération des paramètres d'automatisation:", error);
@@ -81,7 +78,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       // Vérifier si des entrées existent déjà
       const { data: existingData, error: checkError } = await supabase
         .from('tome_automation')
-        .select('id, api_key')
+        .select('id')
         .eq('wordpress_config_id', configId)
         .maybeSingle();
         
@@ -102,19 +99,6 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       let result;
       
       if (existingData) {
-        // Conserver la clé API existante
-        if (!existingData.api_key) {
-          // Générer une nouvelle clé API si elle n'existe pas encore
-          const { data: uuidData, error: uuidError } = await supabase.rpc('generate_uuid');
-          
-          if (uuidError) {
-            console.error("Erreur lors de la génération de l'UUID:", uuidError);
-            throw new Error(`Erreur lors de la génération de l'API key: ${uuidError.message}`);
-          }
-          
-          automationData.api_key = uuidData || crypto.randomUUID();
-        }
-        
         // Mettre à jour l'entrée existante
         console.log("Mise à jour d'une entrée existante:", existingData.id);
         result = await supabase
@@ -122,26 +106,14 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
           .update(automationData)
           .eq('id', existingData.id);
       } else {
-        // Générer une clé API pour la nouvelle entrée
-        const { data: uuidData, error: uuidError } = await supabase.rpc('generate_uuid');
-        
-        if (uuidError) {
-          console.error("Erreur lors de la génération de l'UUID:", uuidError);
-          // Fallback en utilisant crypto.randomUUID() du navigateur
-          automationData.api_key = crypto.randomUUID();
-        } else {
-          automationData.api_key = uuidData;
-        }
-        
         // Créer une nouvelle entrée
-        console.log("Création d'une nouvelle entrée avec API key:", automationData.api_key);
+        console.log("Création d'une nouvelle entrée");
         result = await supabase
           .from('tome_automation')
           .insert({
             wordpress_config_id: configId,
             is_enabled: isEnabled,
-            frequency: frequencyNumber,
-            api_key: automationData.api_key
+            frequency: frequencyNumber
           });
       }
 
@@ -153,7 +125,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       console.log("Résultat de l'opération:", result);
       toast.success(`Automatisation ${isEnabled ? 'activée' : 'désactivée'}`);
       
-      // Après l'enregistrement, rafraîchir les paramètres pour obtenir l'API key
+      // Après l'enregistrement, rafraîchir les paramètres
       await checkAutomationSettings();
       
       // Exécuter une vérification de la configuration du planificateur pour valider
@@ -245,79 +217,19 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
     setIsSubmitting(true);
     try {
       // Exécuter le planificateur avec forceGeneration=true
-      const { data, error } = await supabase.functions.invoke('tome-scheduler', {
-        body: { forceGeneration: true }
-      });
-
-      if (error) {
-        console.error("Erreur lors de l'exécution forcée du planificateur:", error);
-        toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
-        return false;
+      const result = await runScheduler(true);
+      
+      if (!result) {
+        toast.error("Échec de l'exécution du planificateur");
       }
-
-      console.log("Résultat de l'exécution forcée du planificateur:", data);
-
-      if (data.generationsCreated === 0) {
-        toast.info("Aucun contenu n'a été généré. Vérifiez que vous avez des catégories et mots-clés configurés.");
-      } else {
-        toast.success(`${data.generationsCreated} brouillon(s) généré(s) avec succès`);
-      }
-
-      return true;
+      
+      return result;
     } catch (error: any) {
       console.error("Erreur dans forceRunScheduler:", error);
       toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
       return false;
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  // Régénérer une nouvelle clé API
-  const regenerateApiKey = async () => {
-    setIsSubmitting(true);
-    try {
-      // Générer un nouvel UUID
-      const { data: uuidData, error: uuidError } = await supabase.rpc('generate_uuid');
-      
-      if (uuidError) {
-        console.error("Erreur lors de la génération de l'UUID:", uuidError);
-        throw new Error(`Erreur lors de la génération de l'API key: ${uuidError.message}`);
-      }
-      
-      const newApiKey = uuidData || crypto.randomUUID();
-      
-      // Mettre à jour l'entrée existante
-      const { error: updateError } = await supabase
-        .from('tome_automation')
-        .update({ 
-          api_key: newApiKey,
-          updated_at: new Date().toISOString()
-        })
-        .eq('wordpress_config_id', configId);
-
-      if (updateError) {
-        console.error("Erreur lors de la mise à jour de l'API key:", updateError);
-        throw new Error(`Erreur lors de la mise à jour de l'API key: ${updateError.message}`);
-      }
-
-      // Mettre à jour l'état local
-      setApiKey(newApiKey);
-      toast.success("Nouvelle clé API générée avec succès");
-    } catch (error: any) {
-      console.error("Erreur lors de la régénération de l'API key:", error);
-      toast.error(`Erreur: ${error.message || "Erreur lors de la régénération de la clé API"}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Copier l'API key dans le presse-papiers
-  const copyApiKey = () => {
-    if (apiKey) {
-      navigator.clipboard.writeText(apiKey)
-        .then(() => toast.success("Clé API copiée dans le presse-papiers"))
-        .catch(err => toast.error("Erreur lors de la copie: " + err.message));
     }
   };
 
@@ -381,41 +293,6 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
             </SelectContent>
           </Select>
         </div>
-
-        {apiKey && (
-          <div className="space-y-2 pt-4 border-t">
-            <Label>Clé API pour intégration externe</Label>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 bg-gray-100 dark:bg-gray-800 p-2 rounded font-mono text-sm overflow-hidden truncate">
-                {apiKey}
-              </div>
-              <Button 
-                variant="outline" 
-                size="icon" 
-                onClick={copyApiKey} 
-                title="Copier la clé API"
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-              <Button 
-                variant="outline" 
-                size="icon" 
-                onClick={regenerateApiKey} 
-                disabled={isSubmitting}
-                title="Régénérer la clé API"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Utilisez cette clé pour déclencher des générations automatiques via un webhook externe: 
-              <code className="mx-1 p-1 bg-gray-100 dark:bg-gray-800 rounded text-xs">
-                https://rdwqedmvzicerwotjseg.supabase.co/functions/v1/tome-scheduler
-              </code>
-              (méthode POST avec <code className="mx-1 p-1 bg-gray-100 dark:bg-gray-800 rounded text-xs">{"{ \"api_key\": \"votre-clé-api\" }"}</code> dans le corps)
-            </p>
-          </div>
-        )}
 
         {!hasNecessaryData && (
           <div className="bg-amber-100 text-amber-800 p-3 rounded-md text-sm">
