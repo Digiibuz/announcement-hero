@@ -249,15 +249,20 @@ function shouldGenerateContent(lastGeneration: any[], frequency: number): boolea
   const diffTime = Math.abs(now.getTime() - lastGenerationDate.getTime());
   
   // Si la fréquence est inférieure à 1, cela représente des fractions de jour
-  // Par exemple, 0.0007 ~ 1 minute (1/1440 jour), 0.01 ~ 15 minutes (15/1440 jour)
+  // Par exemple, 0.0014 ~ 2 minutes (2/1440 jour)
   if (frequency < 1) {
-    // Convertir en minutes pour plus de lisibilité dans les logs
+    // Convertir la fréquence (en jours) en minutes pour plus de lisibilité
+    const frequencyMinutes = Math.floor(frequency * 24 * 60);
+    
+    // Convertir la différence de temps en minutes
     const diffMinutes = Math.floor(diffTime / (1000 * 60));
-    const frequencyMinutes = Math.floor(frequency * 24 * 60); // Convertir en minutes
     
     console.log(`Dernière génération il y a ${diffMinutes} minutes, fréquence configurée à ${frequencyMinutes} minutes (${frequency} jours)`);
     
-    // Comparer directement les minutes au lieu de jours fractionnés
+    // Debugging plus détaillé
+    console.log(`Comparaison: ${diffMinutes} >= ${frequencyMinutes}`);
+    
+    // Comparer directement les minutes
     return diffMinutes >= frequencyMinutes;
   }
   
