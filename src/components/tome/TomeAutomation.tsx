@@ -1,25 +1,16 @@
 
 import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { useTomeScheduler } from "@/hooks/tome/useTomeScheduler";
-import { useCategoriesKeywords, useLocalities } from "@/hooks/tome";
-import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-
-// Define the type for tome_automation table
-interface TomeAutomation {
-  id: string;
-  wordpress_config_id: string;
-  is_enabled: boolean;
-  frequency: number;
-  created_at: string;
-  updated_at: string;
-}
+import { toast } from "sonner";
+import { format } from "date-fns";
+import { useTomeScheduler } from "@/hooks/tome/useTomeScheduler";
+import { Loader2, Timer, Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface TomeAutomationProps {
   configId: string;
@@ -27,273 +18,314 @@ interface TomeAutomationProps {
 
 const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const [isEnabled, setIsEnabled] = useState(false);
-  const [frequency, setFrequency] = useState("2"); // jours
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { categories, isLoading: isLoadingCategories } = useCategoriesKeywords(configId);
-  const { activeLocalities, isLoading: isLoadingLocalities } = useLocalities(configId);
-  const { generateContent, runScheduler } = useTomeScheduler();
+  const [frequency, setFrequency] = useState<number>(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [automationId, setAutomationId] = useState<string | null>(null);
+  const [frequencyUnit, setFrequencyUnit] = useState<"days" | "hours" | "minutes">("days");
+  const { runScheduler, isRunning, checkSchedulerConfig, timeRemaining, nextGenerationTime } = useTomeScheduler();
 
-  // Vérifier si l'automatisation est déjà activée à l'initialisation
   useEffect(() => {
-    checkAutomationSettings();
+    fetchAutomationSettings();
   }, [configId]);
 
-  // Récupérer l'état d'automatisation depuis la base de données
-  const checkAutomationSettings = async () => {
+  // Vérifier régulièrement la configuration du planificateur pour mettre à jour le timer
+  useEffect(() => {
+    if (isEnabled) {
+      // Vérifier la configuration initiale
+      checkSchedulerConfig();
+      
+      // Configurer une vérification périodique
+      const interval = setInterval(() => {
+        checkSchedulerConfig();
+      }, 60000); // Vérifier toutes les minutes
+      
+      return () => clearInterval(interval);
+    }
+  }, [isEnabled]);
+
+  const fetchAutomationSettings = async () => {
     try {
-      console.log("Vérification des paramètres d'automatisation pour configId:", configId);
+      setIsLoading(true);
       
       const { data, error } = await supabase
-        .from('tome_automation')
-        .select('*')
-        .eq('wordpress_config_id', configId)
-        .maybeSingle();
-
-      console.log("Résultat de la vérification:", { data, error });
-
-      if (!error && data) {
-        // Cast data to the correct type
-        const automationData = data as unknown as TomeAutomation;
-        setIsEnabled(automationData.is_enabled);
-        setFrequency(automationData.frequency.toString());
-      }
-    } catch (error) {
-      console.error("Erreur lors de la récupération des paramètres d'automatisation:", error);
-    }
-  };
-
-  // Enregistrer les paramètres d'automatisation
-  const saveAutomationSettings = async () => {
-    setIsSubmitting(true);
-    try {
-      // Convertir frequency en nombre à virgule flottante pour supporter les minutes
-      const frequencyNumber = parseFloat(frequency);
+        .from("tome_automation")
+        .select("*")
+        .eq("wordpress_config_id", configId)
+        .single();
       
-      console.log("Sauvegarde des paramètres d'automatisation:", {
-        configId,
-        isEnabled,
-        frequency: frequencyNumber
-      });
-      
-      // Vérifier si des entrées existent déjà
-      const { data: existingData, error: checkError } = await supabase
-        .from('tome_automation')
-        .select('id')
-        .eq('wordpress_config_id', configId)
-        .maybeSingle();
-        
-      if (checkError) {
-        console.error("Erreur lors de la vérification des données existantes:", checkError);
-        throw new Error(`Erreur de vérification: ${checkError.message}`);
-      }
-
-      console.log("Données existantes:", existingData);
-
-      // Préparer les données à envoyer
-      const automationData = {
-        is_enabled: isEnabled,
-        frequency: frequencyNumber,
-        updated_at: new Date().toISOString()
-      };
-
-      let result;
-      
-      if (existingData) {
-        // Mettre à jour l'entrée existante
-        console.log("Mise à jour d'une entrée existante:", existingData.id);
-        result = await supabase
-          .from('tome_automation')
-          .update(automationData)
-          .eq('id', existingData.id);
-      } else {
-        // Créer une nouvelle entrée
-        console.log("Création d'une nouvelle entrée");
-        result = await supabase
-          .from('tome_automation')
-          .insert({
-            wordpress_config_id: configId,
-            is_enabled: isEnabled,
-            frequency: frequencyNumber
-          });
-      }
-
-      if (result.error) {
-        console.error("Erreur Supabase lors de l'enregistrement:", result.error);
-        throw new Error(`Erreur d'enregistrement: ${result.error.message}`);
-      }
-
-      console.log("Résultat de l'opération:", result);
-      toast.success(`Automatisation ${isEnabled ? 'activée' : 'désactivée'}`);
-      
-      // Ne plus exécuter le planificateur immédiatement
-      // Cette ligne était responsable de la génération immédiate d'un brouillon
-      // if (isEnabled) {
-      //   console.log("Exécution immédiate du planificateur");
-      //   await runScheduler();
-      // }
-    } catch (error: any) {
-      console.error("Erreur détaillée lors de l'enregistrement des paramètres:", error);
-      toast.error(`Erreur: ${error.message || "Erreur lors de l'enregistrement des paramètres"}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Générer manuellement un brouillon avec des mots-clés et localités aléatoires
-  const generateRandomDraft = async () => {
-    setIsSubmitting(true);
-    try {
-      if (categories.length === 0) {
-        toast.error("Aucune catégorie disponible pour générer du contenu");
+      if (error) {
+        if (error.code !== "PGRST116") { // Code pour "aucun résultat"
+          console.error("Erreur lors du chargement des paramètres d'automatisation:", error);
+          toast.error("Erreur lors du chargement des paramètres d'automatisation");
+        }
         return;
       }
-
-      // Sélectionner une catégorie aléatoire
-      const randomCategoryIndex = Math.floor(Math.random() * categories.length);
-      const selectedCategory = categories[randomCategoryIndex];
-
-      // Récupérer tous les mots-clés pour cette catégorie
-      const { data: keywordsForCategory } = await supabase
-        .from('categories_keywords')
-        .select('*')
-        .eq('category_id', selectedCategory.id);
-
-      // Sélectionner un mot-clé aléatoire si disponible
-      let selectedKeywordId = null;
-      if (keywordsForCategory && keywordsForCategory.length > 0) {
-        const randomKeywordIndex = Math.floor(Math.random() * keywordsForCategory.length);
-        selectedKeywordId = keywordsForCategory[randomKeywordIndex].id;
-      }
-
-      // Sélectionner une localité aléatoire si disponible
-      let selectedLocalityId = null;
-      if (activeLocalities.length > 0) {
-        const randomLocalityIndex = Math.floor(Math.random() * activeLocalities.length);
-        selectedLocalityId = activeLocalities[randomLocalityIndex].id;
-      }
-
-      // Créer une entrée dans la table des générations
-      const { data: generationData, error: generationError } = await supabase
-        .from('tome_generations')
-        .insert({
-          wordpress_config_id: configId,
-          category_id: selectedCategory.id,
-          keyword_id: selectedKeywordId,
-          locality_id: selectedLocalityId,
-          status: 'pending'
-        })
-        .select()
-        .single();
-
-      if (generationError) {
-        throw generationError;
-      }
-
-      if (!generationData) {
-        throw new Error("Échec de la création de la génération");
-      }
-
-      // Utiliser useTomeScheduler pour générer le contenu
-      const result = await generateContent(generationData.id);
       
-      if (result) {
-        toast.success("Brouillon généré avec succès");
-      } else {
-        toast.error("Échec de la génération du brouillon");
+      if (data) {
+        setAutomationId(data.id);
+        setIsEnabled(data.is_enabled);
+        
+        // Convertir la fréquence en jours/heures/minutes pour l'affichage
+        let freqValue = data.frequency;
+        let freqUnit: "days" | "hours" | "minutes" = "days";
+        
+        if (freqValue < 0.042) { // Moins d'une heure (0.042 jours)
+          freqValue = Math.round(freqValue * 24 * 60);
+          freqUnit = "minutes";
+        } else if (freqValue < 1) { // Moins d'un jour
+          freqValue = Math.round(freqValue * 24);
+          freqUnit = "hours";
+        }
+        
+        setFrequency(freqValue);
+        setFrequencyUnit(freqUnit);
+        
+        // Vérifier la configuration pour actualiser le timer
+        if (data.is_enabled) {
+          checkSchedulerConfig();
+        }
       }
     } catch (error: any) {
-      console.error("Erreur lors de la génération du brouillon:", error);
-      toast.error("Erreur: " + error.message);
+      console.error("Erreur lors du chargement des paramètres:", error);
+      toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
-  const isLoading = isLoadingCategories || isLoadingLocalities;
+  const saveAutomationSettings = async () => {
+    try {
+      setIsSaving(true);
+      
+      // Convertir la fréquence en jours selon l'unité sélectionnée
+      let freqInDays = frequency;
+      if (frequencyUnit === "hours") {
+        freqInDays = frequency / 24;
+      } else if (frequencyUnit === "minutes") {
+        freqInDays = frequency / (24 * 60);
+      }
+      
+      const automationData = {
+        wordpress_config_id: configId,
+        is_enabled: isEnabled,
+        frequency: freqInDays
+      };
+      
+      let error;
+      
+      if (automationId) {
+        // Mise à jour d'un paramètre existant
+        const { error: updateError } = await supabase
+          .from("tome_automation")
+          .update(automationData)
+          .eq("id", automationId);
+          
+        error = updateError;
+      } else {
+        // Création d'un nouveau paramètre
+        const { error: insertError } = await supabase
+          .from("tome_automation")
+          .insert([automationData]);
+          
+        error = insertError;
+      }
+      
+      if (error) {
+        console.error("Erreur Supabase lors de l'enregistrement:", error);
+        toast.error(`Erreur d'enregistrement: ${error.message}`);
+        throw new Error(`Erreur d'enregistrement: ${error.message}`);
+      }
+      
+      toast.success("Paramètres d'automatisation enregistrés");
+      
+      // Recharger les paramètres pour récupérer l'ID si c'était une nouvelle entrée
+      await fetchAutomationSettings();
+      
+      // Vérifier la configuration mise à jour (sans générer de contenu)
+      if (isEnabled) {
+        await checkSchedulerConfig();
+      }
+    } catch (error: any) {
+      console.error("Erreur détaillée lors de l'enregistrement des paramètres:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-32">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+  const handleFrequencyUnitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newUnit = e.target.value as "days" | "hours" | "minutes";
+    let newFrequency = frequency;
+    
+    // Convertir la valeur de fréquence en fonction du changement d'unité
+    if (frequencyUnit === "days" && newUnit === "hours") {
+      newFrequency = frequency * 24;
+    } else if (frequencyUnit === "days" && newUnit === "minutes") {
+      newFrequency = frequency * 24 * 60;
+    } else if (frequencyUnit === "hours" && newUnit === "days") {
+      newFrequency = Math.max(1, Math.round(frequency / 24));
+    } else if (frequencyUnit === "hours" && newUnit === "minutes") {
+      newFrequency = frequency * 60;
+    } else if (frequencyUnit === "minutes" && newUnit === "days") {
+      newFrequency = Math.max(1, Math.round(frequency / (24 * 60)));
+    } else if (frequencyUnit === "minutes" && newUnit === "hours") {
+      newFrequency = Math.max(1, Math.round(frequency / 60));
+    }
+    
+    setFrequency(newFrequency);
+    setFrequencyUnit(newUnit);
+  };
 
-  const hasNecessaryData = categories.length > 0;
+  const getMinFrequencyValue = () => {
+    // Valeurs minimales selon l'unité
+    if (frequencyUnit === "days") return 0.042; // 1 heure
+    if (frequencyUnit === "hours") return 1; // 1 heure
+    return 1; // 1 minute
+  };
+
+  const getMaxFrequencyValue = () => {
+    // Valeurs maximales selon l'unité
+    if (frequencyUnit === "days") return 14; // 14 jours
+    if (frequencyUnit === "hours") return 24 * 14; // 14 jours en heures
+    return 24 * 60 * 14; // 14 jours en minutes
+  };
+
+  const formatNextGenerationTime = () => {
+    if (!nextGenerationTime) return null;
+    return format(nextGenerationTime, "dd/MM/yyyy HH:mm:ss");
+  };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Automatisation des publications</CardTitle>
-        <CardDescription>
-          Configurez la génération automatique de brouillons avec des mots-clés et localités aléatoires
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label htmlFor="automation-switch">Activer l'automatisation</Label>
-            <p className="text-sm text-muted-foreground">
-              Génère automatiquement des brouillons selon la fréquence définie
-            </p>
-          </div>
-          <Switch
-            id="automation-switch"
-            checked={isEnabled}
-            onCheckedChange={setIsEnabled}
-            disabled={!hasNecessaryData || isSubmitting}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="frequency-select">Fréquence de génération</Label>
-          <Select 
-            value={frequency} 
-            onValueChange={setFrequency}
-            disabled={!isEnabled || isSubmitting}
-          >
-            <SelectTrigger id="frequency-select">
-              <SelectValue placeholder="Sélectionner une fréquence" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="0.0007">Toutes les minutes (test)</SelectItem>
-              <SelectItem value="0.0014">Toutes les 2 minutes (test)</SelectItem>
-              <SelectItem value="0.01">Toutes les 15 minutes (test)</SelectItem>
-              <SelectItem value="0.02">Toutes les 30 minutes (test)</SelectItem>
-              <SelectItem value="0.05">Toutes les heures (test)</SelectItem>
-              <SelectItem value="1">Tous les jours</SelectItem>
-              <SelectItem value="2">Tous les 2 jours</SelectItem>
-              <SelectItem value="3">Tous les 3 jours</SelectItem>
-              <SelectItem value="7">Toutes les semaines</SelectItem>
-              <SelectItem value="14">Toutes les 2 semaines</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {!hasNecessaryData && (
-          <div className="bg-amber-100 text-amber-800 p-3 rounded-md text-sm">
-            Vous devez ajouter des catégories et mots-clés avant de pouvoir utiliser l'automatisation.
-          </div>
-        )}
-      </CardContent>
-      <CardFooter className="flex justify-between">
-        <Button 
-          variant="outline" 
-          onClick={generateRandomDraft}
-          disabled={!hasNecessaryData || isSubmitting}
-        >
-          {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-          Générer un brouillon maintenant
-        </Button>
-        <Button 
-          onClick={saveAutomationSettings}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-          Enregistrer les paramètres
-        </Button>
-      </CardFooter>
-    </Card>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Automatisation des Publications</CardTitle>
+          <CardDescription>
+            Configurez la génération automatique de contenu à intervalle régulier
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="space-y-8">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="auto-publish" className="text-base">Activer l'automatisation</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Générez automatiquement du contenu sans intervention manuelle
+                    </p>
+                  </div>
+                  <Switch
+                    id="auto-publish"
+                    checked={isEnabled}
+                    onCheckedChange={setIsEnabled}
+                  />
+                </div>
+                
+                {isEnabled && (
+                  <>
+                    <div className="mt-4 space-y-2">
+                      <Label htmlFor="frequency" className="text-base">Fréquence de publication</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Définissez à quelle fréquence générer du nouveau contenu
+                      </p>
+                      <div className="flex gap-2 mt-2">
+                        <Input
+                          id="frequency"
+                          type="number"
+                          value={frequency}
+                          onChange={(e) => setFrequency(Number(e.target.value))}
+                          min={getMinFrequencyValue()}
+                          max={getMaxFrequencyValue()}
+                          className="w-24"
+                        />
+                        <select
+                          value={frequencyUnit}
+                          onChange={handleFrequencyUnitChange}
+                          className="px-3 py-2 border rounded"
+                        >
+                          <option value="minutes">minutes</option>
+                          <option value="hours">heures</option>
+                          <option value="days">jours</option>
+                        </select>
+                      </div>
+                    </div>
+                    
+                    {nextGenerationTime && (
+                      <div className="mt-4 p-4 border rounded-md bg-slate-50">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Timer className="h-5 w-5 text-primary" />
+                          <h3 className="font-medium">Prochaine génération</h3>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                            <span>{formatNextGenerationTime()}</span>
+                          </div>
+                          {timeRemaining && (
+                            <Badge variant="outline" className="text-sm">
+                              Temps restant: {timeRemaining}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+              
+              <div className="flex justify-end space-x-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => fetchAutomationSettings()}
+                  disabled={isSaving}
+                >
+                  Annuler
+                </Button>
+                <Button 
+                  onClick={saveAutomationSettings}
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Enregistrement...
+                    </>
+                  ) : (
+                    "Enregistrer les paramètres"
+                  )}
+                </Button>
+              </div>
+              
+              <div className="border-t pt-4">
+                <Button
+                  variant="secondary"
+                  onClick={runScheduler}
+                  disabled={isRunning || !isEnabled}
+                  className="w-full"
+                >
+                  {isRunning ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Exécution en cours...
+                    </>
+                  ) : (
+                    "Exécuter le planificateur manuellement"
+                  )}
+                </Button>
+                <p className="text-xs text-muted-foreground mt-2 text-center">
+                  Cette action exécute immédiatement le planificateur sans tenir compte de la fréquence définie
+                </p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
