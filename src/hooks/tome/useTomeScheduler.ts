@@ -169,6 +169,7 @@ export const useTomeScheduler = () => {
     try {
       setIsLoading(true);
       
+      console.log("Démarrage manuel du planificateur");
       const { data, error } = await supabase.functions.invoke('tome-scheduler', {});
       
       if (error) {

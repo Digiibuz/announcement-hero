@@ -74,7 +74,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
           .from('tome_automation' as any)
           .update({
             is_enabled: isEnabled,
-            frequency: parseInt(frequency),
+            frequency: parseFloat(frequency),
             updated_at: new Date().toISOString()
           })
           .eq('wordpress_config_id', configId);
@@ -85,7 +85,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
           .insert({
             wordpress_config_id: configId,
             is_enabled: isEnabled,
-            frequency: parseInt(frequency)
+            frequency: parseFloat(frequency)
           });
       }
 

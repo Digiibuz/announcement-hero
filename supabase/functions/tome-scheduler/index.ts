@@ -204,20 +204,24 @@ function shouldGenerateContent(lastGeneration: any[], frequency: number): boolea
   const lastGenerationDate = new Date(lastGeneration[0].created_at);
   const now = new Date();
   
-  // Calculate days difference
+  // Calculate time difference in milliseconds
   const diffTime = Math.abs(now.getTime() - lastGenerationDate.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   
   // Si la fréquence est inférieure à 1, cela représente des fractions de jour
   // Par exemple, 0.0007 ~ 1 minute (1/1440 jour), 0.01 ~ 15 minutes (15/1440 jour)
   if (frequency < 1) {
     // Convertir en minutes pour plus de lisibilité dans les logs
-    const diffMinutes = Math.ceil(diffTime / (1000 * 60));
-    const frequencyMinutes = Math.ceil(frequency * 24 * 60); // Convertir en minutes
+    const diffMinutes = Math.floor(diffTime / (1000 * 60));
+    const frequencyMinutes = Math.floor(frequency * 24 * 60); // Convertir en minutes
+    
     console.log(`Dernière génération il y a ${diffMinutes} minutes, fréquence configurée à ${frequencyMinutes} minutes`);
-    return diffDays >= frequency;
+    
+    // Comparer directement les minutes au lieu de jours fractionnés
+    return diffMinutes >= frequencyMinutes;
   }
   
+  // Pour les fréquences en jours
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
   console.log(`Dernière génération il y a ${diffDays} jours, fréquence configurée à ${frequency} jours`);
   return diffDays >= frequency;
 }
