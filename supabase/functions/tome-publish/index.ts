@@ -114,33 +114,88 @@ serve(async (req) => {
       throw new Error('WordPress config not found');
     }
 
-    // Now we need to publish to WordPress
-    // Get the WordPress API URL
+    // Now we need to publish to WordPress using similar approach as announcements
+    // Normalize the site URL
     const siteUrl = wpConfig.site_url.endsWith('/')
       ? wpConfig.site_url.slice(0, -1)
       : wpConfig.site_url;
+
+    // First, determine the correct endpoint (same approach as in announcements)
+    let useCustomTaxonomy = false;
+    let postEndpoint = `${siteUrl}/wp-json/wp/v2/pages`; // Default endpoint
     
-    let apiEndpoint = '/wp-json/wp/v2/pages';
+    try {
+      // First try to access the dipi_cpt_category endpoint with a timeout (like in announcements)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      // Using standard fetch headers for this initial test
+      const response = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt_category`, {
+        method: 'HEAD',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        signal: controller.signal
+      }).catch(() => ({ status: 404 }));
+      
+      clearTimeout(timeoutId);
+      
+      if (response && response.status !== 404) {
+        useCustomTaxonomy = true;
+        
+        // Now check if dipi_cpt endpoint exists (with timeout)
+        const dipiController = new AbortController();
+        const dipiTimeoutId = setTimeout(() => dipiController.abort(), 5000);
+        
+        const dipiResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt`, {
+          method: 'HEAD',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          signal: dipiController.signal
+        }).catch(() => ({ status: 404 }));
+        
+        clearTimeout(dipiTimeoutId);
+        
+        if (dipiResponse && dipiResponse.status !== 404) {
+          postEndpoint = `${siteUrl}/wp-json/wp/v2/dipi_cpt`;
+        } else {
+          // Try alternative endpoint (with timeout)
+          const altController = new AbortController();
+          const altTimeoutId = setTimeout(() => altController.abort(), 5000);
+          
+          const altResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipicpt`, {
+            method: 'HEAD',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            signal: altController.signal
+          }).catch(() => ({ status: 404 }));
+          
+          clearTimeout(altTimeoutId);
+          
+          if (altResponse && altResponse.status !== 404) {
+            postEndpoint = `${siteUrl}/wp-json/wp/v2/dipicpt`;
+          }
+        }
+      }
+    } catch (error) {
+      console.log("Error checking endpoints:", error);
+      console.log("Falling back to standard pages endpoint");
+    }
     
-    // Prepare browser-like headers to avoid WAF detection
-    const browserLikeHeaders: Record<string, string> = {
+    console.log("Using WordPress endpoint:", postEndpoint, "with custom taxonomy:", useCustomTaxonomy);
+    
+    // Prepare headers with authentication - using simpler approach from announcements
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-      'Accept': 'application/json, text/plain, */*',
-      'Accept-Language': 'fr,fr-FR;q=0.9,en-US;q=0.8,en;q=0.7',
-      'Referer': siteUrl,
-      'Origin': siteUrl,
-      'DNT': '1',
-      'Connection': 'keep-alive',
-      'Sec-Fetch-Dest': 'empty',
-      'Sec-Fetch-Mode': 'cors',
-      'Sec-Fetch-Site': 'same-origin',
     };
     
-    // Use Basic Auth with application password
+    // Check for authentication credentials
     if (wpConfig.app_username && wpConfig.app_password) {
-      const credentials = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
-      browserLikeHeaders['Authorization'] = `Basic ${credentials}`;
+      // Application Password Format: "Basic base64(username:password)"
+      const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
+      headers['Authorization'] = `Basic ${basicAuth}`;
     } else {
       throw new Error('WordPress API credentials not configured');
     }
@@ -152,137 +207,128 @@ serve(async (req) => {
       status: 'publish',
     };
     
-    // Add category ID if available
-    if (generation.category_id) {
+    // Add category if available, using the custom taxonomy approach from announcements
+    if (generation.category_id && useCustomTaxonomy) {
+      postData.dipi_cpt_category = [parseInt(generation.category_id)];
+    } else if (generation.category_id) {
       postData.categories = [parseInt(generation.category_id)];
     }
     
     try {
-      // Add delay before making WordPress request to avoid bot detection
-      console.log("Waiting 3 seconds before contacting WordPress...");
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      console.log("Sending POST request to WordPress:", postEndpoint);
       
-      console.log("Testing DipiPixel API...");
-      // Let's first check if we're dealing with a DipiPixel site with custom taxonomy
-      // Use a fetch with the redirect option set to follow a limited number of redirects
-      const testResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt_category`, {
-        method: 'HEAD',
-        headers: browserLikeHeaders,
-        redirect: 'follow',
-        // Set a maximum of 5 redirects to avoid infinite redirect loops
-        signal: AbortSignal.timeout(10000) // 10-second timeout
-      }).catch(err => {
-        console.log("DipiPixel API test error:", err.message);
-        // Just catch the error to avoid crashing if endpoint doesn't exist
-        return { status: 404 };
-      });
+      // Create a timeout controller
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30-second timeout
       
-      if (testResponse.status !== 404) {
-        // DipiPixel custom post type exists
-        console.log("DipiPixel detected, using dipi_cpt API");
-        apiEndpoint = '/wp-json/wp/v2/dipi_cpt';
-        
-        // Add category using custom taxonomy - only if we have a category
-        if (generation.category_id) {
-          postData.dipi_cpt_category = [parseInt(generation.category_id)];
-          // Remove standard categories
-          delete postData.categories;
-        }
-      }
-    } catch (error) {
-      console.log("Error checking for DipiPixel:", error);
-      // Continue with standard WordPress endpoint
-    }
-    
-    try {
-      console.log(`Publishing to WordPress: ${siteUrl}${apiEndpoint}`);
-      
-      // Use a fetch with the redirect option and a reasonable timeout
-      const wpResponse = await fetch(`${siteUrl}${apiEndpoint}`, {
+      // Send the request - simpler approach like in announcements
+      const postResponse = await fetch(postEndpoint, {
         method: 'POST',
-        headers: browserLikeHeaders,
+        headers: headers,
         body: JSON.stringify(postData),
-        redirect: 'follow',
-        // Set a maximum of 5 redirects to avoid infinite redirect loops
-        signal: AbortSignal.timeout(15000) // 15-second timeout
+        signal: controller.signal
       });
       
-      if (!wpResponse.ok) {
-        const errorText = await wpResponse.text();
+      clearTimeout(timeoutId);
+      
+      if (!postResponse.ok) {
+        let errorText = await postResponse.text();
+        console.error("WordPress API error:", errorText);
         
-        // Check for WAF block (Tiger Protect)
-        if (errorText.includes("<!DOCTYPE HTML>") || 
-            errorText.includes("<html") || 
-            errorText.includes("Tiger Protect") ||
-            errorText.includes("security-challenge")) {
-          throw new Error("The WordPress firewall (WAF) has blocked our request. Please try publishing from the WordPress admin interface.");
+        // Check for HTML response (WAF block)
+        if (errorText.includes("<!DOCTYPE") || errorText.includes("<html")) {
+          throw new Error("The WordPress firewall has blocked the request. Please publish manually from WordPress.");
         }
         
-        throw new Error(`WordPress API error: ${wpResponse.status} - ${errorText}`);
+        throw new Error(`WordPress API error (${postResponse.status}): ${errorText}`);
       }
       
-      const wpData = await wpResponse.json();
+      // Parse JSON response
+      let wpResponseData;
+      try {
+        wpResponseData = await postResponse.json();
+        console.log("WordPress response data:", wpResponseData);
+      } catch (error) {
+        console.error("Error parsing WordPress response:", error);
+        throw new Error("Error parsing WordPress response");
+      }
       
-      // Update generation status in Supabase
+      // Check if the response contains the WordPress post ID
+      if (wpResponseData && typeof wpResponseData.id === 'number') {
+        const wordpressPostId = wpResponseData.id;
+        console.log("WordPress post ID received:", wordpressPostId);
+        
+        // Update generation status in Supabase
+        await supabase
+          .from('tome_generations')
+          .update({ 
+            status: 'published',
+            wordpress_post_id: wordpressPostId,
+            published_at: new Date().toISOString(),
+            is_divipixel: useCustomTaxonomy
+          })
+          .eq('id', generationId);
+        
+        // Return successful response
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: 'Content published successfully',
+            generationId,
+            wordpressPostId
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        );
+      } else {
+        throw new Error("WordPress response does not contain a valid post ID");
+      }
+    } catch (error: any) {
+      console.error("WordPress API error:", error);
+      
+      // Better error classification and handling
+      let errorMessage = error.message || "An error occurred during publishing";
+      let statusCode = 'failed';
+      
+      if (errorMessage.includes("firewall") || 
+          errorMessage.includes("WAF") || 
+          errorMessage.includes("<html") || 
+          errorMessage.includes("<!DOCTYPE")) {
+        errorMessage = "The WordPress firewall has blocked the request. Please publish manually from WordPress.";
+      } else if (errorMessage.includes("timeout") || errorMessage.includes("abort")) {
+        errorMessage = "Connection timeout when connecting to WordPress. Please check the URL and credentials.";
+      } else if (errorMessage.includes("redirects")) {
+        errorMessage = "Too many redirects detected. This usually indicates a WordPress security plugin. Try publishing manually from WordPress.";
+      }
+      
+      // Reset status to draft on failure so user can try again
       await supabase
         .from('tome_generations')
         .update({ 
-          status: 'published',
-          wordpress_post_id: wpData.id,
-          published_at: new Date().toISOString()
+          status: 'draft',
+          error_message: errorMessage.substring(0, 255) // Limit the length
         })
         .eq('id', generationId);
       
-      // Return successful response
       return new Response(
         JSON.stringify({
-          success: true,
-          message: 'Content published successfully',
-          generationId,
-          wordpressPostId: wpData.id
+          success: false,
+          error: errorMessage
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
+          status: 500,
         }
       );
-    } catch (wpError: any) {
-      console.error("WordPress API error:", wpError);
-      
-      // If the error contains HTML (such as with Tiger Protect), consider it a WAF issue
-      const errorMessage = wpError.message || "";
-      if (errorMessage.includes("<!DOCTYPE HTML>") || 
-          errorMessage.includes("<html") || 
-          errorMessage.includes("Tiger Protect") ||
-          errorMessage.includes("Maximum number of redirects") ||
-          errorMessage.includes("security-challenge")) {
-        throw new Error("The WordPress firewall (WAF) has blocked our request. Please try publishing from the WordPress admin interface.");
-      }
-      
-      throw wpError;
     }
-    
   } catch (error: any) {
     console.error('Error in tome-publish function:', error);
     
     let errorMessage = error.message || 'An error occurred during publishing';
-    let friendlyMessage = errorMessage;
     
-    // Improve error messages for the user
-    if (errorMessage.includes("WAF") || 
-        errorMessage.includes("firewall") || 
-        errorMessage.includes("Tiger Protect") ||
-        errorMessage.includes("security-challenge")) {
-      friendlyMessage = "The WordPress firewall (WAF) is blocking our request. You may need to publish manually from WordPress.";
-    } else if (errorMessage.includes("timeout") || errorMessage.includes("abort")) {
-      friendlyMessage = "Connection timeout when connecting to WordPress. Please check the URL and credentials.";
-    } else if (errorMessage.includes("503")) {
-      friendlyMessage = "The WordPress server is temporarily unavailable (503 error). Please try again later.";
-    } else if (errorMessage.includes("redirects")) {
-      friendlyMessage = "Too many redirects detected. This usually indicates a WordPress security plugin. Try publishing manually from WordPress.";
-    }
-    
-    // Try to update generation status to failed
+    // Try to update generation status to draft on error
     try {
       // Clone the request again to read generationId for status update
       const reqClone2 = req.clone();
@@ -298,7 +344,7 @@ serve(async (req) => {
             .from('tome_generations')
             .update({ 
               status: 'draft', // Reset to draft on failure
-              error_message: friendlyMessage.substring(0, 255) // Limit the length
+              error_message: errorMessage.substring(0, 255) // Limit the length
             })
             .eq('id', generationId);
         }
@@ -310,8 +356,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: friendlyMessage,
-        technicalError: errorMessage
+        error: errorMessage
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

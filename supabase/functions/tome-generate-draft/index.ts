@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.1';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import 'https://deno.land/x/xhr@0.1.0/mod.ts';
@@ -33,13 +32,13 @@ serve(async (req) => {
 
     // Clone the request before reading it to avoid "Body already consumed" error
     const reqClone = req.clone();
-    const { generationId, skipPublishing = true } = await reqClone.json();
+    const { generationId } = await reqClone.json();
 
     if (!generationId) {
       throw new Error('Generation ID is required');
     }
 
-    // Get generation data directly without complex joins
+    // Get generation data
     const { data: generation, error: generationError } = await supabase
       .from('tome_generations')
       .select('*')
@@ -49,37 +48,6 @@ serve(async (req) => {
     if (generationError || !generation) {
       throw new Error('Generation not found: ' + (generationError?.message || 'Unknown error'));
     }
-
-    // Get additional data separately
-    const [categoryResult, keywordResult, localityResult] = await Promise.all([
-      // Get category name
-      supabase
-        .from('categories_keywords')
-        .select('category_name')
-        .eq('id', generation.category_id)
-        .single()
-        .then(({ data }) => data?.category_name || 'Non spécifiée'),
-
-      // Get keyword if exists
-      generation.keyword_id 
-        ? supabase
-            .from('categories_keywords')
-            .select('keyword')
-            .eq('id', generation.keyword_id)
-            .single()
-            .then(({ data }) => data?.keyword || null)
-        : Promise.resolve(null),
-
-      // Get locality if exists
-      generation.locality_id
-        ? supabase
-            .from('localities')
-            .select('name, region')
-            .eq('id', generation.locality_id)
-            .single()
-            .then(({ data }) => data || null)
-        : Promise.resolve(null)
-    ]);
 
     // Update status to processing
     await supabase
@@ -98,11 +66,39 @@ serve(async (req) => {
       throw new Error('WordPress config not found');
     }
 
-    const categoryName = categoryResult || 'Non spécifiée';
-    const keyword = keywordResult || null;
-    const localityName = localityResult?.name || null;
-    const localityRegion = localityResult?.region || null;
-    const fullLocalityName = localityName && localityRegion ? `${localityName} (${localityRegion})` : localityName;
+    // Get category and keyword data
+    let categoryName = "Non spécifiée";
+    let keyword = null;
+    
+    if (generation.keyword_id) {
+      const { data: categoryKeyword, error: categoryError } = await supabase
+        .from('categories_keywords')
+        .select('category_name, keyword')
+        .eq('id', generation.keyword_id)
+        .single();
+
+      if (!categoryError && categoryKeyword) {
+        categoryName = categoryKeyword.category_name || categoryName;
+        keyword = categoryKeyword.keyword || null;
+      }
+    }
+
+    // Get locality name
+    let localityName = null;
+    if (generation.locality_id) {
+      const { data: locality, error: localityError } = await supabase
+        .from('localities')
+        .select('name, region')
+        .eq('id', generation.locality_id)
+        .single();
+
+      if (!localityError && locality) {
+        localityName = locality.name;
+        if (locality.region) {
+          localityName += ` (${locality.region})`;
+        }
+      }
+    }
 
     // Format the prompt
     let prompt = wpConfig.prompt || "Vous êtes un expert en rédaction de contenu SEO.";
@@ -113,13 +109,8 @@ serve(async (req) => {
       prompt += `\n- Mot-clé principal: ${keyword}`;
     }
     
-    if (fullLocalityName) {
-      prompt += `\n- Localité: ${fullLocalityName}`;
-    }
-
-    // Ajouter la description personnalisée si disponible
-    if (generation.description) {
-      prompt += `\n\nInstructions supplémentaires: ${generation.description}`;
+    if (localityName) {
+      prompt += `\n- Localité: ${localityName}`;
     }
     
     prompt += "\n\nLe contenu doit:";
@@ -129,13 +120,13 @@ serve(async (req) => {
     prompt += "\n- Avoir une structure avec des sous-titres H2 et H3";
     prompt += "\n- Être écrit en français courant";
     
-    if (fullLocalityName) {
-      prompt += `\n- Être localisé pour ${fullLocalityName}`;
+    if (localityName) {
+      prompt += `\n- Être localisé pour ${localityName}`;
     }
     
     prompt += "\n\nFormat souhaité: HTML avec balises pour les titres (h1, h2, h3), paragraphes (p) et listes (ul, li).";
     
-    console.log("Sending prompt to OpenAI:", prompt.substring(0, 100) + "...");
+    console.log("Sending prompt to OpenAI:", prompt.substring(0, 100) + "...\n");
     
     // Generate content with OpenAI
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -170,46 +161,38 @@ serve(async (req) => {
     const generatedContent = completion.choices[0].message.content;
     
     // Extract title from the generated content
-    let title = generation.title || "Nouveau contenu généré";
+    let title = "Nouveau contenu généré";
     const titleMatch = generatedContent.match(/<h1[^>]*>(.*?)<\/h1>/i);
     if (titleMatch && titleMatch[1]) {
       title = titleMatch[1].replace(/<[^>]*>/g, '').trim();
     }
-
-    // Pour les brouillons, on sauvegarde le contenu généré mais on ne publie pas
-    if (skipPublishing) {
-      await supabase
-        .from('tome_generations')
-        .update({ 
-          status: 'draft',
-          title: title,
-          content: generatedContent
-        })
-        .eq('id', generationId);
-      
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: 'Content generated successfully and saved as draft',
-          generationId,
-          title,
-          content: generatedContent
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
-      );
-    }
     
-    // Si on arrive ici, c'est qu'on veut aussi publier, ce qui n'est pas dans la portée de ce Edge Function
-    throw new Error('Publishing not implemented in this function');
+    // Update the generation with content but keep as draft
+    await supabase
+      .from('tome_generations')
+      .update({ 
+        status: 'draft',
+        title: title,
+        content: generatedContent
+      })
+      .eq('id', generationId);
     
-  } catch (error) {
+    // Return successful response
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'Content generated successfully as draft',
+        generationId
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      }
+    );
+  } catch (error: any) {
     console.error('Error in tome-generate-draft function:', error);
     
     let errorMessage = error.message || 'An error occurred during generation';
-    let friendlyMessage = errorMessage;
     
     // Try to update generation status to failed
     try {
@@ -227,7 +210,7 @@ serve(async (req) => {
             .from('tome_generations')
             .update({ 
               status: 'failed',
-              error_message: friendlyMessage.substring(0, 255) // Limiter la taille
+              error_message: errorMessage.substring(0, 255) // Limit the length
             })
             .eq('id', generationId);
         }
@@ -239,8 +222,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: friendlyMessage,
-        technicalError: errorMessage
+        error: errorMessage
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
