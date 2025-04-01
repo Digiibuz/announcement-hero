@@ -8,8 +8,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useTomeScheduler } from "@/hooks/tome/useTomeScheduler";
 import { useCategoriesKeywords, useLocalities } from "@/hooks/tome";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Copy, Link } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { Input } from "@/components/ui/input";
 
 // Define the type for tome_automation table
 interface TomeAutomation {
@@ -19,6 +20,7 @@ interface TomeAutomation {
   frequency: number;
   created_at: string;
   updated_at: string;
+  api_key: string;
 }
 
 interface TomeAutomationProps {
@@ -29,6 +31,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const [isEnabled, setIsEnabled] = useState(false);
   const [frequency, setFrequency] = useState("2"); // jours
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiKey, setApiKey] = useState<string | null>(null);
   const { categories, isLoading: isLoadingCategories } = useCategoriesKeywords(configId);
   const { activeLocalities, isLoading: isLoadingLocalities } = useLocalities(configId);
   const { generateContent } = useTomeScheduler();
@@ -52,6 +55,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
         const automationData = data as unknown as TomeAutomation;
         setIsEnabled(automationData.is_enabled);
         setFrequency(automationData.frequency.toString());
+        setApiKey(automationData.api_key || null);
       }
     } catch (error) {
       console.error("Erreur lors de la récupération des paramètres d'automatisation:", error);
@@ -90,9 +94,43 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       }
 
       toast.success(`Automatisation ${isEnabled ? 'activée' : 'désactivée'}`);
+      
+      // Recharger les paramètres pour obtenir la clé API si elle vient d'être créée
+      checkAutomationSettings();
     } catch (error) {
       console.error("Erreur lors de l'enregistrement des paramètres:", error);
       toast.error("Erreur lors de l'enregistrement des paramètres");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Copier la clé API dans le presse-papiers
+  const copyApiKey = () => {
+    if (apiKey) {
+      navigator.clipboard.writeText(apiKey);
+      toast.success("Clé API copiée dans le presse-papiers");
+    }
+  };
+
+  // Régénérer une nouvelle clé API
+  const regenerateApiKey = async () => {
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('tome_automation' as any)
+        .update({
+          api_key: supabase.rpc('gen_random_uuid', {})
+        })
+        .eq('wordpress_config_id', configId);
+
+      if (error) throw error;
+      
+      toast.success("Nouvelle clé API générée");
+      checkAutomationSettings();
+    } catch (error) {
+      console.error("Erreur lors de la régénération de la clé API:", error);
+      toast.error("Erreur lors de la régénération de la clé API");
     } finally {
       setIsSubmitting(false);
     }
@@ -179,6 +217,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   }
 
   const hasNecessaryData = categories.length > 0;
+  const makeWebhookUrl = "https://hook.eu2.make.com/YOUR_WEBHOOK_ID";
 
   return (
     <Card>
@@ -223,6 +262,55 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
             </SelectContent>
           </Select>
         </div>
+
+        {apiKey && (
+          <div className="space-y-2 pt-4 border-t">
+            <Label htmlFor="api-key">Clé API pour Make.com</Label>
+            <div className="flex gap-2">
+              <Input 
+                id="api-key"
+                value={apiKey} 
+                readOnly 
+                className="font-mono text-sm flex-1"
+              />
+              <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={copyApiKey} 
+                title="Copier la clé API"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex items-center justify-between mt-2">
+              <p className="text-sm text-muted-foreground">
+                Utilisez cette clé API pour déclencher des générations via Make.com
+              </p>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={regenerateApiKey}
+                disabled={isSubmitting}
+              >
+                Régénérer
+              </Button>
+            </div>
+            
+            <div className="mt-4 p-4 bg-slate-50 rounded-md">
+              <h4 className="text-sm font-medium mb-2 flex items-center">
+                <Link className="h-4 w-4 mr-1" />
+                Instructions pour Make.com
+              </h4>
+              <ol className="text-sm text-muted-foreground list-decimal ml-5 space-y-1">
+                <li>Créez un nouveau scénario dans Make.com</li>
+                <li>Ajoutez un déclencheur HTTP</li>
+                <li>Configurez une requête HTTP POST vers <code className="bg-slate-100 px-1 rounded">https://rdwqedmvzicerwotjseg.supabase.co/functions/v1/tome-scheduler</code></li>
+                <li>Dans le corps de la requête, ajoutez: <code className="bg-slate-100 px-1 rounded">{"{"}"api_key": "{apiKey}"{"}"}}</code></li>
+                <li>Configurez le déclencheur pour s'exécuter selon la fréquence souhaitée</li>
+              </ol>
+            </div>
+          </div>
+        )}
 
         {!hasNecessaryData && (
           <div className="bg-amber-100 text-amber-800 p-3 rounded-md text-sm">

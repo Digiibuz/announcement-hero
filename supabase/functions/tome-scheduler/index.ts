@@ -26,14 +26,55 @@ serve(async (req) => {
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get all automation settings that are enabled
-    const { data: automationSettings, error: automationError } = await supabase
-      .from('tome_automation')
-      .select('*')
-      .eq('is_enabled', true);
+    // Handle API key authentication if the request comes from Make
+    let automationSettings;
+    
+    // Check if this is an API request with an API key
+    if (req.method === 'POST') {
+      try {
+        const body = await req.json();
+        const apiKey = body.api_key;
+        
+        if (apiKey) {
+          console.log(`Received request with API key: ${apiKey}`);
+          
+          // Look up the automation settings based on the API key
+          const { data: apiKeySettings, error: apiKeyError } = await supabase
+            .from('tome_automation')
+            .select('*')
+            .eq('api_key', apiKey)
+            .eq('is_enabled', true)
+            .maybeSingle();
+            
+          if (apiKeyError) {
+            throw new Error('Error fetching automation settings by API key: ' + apiKeyError.message);
+          }
+          
+          if (!apiKeySettings) {
+            throw new Error('Invalid API key or automation is disabled');
+          }
+          
+          // Use the specific automation setting found by API key
+          automationSettings = [apiKeySettings];
+          console.log(`Found automation setting for WordPress config: ${apiKeySettings.wordpress_config_id}`);
+        }
+      } catch (error) {
+        console.error("Error parsing request body:", error);
+      }
+    }
+    
+    // If no API key was provided or found, get all enabled automation settings
+    if (!automationSettings) {
+      const { data: allSettings, error: automationError } = await supabase
+        .from('tome_automation')
+        .select('*')
+        .eq('is_enabled', true);
 
-    if (automationError) {
-      throw new Error('Error fetching automation settings: ' + automationError.message);
+      if (automationError) {
+        throw new Error('Error fetching automation settings: ' + automationError.message);
+      }
+      
+      automationSettings = allSettings;
     }
 
     if (!automationSettings || automationSettings.length === 0) {
