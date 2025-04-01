@@ -37,6 +37,19 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const { logs } = useTomeScheduler();
   const { isLoading: isCategoriesLoading } = useCategoriesKeywords(configId);
 
+  // Helper functions to convert Promise<boolean> to Promise<void>
+  const handleGenerateRandomDraft = async (): Promise<void> => {
+    await generateRandomDraft();
+  };
+  
+  const handleForceRunScheduler = async (): Promise<void> => {
+    await forceRunScheduler();
+  };
+  
+  const handleSaveSettings = async (): Promise<void> => {
+    await saveAutomationSettings();
+  };
+
   if (isCategoriesLoading) {
     return (
       <Card>
@@ -82,9 +95,9 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       </CardContent>
       <CardFooter>
         <AutomationActions
-          onGenerateRandomDraft={generateRandomDraft}
-          onForceRunScheduler={forceRunScheduler}
-          onSaveSettings={saveAutomationSettings}
+          onGenerateRandomDraft={handleGenerateRandomDraft}
+          onForceRunScheduler={handleForceRunScheduler}
+          onSaveSettings={handleSaveSettings}
           hasNecessaryData={hasNecessaryData}
           isSubmitting={isSubmitting || savingStatus === 'loading'}
           logs={logs}
