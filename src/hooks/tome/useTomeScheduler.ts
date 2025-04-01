@@ -5,7 +5,6 @@ import { toast } from "sonner";
 
 export const useTomeScheduler = () => {
   const [isRunning, setIsRunning] = useState(false);
-  const [lastCheckResult, setLastCheckResult] = useState<any>(null);
 
   // Fonction pour exécuter manuellement le planificateur (sans générer de contenu)
   const checkSchedulerConfig = async (): Promise<boolean> => {
@@ -24,44 +23,9 @@ export const useTomeScheduler = () => {
       }
 
       console.log("Résultat de la vérification de configuration:", data);
-      setLastCheckResult(data);
       return true;
     } catch (error: any) {
       console.error("Erreur dans checkSchedulerConfig:", error);
-      toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
-      return false;
-    } finally {
-      setIsRunning(false);
-    }
-  };
-
-  // Fonction pour déclencher un "ping" sur le planificateur
-  // Cette fonction sert à vérifier et exécuter les tâches qui sont dues
-  // Elle respecte la fréquence configurée pour chaque automatisation
-  const pingScheduler = async (): Promise<boolean> => {
-    try {
-      setIsRunning(true);
-      console.log("Ping du planificateur");
-
-      const { data, error } = await supabase.functions.invoke('tome-scheduler', {
-        body: { pingOnly: true }
-      });
-
-      if (error) {
-        console.error("Erreur lors du ping du planificateur:", error);
-        toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
-        return false;
-      }
-
-      console.log("Résultat du ping du planificateur:", data);
-
-      if (data.generationsCreated > 0) {
-        toast.success(`${data.generationsCreated} brouillon(s) généré(s) avec succès`);
-      }
-
-      return true;
-    } catch (error: any) {
-      console.error("Erreur dans pingScheduler:", error);
       toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
       return false;
     } finally {
@@ -94,40 +58,6 @@ export const useTomeScheduler = () => {
       return true;
     } catch (error: any) {
       console.error("Erreur dans runScheduler:", error);
-      toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
-      return false;
-    } finally {
-      setIsRunning(false);
-    }
-  };
-
-  // Fonction pour forcer la génération de contenu, ignorant la vérification de fréquence
-  const forceSchedulerRun = async (): Promise<boolean> => {
-    try {
-      setIsRunning(true);
-      console.log("Exécution forcée du planificateur");
-
-      const { data, error } = await supabase.functions.invoke('tome-scheduler', {
-        body: { forceRun: true }
-      });
-
-      if (error) {
-        console.error("Erreur lors de l'exécution forcée du planificateur:", error);
-        toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
-        return false;
-      }
-
-      console.log("Résultat de l'exécution forcée du planificateur:", data);
-
-      if (data.generationsCreated === 0) {
-        toast.warning("Aucun contenu n'a pu être généré. Vérifiez les configurations (catégories, mots-clés).");
-      } else {
-        toast.success(`${data.generationsCreated} brouillon(s) généré(s) avec succès`);
-      }
-
-      return true;
-    } catch (error: any) {
-      console.error("Erreur dans forceSchedulerRun:", error);
       toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
       return false;
     } finally {
@@ -198,12 +128,9 @@ export const useTomeScheduler = () => {
 
   return {
     isRunning,
-    lastCheckResult,
     runScheduler,
-    forceSchedulerRun,
     generateContent,
     publishContent,
-    checkSchedulerConfig,
-    pingScheduler
+    checkSchedulerConfig
   };
 };

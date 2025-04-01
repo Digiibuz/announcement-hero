@@ -48,8 +48,6 @@ const TomePublications: React.FC<TomePublicationsProps> = ({ configId, isClientV
         return;
       }
 
-      console.log("Générations récupérées:", data);
-
       // Récupérer les informations du site WordPress
       const { data: wpConfig } = await supabase
         .from("wordpress_configs")
@@ -74,13 +72,6 @@ const TomePublications: React.FC<TomePublicationsProps> = ({ configId, isClientV
 
   useEffect(() => {
     fetchGenerations();
-    
-    // Mettre en place un intervalle pour actualiser les données toutes les 30 secondes
-    const interval = setInterval(() => {
-      fetchGenerations();
-    }, 30000);
-    
-    return () => clearInterval(interval);
   }, [configId, fetchGenerations]);
 
   if (isLoading) {

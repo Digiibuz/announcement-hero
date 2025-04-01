@@ -28,16 +28,11 @@ serve(async (req) => {
 
     console.log("Tome-scheduler function starting execution");
 
-    // Parse the request to check if this is a configuration check, forced run, or ping only
+    // Parse the request to check if this is just a configuration check
     let isConfigCheck = false;
-    let isForceRun = false;
-    let isPingOnly = false;
-    
     try {
       const body = await req.json();
       isConfigCheck = body.configCheck === true;
-      isForceRun = body.forceRun === true;
-      isPingOnly = body.pingOnly === true;
       console.log("Request body:", body);
     } catch (e) {
       // Si pas de body JSON ou erreur de parsing, ce n'est pas une vérification de config
@@ -98,7 +93,7 @@ serve(async (req) => {
 
       console.log(`Processing automation for WordPress config ${wordpressConfigId} with frequency ${frequency}`);
 
-      // Check if it's time to generate content based on frequency (skip for forced runs)
+      // Check if it's time to generate content based on frequency
       const { data: lastGeneration, error: lastGenError } = await supabase
         .from('tome_generations')
         .select('created_at')
@@ -113,18 +108,10 @@ serve(async (req) => {
 
       console.log(`Last generation for config ${wordpressConfigId}:`, lastGeneration);
 
-      // Si c'est une exécution forcée, ignorer la vérification de fréquence
-      const shouldGenerate = isForceRun ? true : shouldGenerateContent(lastGeneration, frequency);
+      const shouldGenerate = shouldGenerateContent(lastGeneration, frequency);
       
       if (!shouldGenerate) {
         console.log(`Skipping generation for config ${wordpressConfigId}, not due yet`);
-        
-        // Si c'est juste un ping, calculer et afficher quand la prochaine génération est prévue
-        if (isPingOnly && lastGeneration && lastGeneration.length > 0) {
-          const nextGenerationTime = calculateNextGenerationTime(lastGeneration[0].created_at, frequency);
-          console.log(`Next generation for config ${wordpressConfigId} scheduled at: ${nextGenerationTime.toISOString()}`);
-        }
-        
         continue;
       }
 
@@ -224,9 +211,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         message: `Scheduler run completed. Created ${generationsCreated} generations.`,
-        generationsCreated,
-        forcedRun: isForceRun,
-        pingOnly: isPingOnly
+        generationsCreated
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -249,23 +234,6 @@ serve(async (req) => {
   }
 });
 
-// Calculer exactement quand la prochaine génération devrait avoir lieu
-function calculateNextGenerationTime(lastGenerationTime: string, frequency: number): Date {
-  const lastGenDate = new Date(lastGenerationTime);
-  
-  if (frequency < 1) {
-    // Convertir la fréquence (jours) en minutes puis en millisecondes
-    const frequencyMinutes = Math.floor(frequency * 24 * 60);
-    const intervalMs = frequencyMinutes * 60 * 1000;
-    
-    return new Date(lastGenDate.getTime() + intervalMs);
-  } else {
-    // Pour les fréquences en jours
-    const intervalMs = frequency * 24 * 60 * 60 * 1000;
-    return new Date(lastGenDate.getTime() + intervalMs);
-  }
-}
-
 // Helper function to determine if content should be generated based on last generation time and frequency
 function shouldGenerateContent(lastGeneration: any[], frequency: number): boolean {
   // If no previous generations, always generate
@@ -280,50 +248,21 @@ function shouldGenerateContent(lastGeneration: any[], frequency: number): boolea
   // Calculate time difference in milliseconds
   const diffTime = Math.abs(now.getTime() - lastGenerationDate.getTime());
   
-  // Pour le débogage, ajouter des logs détaillés
-  console.log("Last generation at:", lastGenerationDate.toISOString());
-  console.log("Current time:", now.toISOString());
-  console.log("Difference in milliseconds:", diffTime);
-  
   // Si la fréquence est inférieure à 1, cela représente des fractions de jour
-  // Par exemple, 0.0014 ~ 2 minutes (2/1440 jour)
+  // Par exemple, 0.0007 ~ 1 minute (1/1440 jour), 0.01 ~ 15 minutes (15/1440 jour)
   if (frequency < 1) {
-    // Convertir la fréquence (en jours) en minutes
-    const frequencyMinutes = Math.floor(frequency * 24 * 60);
-    const frequencyMs = frequencyMinutes * 60 * 1000;
-    
-    // Convertir la différence de temps en minutes
+    // Convertir en minutes pour plus de lisibilité dans les logs
     const diffMinutes = Math.floor(diffTime / (1000 * 60));
+    const frequencyMinutes = Math.floor(frequency * 24 * 60); // Convertir en minutes
     
-    console.log(`Last generation ${diffMinutes} minutes ago, scheduled frequency: ${frequencyMinutes} minutes (${frequency} days)`);
-    console.log(`Time threshold in ms: ${frequencyMs}, Actual diff in ms: ${diffTime}`);
+    console.log(`Dernière génération il y a ${diffMinutes} minutes, fréquence configurée à ${frequencyMinutes} minutes (${frequency} jours)`);
     
-    // Pour assurer une exécution fiable, comparer directement en millisecondes
-    const shouldGen = diffTime >= frequencyMs;
-    console.log(`Should generate? ${shouldGen ? 'YES' : 'NO'}`);
-    
-    // La prochaine génération devrait avoir lieu à:
-    const nextGenTimeMs = lastGenerationDate.getTime() + frequencyMs;
-    const nextGenTime = new Date(nextGenTimeMs);
-    console.log(`Next generation should happen after: ${nextGenTime.toISOString()}`);
-    console.log(`Time until next generation: ${Math.max(0, (nextGenTimeMs - now.getTime()) / 1000 / 60)} minutes`);
-    
-    return shouldGen;
+    // Comparer directement les minutes au lieu de jours fractionnés
+    return diffMinutes >= frequencyMinutes;
   }
   
   // Pour les fréquences en jours
-  const frequencyMs = frequency * 24 * 60 * 60 * 1000;
-  const shouldGen = diffTime >= frequencyMs;
-  
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  console.log(`Last generation ${diffDays} days ago, scheduled frequency: ${frequency} days`);
-  console.log(`Time threshold in ms: ${frequencyMs}, Actual diff in ms: ${diffTime}`);
-  console.log(`Should generate? ${shouldGen ? 'YES' : 'NO'}`);
-  
-  // La prochaine génération devrait avoir lieu à:
-  const nextGenTimeMs = lastGenerationDate.getTime() + frequencyMs;
-  const nextGenTime = new Date(nextGenTimeMs);
-  console.log(`Next generation should happen after: ${nextGenTime.toISOString()}`);
-  
-  return shouldGen;
+  console.log(`Dernière génération il y a ${diffDays} jours, fréquence configurée à ${frequency} jours`);
+  return diffDays >= frequency;
 }

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -8,9 +8,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useTomeScheduler } from "@/hooks/tome/useTomeScheduler";
 import { useCategoriesKeywords, useLocalities } from "@/hooks/tome";
 import { toast } from "sonner";
-import { Loader2, RefreshCw, Play } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Badge } from "@/components/ui/badge";
 
 // Define the type for tome_automation table
 interface TomeAutomation {
@@ -30,105 +29,14 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const [isEnabled, setIsEnabled] = useState(false);
   const [frequency, setFrequency] = useState("2"); // jours
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [lastGeneration, setLastGeneration] = useState<string | null>(null);
-  const [nextGeneration, setNextGeneration] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const { categories, isLoading: isLoadingCategories } = useCategoriesKeywords(configId);
   const { activeLocalities, isLoading: isLoadingLocalities } = useLocalities(configId);
-  const { generateContent, runScheduler, checkSchedulerConfig, forceSchedulerRun } = useTomeScheduler();
+  const { generateContent, runScheduler } = useTomeScheduler();
 
   // Vérifier si l'automatisation est déjà activée à l'initialisation
   useEffect(() => {
     checkAutomationSettings();
-    fetchLastGeneration();
-    
-    // Rafraîchir les données toutes les 30 secondes
-    const interval = setInterval(() => {
-      fetchLastGeneration();
-    }, 30000);
-    
-    return () => clearInterval(interval);
   }, [configId]);
-
-  // Fonction pour rafraîchir manuellement les données
-  const refreshData = useCallback(async () => {
-    setIsRefreshing(true);
-    await fetchLastGeneration();
-    await checkSchedulerConfig();
-    setIsRefreshing(false);
-  }, []);
-
-  // Fonction pour calculer précisément la prochaine génération
-  const calculateNextGeneration = useCallback((lastGenerationTime: Date, frequencyValue: number): Date => {
-    if (frequencyValue < 1) {
-      // Convertir la fréquence (jours) en minutes puis en millisecondes
-      const frequencyMinutes = Math.floor(frequencyValue * 24 * 60);
-      const intervalMs = frequencyMinutes * 60 * 1000;
-      
-      // Calculer la prochaine date de génération basée sur la dernière
-      const nextDate = new Date(lastGenerationTime.getTime() + intervalMs);
-      
-      // Si la date calculée est dans le passé, utiliser maintenant + intervalle
-      const now = new Date();
-      if (nextDate <= now) {
-        return new Date(now.getTime() + intervalMs);
-      }
-      return nextDate;
-    } else {
-      // Pour les fréquences en jours
-      const intervalMs = frequencyValue * 24 * 60 * 60 * 1000;
-      return new Date(lastGenerationTime.getTime() + intervalMs);
-    }
-  }, []);
-
-  // Récupérer la dernière génération
-  const fetchLastGeneration = async () => {
-    try {
-      if (!configId) return;
-      
-      const { data, error } = await supabase
-        .from('tome_generations')
-        .select('created_at')
-        .eq('wordpress_config_id', configId)
-        .order('created_at', { ascending: false })
-        .limit(1);
-        
-      if (error) {
-        console.error("Erreur lors de la récupération de la dernière génération:", error);
-        return;
-      }
-      
-      if (data && data.length > 0) {
-        const lastDate = new Date(data[0].created_at);
-        setLastGeneration(lastDate.toLocaleString());
-        
-        // Récupérer les paramètres d'automatisation pour calculer la prochaine génération
-        const { data: autoData } = await supabase
-          .from('tome_automation')
-          .select('frequency, is_enabled')
-          .eq('wordpress_config_id', configId)
-          .single();
-          
-        if (autoData && autoData.is_enabled) {
-          const nextGenTime = calculateNextGeneration(lastDate, autoData.frequency);
-          setNextGeneration(nextGenTime.toLocaleString());
-          
-          // Afficher le temps restant en minutes pour un débogage facile
-          const now = new Date();
-          const remainingMs = nextGenTime.getTime() - now.getTime();
-          const remainingMinutes = Math.max(0, Math.floor(remainingMs / (1000 * 60)));
-          console.log(`Temps restant avant prochaine génération: ${remainingMinutes} minutes`);
-        } else {
-          setNextGeneration("Automatisation désactivée");
-        }
-      } else {
-        setLastGeneration("Aucune");
-        setNextGeneration("Dès que possible");
-      }
-    } catch (error) {
-      console.error("Erreur lors de la récupération des données de génération:", error);
-    }
-  };
 
   // Récupérer l'état d'automatisation depuis la base de données
   const checkAutomationSettings = async () => {
@@ -217,11 +125,12 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       console.log("Résultat de l'opération:", result);
       toast.success(`Automatisation ${isEnabled ? 'activée' : 'désactivée'}`);
       
-      // Vérifier la configuration du planificateur pour mettre à jour les informations
-      await checkSchedulerConfig();
-      
-      // Rafraîchir les données de la dernière génération
-      await fetchLastGeneration();
+      // Ne plus exécuter le planificateur immédiatement
+      // Cette ligne était responsable de la génération immédiate d'un brouillon
+      // if (isEnabled) {
+      //   console.log("Exécution immédiate du planificateur");
+      //   await runScheduler();
+      // }
     } catch (error: any) {
       console.error("Erreur détaillée lors de l'enregistrement des paramètres:", error);
       toast.error(`Erreur: ${error.message || "Erreur lors de l'enregistrement des paramètres"}`);
@@ -289,30 +198,12 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       
       if (result) {
         toast.success("Brouillon généré avec succès");
-        // Rafraîchir les données après une génération réussie
-        fetchLastGeneration();
       } else {
         toast.error("Échec de la génération du brouillon");
       }
     } catch (error: any) {
       console.error("Erreur lors de la génération du brouillon:", error);
       toast.error("Erreur: " + error.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Fonction pour exécuter immédiatement le planificateur, en ignorant les vérifications de fréquence
-  const forceGeneration = async () => {
-    setIsSubmitting(true);
-    try {
-      const result = await forceSchedulerRun();
-      if (result) {
-        // Rafraîchir les données après une exécution réussie
-        fetchLastGeneration();
-      }
-    } catch (error) {
-      console.error("Erreur lors de l'exécution forcée:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -329,19 +220,6 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   }
 
   const hasNecessaryData = categories.length > 0;
-
-  // Fonction pour formatter la fréquence de manière lisible
-  const formatFrequency = (freq: string): string => {
-    const freqNum = parseFloat(freq);
-    if (freqNum < 1) {
-      const minutes = Math.floor(freqNum * 24 * 60);
-      return `${minutes} minute${minutes > 1 ? 's' : ''}`;
-    } else if (freqNum === 1) {
-      return '1 jour';
-    } else {
-      return `${freqNum} jours`;
-    }
-  };
 
   return (
     <Card>
@@ -392,49 +270,13 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
           </Select>
         </div>
 
-        <div className="bg-gray-100 p-4 rounded-md space-y-2">
-          <div className="flex items-center justify-between mb-2">
-            <Badge variant="outline" className="bg-gray-200">
-              Statut de l'automatisation
-            </Badge>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={refreshData}
-              disabled={isRefreshing}
-            >
-              <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Actualiser
-            </Button>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-sm">Dernière génération:</span>
-            <span className="text-sm">{lastGeneration || "Aucune"}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-sm">Prochaine génération:</span>
-            <span className="text-sm">{nextGeneration || "Non planifiée"}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-sm">Fréquence actuelle:</span>
-            <span className="text-sm">{formatFrequency(frequency)}</span>
-          </div>
-          
-          {isEnabled && (
-            <div className="mt-2 text-xs text-gray-600">
-              <p>Le planificateur s'exécute toutes les minutes et vérifie si la fréquence définie est atteinte avant de générer du contenu.</p>
-            </div>
-          )}
-        </div>
-
         {!hasNecessaryData && (
           <div className="bg-amber-100 text-amber-800 p-3 rounded-md text-sm">
             Vous devez ajouter des catégories et mots-clés avant de pouvoir utiliser l'automatisation.
           </div>
         )}
       </CardContent>
-      <CardFooter className="flex flex-wrap gap-2">
+      <CardFooter className="flex justify-between">
         <Button 
           variant="outline" 
           onClick={generateRandomDraft}
@@ -443,20 +285,9 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
           {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
           Générer un brouillon maintenant
         </Button>
-        
-        <Button 
-          variant="outline"
-          onClick={forceGeneration}
-          disabled={!hasNecessaryData || isSubmitting || !isEnabled}
-        >
-          {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
-          Forcer l'exécution du planificateur
-        </Button>
-        
         <Button 
           onClick={saveAutomationSettings}
           disabled={isSubmitting}
-          className="ml-auto"
         >
           {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
           Enregistrer les paramètres
