@@ -19,25 +19,76 @@ serve(async (req) => {
     // Initialiser le client Supabase
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    // On appelle directement la fonction tome-scheduler avec forceGeneration=true
-    // Cela permet de générer un brouillon sans vérifier les fréquences
-    const { data, error } = await supabase.functions.invoke('tome-scheduler', {
-      body: { forceGeneration: true }
-    });
+    // Vérifier s'il y a des générations planifiées à exécuter maintenant
+    const now = new Date();
+    const { data: automations, error: fetchError } = await supabase
+      .from('tome_automation')
+      .select('*')
+      .eq('is_enabled', true)
+      .not('next_generation_time', 'is', null)
+      .lt('next_generation_time', now.toISOString());
     
-    if (error) {
-      console.error("Erreur lors de l'appel au planificateur:", error);
-      throw new Error('Erreur lors de l\'appel au planificateur: ' + error.message);
+    if (fetchError) {
+      throw new Error(`Erreur lors de la recherche d'automatisations à exécuter: ${fetchError.message}`);
     }
     
-    console.log("Résultat de l'exécution planifiée:", data);
+    console.log(`Trouvé ${automations?.length || 0} automatisations à exécuter`);
+    
+    if (!automations || automations.length === 0) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Aucune automatisation à exécuter pour le moment",
+          generationsCreated: 0
+        }),
+        {
+          headers: { 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    }
+    
+    let generationsCreated = 0;
+    
+    // Exécuter chaque automatisation due
+    for (const automation of automations) {
+      console.log(`Exécution de l'automatisation pour ${automation.wordpress_config_id}`);
+      
+      // Mettre à jour la prochaine heure de génération
+      if (automation.frequency) {
+        const nextGenerationTime = new Date(Date.now() + (automation.frequency * 60 * 1000)).toISOString();
+        
+        await supabase
+          .from('tome_automation')
+          .update({ next_generation_time: nextGenerationTime })
+          .eq('id', automation.id);
+          
+        console.log(`Prochaine génération pour ${automation.wordpress_config_id} planifiée à ${nextGenerationTime}`);
+      }
+      
+      // Appeler tome-scheduler pour générer le contenu
+      const { data, error } = await supabase.functions.invoke('tome-scheduler', {
+        body: { 
+          forceGeneration: true,
+          configId: automation.wordpress_config_id 
+        }
+      });
+      
+      if (error) {
+        console.error(`Erreur lors de l'appel au planificateur pour ${automation.wordpress_config_id}:`, error);
+        continue;
+      }
+      
+      console.log(`Génération pour ${automation.wordpress_config_id} terminée:`, data);
+      generationsCreated += data?.generationsCreated || 0;
+    }
     
     // Retourner une réponse réussie
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Planification exécutée avec succès. ${data?.generationsCreated || 0} génération(s) créée(s).`,
-        generationsCreated: data?.generationsCreated || 0
+        message: `Planification exécutée avec succès. ${generationsCreated} génération(s) créée(s).`,
+        generationsCreated
       }),
       {
         headers: { 'Content-Type': 'application/json' },

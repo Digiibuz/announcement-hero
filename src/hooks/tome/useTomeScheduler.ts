@@ -18,6 +18,78 @@ export const useTomeScheduler = () => {
     };
   }, []);
 
+  // Effet pour récupérer l'état de l'autogénération au chargement
+  useEffect(() => {
+    const checkAutoGenerationState = async () => {
+      try {
+        // Récupérer toutes les configurations avec next_generation_time
+        const { data, error } = await supabase
+          .from('tome_automation')
+          .select('*')
+          .not('next_generation_time', 'is', null);
+
+        if (error) {
+          console.error("Erreur lors de la récupération des états d'autogénération:", error);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          // Trouver les configurations avec autogénération active
+          const activeConfigs = data.filter(config => 
+            config.is_enabled && 
+            config.next_generation_time && 
+            new Date(config.next_generation_time) > new Date()
+          );
+
+          if (activeConfigs.length > 0) {
+            // Choisir la configuration avec la prochaine génération la plus proche
+            const sortedConfigs = [...activeConfigs].sort((a, b) => 
+              new Date(a.next_generation_time).getTime() - new Date(b.next_generation_time).getTime()
+            );
+            
+            const nextConfig = sortedConfigs[0];
+            const nextTime = new Date(nextConfig.next_generation_time);
+            const now = new Date();
+            
+            // Calculer le temps restant en secondes
+            const remainingSeconds = Math.max(0, Math.floor((nextTime.getTime() - now.getTime()) / 1000));
+            
+            if (remainingSeconds > 0) {
+              console.log(`Reprenant l'autogénération pour ${nextConfig.wordpress_config_id} dans ${remainingSeconds} secondes`);
+              setIsAutoGenerating(true);
+              startCountdown(remainingSeconds, nextConfig.frequency * 60);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Erreur lors de la vérification de l'état d'autogénération:", error);
+      }
+    };
+
+    checkAutoGenerationState();
+  }, []);
+
+  // Fonction pour démarrer le décompte uniquement
+  const startCountdown = (initialSeconds: number, frequencyInSeconds: number) => {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+    }
+
+    setCountdown(initialSeconds);
+
+    countdownIntervalRef.current = window.setInterval(() => {
+      setCountdown((prevCountdown) => {
+        if (prevCountdown === null || prevCountdown <= 1) {
+          // Lorsque le compteur arrive à zéro, générer un nouveau brouillon
+          runScheduler(true).catch(console.error);
+          // Réinitialiser le compteur
+          return frequencyInSeconds;
+        }
+        return prevCountdown - 1;
+      });
+    }, 1000);
+  };
+
   // Fonction pour exécuter manuellement le planificateur (sans générer de contenu)
   const checkSchedulerConfig = async (): Promise<boolean> => {
     try {
@@ -46,7 +118,7 @@ export const useTomeScheduler = () => {
   };
 
   // Fonction pour démarrer le décompte pour l'autogénération
-  const startAutoGeneration = (frequencyInMinutes: number) => {
+  const startAutoGeneration = async (frequencyInMinutes: number) => {
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
     }
@@ -55,29 +127,58 @@ export const useTomeScheduler = () => {
     setCountdown(frequencyInSeconds);
     setIsAutoGenerating(true);
 
-    countdownIntervalRef.current = window.setInterval(() => {
-      setCountdown((prevCountdown) => {
-        if (prevCountdown === null || prevCountdown <= 1) {
-          // Lorsque le compteur arrive à zéro, générer un nouveau brouillon
-          runScheduler(true).catch(console.error);
-          // Réinitialiser le compteur
-          return frequencyInSeconds;
-        }
-        return prevCountdown - 1;
-      });
-    }, 1000);
+    // Calculer et sauvegarder l'heure de la prochaine génération
+    const nextGenerationTime = new Date(Date.now() + frequencyInSeconds * 1000).toISOString();
 
+    // Mettre à jour toutes les configurations d'automatisation actives
+    const { data: configs, error: fetchError } = await supabase
+      .from('tome_automation')
+      .select('id, wordpress_config_id')
+      .eq('is_enabled', true);
+
+    if (fetchError) {
+      console.error("Erreur lors de la récupération des configurations:", fetchError);
+      toast.error(`Erreur: ${fetchError.message || "Une erreur s'est produite"}`);
+    } else if (configs && configs.length > 0) {
+      // Mettre à jour la next_generation_time pour toutes les configurations actives
+      for (const config of configs) {
+        const { error: updateError } = await supabase
+          .from('tome_automation')
+          .update({ 
+            next_generation_time: nextGenerationTime,
+            frequency: frequencyInMinutes
+          })
+          .eq('id', config.id);
+
+        if (updateError) {
+          console.error(`Erreur lors de la mise à jour de next_generation_time pour ${config.id}:`, updateError);
+        }
+      }
+    }
+
+    startCountdown(frequencyInSeconds, frequencyInSeconds);
     toast.success(`Autogénération activée. Prochain brouillon dans ${frequencyInMinutes} minute(s).`);
   };
 
   // Fonction pour arrêter l'autogénération
-  const stopAutoGeneration = () => {
+  const stopAutoGeneration = async () => {
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
       countdownIntervalRef.current = null;
     }
     setIsAutoGenerating(false);
     setCountdown(null);
+
+    // Réinitialiser next_generation_time pour toutes les configurations
+    const { error } = await supabase
+      .from('tome_automation')
+      .update({ next_generation_time: null })
+      .eq('is_enabled', true);
+
+    if (error) {
+      console.error("Erreur lors de la réinitialisation de next_generation_time:", error);
+    }
+
     toast.info("Autogénération désactivée");
   };
 
