@@ -19,7 +19,6 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const { 
     isEnabled, 
     frequency, 
-    apiKey,
     isSubmitting: savingStatus,
     lastAutomationCheck,
     checkAutomationSettings,
@@ -47,6 +46,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
 
   const [showApiKey, setShowApiKey] = useState(false);
   const [checkingConfig, setCheckingConfig] = useState(true);
+  const [apiKey, setApiKey] = useState<string | null>(null);
   
   // Check if there are categories and keywords available
   const hasKeywordsAndCategories = categories.length > 0 && 

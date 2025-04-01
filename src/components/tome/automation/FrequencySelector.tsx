@@ -7,7 +7,7 @@ interface FrequencySelectorProps {
   frequency: string;
   onFrequencyChange: (value: string) => void;
   isEnabled: boolean;
-  isSubmitting: boolean;
+  isSubmitting: boolean | 'loading' | 'success' | 'error';
 }
 
 const FrequencySelector: React.FC<FrequencySelectorProps> = ({
@@ -22,7 +22,7 @@ const FrequencySelector: React.FC<FrequencySelectorProps> = ({
       <Select 
         value={frequency} 
         onValueChange={onFrequencyChange}
-        disabled={!isEnabled || isSubmitting}
+        disabled={!isEnabled || isSubmitting === true || isSubmitting === 'loading'}
       >
         <SelectTrigger id="frequency-select">
           <SelectValue placeholder="Select a frequency" />
