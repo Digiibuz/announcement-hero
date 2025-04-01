@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { TomeGeneration } from "@/types/tome";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 interface TomePublicationsProps {
   configId: string;
@@ -24,6 +25,7 @@ const TomePublications: React.FC<TomePublicationsProps> = ({ configId, isClientV
   const navigate = useNavigate();
   const [generations, setGenerations] = React.useState<ExtendedTomeGeneration[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const isMobile = useMediaQuery("(max-width: 767px)");
 
   const fetchGenerations = React.useCallback(async () => {
     if (!configId) {
@@ -100,13 +102,17 @@ const TomePublications: React.FC<TomePublicationsProps> = ({ configId, isClientV
             <RefreshCw className="h-4 w-4 mr-2" />
             Actualiser
           </Button>
-          <Button
-            size="sm"
-            onClick={() => navigate("/tome/new")}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Nouvelle publication
-          </Button>
+          
+          {/* Only show the button on desktop */}
+          {!isMobile && (
+            <Button
+              size="sm"
+              onClick={() => navigate("/tome/new")}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvelle publication
+            </Button>
+          )}
         </div>
       </div>
       
