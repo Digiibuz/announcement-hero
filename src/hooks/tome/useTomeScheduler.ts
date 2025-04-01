@@ -3,6 +3,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
+import { Announcement } from "@/types/announcement";
 
 export const useTomeScheduler = (wordpressConfigId: string | null) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -75,7 +76,8 @@ export const useTomeScheduler = (wordpressConfigId: string | null) => {
       }
       
       // Use the same approach as announcements - with useWordPressPublishing hook
-      const announcement = {
+      const currentDate = new Date().toISOString();
+      const announcement: Announcement = {
         id: generation.id,
         title: generation.title,
         description: generation.content,
@@ -84,6 +86,8 @@ export const useTomeScheduler = (wordpressConfigId: string | null) => {
         seo_title: generation.title,
         seo_description: "",
         user_id: "",
+        created_at: currentDate,
+        updated_at: currentDate,
         wordpress_category_id: generation.category_id
       };
 

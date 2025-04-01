@@ -28,7 +28,7 @@ import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useTomeScheduler } from "@/hooks/tome/useTomeScheduler";
-import { PublishingLoadingOverlay } from "@/components/announcements/PublishingLoadingOverlay";
+import PublishingLoadingOverlay from "@/components/announcements/PublishingLoadingOverlay";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
 
 const TomePublicationDetail = () => {
