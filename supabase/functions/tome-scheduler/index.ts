@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.1';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import 'https://deno.land/x/xhr@0.1.0/mod.ts';
@@ -79,20 +80,23 @@ async function parseRequestParams(req: Request) {
     
     debugLog("Corps de la requête:", body);
     
-    // IMPORTANT: Prioritize forceGeneration over configCheck
-    // If forceGeneration is explicitly true, we should generate content
+    // CRITICAL FIX: Prioritize forceGeneration over configCheck
+    // If forceGeneration is explicitly set to true in the request, always use it regardless of configCheck
     if (body.forceGeneration === true) {
+      debugLog("PRIORITÉ: forceGeneration=true détecté dans la requête, ignorant configCheck");
       forceGeneration = true;
-      isConfigCheck = false; // Explicitly set configCheck to false when forcing generation
-      debugLog("forceGeneration=true détecté, isConfigCheck défini sur false");
+      isConfigCheck = false; // Explicitly override configCheck
     } 
-    // Only if forceGeneration is not explicitly set to true, we check configCheck
+    // Only check configCheck if forceGeneration is not explicitly true
     else if (body.configCheck === true) {
       isConfigCheck = true;
       forceGeneration = false; // Explicitly set forceGeneration to false for config checks
       debugLog("configCheck=true détecté, forceGeneration défini sur false");
     }
-    // Otherwise keep the defaults (forceGeneration=true, configCheck=false)
+    // For any other case, use defaults (which are forceGeneration=true, configCheck=false)
+    else {
+      debugLog("Aucun paramètre prioritaire détecté, utilisation des valeurs par défaut");
+    }
     
     apiKey = body.api_key;
     debug = body.debug === true;
