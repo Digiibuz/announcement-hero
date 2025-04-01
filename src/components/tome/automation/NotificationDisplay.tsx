@@ -39,9 +39,11 @@ const NotificationDisplay: React.FC<NotificationDisplayProps> = ({ configId }) =
           if (newGeneration && newGeneration.id !== lastNotifiedId) {
             console.log("New generation detected:", newGeneration.id);
             setLastNotifiedId(newGeneration.id);
+            
+            // Montrer une notification plus détaillée
             toast.info(`Nouveau brouillon en cours de génération`, {
-              description: "Le processus de génération a démarré en arrière-plan.",
-              duration: 5000
+              description: `ID: ${newGeneration.id.substring(0, 8)}... - Démarrage du processus de génération`,
+              duration: 8000
             });
           }
         }
@@ -64,20 +66,36 @@ const NotificationDisplay: React.FC<NotificationDisplayProps> = ({ configId }) =
           if (updatedGeneration.status === 'draft' && updatedGeneration.title) {
             toast.success(`Brouillon généré avec succès`, {
               description: `"${updatedGeneration.title.substring(0, 30)}${updatedGeneration.title.length > 30 ? '...' : ''}"`,
-              duration: 5000
+              duration: 8000
             });
             setLastNotifiedId(updatedGeneration.id);
           } else if (updatedGeneration.status === 'failed') {
             toast.error(`Échec de la génération du brouillon`, {
               description: updatedGeneration.error_message || "Une erreur s'est produite",
-              duration: 5000
+              duration: 8000
             });
             setLastNotifiedId(updatedGeneration.id);
+          } else if (updatedGeneration.status === 'processing') {
+            toast.info(`Génération en cours`, {
+              description: `ID: ${updatedGeneration.id.substring(0, 8)}... - Traitement en cours`,
+              duration: 5000
+            });
           }
         }
       )
       .subscribe((status) => {
         console.log("Subscription status:", status);
+        if (status === 'SUBSCRIBED') {
+          toast.success("Abonnement aux notifications activé", {
+            description: "Le système surveillera les nouvelles générations en temps réel",
+            duration: 3000
+          });
+        } else if (status === 'CHANNEL_ERROR') {
+          toast.error("Erreur d'abonnement aux notifications", {
+            description: "Impossible de surveiller les nouvelles générations",
+            duration: 5000
+          });
+        }
       });
 
     return () => {

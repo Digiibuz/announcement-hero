@@ -2,9 +2,10 @@
 import React from "react";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { RefreshCw, CheckCircle, AlertTriangle, Clock } from "lucide-react";
+import { RefreshCw, CheckCircle, AlertTriangle, Clock, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface AutomationStatusProps {
   isEnabled: boolean;
@@ -47,7 +48,7 @@ const AutomationStatus: React.FC<AutomationStatusProps> = ({
                 <AlertTriangle className="h-3 w-3 mr-1" /> En attente de données
               </Badge>}
             {!isEnabled && <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200">
-                Inactif
+                <XCircle className="h-3 w-3 mr-1" /> Inactif
               </Badge>}
           </div>
           <p className="text-sm text-muted-foreground">
@@ -62,10 +63,25 @@ const AutomationStatus: React.FC<AutomationStatusProps> = ({
           <Clock className="h-4 w-4" />
           Dernière vérification: {formatLastCheck()}
         </div>
-        <Button variant="ghost" size="sm" onClick={onRefresh} disabled={isSubmitting}>
-          <RefreshCw className={`h-4 w-4 ${isSubmitting ? 'animate-spin' : ''}`} />
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" onClick={onRefresh} disabled={isSubmitting}>
+                <RefreshCw className={`h-4 w-4 ${isSubmitting ? 'animate-spin' : ''}`} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Rafraîchir l'état de l'automatisation</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
+
+      {isEnabled && hasNecessaryData && 
+        <div className="text-xs text-green-600 italic border-t pt-2">
+          <p>Le planificateur vérifiera si une génération est nécessaire toutes les 3 minutes. Assurez-vous d'avoir sauvegardé vos paramètres.</p>
+        </div>
+      }
     </div>;
 };
 

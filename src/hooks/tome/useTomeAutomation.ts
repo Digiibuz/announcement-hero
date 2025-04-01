@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -55,12 +54,12 @@ export const useTomeAutomation = (configId: string) => {
     intervalRef.current = window.setInterval(() => {
       const now = Date.now();
       // Only fetch if more than 10 seconds have passed since last fetch
-      if (now - lastFetchTimeRef.current > 10000) {
+      if (now - lastFetchTimeRef.current > 30000) { // Increased to 30 seconds to reduce polling pressure
         checkAutomationSettings(false);
         setLastAutomationCheck(new Date());
         lastFetchTimeRef.current = now;
       }
-    }, 30000); // Still check every 30 seconds, but with throttling
+    }, 60000); // Reduced to check every minute instead of every 30 seconds
 
     return () => {
       if (intervalRef.current) {
@@ -111,6 +110,20 @@ export const useTomeAutomation = (configId: string) => {
   const refreshAutomationStatus = useCallback(async () => {
     await checkAutomationSettings(true);
     setLastAutomationCheck(new Date());
+    
+    // Force a scheduler check when manually refreshing
+    try {
+      const result = await checkSchedulerConfig();
+      if (result) {
+        addLog("Vérification du planificateur réussie");
+        toast.success("État du planificateur vérifié avec succès");
+      } else {
+        addLog("Échec de la vérification du planificateur");
+        toast.error("Impossible de vérifier l'état du planificateur");
+      }
+    } catch (error: any) {
+      addLog(`Erreur lors de la vérification du planificateur: ${error.message}`);
+    }
   }, [configId]);
 
   const toggleAutomationStatus = useCallback((newStatus: boolean) => {
@@ -191,22 +204,34 @@ export const useTomeAutomation = (configId: string) => {
       addLog(`Résultat de l'opération: ${result.error ? 'Erreur' : 'Succès'}`);
       
       // Force scheduler to acknowledge updated frequency
-      const forceRun = await runScheduler(false);
-      if (forceRun) {
-        toast.success(`Paramètres sauvegardés et planificateur notifié`);
-      } else {
-        toast.success(`Paramètres d'automatisation sauvegardés avec succès`);
-      }
-      
-      await checkAutomationSettings();
-      setSavingStatus('success');
-      
+      // Exécuter deux fois pour s'assurer que le planificateur prend en compte les nouveaux paramètres
       const configValid = await checkSchedulerConfig();
       if (configValid) {
         addLog("Configuration du planificateur validée avec succès");
       } else {
         addLog("Échec de la validation de la configuration du planificateur");
       }
+      
+      // Pause brève pour permettre au système de prendre en compte les changements
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Forcer l'exécution du planificateur pour qu'il prenne en compte les nouveaux paramètres
+      const forceRun = await runScheduler(true);
+      if (forceRun) {
+        addLog("Planificateur exécuté avec succès après sauvegarde");
+        toast.success(`Paramètres sauvegardés et planificateur notifié`);
+      } else {
+        addLog("Échec de l'exécution du planificateur après sauvegarde");
+        toast.success(`Paramètres d'automatisation sauvegardés avec succès`);
+      }
+      
+      await checkAutomationSettings();
+      setSavingStatus('success');
+      
+      toast.info("N'oubliez pas que la génération automatique se produira selon la fréquence définie", {
+        description: "Si l'automatisation est activée, le système vérifiera toutes les 3 minutes si une génération est nécessaire",
+        duration: 10000
+      });
       
       return true;
     } catch (error: any) {
@@ -329,6 +354,10 @@ export const useTomeAutomation = (configId: string) => {
         toast.error("Échec de l'exécution du planificateur");
       } else {
         addLog("Planificateur exécuté avec succès");
+        toast.success("Planificateur exécuté avec succès", {
+          description: "Selon vos paramètres, une génération peut être lancée si la fréquence est atteinte",
+          duration: 5000
+        });
       }
       
       return result;

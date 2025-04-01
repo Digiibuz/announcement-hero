@@ -18,10 +18,14 @@ export const useTomeScheduler = () => {
       setIsRunning(true);
       addLog("Vérification de la configuration du planificateur...");
 
+      // Ajouter un timestamp pour éviter la mise en cache
+      const timestamp = new Date().getTime();
+
       const { data, error } = await supabase.functions.invoke('tome-scheduler', {
         body: { 
           configCheck: true,
-          timestamp: new Date().getTime() // Prevent caching
+          timestamp,
+          debug: true
         }
       });
 
@@ -40,7 +44,7 @@ export const useTomeScheduler = () => {
         
         if (settingsCount > 0) {
           data.automationSettings.forEach((setting: any) => {
-            addLog(`Config ID: ${setting.wordpress_config_id.slice(0, 8)}... | Fréquence: ${setting.frequency} jour(s)`);
+            addLog(`Config ID: ${setting.wordpress_config_id.slice(0, 8)}... | Fréquence: ${setting.frequency} jour(s) | Activé: ${setting.is_enabled ? 'Oui' : 'Non'}`);
           });
         }
       } else {
@@ -88,13 +92,13 @@ export const useTomeScheduler = () => {
       if (data && typeof data.generationsCreated === 'number') {
         if (data.generationsCreated === 0) {
           const message = forceGeneration 
-            ? "Aucun contenu généré. Vérifiez que des catégories et mots-clés existent." 
+            ? "Aucun contenu généré. Vérifiez que des catégories et mots-clés existent et que la fréquence est correcte." 
             : "Aucun contenu généré. La fréquence n'est peut-être pas atteinte ou aucune configuration n'est activée.";
           
           addLog(message);
           toast.info(message);
         } else {
-          const message = `${data.generationsCreated} brouillon(s) généré(s) avec succès`;
+          const message = `${data.generationsCreated} brouillon(s) en cours de génération`;
           addLog(message);
           toast.success(message);
         }
@@ -102,7 +106,11 @@ export const useTomeScheduler = () => {
       
       if (data && data.processingDetails) {
         data.processingDetails.forEach((detail: any) => {
-          addLog(`Traitement config ${detail.configId.slice(0, 8)}...: ${detail.result}`);
+          const statusMessage = detail.result === 'skipped' 
+            ? `Traitement ignoré: ${detail.reason}` 
+            : `Résultat: ${detail.result}`;
+            
+          addLog(`Traitement config ${detail.configId.slice(0, 8)}...: ${statusMessage}`);
         });
       }
 
