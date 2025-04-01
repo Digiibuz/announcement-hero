@@ -8,7 +8,7 @@ interface AutomationActionsProps {
   onForceRunScheduler: () => Promise<boolean>;
   onSaveSettings: () => Promise<boolean>;
   hasNecessaryData: boolean;
-  isSubmitting: boolean | 'loading' | 'success' | 'error';
+  isSubmitting: boolean;
 }
 
 const AutomationActions: React.FC<AutomationActionsProps> = ({
@@ -18,33 +18,31 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
   hasNecessaryData,
   isSubmitting
 }) => {
-  const isDisabled = isSubmitting === true || isSubmitting === 'loading';
-  
   return (
     <div className="flex justify-between flex-wrap gap-2">
       <div className="flex gap-2">
         <Button 
           variant="outline" 
           onClick={onGenerateRandomDraft}
-          disabled={!hasNecessaryData || isDisabled}
+          disabled={!hasNecessaryData || isSubmitting}
         >
-          {isDisabled ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+          {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
           Generate a draft
         </Button>
         <Button 
           variant="outline" 
           onClick={onForceRunScheduler}
-          disabled={!hasNecessaryData || isDisabled}
+          disabled={!hasNecessaryData || isSubmitting}
         >
-          {isDisabled ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+          {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
           Run scheduler
         </Button>
       </div>
       <Button 
         onClick={onSaveSettings}
-        disabled={isDisabled}
+        disabled={isSubmitting}
       >
-        {isDisabled ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
         Save settings
       </Button>
     </div>

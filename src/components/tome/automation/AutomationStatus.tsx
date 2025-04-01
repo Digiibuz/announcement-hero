@@ -9,7 +9,7 @@ interface AutomationStatusProps {
   isEnabled: boolean;
   onEnabledChange: (value: boolean) => void;
   hasNecessaryData: boolean;
-  isSubmitting: boolean | 'loading' | 'success' | 'error';
+  isSubmitting: boolean;
   lastAutomationCheck: Date | null;
   onRefresh: () => void;
 }
@@ -35,7 +35,7 @@ const AutomationStatus: React.FC<AutomationStatusProps> = ({
           id="automation-switch"
           checked={isEnabled}
           onCheckedChange={onEnabledChange}
-          disabled={!hasNecessaryData || isSubmitting === true || isSubmitting === 'loading'}
+          disabled={!hasNecessaryData || isSubmitting}
         />
       </div>
       

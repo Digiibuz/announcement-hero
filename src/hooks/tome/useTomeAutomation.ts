@@ -17,11 +17,10 @@ export interface TomeAutomation {
 }
 
 export const useTomeAutomation = (configId: string) => {
-  const [isEnabled, setIsEnabled] = useState<boolean>(false);
-  const [frequency, setFrequency] = useState<string>("0.0007"); // Default: every minute (for testing)
-  const [isSubmitting, setIsSubmitting] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [isEnabled, setIsEnabled] = useState(false);
+  const [frequency, setFrequency] = useState("0.0007"); // Default: every minute (for testing)
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastAutomationCheck, setLastAutomationCheck] = useState<Date | null>(null);
-  const [apiKey, setApiKey] = useState<string | null>(null);
   const { generateContent, runScheduler, checkSchedulerConfig } = useTomeScheduler();
   const { categories } = useCategoriesKeywords(configId);
   const { activeLocalities } = useLocalities(configId);
@@ -60,7 +59,6 @@ export const useTomeAutomation = (configId: string) => {
         const automationData = data as unknown as TomeAutomation;
         setIsEnabled(automationData.is_enabled);
         setFrequency(automationData.frequency.toString());
-        setApiKey(automationData.api_key || null);
         
         if (showToast && automationData.is_enabled) {
           toast.info(`Automation configured and ${automationData.is_enabled ? 'enabled' : 'disabled'} successfully`);
@@ -73,7 +71,7 @@ export const useTomeAutomation = (configId: string) => {
 
   // Save automation settings
   const saveAutomationSettings = async () => {
-    setIsSubmitting('loading');
+    setIsSubmitting(true);
     try {
       // Convert frequency to a floating point number to support minutes
       const frequencyNumber = parseFloat(frequency);
@@ -128,12 +126,10 @@ export const useTomeAutomation = (configId: string) => {
 
       if (result.error) {
         console.error("Supabase error during saving:", result.error);
-        setIsSubmitting('error');
         throw new Error(`Save error: ${result.error.message}`);
       }
 
       console.log("Operation result:", result);
-      setIsSubmitting('success');
       toast.success(`Automation ${isEnabled ? 'enabled' : 'disabled'}`);
       
       // After saving, refresh settings
@@ -156,20 +152,16 @@ export const useTomeAutomation = (configId: string) => {
       return true;
     } catch (error: any) {
       console.error("Detailed error saving settings:", error);
-      setIsSubmitting('error');
       toast.error(`Error: ${error.message || "Error saving settings"}`);
       return false;
     } finally {
-      // Reset submitting state after a delay to allow success status to be shown briefly
-      setTimeout(() => {
-        setIsSubmitting('idle');
-      }, 1000);
+      setIsSubmitting(false);
     }
   };
 
   // Generate a draft manually with random keywords and localities
   const generateRandomDraft = async () => {
-    setIsSubmitting('loading');
+    setIsSubmitting(true);
     try {
       if (categories.length === 0) {
         toast.error("No categories available to generate content");
@@ -236,13 +228,13 @@ export const useTomeAutomation = (configId: string) => {
       toast.error("Error: " + error.message);
       return false;
     } finally {
-      setIsSubmitting('idle');
+      setIsSubmitting(false);
     }
   };
 
   // Force scheduler execution to generate content immediately
   const forceRunScheduler = async () => {
-    setIsSubmitting('loading');
+    setIsSubmitting(true);
     try {
       // Run the scheduler with forceGeneration=true
       const result = await runScheduler(true);
@@ -257,7 +249,7 @@ export const useTomeAutomation = (configId: string) => {
       toast.error(`Error: ${error.message || "An error occurred"}`);
       return false;
     } finally {
-      setIsSubmitting('idle');
+      setIsSubmitting(false);
     }
   };
 
@@ -272,7 +264,6 @@ export const useTomeAutomation = (configId: string) => {
     saveAutomationSettings,
     generateRandomDraft,
     forceRunScheduler,
-    hasNecessaryData: categories.length > 0,
-    apiKey
+    hasNecessaryData: categories.length > 0
   };
 };
