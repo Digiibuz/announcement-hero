@@ -42,7 +42,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const checkAutomationSettings = async () => {
     try {
       const { data, error } = await supabase
-        .from('tome_automation' as any)
+        .from('tome_automation')
         .select('*')
         .eq('wordpress_config_id', configId)
         .single();
@@ -64,14 +64,14 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
     try {
       // Vérifier si des entrées existent déjà
       const { data: existingData } = await supabase
-        .from('tome_automation' as any)
+        .from('tome_automation')
         .select('id')
         .eq('wordpress_config_id', configId);
 
       if (existingData && existingData.length > 0) {
         // Mettre à jour l'entrée existante
         await supabase
-          .from('tome_automation' as any)
+          .from('tome_automation')
           .update({
             is_enabled: isEnabled,
             frequency: parseFloat(frequency),
@@ -81,7 +81,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       } else {
         // Créer une nouvelle entrée
         await supabase
-          .from('tome_automation' as any)
+          .from('tome_automation')
           .insert({
             wordpress_config_id: configId,
             is_enabled: isEnabled,
