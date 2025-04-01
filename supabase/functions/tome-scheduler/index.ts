@@ -28,6 +28,17 @@ serve(async (req) => {
 
     console.log("Tome-scheduler function starting execution");
 
+    // Parse the request to check if this is just a configuration check
+    let isConfigCheck = false;
+    try {
+      const body = await req.json();
+      isConfigCheck = body.configCheck === true;
+      console.log("Request body:", body);
+    } catch (e) {
+      // Si pas de body JSON ou erreur de parsing, ce n'est pas une vérification de config
+      console.log("No JSON body or parsing error, assuming regular execution");
+    }
+
     // Get all automation settings that are enabled
     const { data: automationSettings, error: automationError } = await supabase
       .from('tome_automation')
@@ -57,6 +68,22 @@ serve(async (req) => {
     }
 
     console.log(`Found ${automationSettings.length} enabled automation settings`);
+    
+    // Si c'est juste une vérification de configuration, ne pas générer de contenu
+    if (isConfigCheck) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Configuration check completed successfully',
+          automationSettings
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    }
+    
     let generationsCreated = 0;
 
     // Process each automation setting

@@ -125,11 +125,12 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       console.log("Résultat de l'opération:", result);
       toast.success(`Automatisation ${isEnabled ? 'activée' : 'désactivée'}`);
       
-      // Si l'automatisation est activée, exécuter le planificateur immédiatement
-      if (isEnabled) {
-        console.log("Exécution immédiate du planificateur");
-        await runScheduler();
-      }
+      // Ne plus exécuter le planificateur immédiatement
+      // Cette ligne était responsable de la génération immédiate d'un brouillon
+      // if (isEnabled) {
+      //   console.log("Exécution immédiate du planificateur");
+      //   await runScheduler();
+      // }
     } catch (error: any) {
       console.error("Erreur détaillée lors de l'enregistrement des paramètres:", error);
       toast.error(`Erreur: ${error.message || "Erreur lors de l'enregistrement des paramètres"}`);
