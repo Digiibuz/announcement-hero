@@ -1,1 +1,9 @@
+
 project_id = "rdwqedmvzicerwotjseg"
+
+[functions.tome-scheduler]
+verify_jwt = false
+
+[[functions.tome-scheduler.schedules]]
+name = "run-tome-scheduler-every-three-minutes"
+cron = "*/3 * * * *"
