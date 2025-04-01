@@ -11,6 +11,16 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
+// Define the type for tome_automation table
+interface TomeAutomation {
+  id: string;
+  wordpress_config_id: string;
+  is_enabled: boolean;
+  frequency: number;
+  created_at: string;
+  updated_at: string;
+}
+
 interface TomeAutomationProps {
   configId: string;
 }
@@ -32,14 +42,16 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const checkAutomationSettings = async () => {
     try {
       const { data, error } = await supabase
-        .from('tome_automation')
+        .from('tome_automation' as any)
         .select('*')
         .eq('wordpress_config_id', configId)
         .single();
 
       if (!error && data) {
-        setIsEnabled(data.is_enabled);
-        setFrequency(data.frequency.toString());
+        // Cast data to the correct type
+        const automationData = data as unknown as TomeAutomation;
+        setIsEnabled(automationData.is_enabled);
+        setFrequency(automationData.frequency.toString());
       }
     } catch (error) {
       console.error("Erreur lors de la récupération des paramètres d'automatisation:", error);
@@ -52,14 +64,14 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
     try {
       // Vérifier si des entrées existent déjà
       const { data: existingData } = await supabase
-        .from('tome_automation')
+        .from('tome_automation' as any)
         .select('id')
         .eq('wordpress_config_id', configId);
 
       if (existingData && existingData.length > 0) {
         // Mettre à jour l'entrée existante
         await supabase
-          .from('tome_automation')
+          .from('tome_automation' as any)
           .update({
             is_enabled: isEnabled,
             frequency: parseInt(frequency),
@@ -69,7 +81,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       } else {
         // Créer une nouvelle entrée
         await supabase
-          .from('tome_automation')
+          .from('tome_automation' as any)
           .insert({
             wordpress_config_id: configId,
             is_enabled: isEnabled,
