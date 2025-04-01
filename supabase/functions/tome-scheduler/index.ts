@@ -73,8 +73,21 @@ async function parseRequestParams(req: Request) {
     const body = await req.json();
     debugLog("Corps de la requête:", body);
     
+    // IMPORTANT: Correction de la logique de traitement des paramètres
+    // Si configCheck est explicitement défini comme true, c'est une vérification
+    // Sinon, on considère que ce n'est pas une vérification
     isConfigCheck = body.configCheck === true;
+    
+    // Si forceGeneration est explicitement défini comme true, on force la génération
+    // Cette valeur peut venir écraser isConfigCheck
     forceGeneration = body.forceGeneration === true;
+    
+    // Si forceGeneration est true, alors on s'assure que isConfigCheck est false
+    if (forceGeneration) {
+      isConfigCheck = false;
+      debugLog("forceGeneration=true détecté, isConfigCheck défini sur false");
+    }
+    
     apiKey = body.api_key;
     debug = body.debug === true;
     timestamp = body.timestamp || timestamp;
@@ -83,7 +96,7 @@ async function parseRequestParams(req: Request) {
     debugLog("Pas de corps JSON ou erreur d'analyse, exécution régulière supposée");
   }
   
-  debugLog("Valeurs des paramètres - isConfigCheck:", isConfigCheck, "forceGeneration:", forceGeneration, "timestamp:", timestamp, "debug:", debug);
+  debugLog("Valeurs des paramètres après traitement - isConfigCheck:", isConfigCheck, "forceGeneration:", forceGeneration, "timestamp:", timestamp, "debug:", debug);
   
   return { isConfigCheck, forceGeneration, apiKey, timestamp, debug };
 }
@@ -374,8 +387,11 @@ async function processAutomationSetting(supabase, setting, apiKeyUsed, forceGene
     // Check if it's time to generate content based on frequency
     const lastGeneration = await getLastGeneration(supabase, wordpressConfigId);
     
-    // ALWAYS generate content if forceGeneration is true
+    // IMPORTANT: Modifié pour être plus clair sur la décision de génération
+    // Si forceGeneration est true, générer du contenu quelle que soit la fréquence
     const shouldGenerate = forceGeneration || shouldGenerateContent(lastGeneration, frequency);
+    
+    debugLog(`Décision de génération pour ${wordpressConfigId}: ${shouldGenerate ? "OUI" : "NON"} (forceGeneration=${forceGeneration})`);
     
     if (!shouldGenerate) {
       debugLog(`Ignorer la génération pour la config ${wordpressConfigId}, pas encore dû selon la fréquence`);
@@ -475,6 +491,8 @@ serve(async (req) => {
     
     // Parse request parameters
     const { isConfigCheck, forceGeneration, apiKey, timestamp, debug } = await parseRequestParams(req);
+    
+    debugLog("Paramètres après analyse: forceGeneration=" + forceGeneration + ", isConfigCheck=" + isConfigCheck);
     
     // Validate API key if provided
     let effectiveForceGeneration = forceGeneration;
