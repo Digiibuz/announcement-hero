@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
 
 interface AutomationActionsProps {
   onGenerateRandomDraft: () => Promise<void>;
@@ -34,16 +35,60 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
   onClearLogs
 }) => {
   const [isLogsOpen, setIsLogsOpen] = useState(false);
+  const [isActionInProgress, setIsActionInProgress] = useState(false);
+
+  // Wrapper functions to handle loading states
+  const handleGenerateRandomDraft = async () => {
+    if (isActionInProgress) return;
+    
+    try {
+      setIsActionInProgress(true);
+      await onGenerateRandomDraft();
+    } catch (error) {
+      console.error("Erreur lors de la génération du brouillon:", error);
+      toast.error("Échec de la génération du brouillon");
+    } finally {
+      setIsActionInProgress(false);
+    }
+  };
+
+  const handleForceRunScheduler = async () => {
+    if (isActionInProgress) return;
+    
+    try {
+      setIsActionInProgress(true);
+      await onForceRunScheduler();
+    } catch (error) {
+      console.error("Erreur lors de l'exécution du planificateur:", error);
+      toast.error("Échec de l'exécution du planificateur");
+    } finally {
+      setIsActionInProgress(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    if (isActionInProgress) return;
+    
+    try {
+      setIsActionInProgress(true);
+      await onSaveSettings();
+    } catch (error) {
+      console.error("Erreur lors de la sauvegarde des paramètres:", error);
+      toast.error("Échec de la sauvegarde des paramètres");
+    } finally {
+      setIsActionInProgress(false);
+    }
+  };
 
   return (
     <div className="flex flex-wrap justify-between items-center w-full gap-2">
       <div className="space-x-2">
         <Button
           variant="outline"
-          onClick={onSaveSettings}
-          disabled={isSubmitting}
+          onClick={handleSaveSettings}
+          disabled={isSubmitting || isActionInProgress}
         >
-          {isSubmitting ? (
+          {isSubmitting || isActionInProgress ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Sauvegarde...
@@ -55,29 +100,37 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
 
         <Button
           variant="outline"
-          onClick={onGenerateRandomDraft}
-          disabled={!hasNecessaryData || isSubmitting}
+          onClick={handleGenerateRandomDraft}
+          disabled={!hasNecessaryData || isSubmitting || isActionInProgress}
           title={
             !hasNecessaryData
               ? "Les catégories et mots-clés sont requis pour générer un brouillon"
               : "Générer un brouillon avec des sélections aléatoires"
           }
         >
-          <Play className="mr-2 h-4 w-4" />
+          {isActionInProgress ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Play className="mr-2 h-4 w-4" />
+          )}
           Tester
         </Button>
 
         <Button
           variant="outline"
-          onClick={onForceRunScheduler}
-          disabled={!hasNecessaryData || isSubmitting}
+          onClick={handleForceRunScheduler}
+          disabled={!hasNecessaryData || isSubmitting || isActionInProgress}
           title={
             !hasNecessaryData
               ? "Les catégories et mots-clés sont requis pour lancer le planificateur"
               : "Forcer l'exécution du planificateur maintenant"
           }
         >
-          <Zap className="mr-2 h-4 w-4" />
+          {isActionInProgress ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Zap className="mr-2 h-4 w-4" />
+          )}
           Exécuter
         </Button>
       </div>
