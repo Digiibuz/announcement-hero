@@ -1,8 +1,9 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, Code, Wand2, Trash } from "lucide-react";
+import { Loader2, RefreshCw, Code, Wand2, Trash, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface AutomationActionsProps {
   onGenerateRandomDraft: () => Promise<void>;
@@ -23,6 +24,27 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
   logs,
   onClearLogs
 }) => {
+  // Ajouter un état local pour suivre le dernier corps de requête envoyé
+  const [lastRequestParams, setLastRequestParams] = useState<string>("");
+  
+  // Wrapper pour onForceRunScheduler qui capture les paramètres
+  const handleForceRun = async () => {
+    // Simuler les paramètres qui seront envoyés
+    const params = {
+      forceGeneration: true,
+      configCheck: false,
+      timestamp: new Date().getTime(),
+      debug: true
+    };
+    
+    // Afficher les paramètres dans les logs et l'état local
+    console.log("Paramètres d'exécution du planificateur:", params);
+    setLastRequestParams(JSON.stringify(params, null, 2));
+    
+    // Exécuter la fonction originale
+    await onForceRunScheduler();
+  };
+
   return (
     <div className="flex flex-wrap gap-2 w-full justify-between">
       <div className="flex gap-2 flex-wrap">
@@ -55,7 +77,7 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={onForceRunScheduler}
+                onClick={handleForceRun}
                 disabled={!hasNecessaryData || isSubmitting}
               >
                 {isSubmitting ? (
@@ -67,7 +89,7 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">
-              <p>Force l'exécution immédiate du planificateur (paramètres: forceGeneration=true, configCheck=false)</p>
+              <p>Force l'exécution immédiate du planificateur avec paramètres: forceGeneration=true, configCheck=false</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -94,6 +116,24 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
+        
+        {lastRequestParams && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" className="ml-1">
+                <Info className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80">
+              <div className="space-y-2">
+                <h4 className="font-medium">Derniers paramètres envoyés</h4>
+                <pre className="bg-muted p-2 rounded-md text-xs overflow-auto max-h-32">
+                  {lastRequestParams}
+                </pre>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
       
       {logs.length > 0 && (
