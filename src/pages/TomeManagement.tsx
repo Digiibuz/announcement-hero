@@ -20,8 +20,7 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { Settings, Plus } from "lucide-react";
-import FloatingActionButton from "@/components/ui/FloatingActionButton";
+import { Settings } from "lucide-react";
 
 const TomeManagement = () => {
   const {
@@ -142,21 +141,6 @@ const TomeManagement = () => {
     </>
   );
 
-  // Site selector component (moved next to title for mobile)
-  const siteSelector = !isClient && (
-    <select 
-      className="w-full md:w-64 p-2 border rounded-md" 
-      value={selectedConfigId || ""} 
-      onChange={e => handleConfigChange(e.target.value)}
-    >
-      {configs.map(config => (
-        <option key={config.id} value={config.id}>
-          {config.name}
-        </option>
-      ))}
-    </select>
-  );
-
   // Desktop and Mobile tabs rendering
   const renderTabs = () => {
     if (isMobile) {
@@ -182,7 +166,17 @@ const TomeManagement = () => {
                 <DrawerContent>
                   <div className="p-4">
                     <h4 className="text-sm font-medium mb-2">Sélection du site</h4>
-                    {siteSelector}
+                    <select 
+                      className="w-full p-2 border rounded-md" 
+                      value={selectedConfigId || ""} 
+                      onChange={e => handleConfigChange(e.target.value)}
+                    >
+                      {configs.map(config => (
+                        <option key={config.id} value={config.id}>
+                          {config.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </DrawerContent>
               </Drawer>
@@ -225,32 +219,16 @@ const TomeManagement = () => {
     );
   };
 
-  // Create custom title action with site selector for mobile
-  const titleAction = isMobile && !isClient ? siteSelector : undefined;
-
-  return (
-    <Routes>
-      <Route path="/" element={
-        <PageLayout title="Tom-E" titleAction={titleAction} onRefresh={handleRefresh}>
-          <AnimatedContainer delay={200}>
-            <div className="mb-4">
-              {selectedConfigId && <WordPressConnectionStatus configId={selectedConfigId} showDetails={!isMobile} />}
-            </div>
-            
-            {selectedConfigId && renderTabs()}
-            
-            {/* Floating Action Button for mobile */}
-            {isMobile && (
-              <FloatingActionButton
-                onClick={() => navigate("/tome/new")}
-                aria-label="Nouvelle publication"
-              >
-                <Plus />
-              </FloatingActionButton>
-            )}
-          </AnimatedContainer>
-        </PageLayout>
-      } />
+  return <Routes>
+      <Route path="/" element={<PageLayout title="Tom-E" onRefresh={handleRefresh}>
+            <AnimatedContainer delay={200}>
+              <div className="mb-4">
+                {selectedConfigId && <WordPressConnectionStatus configId={selectedConfigId} showDetails={!isMobile} />}
+              </div>
+              
+              {selectedConfigId && renderTabs()}
+            </AnimatedContainer>
+          </PageLayout>} />
       <Route path="/new" element={<PageLayout title="Nouvelle publication" onBack={() => navigate("/tome")}>
             <AnimatedContainer delay={200}>
               {selectedConfigId && <TomePublicationForm configId={selectedConfigId} isClientView={isClient} />}
@@ -261,8 +239,7 @@ const TomeManagement = () => {
               <TomePublicationDetail />
             </AnimatedContainer>
           </PageLayout>} />
-    </Routes>
-  );
+    </Routes>;
 };
 
 export default TomeManagement;
