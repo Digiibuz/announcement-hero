@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -164,9 +163,40 @@ export const useTomeScheduler = () => {
     }
   };
 
+  // Fonction pour exécuter manuellement le planificateur
+  const runScheduler = async () => {
+    try {
+      setIsLoading(true);
+      
+      const { data, error } = await supabase.functions.invoke('tome-scheduler', {});
+      
+      if (error) {
+        console.error("Error calling tome-scheduler function:", error);
+        toast.error("Erreur lors de l'exécution du planificateur: " + error.message);
+        return false;
+      }
+      
+      if (!data.success) {
+        console.error("Scheduler run failed:", data.error);
+        toast.error("Échec de l'exécution du planificateur: " + data.error);
+        return false;
+      }
+      
+      toast.success(`Planificateur exécuté avec succès. ${data.generationsCreated} publications générées.`);
+      return true;
+    } catch (error: any) {
+      console.error("Error running scheduler:", error);
+      toast.error("Erreur: " + error.message);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     isLoading,
     generateContent,
-    publishContent
+    publishContent,
+    runScheduler
   };
 };
