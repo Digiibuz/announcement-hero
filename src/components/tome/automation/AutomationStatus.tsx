@@ -46,6 +46,9 @@ const AutomationStatus: React.FC<AutomationStatusProps> = ({
             {isEnabled && !hasNecessaryData && <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
                 <AlertTriangle className="h-3 w-3 mr-1" /> En attente de données
               </Badge>}
+            {!isEnabled && <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200">
+                Inactif
+              </Badge>}
           </div>
           <p className="text-sm text-muted-foreground">
             Génère automatiquement des brouillons selon la fréquence définie

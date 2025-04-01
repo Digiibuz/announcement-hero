@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTomeScheduler } from "@/hooks/tome/useTomeScheduler";
@@ -17,11 +17,13 @@ export interface TomeAutomation {
 
 export const useTomeAutomation = (configId: string) => {
   const [isEnabled, setIsEnabled] = useState(false);
-  const [frequency, setFrequency] = useState("0.0007"); // Default: every minute (for testing)
+  const [frequency, setFrequency] = useState("0.0021"); // Default: every 3 minutes (for testing)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastAutomationCheck, setLastAutomationCheck] = useState<Date | null>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [savingStatus, setSavingStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const intervalRef = useRef<number | null>(null);
+  const lastFetchTimeRef = useRef<number>(0);
   
   const { generateContent, runScheduler, checkSchedulerConfig, addLog, clearLogs } = useTomeScheduler();
   const { categories } = useCategoriesKeywords(configId);
@@ -31,17 +33,40 @@ export const useTomeAutomation = (configId: string) => {
     if (configId) {
       checkAutomationSettings();
     }
+    
+    return () => {
+      // Clear interval on unmount
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
   }, [configId]);
 
   useEffect(() => {
     if (!configId) return;
     
-    const intervalId = setInterval(() => {
-      checkAutomationSettings(false);
-      setLastAutomationCheck(new Date());
-    }, 30000);
+    // Clear any existing interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    
+    // Set up a new interval that respects throttling
+    intervalRef.current = window.setInterval(() => {
+      const now = Date.now();
+      // Only fetch if more than 10 seconds have passed since last fetch
+      if (now - lastFetchTimeRef.current > 10000) {
+        checkAutomationSettings(false);
+        setLastAutomationCheck(new Date());
+        lastFetchTimeRef.current = now;
+      }
+    }, 30000); // Still check every 30 seconds, but with throttling
 
-    return () => clearInterval(intervalId);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
   }, [configId]);
 
   const checkAutomationSettings = async (showToast = true) => {
@@ -74,6 +99,9 @@ export const useTomeAutomation = (configId: string) => {
       } else {
         addLog("Aucune configuration d'automatisation trouvée");
       }
+      
+      // Update last fetch time
+      lastFetchTimeRef.current = Date.now();
     } catch (error: any) {
       console.error("Erreur lors de la récupération des paramètres d'automatisation:", error);
       addLog(`Erreur: ${error.message}`);
@@ -161,7 +189,14 @@ export const useTomeAutomation = (configId: string) => {
 
       console.log("Résultat de l'opération:", result);
       addLog(`Résultat de l'opération: ${result.error ? 'Erreur' : 'Succès'}`);
-      toast.success(`Paramètres d'automatisation sauvegardés avec succès`);
+      
+      // Force scheduler to acknowledge updated frequency
+      const forceRun = await runScheduler(false);
+      if (forceRun) {
+        toast.success(`Paramètres sauvegardés et planificateur notifié`);
+      } else {
+        toast.success(`Paramètres d'automatisation sauvegardés avec succès`);
+      }
       
       await checkAutomationSettings();
       setSavingStatus('success');
