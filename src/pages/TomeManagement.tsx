@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import { useAuth } from "@/context/AuthContext";
@@ -11,8 +12,6 @@ import TomePublications from "@/components/tome/TomePublications";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import WordPressConnectionStatus from "@/components/wordpress/WordPressConnectionStatus";
-import { AlertTriangle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import TomePublicationForm from "@/components/tome/TomePublicationForm";
 import TomePublicationDetail from "@/components/tome/TomePublicationDetail";
@@ -31,6 +30,9 @@ const TomeManagement = () => {
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Force component rerender when selectedConfigId changes
+  const [key, setKey] = useState(0);
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
@@ -52,6 +54,20 @@ const TomeManagement = () => {
       }
     }
   }, [configs, isLoading, selectedConfigId, isClient, user, location.search]);
+
+  // Handle config selection change
+  const handleConfigChange = (configId: string) => {
+    setSelectedConfigId(configId);
+    // Force rerender of child components when config changes
+    setKey(prevKey => prevKey + 1);
+    // Update the URL with the new config ID
+    const newSearchParams = new URLSearchParams(location.search);
+    newSearchParams.set('configId', configId);
+    navigate({
+      pathname: location.pathname,
+      search: newSearchParams.toString()
+    });
+  };
 
   const handleRefresh = () => {
     fetchConfigs();
@@ -107,27 +123,31 @@ const TomeManagement = () => {
               </div>
               
               {!isClient && <div className="mb-6">
-                  <select className="w-full md:w-64 p-2 border rounded-md" value={selectedConfigId || ""} onChange={e => setSelectedConfigId(e.target.value)}>
+                  <select 
+                    className="w-full md:w-64 p-2 border rounded-md" 
+                    value={selectedConfigId || ""} 
+                    onChange={e => handleConfigChange(e.target.value)}
+                  >
                     {configs.map(config => <option key={config.id} value={config.id}>
                         {config.name}
                       </option>)}
                   </select>
                 </div>}
 
-              {selectedConfigId && <Tabs defaultValue="publications">
+              {selectedConfigId && <Tabs defaultValue="publications" key={`tabs-${key}`}>
                   <TabsList className="w-full mb-6">
                     <TabsTrigger value="publications" className="flex-1">Publications</TabsTrigger>
                     <TabsTrigger value="categories" className="flex-1">Catégories & Mots-clés</TabsTrigger>
                     <TabsTrigger value="localities" className="flex-1">Localités</TabsTrigger>
                   </TabsList>
                   <TabsContent value="publications">
-                    <TomePublications configId={selectedConfigId} isClientView={isClient} />
+                    <TomePublications key={`pub-${key}-${selectedConfigId}`} configId={selectedConfigId} isClientView={isClient} />
                   </TabsContent>
                   <TabsContent value="categories">
-                    <TomeCategories configId={selectedConfigId} isClientView={isClient} />
+                    <TomeCategories key={`cat-${key}-${selectedConfigId}`} configId={selectedConfigId} isClientView={isClient} />
                   </TabsContent>
                   <TabsContent value="localities">
-                    <TomeLocalities configId={selectedConfigId} isClientView={isClient} />
+                    <TomeLocalities key={`loc-${key}-${selectedConfigId}`} configId={selectedConfigId} isClientView={isClient} />
                   </TabsContent>
                 </Tabs>}
             </AnimatedContainer>

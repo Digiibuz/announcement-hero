@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Plus, Settings } from "lucide-react";
@@ -67,8 +67,13 @@ const WordPressManagement = () => {
     }
   };
 
+  // Handle config selection change
+  const handleConfigChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedConfigId(e.target.value);
+  };
+
   // Utilisez useEffect pour définir selectedConfigId par défaut
-  React.useEffect(() => {
+  useEffect(() => {
     if (!selectedConfigId && configs.length > 0) {
       // Pour les clients, on sélectionne automatiquement leur configuration WordPress
       if (isClient && user?.wordpressConfigId) {
@@ -139,7 +144,7 @@ const WordPressManagement = () => {
                 <select 
                   className="w-full md:w-64 p-2 border rounded-md"
                   value={selectedConfigId || ""}
-                  onChange={e => setSelectedConfigId(e.target.value)}
+                  onChange={handleConfigChange}
                 >
                   {configs.map(config => (
                     <option key={config.id} value={config.id}>
