@@ -4,5 +4,10 @@ project_id = "rdwqedmvzicerwotjseg"
 [functions.tome-scheduler]
 verify_jwt = false
 
+[[functions.tome-scheduler.schedules]]
+name = "run-tome-scheduler-every-hour" 
+cron = "0 * * * *"
+payload = { forceGeneration = true, configCheck = false }
+
 [functions.tome-generate-draft]
 verify_jwt = false

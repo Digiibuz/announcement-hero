@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -72,10 +71,11 @@ export const useTomeScheduler = () => {
       setIsRunning(true);
       addLog(`Démarrage ${forceGeneration ? "forcé" : "manuel"} du planificateur...`);
       
-      // IMPORTANT: Pour l'exécution forcée, nous voulons forceGeneration=true et configCheck=false
+      // TRÈS IMPORTANT: Pour l'exécution forcée, nous voulons forceGeneration=true et configCheck=false
+      // C'est ce qui permet de générer du contenu même si la fréquence n'est pas atteinte
       const params = { 
         forceGeneration: true, // Toujours forcer la génération lors de l'exécution manuelle
-        configCheck: false, // Explicitement false pour éviter toute confusion
+        configCheck: false,    // Très important: s'assurer que configCheck est explicitement false
         timestamp: new Date().getTime(),
         debug: true
       };

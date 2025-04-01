@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -284,10 +285,12 @@ export const useTomeAutomation = (configId: string) => {
   const forceRunScheduler = async (): Promise<boolean> => {
     setIsSubmitting(true);
     try {
+      // Assurez-vous d'utiliser les bons paramètres pour le planificateur
       addLog("Exécution forcée du planificateur avec forceGeneration=true et configCheck=false");
       console.log("Exécution forcée du planificateur avec forceGeneration=true et configCheck=false");
       
-      const result = await runScheduler(true);
+      // IMPORTANT: Assurez-vous que runScheduler appelle tome-scheduler avec les bons paramètres
+      const result = await runScheduler(true); // Le paramètre true explicite que nous voulons forcer la génération
       
       if (!result) {
         addLog("Échec de l'exécution du planificateur");
@@ -301,7 +304,7 @@ export const useTomeAutomation = (configId: string) => {
     } catch (error: any) {
       console.error("Erreur dans forceRunScheduler:", error);
       addLog(`Erreur dans forceRunScheduler: ${error.message}`);
-      toast.error(`Erreur: ${error.message || "Une erreur est survenue"}`);
+      toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
       return false;
     } finally {
       setIsSubmitting(false);

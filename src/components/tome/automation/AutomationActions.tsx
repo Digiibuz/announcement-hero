@@ -24,7 +24,7 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
   logs,
   onClearLogs
 }) => {
-  // Ajouter un état local pour suivre le dernier corps de requête envoyé
+  // État local pour suivre le dernier corps de requête envoyé
   const [lastRequestParams, setLastRequestParams] = useState<string>("");
   
   // Wrapper pour onForceRunScheduler qui capture les paramètres
