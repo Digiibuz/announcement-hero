@@ -284,8 +284,8 @@ export const useTomeAutomation = (configId: string) => {
   const forceRunScheduler = async (): Promise<boolean> => {
     setIsSubmitting(true);
     try {
-      addLog("Exécution forcée du planificateur avec forceGeneration=true");
-      console.log("Exécution forcée du planificateur avec forceGeneration=true");
+      addLog("Exécution forcée du planificateur avec forceGeneration=true et configCheck=false");
+      console.log("Exécution forcée du planificateur avec forceGeneration=true et configCheck=false");
       
       const result = await runScheduler(true);
       

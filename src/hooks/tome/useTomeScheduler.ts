@@ -18,10 +18,13 @@ export const useTomeScheduler = () => {
       setIsRunning(true);
       addLog("Vérification de la configuration du planificateur...");
 
+      // Important: Pour vérifier uniquement la configuration, on définit explicitement configCheck=true
+      // et on ne définit PAS forceGeneration=true
       const { data, error } = await supabase.functions.invoke('tome-scheduler', {
         body: { 
-          configCheck: true,
-          timestamp: new Date().getTime() // Prevent caching
+          configCheck: true,  // Explicitement true seulement pour la vérification
+          timestamp: new Date().getTime(), // Prevent caching
+          debug: true
         }
       });
 
@@ -73,6 +76,7 @@ export const useTomeScheduler = () => {
       };
       
       addLog(`Paramètres de la requête: ${JSON.stringify(params)}`);
+      console.log("Paramètres d'exécution du planificateur:", params);
 
       const { data, error } = await supabase.functions.invoke('tome-scheduler', {
         body: params
