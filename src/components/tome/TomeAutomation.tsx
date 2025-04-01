@@ -9,7 +9,7 @@ import AutomationStatus from "./automation/AutomationStatus";
 import FrequencySelector from "./automation/FrequencySelector";
 import WarningMessage from "./automation/WarningMessage";
 import { Button } from "@/components/ui/button";
-import { ReloadIcon } from "@radix-ui/react-icons";
+import { RefreshCw } from "lucide-react";
 
 interface TomeAutomationProps {
   configId: string;
@@ -17,13 +17,18 @@ interface TomeAutomationProps {
 
 const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const { 
-    automationEnabled, 
-    automationFrequency, 
+    isEnabled, 
+    frequency, 
     apiKey,
-    savingStatus,
-    toggleAutomationStatus,
-    updateAutomationFrequency,
-    refreshAutomationStatus
+    isSubmitting: savingStatus,
+    lastAutomationCheck,
+    checkAutomationSettings,
+    setIsEnabled,
+    setFrequency,
+    saveAutomationSettings,
+    generateRandomDraft,
+    forceRunScheduler,
+    hasNecessaryData
   } = useTomeAutomation(configId);
   
   const { 
@@ -44,7 +49,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const [checkingConfig, setCheckingConfig] = useState(true);
   
   // Check if there are categories and keywords available
-  const hasNecessaryData = categories.length > 0 && 
+  const hasKeywordsAndCategories = categories.length > 0 && 
     categories.some(cat => 
       keywords.some(kw => kw.category_id === cat.id)
     );
@@ -73,10 +78,10 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   
   // Log configuration changes
   useEffect(() => {
-    if (automationEnabled !== null && automationFrequency !== null) {
-      addLog(`Automation status: ${automationEnabled ? 'Enabled' : 'Disabled'}, Frequency: ${automationFrequency} days`);
+    if (isEnabled !== null && frequency !== null) {
+      addLog(`Automation status: ${isEnabled ? 'Enabled' : 'Disabled'}, Frequency: ${frequency} days`);
     }
-  }, [automationEnabled, automationFrequency, addLog]);
+  }, [isEnabled, frequency, addLog]);
 
   // Trigger scheduler check after settings are saved
   useEffect(() => {
@@ -95,7 +100,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
 
   const handleRefreshStatus = async () => {
     addLog("Refreshing automation status...");
-    await refreshAutomationStatus();
+    await checkAutomationSettings();
     await checkSchedulerConfig();
   };
 
@@ -126,30 +131,32 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
               disabled={savingStatus === 'loading' || checkingConfig}
             >
               {(savingStatus === 'loading' || checkingConfig) ? (
-                <ReloadIcon className="h-4 w-4 animate-spin mr-2" />
+                <RefreshCw className="h-4 w-4 animate-spin mr-2" />
               ) : null}
               Rafraîchir
             </Button>
           </div>
           
           <WarningMessage 
-            hasNecessaryData={hasNecessaryData} 
+            hasNecessaryData={hasKeywordsAndCategories} 
             automationLogs={logs}
           />
           
           <div className="space-y-4">
             <AutomationStatus 
-              enabled={automationEnabled} 
-              onToggle={toggleAutomationStatus} 
-              savingStatus={savingStatus}
-              hasNecessaryData={hasNecessaryData}
+              isEnabled={isEnabled} 
+              onEnabledChange={setIsEnabled} 
+              hasNecessaryData={hasKeywordsAndCategories}
+              isSubmitting={savingStatus === 'loading'}
+              lastAutomationCheck={lastAutomationCheck}
+              onRefresh={handleRefreshStatus}
             />
             
             <FrequencySelector 
-              frequency={automationFrequency} 
-              onFrequencyChange={updateAutomationFrequency} 
-              savingStatus={savingStatus}
-              disabled={!hasNecessaryData || !automationEnabled}
+              frequency={frequency} 
+              onFrequencyChange={setFrequency} 
+              isEnabled={isEnabled}
+              isSubmitting={savingStatus === 'loading'}
             />
             
             <div className="pt-4 border-t">
@@ -176,9 +183,11 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       </Card>
       
       <AutomationActions 
-        onRunScheduler={handleRunScheduler} 
-        isRunning={isRunning}
-        disabled={!hasNecessaryData || !automationEnabled}
+        onGenerateRandomDraft={generateRandomDraft}
+        onForceRunScheduler={forceRunScheduler}
+        onSaveSettings={saveAutomationSettings}
+        hasNecessaryData={hasKeywordsAndCategories}
+        isSubmitting={savingStatus === 'loading' || isRunning}
       />
     </div>
   );
