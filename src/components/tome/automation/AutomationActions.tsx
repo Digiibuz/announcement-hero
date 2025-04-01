@@ -1,7 +1,10 @@
+
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, Zap, RotateCcw, Save, Terminal } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useMediaQuery } from "@/hooks/use-media-query";
+
 interface AutomationActionsProps {
   onGenerateRandomDraft: () => Promise<boolean>;
   onForceRunScheduler: () => Promise<boolean>;
@@ -11,6 +14,7 @@ interface AutomationActionsProps {
   logs: string[];
   onClearLogs: () => void;
 }
+
 const AutomationActions: React.FC<AutomationActionsProps> = ({
   onGenerateRandomDraft,
   onForceRunScheduler,
@@ -20,19 +24,36 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
   logs,
   onClearLogs
 }) => {
-  return <div className="space-y-4">
-      <div className="flex justify-between flex-wrap gap-2">
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={onGenerateRandomDraft} disabled={!hasNecessaryData || isSubmitting}>
+  const isMobile = useMediaQuery("(max-width: 767px)");
+
+  return (
+    <div className="space-y-4">
+      <div className={`${isMobile ? 'flex flex-col gap-2' : 'flex justify-between flex-wrap gap-2'}`}>
+        <div className={`${isMobile ? 'w-full flex flex-col gap-2' : 'flex gap-2'}`}>
+          <Button 
+            variant="outline" 
+            className={isMobile ? "w-full" : ""}
+            onClick={onGenerateRandomDraft} 
+            disabled={!hasNecessaryData || isSubmitting}
+          >
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
             Générer un brouillon
           </Button>
-          <Button variant="outline" onClick={onForceRunScheduler} disabled={!hasNecessaryData || isSubmitting}>
+          <Button 
+            variant="outline" 
+            className={isMobile ? "w-full" : ""}
+            onClick={onForceRunScheduler} 
+            disabled={!hasNecessaryData || isSubmitting}
+          >
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RotateCcw className="h-4 w-4 mr-2" />}
             Exécuter maintenant
           </Button>
         </div>
-        <Button onClick={onSaveSettings} disabled={isSubmitting}>
+        <Button 
+          onClick={onSaveSettings} 
+          disabled={isSubmitting}
+          className={isMobile ? "w-full mt-2" : ""}
+        >
           {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
           Sauvegarder
         </Button>
@@ -40,7 +61,10 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
 
       <Dialog>
         <DialogTrigger asChild>
-          
+          <Button variant="outline" size="sm" className="flex items-center gap-2 text-xs mt-2">
+            <Terminal className="h-3 w-3" />
+            Voir les logs complets
+          </Button>
         </DialogTrigger>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
@@ -56,6 +80,8 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
           </div>
         </DialogContent>
       </Dialog>
-    </div>;
+    </div>
+  );
 };
+
 export default AutomationActions;

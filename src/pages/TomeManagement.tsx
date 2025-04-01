@@ -16,6 +16,11 @@ import WordPressConnectionStatus from "@/components/wordpress/WordPressConnectio
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import TomePublicationForm from "@/components/tome/TomePublicationForm";
 import TomePublicationDetail from "@/components/tome/TomePublicationDetail";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
+import { Button } from "@/components/ui/button";
+import { Settings } from "lucide-react";
 
 const TomeManagement = () => {
   const {
@@ -31,9 +36,12 @@ const TomeManagement = () => {
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = useMediaQuery("(max-width: 767px)");
   
   // Force component rerender when selectedConfigId changes
   const [key, setKey] = useState(0);
+  // Default active tab
+  const [activeTab, setActiveTab] = useState("publications");
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
@@ -116,45 +124,109 @@ const TomeManagement = () => {
       </PageLayout>;
   }
 
+  const tabsContent = (
+    <>
+      <TabsContent value="publications">
+        <TomePublications key={`pub-${key}-${selectedConfigId}`} configId={selectedConfigId!} isClientView={isClient} />
+      </TabsContent>
+      {!isClient && <TabsContent value="automation">
+        <TomeAutomation key={`auto-${key}-${selectedConfigId}`} configId={selectedConfigId!} />
+      </TabsContent>}
+      <TabsContent value="categories">
+        <TomeCategories key={`cat-${key}-${selectedConfigId}`} configId={selectedConfigId!} isClientView={isClient} />
+      </TabsContent>
+      <TabsContent value="localities">
+        <TomeLocalities key={`loc-${key}-${selectedConfigId}`} configId={selectedConfigId!} isClientView={isClient} />
+      </TabsContent>
+    </>
+  );
+
+  // Desktop and Mobile tabs rendering
+  const renderTabs = () => {
+    if (isMobile) {
+      return (
+        <Tabs defaultValue={activeTab} onValueChange={setActiveTab} key={`tabs-${key}`}>
+          <div className="flex justify-between items-center mb-4">
+            <ScrollArea className="w-[85%]">
+              <TabsList className="mb-4 flex w-max">
+                <TabsTrigger value="publications">Publications</TabsTrigger>
+                {!isClient && <TabsTrigger value="automation">Automatisation</TabsTrigger>}
+                <TabsTrigger value="categories">Catégories</TabsTrigger>
+                <TabsTrigger value="localities">Localités</TabsTrigger>
+              </TabsList>
+            </ScrollArea>
+            
+            {!isClient && (
+              <Drawer>
+                <DrawerTrigger asChild>
+                  <Button variant="ghost" size="icon" className="ml-2">
+                    <Settings size={20} />
+                  </Button>
+                </DrawerTrigger>
+                <DrawerContent>
+                  <div className="p-4">
+                    <h4 className="text-sm font-medium mb-2">Sélection du site</h4>
+                    <select 
+                      className="w-full p-2 border rounded-md" 
+                      value={selectedConfigId || ""} 
+                      onChange={e => handleConfigChange(e.target.value)}
+                    >
+                      {configs.map(config => (
+                        <option key={config.id} value={config.id}>
+                          {config.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </DrawerContent>
+              </Drawer>
+            )}
+          </div>
+          
+          {tabsContent}
+        </Tabs>
+      );
+    }
+    
+    // Desktop version
+    return (
+      <Tabs defaultValue="publications" key={`tabs-${key}`}>
+        <div className="mb-6">
+          {!isClient && (
+            <select 
+              className="w-full md:w-64 p-2 border rounded-md mb-4" 
+              value={selectedConfigId || ""} 
+              onChange={e => handleConfigChange(e.target.value)}
+            >
+              {configs.map(config => (
+                <option key={config.id} value={config.id}>
+                  {config.name}
+                </option>
+              ))}
+            </select>
+          )}
+          
+          <TabsList className="w-full">
+            <TabsTrigger value="publications" className="flex-1">Publications</TabsTrigger>
+            {!isClient && <TabsTrigger value="automation" className="flex-1">Automatisation</TabsTrigger>}
+            <TabsTrigger value="categories" className="flex-1">Catégories & Mots-clés</TabsTrigger>
+            <TabsTrigger value="localities" className="flex-1">Localités</TabsTrigger>
+          </TabsList>
+        </div>
+        
+        {tabsContent}
+      </Tabs>
+    );
+  };
+
   return <Routes>
       <Route path="/" element={<PageLayout title="Tom-E" onRefresh={handleRefresh}>
             <AnimatedContainer delay={200}>
-              <div className="mb-4 flex justify-between items-center">
-                {selectedConfigId && <WordPressConnectionStatus configId={selectedConfigId} showDetails={true} />}
+              <div className="mb-4">
+                {selectedConfigId && <WordPressConnectionStatus configId={selectedConfigId} showDetails={!isMobile} />}
               </div>
               
-              {!isClient && <div className="mb-6">
-                  <select 
-                    className="w-full md:w-64 p-2 border rounded-md" 
-                    value={selectedConfigId || ""} 
-                    onChange={e => handleConfigChange(e.target.value)}
-                  >
-                    {configs.map(config => <option key={config.id} value={config.id}>
-                        {config.name}
-                      </option>)}
-                  </select>
-                </div>}
-
-              {selectedConfigId && <Tabs defaultValue="publications" key={`tabs-${key}`}>
-                  <TabsList className="w-full mb-6">
-                    <TabsTrigger value="publications" className="flex-1">Publications</TabsTrigger>
-                    {!isClient && <TabsTrigger value="automation" className="flex-1">Automatisation</TabsTrigger>}
-                    <TabsTrigger value="categories" className="flex-1">Catégories & Mots-clés</TabsTrigger>
-                    <TabsTrigger value="localities" className="flex-1">Localités</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="publications">
-                    <TomePublications key={`pub-${key}-${selectedConfigId}`} configId={selectedConfigId} isClientView={isClient} />
-                  </TabsContent>
-                  {!isClient && <TabsContent value="automation">
-                    <TomeAutomation key={`auto-${key}-${selectedConfigId}`} configId={selectedConfigId} />
-                  </TabsContent>}
-                  <TabsContent value="categories">
-                    <TomeCategories key={`cat-${key}-${selectedConfigId}`} configId={selectedConfigId} isClientView={isClient} />
-                  </TabsContent>
-                  <TabsContent value="localities">
-                    <TomeLocalities key={`loc-${key}-${selectedConfigId}`} configId={selectedConfigId} isClientView={isClient} />
-                  </TabsContent>
-                </Tabs>}
+              {selectedConfigId && renderTabs()}
             </AnimatedContainer>
           </PageLayout>} />
       <Route path="/new" element={<PageLayout title="Nouvelle publication" onBack={() => navigate("/tome")}>

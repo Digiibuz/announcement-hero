@@ -1,9 +1,11 @@
+
 import React from "react";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { RefreshCw, CheckCircle, AlertTriangle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { CheckCircle, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useMediaQuery } from "@/hooks/use-media-query";
+
 interface AutomationStatusProps {
   isEnabled: boolean;
   onEnabledChange: (value: boolean) => void;
@@ -12,15 +14,18 @@ interface AutomationStatusProps {
   lastAutomationCheck: Date | null;
   onRefresh: () => void;
 }
+
 const AutomationStatus: React.FC<AutomationStatusProps> = ({
   isEnabled,
   onEnabledChange,
   hasNecessaryData,
-  isSubmitting,
-  onRefresh
+  isSubmitting
 }) => {
-  return <div className="space-y-4">
-      <div className="flex items-center justify-between">
+  const isMobile = useMediaQuery("(max-width: 767px)");
+
+  return (
+    <div className="space-y-4">
+      <div className={`flex ${isMobile ? 'flex-col space-y-2' : 'items-center justify-between'}`}>
         <div className="space-y-0.5">
           <div className="flex items-center gap-2">
             <Label htmlFor="automation-switch" className="text-base">Activer l'automatisation</Label>
@@ -35,10 +40,16 @@ const AutomationStatus: React.FC<AutomationStatusProps> = ({
             Génère automatiquement des brouillons selon la fréquence définie
           </p>
         </div>
-        <Switch id="automation-switch" checked={isEnabled} onCheckedChange={onEnabledChange} disabled={isSubmitting} />
+        <Switch 
+          id="automation-switch" 
+          checked={isEnabled} 
+          onCheckedChange={onEnabledChange} 
+          disabled={isSubmitting} 
+          className={isMobile ? "mt-2" : ""}
+        />
       </div>
-      
-      
-    </div>;
+    </div>
+  );
 };
+
 export default AutomationStatus;
