@@ -146,34 +146,43 @@ serve(async (req) => {
     }
     
     // Prepare the post data
-    const postData = {
+    const postData: any = {
       title: generation.title || "Nouveau contenu",
       content: generation.content,
       status: 'publish',
-      
-      // If we have category ID, add it here
-      // We'll use the categories from WordPress, if available
-      categoryId: generation.category_id,
     };
     
+    // Add category ID if available
+    if (generation.category_id) {
+      postData.categories = [parseInt(generation.category_id)];
+    }
+    
     try {
-      // Ajout d'un délai avant de faire la requête WordPress pour éviter la détection du Bot
-      console.log("Attente de 3 secondes avant de contacter WordPress...");
+      // Add delay before making WordPress request to avoid bot detection
+      console.log("Waiting 3 seconds before contacting WordPress...");
       await new Promise(resolve => setTimeout(resolve, 3000));
       
-      console.log("Test de l'API DipiPixel...");
+      console.log("Testing DipiPixel API...");
       // Let's first check if we're dealing with a DipiPixel site with custom taxonomy
       const testResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt_category`, {
         method: 'HEAD',
         headers: browserLikeHeaders
+      }).catch(() => {
+        // Just catch the error to avoid crashing if endpoint doesn't exist
+        return { status: 404 };
       });
       
       if (testResponse.status !== 404) {
         // DipiPixel custom post type exists
-        console.log("DipiPixel détecté, utilisation de l'API dipi_cpt");
+        console.log("DipiPixel detected, using dipi_cpt API");
         apiEndpoint = '/wp-json/wp/v2/dipi_cpt';
-        // Add category using custom taxonomy
-        postData["dipi_cpt_category"] = [parseInt(generation.category_id)];
+        
+        // Add category using custom taxonomy - only if we have a category
+        if (generation.category_id) {
+          postData.dipi_cpt_category = [parseInt(generation.category_id)];
+          // Remove standard categories
+          delete postData.categories;
+        }
       }
     } catch (error) {
       console.log("Error checking for DipiPixel:", error);
@@ -181,7 +190,7 @@ serve(async (req) => {
     }
     
     try {
-      console.log(`Publication sur WordPress: ${siteUrl}${apiEndpoint}`);
+      console.log(`Publishing to WordPress: ${siteUrl}${apiEndpoint}`);
       
       // Add a timeout to the WordPress request
       const controller = new AbortController();
@@ -227,31 +236,31 @@ serve(async (req) => {
           status: 200,
         }
       );
-    } catch (wpError) {
+    } catch (wpError: any) {
       console.error("WordPress API error:", wpError);
       
-      // Si l'erreur contient du HTML (comme avec Tiger Protect), on considère que c'est un problème de WAF
+      // If the error contains HTML (such as with Tiger Protect), consider it a WAF issue
       const errorMessage = wpError.message || "";
       if (errorMessage.includes("<!DOCTYPE HTML>") || errorMessage.includes("<html")) {
-        throw new Error("Le pare-feu WordPress (WAF) a bloqué notre requête. Veuillez essayer depuis l'interface d'administration WordPress.");
+        throw new Error("The WordPress firewall (WAF) has blocked our request. Please try publishing from the WordPress admin interface.");
       }
       
       throw wpError;
     }
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in tome-publish function:', error);
     
     let errorMessage = error.message || 'An error occurred during publishing';
     let friendlyMessage = errorMessage;
     
-    // Améliorer les messages d'erreur pour l'utilisateur
-    if (errorMessage.includes("WAF") || errorMessage.includes("pare-feu")) {
-      friendlyMessage = "Le pare-feu WordPress (WAF) bloque notre requête. Vous devrez peut-être publier manuellement depuis WordPress.";
+    // Improve error messages for the user
+    if (errorMessage.includes("WAF") || errorMessage.includes("firewall")) {
+      friendlyMessage = "The WordPress firewall (WAF) is blocking our request. You may need to publish manually from WordPress.";
     } else if (errorMessage.includes("timeout") || errorMessage.includes("abort")) {
-      friendlyMessage = "Délai d'attente dépassé lors de la connexion à WordPress. Veuillez vérifier l'URL et les identifiants.";
+      friendlyMessage = "Connection timeout when connecting to WordPress. Please check the URL and credentials.";
     } else if (errorMessage.includes("503")) {
-      friendlyMessage = "Le serveur WordPress est temporairement indisponible (erreur 503). Veuillez réessayer plus tard.";
+      friendlyMessage = "The WordPress server is temporarily unavailable (503 error). Please try again later.";
     }
     
     // Try to update generation status to failed
@@ -269,8 +278,8 @@ serve(async (req) => {
           await supabase
             .from('tome_generations')
             .update({ 
-              status: 'draft', // Remettre en brouillon en cas d'échec
-              error_message: friendlyMessage.substring(0, 255) // Limiter la taille
+              status: 'draft', // Reset to draft on failure
+              error_message: friendlyMessage.substring(0, 255) // Limit the length
             })
             .eq('id', generationId);
         }
