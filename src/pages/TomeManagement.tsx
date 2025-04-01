@@ -13,9 +13,10 @@ import { toast } from "sonner";
 import WordPressConnectionStatus from "@/components/wordpress/WordPressConnectionStatus";
 import { AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Routes, Route, useNavigate } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import TomePublicationForm from "@/components/tome/TomePublicationForm";
 import TomePublicationDetail from "@/components/tome/TomePublicationDetail";
+
 const TomeManagement = () => {
   const {
     isAdmin,
@@ -29,29 +30,40 @@ const TomeManagement = () => {
   } = useWordPressConfigs();
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+
   useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const configIdFromUrl = queryParams.get('configId');
+
+    if (configIdFromUrl) {
+      const configExists = configs.some(config => config.id === configIdFromUrl);
+      if (configExists) {
+        setSelectedConfigId(configIdFromUrl);
+        return;
+      }
+    }
+
     if (!isLoading && configs.length > 0 && !selectedConfigId) {
-      // Pour les clients, on sélectionne automatiquement leur configuration WordPress
       if (isClient && user?.wordpressConfigId) {
         setSelectedConfigId(user.wordpressConfigId);
       } else {
         setSelectedConfigId(configs[0].id);
       }
     }
-  }, [configs, isLoading, selectedConfigId, isClient, user]);
+  }, [configs, isLoading, selectedConfigId, isClient, user, location.search]);
 
-  // Fonction de rafraîchissement pour le bouton
   const handleRefresh = () => {
     fetchConfigs();
     toast.success("Configurations WordPress mises à jour");
   };
 
-  // Si l'utilisateur n'est ni admin ni client, on affiche une page d'accès refusé
   if (!isAdmin && !isClient) {
     return <PageLayout title="Tom-E">
         <AccessDenied />
       </PageLayout>;
   }
+
   if (isLoading) {
     return <PageLayout title="Tom-E" onRefresh={handleRefresh}>
         <AnimatedContainer delay={200}>
@@ -67,6 +79,7 @@ const TomeManagement = () => {
         </AnimatedContainer>
       </PageLayout>;
   }
+
   if (configs.length === 0) {
     return <PageLayout title="Tom-E" onRefresh={handleRefresh}>
         <AnimatedContainer delay={200}>
@@ -85,18 +98,14 @@ const TomeManagement = () => {
         </AnimatedContainer>
       </PageLayout>;
   }
+
   return <Routes>
       <Route path="/" element={<PageLayout title="Tom-E" onRefresh={handleRefresh}>
             <AnimatedContainer delay={200}>
-              {/* Informations sur l'état de la connexion WordPress */}
               <div className="mb-4 flex justify-between items-center">
                 {selectedConfigId && <WordPressConnectionStatus configId={selectedConfigId} showDetails={true} />}
               </div>
               
-              {/* Alerte d'information concernant le WAF */}
-              
-
-              {/* Pour les clients, on ne montre pas le sélecteur de configuration */}
               {!isClient && <div className="mb-6">
                   <select className="w-full md:w-64 p-2 border rounded-md" value={selectedConfigId || ""} onChange={e => setSelectedConfigId(e.target.value)}>
                     {configs.map(config => <option key={config.id} value={config.id}>
@@ -135,4 +144,5 @@ const TomeManagement = () => {
           </PageLayout>} />
     </Routes>;
 };
+
 export default TomeManagement;
