@@ -215,6 +215,11 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
               <SelectValue placeholder="Sélectionner une fréquence" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="0.0007">Toutes les minutes (test)</SelectItem>
+              <SelectItem value="0.0014">Toutes les 2 minutes (test)</SelectItem>
+              <SelectItem value="0.01">Toutes les 15 minutes (test)</SelectItem>
+              <SelectItem value="0.02">Toutes les 30 minutes (test)</SelectItem>
+              <SelectItem value="0.05">Toutes les heures (test)</SelectItem>
               <SelectItem value="1">Tous les jours</SelectItem>
               <SelectItem value="2">Tous les 2 jours</SelectItem>
               <SelectItem value="3">Tous les 3 jours</SelectItem>
