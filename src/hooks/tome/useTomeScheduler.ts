@@ -4,10 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
 import { Announcement } from "@/types/announcement";
+import { useAuth } from "@/context/AuthContext";
 
 export const useTomeScheduler = (wordpressConfigId: string | null) => {
   const [isLoading, setIsLoading] = useState(false);
   const { publishToWordPress, isPublishing, publishingState } = useWordPressPublishing();
+  const { user } = useAuth();
 
   const generateContent = async (generationId: string) => {
     if (!generationId) {
@@ -75,6 +77,41 @@ export const useTomeScheduler = (wordpressConfigId: string | null) => {
         return false;
       }
       
+      // Get the current user
+      if (!user) {
+        toast.error("Utilisateur non identifié");
+        return false;
+      }
+
+      // Get the correct WordPress config ID for the current user
+      const clientWordpressConfigId = user.wordpressConfigId;
+      
+      console.log("Client user WordPress config ID:", clientWordpressConfigId);
+      console.log("Generation WordPress config ID:", generation.wordpress_config_id);
+      
+      if (!clientWordpressConfigId) {
+        toast.error("Aucune configuration WordPress associée à cet utilisateur");
+        return false;
+      }
+      
+      // If the client's config is different from the generation's config, update the generation
+      if (clientWordpressConfigId !== generation.wordpress_config_id) {
+        console.log("Updating generation WordPress config ID to client's config:", clientWordpressConfigId);
+        const { error: updateError } = await supabase
+          .from('tome_generations')
+          .update({ wordpress_config_id: clientWordpressConfigId })
+          .eq('id', generationId);
+          
+        if (updateError) {
+          console.error("Error updating generation WordPress config:", updateError);
+          toast.error("Erreur lors de la mise à jour de la configuration WordPress");
+          return false;
+        }
+        
+        // Update the local generation variable with the new config ID
+        generation.wordpress_config_id = clientWordpressConfigId;
+      }
+      
       // Use the same approach as announcements - with useWordPressPublishing hook
       const currentDate = new Date().toISOString();
       const announcement: Announcement = {
@@ -85,18 +122,11 @@ export const useTomeScheduler = (wordpressConfigId: string | null) => {
         images: [],
         seo_title: generation.title,
         seo_description: "",
-        user_id: "",
+        user_id: user.id,
         created_at: currentDate,
         updated_at: currentDate,
         wordpress_category_id: generation.category_id
       };
-
-      // Get the user ID
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error("Utilisateur non identifié");
-        return false;
-      }
       
       const result = await publishToWordPress(
         announcement, 

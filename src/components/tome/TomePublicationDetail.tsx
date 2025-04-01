@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -41,13 +40,10 @@ const TomePublicationDetail = () => {
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
   
-  // Get wordpress config id from the generation data
   const wordpressConfigId = generation?.wordpress_config_id || null;
   
-  // Use the useTomeScheduler hook to handle publishing
   const { publishContent, generateContent } = useTomeScheduler(wordpressConfigId);
   
-  // Use the useWordPressPublishing hook to access publishing state
   const { publishingState, isPublishing } = useWordPressPublishing();
 
   useEffect(() => {
@@ -57,7 +53,6 @@ const TomePublicationDetail = () => {
       try {
         setIsLoading(true);
         
-        // Récupérer les détails de la génération directement depuis la table tome_generations
         const { data: generationData, error: genError } = await supabase
           .from("tome_generations")
           .select("*")
@@ -77,7 +72,6 @@ const TomePublicationDetail = () => {
           return;
         }
 
-        // Récupérer des informations supplémentaires si nécessaire
         const { data: wpConfig } = await supabase
           .from("wordpress_configs")
           .select("site_url")
@@ -150,7 +144,6 @@ const TomePublicationDetail = () => {
       if (success) {
         toast.success("Publication mise à jour avec succès");
         
-        // Mettre à jour l'état local avec les nouvelles données
         setGeneration({
           ...generation,
           title: data.title,
@@ -169,18 +162,15 @@ const TomePublicationDetail = () => {
   const handlePublish = async () => {
     if (!generation || !id) return;
     
-    // Utiliser la fonction de publication de useTomeScheduler
     const success = await publishContent(id);
     
     if (success) {
-      // Mise à jour du statut dans l'interface
       setGeneration({
         ...generation,
         status: 'published',
         published_at: new Date().toISOString()
       });
       
-      // Rediriger vers la liste des publications après un court délai
       setTimeout(() => {
         navigate("/tome");
       }, 2000);
@@ -193,23 +183,19 @@ const TomePublicationDetail = () => {
     try {
       setIsScheduling(true);
       
-      // Vérifier que le contenu et le titre sont présents
       if (!generation.title || !generation.content) {
         toast.error("Le titre et le contenu sont obligatoires pour planifier");
         return;
       }
       
-      // Formater la date pour PostgreSQL
       const formattedDate = format(scheduleDate, "yyyy-MM-dd'T'HH:mm:ss");
       
-      // Mise à jour du statut dans la base de données
       const success = await updateGeneration(id, {
         status: "scheduled",
         scheduled_at: formattedDate
       });
       
       if (success) {
-        // Mise à jour du statut dans l'interface
         setGeneration({
           ...generation,
           status: 'scheduled',
@@ -218,10 +204,8 @@ const TomePublicationDetail = () => {
         
         toast.success(`Publication planifiée pour le ${format(scheduleDate, "dd/MM/yyyy HH:mm", { locale: fr })}`);
         
-        // Fermer la boîte de dialogue
         setShowScheduleDialog(false);
         
-        // Rediriger vers la liste des publications après un court délai
         setTimeout(() => {
           navigate("/tome");
         }, 2000);
@@ -262,7 +246,7 @@ const TomePublicationDetail = () => {
 
   return (
     <Card className="relative">
-      {isPublishing && <PublishingLoadingOverlay state={publishingState} />}
+      {isPublishing && <PublishingLoadingOverlay publishingState={publishingState} />}
       <CardHeader>
         <CardTitle>
           {generation?.status === "draft" 
@@ -344,7 +328,6 @@ const TomePublicationDetail = () => {
                   Annuler
                 </Button>
                 
-                {/* Bouton de planification */}
                 <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
                   <DialogTrigger asChild>
                     <Button 
@@ -389,13 +372,11 @@ const TomePublicationDetail = () => {
                                 selected={scheduleDate}
                                 onSelect={(date) => {
                                   if (date) {
-                                    // Conserver l'heure actuelle si déjà sélectionnée
                                     if (scheduleDate) {
                                       const hours = scheduleDate.getHours();
                                       const minutes = scheduleDate.getMinutes();
                                       date.setHours(hours, minutes);
                                     } else {
-                                      // Par défaut, programmer pour maintenant
                                       const now = new Date();
                                       date.setHours(now.getHours(), now.getMinutes());
                                     }
@@ -403,7 +384,6 @@ const TomePublicationDetail = () => {
                                   }
                                 }}
                                 disabled={(date) => {
-                                  // Désactiver les dates passées
                                   const now = new Date();
                                   now.setHours(0, 0, 0, 0);
                                   return date < now;
@@ -468,7 +448,6 @@ const TomePublicationDetail = () => {
                   </DialogContent>
                 </Dialog>
                 
-                {/* Bouton de publication */}
                 <Button 
                   type="button"
                   variant="default"
