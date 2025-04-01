@@ -7,6 +7,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Debug logging function
+const debugLog = (message: string, data?: any) => {
+  if (data) {
+    console.log(`[tome-generate-draft] ${message}:`, JSON.stringify(data));
+  } else {
+    console.log(`[tome-generate-draft] ${message}`);
+  }
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -30,13 +39,14 @@ serve(async (req) => {
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Clone the request before reading it to avoid "Body already consumed" error
-    const reqClone = req.clone();
-    const { generationId } = await reqClone.json();
+    // Parse request body
+    const { generationId, debug = false } = await req.json();
 
     if (!generationId) {
       throw new Error('Generation ID is required');
     }
+
+    debugLog(`Starting content generation for generation ID: ${generationId}`);
 
     // Get generation data
     const { data: generation, error: generationError } = await supabase
@@ -49,11 +59,15 @@ serve(async (req) => {
       throw new Error('Generation not found: ' + (generationError?.message || 'Unknown error'));
     }
 
+    debugLog(`Retrieved generation data`, generation);
+
     // Update status to processing
     await supabase
       .from('tome_generations')
       .update({ status: 'processing' })
       .eq('id', generationId);
+
+    debugLog(`Updated generation status to 'processing'`);
 
     // Get WordPress config
     const { data: wpConfig, error: wpConfigError } = await supabase
@@ -65,6 +79,8 @@ serve(async (req) => {
     if (wpConfigError || !wpConfig) {
       throw new Error('WordPress config not found');
     }
+
+    debugLog(`Retrieved WordPress config: ${wpConfig.name}`);
 
     // Get category and keyword data
     let categoryName = "Non spécifiée";
@@ -80,6 +96,23 @@ serve(async (req) => {
       if (!categoryError && categoryKeyword) {
         categoryName = categoryKeyword.category_name || categoryName;
         keyword = categoryKeyword.keyword || null;
+        debugLog(`Using category: ${categoryName}, keyword: ${keyword}`);
+      } else if (categoryError) {
+        debugLog(`Error fetching category keyword: ${categoryError.message}`);
+      }
+    } else {
+      // Attempt to get category name directly
+      const { data: categoryData, error: catError } = await supabase
+        .from('categories_keywords')
+        .select('category_name')
+        .eq('category_id', generation.category_id)
+        .single();
+        
+      if (!catError && categoryData) {
+        categoryName = categoryData.category_name || categoryName;
+        debugLog(`Using category: ${categoryName} (from direct lookup)`);
+      } else if (catError) {
+        debugLog(`Error fetching category name: ${catError.message}`);
       }
     }
 
@@ -97,6 +130,9 @@ serve(async (req) => {
         if (locality.region) {
           localityName += ` (${locality.region})`;
         }
+        debugLog(`Using locality: ${localityName}`);
+      } else if (localityError) {
+        debugLog(`Error fetching locality: ${localityError.message}`);
       }
     }
 
@@ -126,71 +162,98 @@ serve(async (req) => {
     
     prompt += "\n\nFormat souhaité: HTML avec balises pour les titres (h1, h2, h3), paragraphes (p) et listes (ul, li).";
     
-    console.log("Sending prompt to OpenAI:", prompt.substring(0, 100) + "...\n");
+    if (debug) {
+      debugLog("Prompt prepared for OpenAI");
+    } else {
+      debugLog("Prompt prepared for OpenAI:", prompt.substring(0, 100) + "...");
+    }
     
-    // Generate content with OpenAI
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: 'Vous êtes un expert en rédaction web SEO qui génère du contenu HTML optimisé.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        max_tokens: 1500,
-        temperature: 0.7,
-      }),
-    });
+    try {
+      // Generate content with OpenAI
+      debugLog("Sending request to OpenAI");
+      const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [
+            {
+              role: 'system',
+              content: 'Vous êtes un expert en rédaction web SEO qui génère du contenu HTML optimisé.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          max_tokens: 1500,
+          temperature: 0.7,
+        }),
+      });
 
-    const completion = await openaiResponse.json();
-    
-    if (!completion.choices || completion.choices.length === 0) {
-      throw new Error('Failed to generate content with OpenAI');
-    }
-    
-    const generatedContent = completion.choices[0].message.content;
-    
-    // Extract title from the generated content
-    let title = "Nouveau contenu généré";
-    const titleMatch = generatedContent.match(/<h1[^>]*>(.*?)<\/h1>/i);
-    if (titleMatch && titleMatch[1]) {
-      title = titleMatch[1].replace(/<[^>]*>/g, '').trim();
-    }
-    
-    // Update the generation with content but keep as draft
-    await supabase
-      .from('tome_generations')
-      .update({ 
-        status: 'draft',
-        title: title,
-        content: generatedContent
-      })
-      .eq('id', generationId);
-    
-    // Return successful response
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: 'Content generated successfully as draft',
-        generationId
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
+      if (!openaiResponse.ok) {
+        const errorText = await openaiResponse.text();
+        debugLog(`OpenAI API returned error: ${openaiResponse.status}`, errorText);
+        throw new Error(`OpenAI API error: ${openaiResponse.status} - ${errorText}`);
       }
-    );
+
+      const completion = await openaiResponse.json();
+      debugLog("Received response from OpenAI");
+      
+      if (!completion.choices || completion.choices.length === 0) {
+        throw new Error('Failed to generate content with OpenAI: No choices returned');
+      }
+      
+      const generatedContent = completion.choices[0].message.content;
+      
+      // Extract title from the generated content
+      let title = "Nouveau contenu généré";
+      const titleMatch = generatedContent.match(/<h1[^>]*>(.*?)<\/h1>/i);
+      if (titleMatch && titleMatch[1]) {
+        title = titleMatch[1].replace(/<[^>]*>/g, '').trim();
+        debugLog(`Extracted title: ${title}`);
+      } else {
+        debugLog("Could not extract title from content");
+      }
+      
+      // Update the generation with content but keep as draft
+      const { error: updateError } = await supabase
+        .from('tome_generations')
+        .update({ 
+          status: 'draft',
+          title: title,
+          content: generatedContent
+        })
+        .eq('id', generationId);
+        
+      if (updateError) {
+        debugLog(`Error updating generation: ${updateError.message}`);
+        throw new Error(`Error updating generation: ${updateError.message}`);
+      }
+      
+      debugLog(`Successfully updated generation with content, status set to 'draft'`);
+      
+      // Return successful response
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Content generated successfully as draft',
+          generationId
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    } catch (openaiError: any) {
+      debugLog(`Error with OpenAI API: ${openaiError.message}`);
+      throw new Error(`OpenAI error: ${openaiError.message}`);
+    }
   } catch (error: any) {
-    console.error('Error in tome-generate-draft function:', error);
+    debugLog('Error in tome-generate-draft function:', error);
     
     let errorMessage = error.message || 'An error occurred during generation';
     
@@ -213,10 +276,12 @@ serve(async (req) => {
               error_message: errorMessage.substring(0, 255) // Limit the length
             })
             .eq('id', generationId);
+            
+          debugLog(`Updated generation status to 'failed'`);
         }
       }
     } catch (updateError) {
-      console.error('Error updating generation status:', updateError);
+      debugLog('Error updating generation status:', updateError);
     }
     
     return new Response(

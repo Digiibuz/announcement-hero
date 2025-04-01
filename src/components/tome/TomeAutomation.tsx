@@ -3,70 +3,81 @@ import React from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { useTomeAutomation } from "@/hooks/tome/useTomeAutomation";
+import { useTomeScheduler } from "@/hooks/tome/useTomeScheduler";
+import { useCategoriesKeywords } from "@/hooks/tome";
 import AutomationStatus from "./automation/AutomationStatus";
 import FrequencySelector from "./automation/FrequencySelector";
 import WarningMessage from "./automation/WarningMessage";
 import AutomationActions from "./automation/AutomationActions";
-import { useCategoriesKeywords, useLocalities } from "@/hooks/tome";
 
 interface TomeAutomationProps {
   configId: string;
 }
 
 const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
-  const { categories, isLoading: isLoadingCategories } = useCategoriesKeywords(configId);
-  const { isLoading: isLoadingLocalities } = useLocalities(configId);
-  
-  const {
-    isEnabled,
-    setIsEnabled,
-    frequency,
-    setFrequency,
+  const { 
+    isEnabled, 
+    setIsEnabled, 
+    frequency, 
+    setFrequency, 
     isSubmitting,
+    savingStatus,
     lastAutomationCheck,
-    checkAutomationSettings,
+    apiKey,
+    refreshAutomationStatus,
     saveAutomationSettings,
     generateRandomDraft,
     forceRunScheduler,
-    hasNecessaryData
+    toggleAutomationStatus,
+    updateAutomationFrequency,
+    hasNecessaryData,
+    clearLogs
   } = useTomeAutomation(configId);
+  
+  const { logs } = useTomeScheduler();
+  const { isLoading: isCategoriesLoading } = useCategoriesKeywords(configId);
 
-  const isLoading = isLoadingCategories || isLoadingLocalities;
-
-  if (isLoading) {
+  if (isCategoriesLoading) {
     return (
-      <div className="flex justify-center items-center h-32">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex justify-center items-center h-32">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Publication automation</CardTitle>
+        <CardTitle>Automatisation des publications</CardTitle>
         <CardDescription>
-          Configure automatic draft generation with random keywords and localities
+          Configurez la génération automatique de brouillons avec des mots-clés et localités aléatoires
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <AutomationStatus
           isEnabled={isEnabled}
-          onEnabledChange={setIsEnabled}
+          onEnabledChange={toggleAutomationStatus}
           hasNecessaryData={hasNecessaryData}
-          isSubmitting={isSubmitting}
+          isSubmitting={isSubmitting || savingStatus === 'loading'}
           lastAutomationCheck={lastAutomationCheck}
-          onRefresh={() => checkAutomationSettings(true)}
+          onRefresh={refreshAutomationStatus}
         />
 
         <FrequencySelector
           frequency={frequency}
-          onFrequencyChange={setFrequency}
+          onFrequencyChange={updateAutomationFrequency}
           isEnabled={isEnabled}
-          isSubmitting={isSubmitting}
+          isSubmitting={isSubmitting || savingStatus === 'loading'}
         />
 
-        <WarningMessage hasNecessaryData={hasNecessaryData} />
+        <WarningMessage 
+          hasNecessaryData={hasNecessaryData} 
+          logs={logs.slice(-5)} // Show only the last 5 logs
+        />
       </CardContent>
       <CardFooter>
         <AutomationActions
@@ -74,7 +85,9 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
           onForceRunScheduler={forceRunScheduler}
           onSaveSettings={saveAutomationSettings}
           hasNecessaryData={hasNecessaryData}
-          isSubmitting={isSubmitting}
+          isSubmitting={isSubmitting || savingStatus === 'loading'}
+          logs={logs}
+          onClearLogs={clearLogs}
         />
       </CardFooter>
     </Card>

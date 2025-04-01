@@ -18,26 +18,26 @@ const FrequencySelector: React.FC<FrequencySelectorProps> = ({
 }) => {
   return (
     <div className="space-y-2">
-      <Label htmlFor="frequency-select">Generation frequency</Label>
+      <Label htmlFor="frequency-select">Fréquence de génération</Label>
       <Select 
         value={frequency} 
         onValueChange={onFrequencyChange}
         disabled={!isEnabled || isSubmitting}
       >
         <SelectTrigger id="frequency-select">
-          <SelectValue placeholder="Select a frequency" />
+          <SelectValue placeholder="Sélectionner une fréquence" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="0.0007">Every minute (test)</SelectItem>
-          <SelectItem value="0.0014">Every 2 minutes (test)</SelectItem>
-          <SelectItem value="0.01">Every 15 minutes (test)</SelectItem>
-          <SelectItem value="0.02">Every 30 minutes (test)</SelectItem>
-          <SelectItem value="0.05">Every hour (test)</SelectItem>
-          <SelectItem value="1">Every day</SelectItem>
-          <SelectItem value="2">Every 2 days</SelectItem>
-          <SelectItem value="3">Every 3 days</SelectItem>
-          <SelectItem value="7">Every week</SelectItem>
-          <SelectItem value="14">Every 2 weeks</SelectItem>
+          <SelectItem value="0.0007">Chaque minute (test)</SelectItem>
+          <SelectItem value="0.0014">Toutes les 2 minutes (test)</SelectItem>
+          <SelectItem value="0.01">Toutes les 15 minutes (test)</SelectItem>
+          <SelectItem value="0.02">Toutes les 30 minutes (test)</SelectItem>
+          <SelectItem value="0.05">Toutes les heures (test)</SelectItem>
+          <SelectItem value="1">Chaque jour</SelectItem>
+          <SelectItem value="2">Tous les 2 jours</SelectItem>
+          <SelectItem value="3">Tous les 3 jours</SelectItem>
+          <SelectItem value="7">Chaque semaine</SelectItem>
+          <SelectItem value="14">Toutes les 2 semaines</SelectItem>
         </SelectContent>
       </Select>
     </div>
