@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { useTomeScheduler } from "@/hooks/tome/useTomeScheduler";
 import { useCategoriesKeywords, useLocalities } from "@/hooks/tome";
 
-// Define the type for tome_automation table
 export interface TomeAutomation {
   id: string;
   wordpress_config_id: string;
@@ -27,18 +26,15 @@ export const useTomeAutomation = (configId: string) => {
   const { categories } = useCategoriesKeywords(configId);
   const { activeLocalities } = useLocalities(configId);
   
-  // Check if automation is already enabled on initialization
   useEffect(() => {
     if (configId) {
       checkAutomationSettings();
     }
   }, [configId]);
 
-  // Add a timer to periodically check the automation status
   useEffect(() => {
     if (!configId) return;
     
-    // Check every 30 seconds if automation settings have changed
     const intervalId = setInterval(() => {
       checkAutomationSettings(false);
       setLastAutomationCheck(new Date());
@@ -47,7 +43,6 @@ export const useTomeAutomation = (configId: string) => {
     return () => clearInterval(intervalId);
   }, [configId]);
 
-  // Retrieve automation status from the database
   const checkAutomationSettings = async (showToast = true) => {
     try {
       console.log("Checking automation settings for configId:", configId);
@@ -63,7 +58,6 @@ export const useTomeAutomation = (configId: string) => {
       addLog(`Résultat de la vérification: ${error ? 'Erreur' : data ? 'OK' : 'Aucune configuration'}`);
 
       if (!error && data) {
-        // Cast data to the correct type
         const automationData = data as unknown as TomeAutomation;
         setIsEnabled(automationData.is_enabled);
         setFrequency(automationData.frequency.toString());
@@ -85,30 +79,25 @@ export const useTomeAutomation = (configId: string) => {
     }
   };
 
-  // Refresh automation status
   const refreshAutomationStatus = useCallback(async () => {
     await checkAutomationSettings(true);
     setLastAutomationCheck(new Date());
   }, [configId]);
 
-  // Toggle automation status
   const toggleAutomationStatus = useCallback((newStatus: boolean) => {
     setIsEnabled(newStatus);
     addLog(`Statut d'automatisation modifié: ${newStatus ? 'Activé' : 'Désactivé'}`);
   }, []);
 
-  // Update automation frequency
   const updateAutomationFrequency = useCallback((newFrequency: string) => {
     setFrequency(newFrequency);
     addLog(`Fréquence d'automatisation modifiée: ${newFrequency}`);
   }, []);
 
-  // Save automation settings
   const saveAutomationSettings = async () => {
     setIsSubmitting(true);
     setSavingStatus('loading');
     try {
-      // Convert frequency to a floating point number to support minutes
       const frequencyNumber = parseFloat(frequency);
       
       console.log("Saving automation settings:", {
@@ -119,7 +108,6 @@ export const useTomeAutomation = (configId: string) => {
       
       addLog(`Enregistrement des paramètres - Statut: ${isEnabled ? 'Activé' : 'Désactivé'}, Fréquence: ${frequencyNumber}`);
       
-      // Check if entries already exist
       const { data: existingData, error: checkError } = await supabase
         .from('tome_automation')
         .select('id, api_key')
@@ -135,7 +123,6 @@ export const useTomeAutomation = (configId: string) => {
       console.log("Existing data:", existingData);
       addLog(`Données existantes: ${existingData ? 'Trouvées' : 'Aucune'}`);
 
-      // Prepare data to send
       const automationData: any = {
         is_enabled: isEnabled,
         frequency: frequencyNumber,
@@ -145,7 +132,6 @@ export const useTomeAutomation = (configId: string) => {
       let result;
       
       if (existingData) {
-        // Update existing entry, keep the existing API key
         console.log("Updating an existing entry:", existingData.id);
         addLog(`Mise à jour de l'entrée existante: ${existingData.id}`);
         
@@ -154,14 +140,11 @@ export const useTomeAutomation = (configId: string) => {
           .update(automationData)
           .eq('id', existingData.id);
           
-        // Keep the existing API key
         setApiKey(existingData.api_key || null);
       } else {
-        // Create a new entry with a new API key
         console.log("Creating a new entry");
         addLog("Création d'une nouvelle entrée avec une nouvelle clé API");
         
-        // Generate a new API key
         automationData.wordpress_config_id = configId;
         
         result = await supabase
@@ -177,31 +160,16 @@ export const useTomeAutomation = (configId: string) => {
 
       console.log("Operation result:", result);
       addLog(`Résultat de l'opération: ${result.error ? 'Erreur' : 'Succès'}`);
-      toast.success(`Automatisation ${isEnabled ? 'activée' : 'désactivée'}`);
+      toast.success(`Paramètres d'automatisation sauvegardés avec succès`);
       
-      // After saving, refresh settings
       await checkAutomationSettings();
       setSavingStatus('success');
       
-      // Run a scheduler configuration check to validate
       const configValid = await checkSchedulerConfig();
       if (configValid) {
         addLog("Configuration du planificateur validée avec succès");
-        toast.success("Configuration du planificateur validée avec succès");
       } else {
         addLog("Échec de la validation de la configuration du planificateur");
-      }
-      
-      // Run the scheduler immediately if automation is enabled
-      if (isEnabled) {
-        addLog("Démarrage immédiat du planificateur");
-        const schedulerRun = await runScheduler(true);
-        if (schedulerRun) {
-          addLog("Planificateur exécuté avec succès");
-          toast.success("Planificateur exécuté avec succès. Vérifiez l'onglet Publications pour voir les brouillons générés.");
-        } else {
-          addLog("Échec de l'exécution du planificateur");
-        }
       }
       
       return true;
@@ -213,14 +181,12 @@ export const useTomeAutomation = (configId: string) => {
       return false;
     } finally {
       setIsSubmitting(false);
-      // Reset status after a delay
       setTimeout(() => {
         if (setSavingStatus) setSavingStatus('idle');
       }, 3000);
     }
   };
 
-  // Generate a draft manually with random keywords and localities
   const generateRandomDraft = async () => {
     setIsSubmitting(true);
     try {
@@ -232,12 +198,10 @@ export const useTomeAutomation = (configId: string) => {
 
       addLog("Génération d'un brouillon aléatoire");
       
-      // Select a random category
       const randomCategoryIndex = Math.floor(Math.random() * categories.length);
       const selectedCategory = categories[randomCategoryIndex];
       addLog(`Catégorie sélectionnée: ${selectedCategory.name} (${selectedCategory.id})`);
 
-      // Get all keywords for this category
       const { data: keywordsForCategory, error: keywordError } = await supabase
         .from('categories_keywords')
         .select('*')
@@ -248,7 +212,6 @@ export const useTomeAutomation = (configId: string) => {
         throw keywordError;
       }
 
-      // Select a random keyword if available
       let selectedKeywordId = null;
       let selectedKeyword = null;
       if (keywordsForCategory && keywordsForCategory.length > 0) {
@@ -260,7 +223,6 @@ export const useTomeAutomation = (configId: string) => {
         addLog("Aucun mot-clé disponible pour cette catégorie");
       }
 
-      // Select a random locality if available
       let selectedLocalityId = null;
       let selectedLocality = null;
       if (activeLocalities.length > 0) {
@@ -272,7 +234,6 @@ export const useTomeAutomation = (configId: string) => {
         addLog("Aucune localité disponible");
       }
 
-      // Create an entry in the generations table
       addLog("Création d'une entrée dans la table des générations");
       const { data: generationData, error: generationError } = await supabase
         .from('tome_generations')
@@ -298,7 +259,6 @@ export const useTomeAutomation = (configId: string) => {
 
       addLog(`Génération créée avec l'ID: ${generationData.id}`);
 
-      // Use useTomeScheduler to generate content
       addLog("Démarrage de la génération de contenu");
       const result = await generateContent(generationData.id);
       
@@ -321,13 +281,11 @@ export const useTomeAutomation = (configId: string) => {
     }
   };
 
-  // Force scheduler execution to generate content immediately
   const forceRunScheduler = async () => {
     setIsSubmitting(true);
     try {
       addLog("Exécution forcée du planificateur");
       
-      // Run the scheduler with forceGeneration=true
       const result = await runScheduler(true);
       
       if (!result) {
