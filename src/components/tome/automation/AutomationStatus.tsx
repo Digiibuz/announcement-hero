@@ -2,7 +2,7 @@
 import React from "react";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { RefreshCw, Clock, CheckCircle, AlertTriangle } from "lucide-react";
+import { RefreshCw, CheckCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -20,7 +20,6 @@ const AutomationStatus: React.FC<AutomationStatusProps> = ({
   onEnabledChange,
   hasNecessaryData,
   isSubmitting,
-  lastAutomationCheck,
   onRefresh
 }) => {
   return (
@@ -52,15 +51,7 @@ const AutomationStatus: React.FC<AutomationStatusProps> = ({
         />
       </div>
       
-      <div className="text-xs text-muted-foreground flex justify-between items-center">
-        <div className="flex items-center gap-1">
-          <Clock className="h-3 w-3" />
-          {lastAutomationCheck ? (
-            <span>Dernière vérification: {lastAutomationCheck.toLocaleTimeString()}</span>
-          ) : (
-            <span>Aucune vérification effectuée</span>
-          )}
-        </div>
+      <div className="text-xs text-muted-foreground flex justify-end items-center">
         <Button 
           variant="ghost" 
           size="icon" 
