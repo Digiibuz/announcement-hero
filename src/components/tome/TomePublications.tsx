@@ -1,12 +1,14 @@
 
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTomeGeneration } from "@/hooks/tome";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Plus, Loader2, FileEdit, Eye, ExternalLink, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { toast } from "sonner";
+import { TomeGeneration } from "@/types/tome";
 
 interface TomePublicationsProps {
   configId: string;
@@ -15,11 +17,53 @@ interface TomePublicationsProps {
 
 const TomePublications: React.FC<TomePublicationsProps> = ({ configId, isClientView = false }) => {
   const navigate = useNavigate();
-  const { 
-    generations, 
-    isLoading, 
-    fetchGenerations 
-  } = useTomeGeneration(configId);
+  const [generations, setGenerations] = React.useState<TomeGeneration[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  const fetchGenerations = React.useCallback(async () => {
+    if (!configId) {
+      setGenerations([]);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      // Récupérer les données de génération directement
+      const { data, error } = await supabase
+        .from("tome_generations")
+        .select("*")
+        .eq("wordpress_config_id", configId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error("Error fetching generations:", error);
+        toast.error("Erreur lors du chargement des générations: " + error.message);
+        return;
+      }
+
+      // Récupérer les informations du site WordPress
+      const { data: wpConfig } = await supabase
+        .from("wordpress_configs")
+        .select("site_url")
+        .eq("id", configId)
+        .single();
+
+      // Enrichir les données avec l'URL du site
+      const enhancedGenerations = data.map(gen => ({
+        ...gen,
+        wordpress_site_url: wpConfig?.site_url || null
+      }));
+
+      setGenerations(enhancedGenerations);
+    } catch (error: any) {
+      console.error("Error in fetchGenerations:", error);
+      toast.error("Erreur lors du chargement des données");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [configId]);
 
   useEffect(() => {
     fetchGenerations();

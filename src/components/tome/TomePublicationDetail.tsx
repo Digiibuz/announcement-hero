@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -7,7 +8,7 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import TomeDescriptionField from "./TomeDescriptionField";
-import { useTomeGeneration } from "@/hooks/tome";
+import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Save, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { TomeGeneration } from "@/types/tome";
@@ -19,27 +20,43 @@ const TomePublicationDetail = () => {
   const [generation, setGeneration] = useState<TomeGeneration | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const { getGenerationById, updateGeneration } = useTomeGeneration(generation?.wordpress_config_id || "");
-
   useEffect(() => {
     const fetchGeneration = async () => {
       if (!id) return;
       
       try {
         setIsLoading(true);
-        const fetchedGeneration = await getGenerationById(id);
-        if (fetchedGeneration) {
-          setGeneration(fetchedGeneration as TomeGeneration);
-          form.reset({
-            title: fetchedGeneration.title || "",
-            content: fetchedGeneration.content || "",
-            description: fetchedGeneration.description || "",
-          });
-        } else {
+        
+        // Récupérer les détails de la génération directement depuis la table tome_generations
+        const { data: generationData, error: genError } = await supabase
+          .from("tome_generations")
+          .select("*")
+          .eq("id", id)
+          .single();
+
+        if (genError) {
+          console.error("Erreur lors du chargement de la publication:", genError);
+          toast.error("Erreur lors du chargement de la publication: " + genError.message);
+          navigate("/tome");
+          return;
+        }
+
+        if (!generationData) {
           toast.error("Publication non trouvée");
           navigate("/tome");
+          return;
         }
-      } catch (error) {
+
+        // Récupérer les informations supplémentaires si nécessaire
+        // Ici, on pourrait chercher des données associées dans les autres tables
+
+        setGeneration(generationData as TomeGeneration);
+        form.reset({
+          title: generationData.title || "",
+          content: generationData.content || "",
+          description: generationData.description || "",
+        });
+      } catch (error: any) {
         console.error("Erreur lors du chargement de la publication:", error);
         toast.error("Erreur lors du chargement de la publication");
       } finally {
@@ -48,7 +65,7 @@ const TomePublicationDetail = () => {
     };
 
     fetchGeneration();
-  }, [id, getGenerationById, navigate]);
+  }, [id, navigate]);
 
   const form = useForm({
     defaultValues: {
@@ -57,6 +74,27 @@ const TomePublicationDetail = () => {
       description: "",
     },
   });
+
+  const updateGeneration = async (generationId: string, data: any): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from("tome_generations")
+        .update(data)
+        .eq("id", generationId);
+
+      if (error) {
+        console.error("Erreur lors de la mise à jour:", error);
+        toast.error("Erreur lors de la mise à jour: " + error.message);
+        return false;
+      }
+      
+      return true;
+    } catch (error: any) {
+      console.error("Erreur dans updateGeneration:", error);
+      toast.error(`Erreur: ${error.message || "Erreur inconnue"}`);
+      return false;
+    }
+  };
 
   const onSubmit = async (data: { title: string; content: string; description: string }) => {
     if (!generation || !id) return;
@@ -72,6 +110,14 @@ const TomePublicationDetail = () => {
       
       if (success) {
         toast.success("Publication mise à jour avec succès");
+        
+        // Mettre à jour l'état local avec les nouvelles données
+        setGeneration({
+          ...generation,
+          title: data.title,
+          content: data.content,
+          description: data.description
+        });
       }
     } catch (error) {
       console.error("Erreur lors de la mise à jour:", error);
