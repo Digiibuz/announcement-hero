@@ -34,12 +34,14 @@ export const useTomeScheduler = () => {
   };
 
   // Fonction pour exécuter manuellement le planificateur
-  const runScheduler = async (): Promise<boolean> => {
+  const runScheduler = async (forceGeneration: boolean = false): Promise<boolean> => {
     try {
       setIsRunning(true);
-      console.log("Démarrage manuel du planificateur");
+      console.log("Démarrage manuel du planificateur", forceGeneration ? "avec génération forcée" : "");
 
-      const { data, error } = await supabase.functions.invoke('tome-scheduler', {});
+      const { data, error } = await supabase.functions.invoke('tome-scheduler', {
+        body: { forceGeneration }
+      });
 
       if (error) {
         console.error("Erreur lors de l'exécution du planificateur:", error);

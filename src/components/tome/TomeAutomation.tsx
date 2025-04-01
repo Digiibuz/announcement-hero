@@ -36,13 +36,11 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const { activeLocalities, isLoading: isLoadingLocalities } = useLocalities(configId);
   const { generateContent, runScheduler } = useTomeScheduler();
 
-  // Vérifier si l'automatisation est déjà activée à l'initialisation
   useEffect(() => {
     checkAutomationSettings();
     fetchLastGenerationTime();
   }, [configId]);
 
-  // Récupérer l'état d'automatisation depuis la base de données
   const checkAutomationSettings = async () => {
     try {
       console.log("Vérification des paramètres d'automatisation pour configId:", configId);
@@ -56,12 +54,10 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       console.log("Résultat de la vérification:", { data, error });
 
       if (!error && data) {
-        // Cast data to the correct type
         const automationData = data as unknown as TomeAutomation;
         setIsEnabled(automationData.is_enabled);
         setFrequency(automationData.frequency.toString());
         
-        // Calculer la prochaine génération prévue
         updateNextGenerationTime(automationData.frequency);
       }
     } catch (error) {
@@ -69,7 +65,6 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
     }
   };
 
-  // Récupérer la date de la dernière génération
   const fetchLastGenerationTime = async () => {
     try {
       const { data, error } = await supabase
@@ -83,7 +78,6 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
         const lastGenDate = new Date(data[0].created_at);
         setLastGenerationTime(lastGenDate);
         
-        // Si nous avons une fréquence, calculer la prochaine génération
         if (frequency) {
           updateNextGenerationTime(parseFloat(frequency), lastGenDate);
         }
@@ -93,31 +87,25 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
     }
   };
 
-  // Calculer la prochaine génération prévue
   const updateNextGenerationTime = (freq: number, lastGeneration?: Date) => {
     const baseDate = lastGeneration || new Date();
     let nextDate: Date;
     
     if (freq < 1) {
-      // Si moins d'un jour, convertir en minutes (fréquence * 24 * 60)
       const minutes = Math.round(freq * 24 * 60);
       nextDate = addMinutes(baseDate, minutes);
     } else if (freq < 24) {
-      // Si moins de 24 jours, considérer comme des jours
       nextDate = addDays(baseDate, freq);
     } else {
-      // Sinon, considérer comme des heures
       nextDate = addHours(baseDate, freq);
     }
     
     setNextGenerationTime(nextDate);
   };
 
-  // Enregistrer les paramètres d'automatisation
   const saveAutomationSettings = async () => {
     setIsSubmitting(true);
     try {
-      // Convertir frequency en nombre à virgule flottante pour supporter les minutes
       const frequencyNumber = parseFloat(frequency);
       
       console.log("Sauvegarde des paramètres d'automatisation:", {
@@ -126,7 +114,6 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
         frequency: frequencyNumber
       });
       
-      // Vérifier si des entrées existent déjà
       const { data: existingData, error: checkError } = await supabase
         .from('tome_automation')
         .select('id')
@@ -140,7 +127,6 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
 
       console.log("Données existantes:", existingData);
 
-      // Préparer les données à envoyer
       const automationData = {
         is_enabled: isEnabled,
         frequency: frequencyNumber,
@@ -150,14 +136,12 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       let result;
       
       if (existingData) {
-        // Mettre à jour l'entrée existante
         console.log("Mise à jour d'une entrée existante:", existingData.id);
         result = await supabase
           .from('tome_automation')
           .update(automationData)
           .eq('id', existingData.id);
       } else {
-        // Créer une nouvelle entrée
         console.log("Création d'une nouvelle entrée");
         result = await supabase
           .from('tome_automation')
@@ -176,11 +160,9 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       console.log("Résultat de l'opération:", result);
       toast.success(`Automatisation ${isEnabled ? 'activée' : 'désactivée'}`);
       
-      // Mettre à jour la prochaine génération prévue
       fetchLastGenerationTime();
       updateNextGenerationTime(frequencyNumber);
       
-      // Vérifier la configuration du planificateur
       await runScheduler();
     } catch (error: any) {
       console.error("Erreur détaillée lors de l'enregistrement des paramètres:", error);
@@ -190,7 +172,6 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
     }
   };
 
-  // Générer manuellement un brouillon avec des mots-clés et localités aléatoires
   const generateRandomDraft = async () => {
     setIsSubmitting(true);
     try {
@@ -199,31 +180,26 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
         return;
       }
 
-      // Sélectionner une catégorie aléatoire
       const randomCategoryIndex = Math.floor(Math.random() * categories.length);
       const selectedCategory = categories[randomCategoryIndex];
 
-      // Récupérer tous les mots-clés pour cette catégorie
       const { data: keywordsForCategory } = await supabase
         .from('categories_keywords')
         .select('*')
         .eq('category_id', selectedCategory.id);
 
-      // Sélectionner un mot-clé aléatoire si disponible
       let selectedKeywordId = null;
       if (keywordsForCategory && keywordsForCategory.length > 0) {
         const randomKeywordIndex = Math.floor(Math.random() * keywordsForCategory.length);
         selectedKeywordId = keywordsForCategory[randomKeywordIndex].id;
       }
 
-      // Sélectionner une localité aléatoire si disponible
       let selectedLocalityId = null;
       if (activeLocalities.length > 0) {
         const randomLocalityIndex = Math.floor(Math.random() * activeLocalities.length);
         selectedLocalityId = activeLocalities[randomLocalityIndex].id;
       }
 
-      // Créer une entrée dans la table des générations
       const { data: generationData, error: generationError } = await supabase
         .from('tome_generations')
         .insert({
@@ -244,12 +220,11 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
         throw new Error("Échec de la création de la génération");
       }
 
-      // Utiliser useTomeScheduler pour générer le contenu
       const result = await generateContent(generationData.id);
       
       if (result) {
         toast.success("Brouillon généré avec succès");
-        fetchLastGenerationTime(); // Mettre à jour la dernière génération
+        fetchLastGenerationTime();
       } else {
         toast.error("Échec de la génération du brouillon");
       }
@@ -261,16 +236,14 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
     }
   };
 
-  // Force l'exécution du planificateur
   const forceRunScheduler = async () => {
     setIsSubmitting(true);
     try {
-      // Exécuter le planificateur avec forceGeneration=true
       const result = await runScheduler(true);
       
       if (result) {
         toast.success("Exécution du planificateur forcée avec succès");
-        fetchLastGenerationTime(); // Mettre à jour la dernière génération
+        fetchLastGenerationTime();
       }
     } catch (error: any) {
       console.error("Erreur lors de l'exécution forcée du planificateur:", error);
@@ -341,7 +314,6 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
           </Select>
         </div>
         
-        {/* Information sur les planifications */}
         {(lastGenerationTime || nextGenerationTime) && (
           <div className="bg-muted p-3 rounded-md space-y-2">
             {lastGenerationTime && (

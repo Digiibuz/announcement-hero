@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.1';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import 'https://deno.land/x/xhr@0.1.0/mod.ts';
@@ -28,11 +27,14 @@ serve(async (req) => {
 
     console.log("Tome-scheduler function starting execution");
 
-    // Parse the request to check if this is just a configuration check
+    // Parse the request body to check for options
     let isConfigCheck = false;
+    let forceGeneration = false;
+    
     try {
       const body = await req.json();
       isConfigCheck = body.configCheck === true;
+      forceGeneration = body.forceGeneration === true;
       console.log("Request body:", body);
     } catch (e) {
       // Si pas de body JSON ou erreur de parsing, ce n'est pas une vérification de config
@@ -93,7 +95,7 @@ serve(async (req) => {
 
       console.log(`Processing automation for WordPress config ${wordpressConfigId} with frequency ${frequency}`);
 
-      // Check if it's time to generate content based on frequency
+      // Check if it's time to generate content based on frequency (unless force generation is requested)
       const { data: lastGeneration, error: lastGenError } = await supabase
         .from('tome_generations')
         .select('created_at')
@@ -108,7 +110,7 @@ serve(async (req) => {
 
       console.log(`Last generation for config ${wordpressConfigId}:`, lastGeneration);
 
-      const shouldGenerate = shouldGenerateContent(lastGeneration, frequency);
+      const shouldGenerate = forceGeneration || shouldGenerateContent(lastGeneration, frequency);
       
       if (!shouldGenerate) {
         console.log(`Skipping generation for config ${wordpressConfigId}, not due yet`);
