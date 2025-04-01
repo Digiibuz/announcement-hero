@@ -67,7 +67,7 @@ async function parseRequestParams(req: Request) {
   // - configCheck should be false by default to allow content generation
   // - forceGeneration should be true for scheduled tasks
   let isConfigCheck = false;
-  let forceGeneration = true; // Changed default to true for automated tasks
+  let forceGeneration = true; // Default to true for automated tasks
   let apiKey = null;
   let debug = false;
   let timestamp = new Date().getTime(); // Current timestamp for logging/debugging
