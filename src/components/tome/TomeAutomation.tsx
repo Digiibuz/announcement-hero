@@ -8,8 +8,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useTomeScheduler } from "@/hooks/tome/useTomeScheduler";
 import { useCategoriesKeywords, useLocalities } from "@/hooks/tome";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Clock, PlayCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { format, addMinutes, addHours, addDays } from "date-fns";
+import { fr } from "date-fns/locale";
 
 // Define the type for tome_automation table
 interface TomeAutomation {
@@ -29,6 +31,8 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const [isEnabled, setIsEnabled] = useState(false);
   const [frequency, setFrequency] = useState("2"); // jours
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [nextGenerationTime, setNextGenerationTime] = useState<Date | null>(null);
+  const [lastGenerationTime, setLastGenerationTime] = useState<Date | null>(null);
   const { categories, isLoading: isLoadingCategories } = useCategoriesKeywords(configId);
   const { activeLocalities, isLoading: isLoadingLocalities } = useLocalities(configId);
   const { generateContent, runScheduler } = useTomeScheduler();
@@ -36,6 +40,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   // Vérifier si l'automatisation est déjà activée à l'initialisation
   useEffect(() => {
     checkAutomationSettings();
+    fetchLastGenerationTime();
   }, [configId]);
 
   // Récupérer l'état d'automatisation depuis la base de données
@@ -56,10 +61,57 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
         const automationData = data as unknown as TomeAutomation;
         setIsEnabled(automationData.is_enabled);
         setFrequency(automationData.frequency.toString());
+        
+        // Calculer la prochaine génération prévue
+        updateNextGenerationTime(automationData.frequency);
       }
     } catch (error) {
       console.error("Erreur lors de la récupération des paramètres d'automatisation:", error);
     }
+  };
+
+  // Récupérer la date de la dernière génération
+  const fetchLastGenerationTime = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('tome_generations')
+        .select('created_at')
+        .eq('wordpress_config_id', configId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (!error && data && data.length > 0) {
+        const lastGenDate = new Date(data[0].created_at);
+        setLastGenerationTime(lastGenDate);
+        
+        // Si nous avons une fréquence, calculer la prochaine génération
+        if (frequency) {
+          updateNextGenerationTime(parseFloat(frequency), lastGenDate);
+        }
+      }
+    } catch (error) {
+      console.error("Erreur lors de la récupération de la dernière génération:", error);
+    }
+  };
+
+  // Calculer la prochaine génération prévue
+  const updateNextGenerationTime = (freq: number, lastGeneration?: Date) => {
+    const baseDate = lastGeneration || new Date();
+    let nextDate: Date;
+    
+    if (freq < 1) {
+      // Si moins d'un jour, convertir en minutes (fréquence * 24 * 60)
+      const minutes = Math.round(freq * 24 * 60);
+      nextDate = addMinutes(baseDate, minutes);
+    } else if (freq < 24) {
+      // Si moins de 24 jours, considérer comme des jours
+      nextDate = addDays(baseDate, freq);
+    } else {
+      // Sinon, considérer comme des heures
+      nextDate = addHours(baseDate, freq);
+    }
+    
+    setNextGenerationTime(nextDate);
   };
 
   // Enregistrer les paramètres d'automatisation
@@ -125,12 +177,12 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       console.log("Résultat de l'opération:", result);
       toast.success(`Automatisation ${isEnabled ? 'activée' : 'désactivée'}`);
       
-      // Ne plus exécuter le planificateur immédiatement
-      // Cette ligne était responsable de la génération immédiate d'un brouillon
-      // if (isEnabled) {
-      //   console.log("Exécution immédiate du planificateur");
-      //   await runScheduler();
-      // }
+      // Mettre à jour la prochaine génération prévue
+      fetchLastGenerationTime();
+      updateNextGenerationTime(frequencyNumber);
+      
+      // Vérifier la configuration du planificateur
+      await runScheduler(false);
     } catch (error: any) {
       console.error("Erreur détaillée lors de l'enregistrement des paramètres:", error);
       toast.error(`Erreur: ${error.message || "Erreur lors de l'enregistrement des paramètres"}`);
@@ -198,11 +250,31 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       
       if (result) {
         toast.success("Brouillon généré avec succès");
+        fetchLastGenerationTime(); // Mettre à jour la dernière génération
       } else {
         toast.error("Échec de la génération du brouillon");
       }
     } catch (error: any) {
       console.error("Erreur lors de la génération du brouillon:", error);
+      toast.error("Erreur: " + error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Force l'exécution du planificateur
+  const forceRunScheduler = async () => {
+    setIsSubmitting(true);
+    try {
+      // Exécuter le planificateur avec forceGeneration=true
+      const result = await runScheduler(true);
+      
+      if (result) {
+        toast.success("Exécution du planificateur forcée avec succès");
+        fetchLastGenerationTime(); // Mettre à jour la dernière génération
+      }
+    } catch (error: any) {
+      console.error("Erreur lors de l'exécution forcée du planificateur:", error);
       toast.error("Erreur: " + error.message);
     } finally {
       setIsSubmitting(false);
@@ -269,6 +341,24 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
             </SelectContent>
           </Select>
         </div>
+        
+        {/* Information sur les planifications */}
+        {(lastGenerationTime || nextGenerationTime) && (
+          <div className="bg-muted p-3 rounded-md space-y-2">
+            {lastGenerationTime && (
+              <div className="flex items-center text-sm">
+                <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span>Dernière génération: {format(lastGenerationTime, "dd/MM/yyyy à HH:mm:ss", { locale: fr })}</span>
+              </div>
+            )}
+            {nextGenerationTime && (
+              <div className="flex items-center text-sm">
+                <PlayCircle className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span>Prochaine génération: {format(nextGenerationTime, "dd/MM/yyyy à HH:mm:ss", { locale: fr })}</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {!hasNecessaryData && (
           <div className="bg-amber-100 text-amber-800 p-3 rounded-md text-sm">
@@ -276,18 +366,29 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
           </div>
         )}
       </CardContent>
-      <CardFooter className="flex justify-between">
+      <CardFooter className="flex flex-col sm:flex-row gap-2">
         <Button 
           variant="outline" 
           onClick={generateRandomDraft}
           disabled={!hasNecessaryData || isSubmitting}
+          className="w-full sm:w-auto"
         >
           {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
           Générer un brouillon maintenant
         </Button>
         <Button 
+          variant="outline"
+          onClick={forceRunScheduler}
+          disabled={!hasNecessaryData || isSubmitting}
+          className="w-full sm:w-auto"
+        >
+          {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+          Exécuter planificateur
+        </Button>
+        <Button 
           onClick={saveAutomationSettings}
           disabled={isSubmitting}
+          className="w-full sm:w-auto"
         >
           {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
           Enregistrer les paramètres

@@ -1,0 +1,8 @@
+
+project_id = "rdwqedmvzicerwotjseg"
+
+# Configuration de la planification cron pour exécuter la fonction toutes les 2 minutes
+[[functions.schedules]]
+name = "generate-draft-every-2-minutes"
+cron = "*/2 * * * *"
+function = "tome-scheduled-draft"
