@@ -35,6 +35,40 @@ export const useTomeScheduler = () => {
     }
   };
 
+  // Fonction pour déclencher un "ping" sur le planificateur
+  // Cette fonction sert à vérifier et exécuter les tâches qui sont dues
+  // Elle respecte la fréquence configurée pour chaque automatisation
+  const pingScheduler = async (): Promise<boolean> => {
+    try {
+      setIsRunning(true);
+      console.log("Ping du planificateur");
+
+      const { data, error } = await supabase.functions.invoke('tome-scheduler', {
+        body: { pingOnly: true }
+      });
+
+      if (error) {
+        console.error("Erreur lors du ping du planificateur:", error);
+        toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
+        return false;
+      }
+
+      console.log("Résultat du ping du planificateur:", data);
+
+      if (data.generationsCreated > 0) {
+        toast.success(`${data.generationsCreated} brouillon(s) généré(s) avec succès`);
+      }
+
+      return true;
+    } catch (error: any) {
+      console.error("Erreur dans pingScheduler:", error);
+      toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
+      return false;
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
   // Fonction pour exécuter manuellement le planificateur
   const runScheduler = async (): Promise<boolean> => {
     try {
@@ -169,6 +203,7 @@ export const useTomeScheduler = () => {
     forceSchedulerRun,
     generateContent,
     publishContent,
-    checkSchedulerConfig
+    checkSchedulerConfig,
+    pingScheduler
   };
 };
