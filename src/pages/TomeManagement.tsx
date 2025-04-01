@@ -119,7 +119,7 @@ const TomeManagement = () => {
   }
 
   return <Routes>
-      <Route path="/" element={<PageLayout title="Tom-E" onRefresh={handleRefresh}>
+      <Route path="/" element={<PageLayout title="Tom-E" onRefresh={handleRefresh} fullWidthMobile={true}>
             <AnimatedContainer delay={200}>
               <div className="mb-4 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
                 {selectedConfigId && <div className="w-full">

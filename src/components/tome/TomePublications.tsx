@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { TomeGeneration } from "@/types/tome";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import FloatingActionButton from "@/components/ui/FloatingActionButton";
 
 interface TomePublicationsProps {
   configId: string;
@@ -24,6 +26,7 @@ const TomePublications: React.FC<TomePublicationsProps> = ({ configId, isClientV
   const navigate = useNavigate();
   const [generations, setGenerations] = React.useState<ExtendedTomeGeneration[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const isMobile = useMediaQuery("(max-width: 767px)");
 
   const fetchGenerations = React.useCallback(async () => {
     if (!configId) {
@@ -88,27 +91,48 @@ const TomePublications: React.FC<TomePublicationsProps> = ({ configId, isClientV
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">{isClientView ? "Vos publications" : "Publications"}</h2>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => fetchGenerations()}
-            disabled={isLoading}
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Actualiser
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => navigate("/tome/new")}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Nouvelle publication
-          </Button>
+      {/* Desktop header */}
+      {!isMobile && (
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold">{isClientView ? "Vos publications" : "Publications"}</h2>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => fetchGenerations()}
+              disabled={isLoading}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Actualiser
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => navigate("/tome/new")}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvelle publication
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
+      
+      {/* Mobile header */}
+      {isMobile && (
+        <div className="flex flex-col space-y-2">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold">{isClientView ? "Vos publications" : "Publications"}</h2>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => fetchGenerations()}
+              disabled={isLoading}
+              aria-label="Actualiser"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
       
       <Card>
         <CardHeader>
@@ -244,6 +268,14 @@ const TomePublications: React.FC<TomePublicationsProps> = ({ configId, isClientV
           )}
         </CardContent>
       </Card>
+
+      {/* Floating action button for mobile */}
+      {isMobile && (
+        <FloatingActionButton onClick={() => navigate("/tome/new")}>
+          <Plus className="h-5 w-5 mr-2" />
+          Nouvelle publication
+        </FloatingActionButton>
+      )}
     </div>
   );
 };
