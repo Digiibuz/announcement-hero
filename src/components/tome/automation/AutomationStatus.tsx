@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { RefreshCw, CheckCircle, AlertTriangle, Clock, XCircle, Timer } from "lucide-react";
@@ -29,6 +29,9 @@ const AutomationStatus: React.FC<AutomationStatusProps> = ({
 }) => {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [progress, setProgress] = useState(0);
+  const lastCheckRef = useRef<Date | null>(null);
+  const frequencyMinutesRef = useRef<number>(0);
+  const timerRef = useRef<number | null>(null);
   
   // Format the last check time
   const formatLastCheck = () => {
@@ -54,18 +57,36 @@ const AutomationStatus: React.FC<AutomationStatusProps> = ({
   
   // Calculate next run time
   useEffect(() => {
-    if (!isEnabled || !lastAutomationCheck) return;
+    // Stocker la dernière vérification dans une ref pour éviter les recalculs inutiles
+    if (lastAutomationCheck && (!lastCheckRef.current || 
+        lastAutomationCheck.getTime() !== lastCheckRef.current.getTime())) {
+      lastCheckRef.current = lastAutomationCheck;
+    }
+    
+    // Nettoyer l'intervalle existant
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    
+    if (!isEnabled || !hasNecessaryData) {
+      setCountdown(null);
+      setProgress(0);
+      return;
+    }
     
     const frequencyValue = parseFloat(frequency);
     if (isNaN(frequencyValue) || frequencyValue <= 0) return;
     
+    // Stocker la fréquence en minutes dans une ref pour la stabilité
     const frequencyInMinutes = frequencyValue * 24 * 60;
-    const frequencyInMs = frequencyInMinutes * 60 * 1000;
-    
-    const nextRunTime = new Date(lastAutomationCheck.getTime() + frequencyInMs);
+    frequencyMinutesRef.current = frequencyInMinutes;
     
     const updateCountdown = () => {
+      if (!lastCheckRef.current) return;
+      
       const now = new Date();
+      const nextRunTime = new Date(lastCheckRef.current.getTime() + (frequencyMinutesRef.current * 60 * 1000));
       const diffMs = nextRunTime.getTime() - now.getTime();
       
       if (diffMs <= 0) {
@@ -78,17 +99,24 @@ const AutomationStatus: React.FC<AutomationStatusProps> = ({
       setCountdown(diffSeconds);
       
       // Calculate progress percentage (inverse, going from 0 to 100 as time passes)
-      const totalSeconds = frequencyInMinutes * 60;
+      const totalSeconds = frequencyMinutesRef.current * 60;
       const elapsedSeconds = totalSeconds - diffSeconds;
       const progressPercentage = (elapsedSeconds / totalSeconds) * 100;
       setProgress(Math.min(progressPercentage, 100));
     };
     
+    // Initialiser le compte à rebours immédiatement
     updateCountdown();
-    const timer = setInterval(updateCountdown, 1000);
     
-    return () => clearInterval(timer);
-  }, [isEnabled, lastAutomationCheck, frequency]);
+    // Mettre à jour le compte à rebours chaque seconde
+    timerRef.current = window.setInterval(updateCountdown, 1000);
+    
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [isEnabled, hasNecessaryData, frequency]);
 
   return <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -149,7 +177,7 @@ const AutomationStatus: React.FC<AutomationStatusProps> = ({
 
       {isEnabled && hasNecessaryData && 
         <div className="text-xs text-green-600 italic border-t pt-2">
-          <p>Le planificateur vérifiera si une génération est nécessaire toutes les 3 minutes. Assurez-vous d'avoir sauvegardé vos paramètres.</p>
+          <p>Le planificateur vérifiera si une génération est nécessaire à l'expiration du compte à rebours. Assurez-vous d'avoir sauvegardé vos paramètres.</p>
         </div>
       }
     </div>;

@@ -40,6 +40,16 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const { isLoading: isCategoriesLoading, categories } = useCategoriesKeywords(configId);
 
   useEffect(() => {
+    // Informer l'utilisateur du fonctionnement du compte à rebours
+    if (isEnabled && hasNecessaryData) {
+      toast.info("Compte à rebours activé", {
+        description: "Le compte à rebours indique le temps restant avant la prochaine génération automatique. Une fois atteint, le système tentera de générer un nouveau brouillon.",
+        duration: 8000
+      });
+    }
+  }, [isEnabled, hasNecessaryData]);
+
+  useEffect(() => {
     // Informer l'utilisateur si les conditions pour l'automatisation ne sont pas réunies
     if (!hasNecessaryData && isEnabled) {
       toast.warning("Automatisation activée mais sans catégories", {
@@ -97,7 +107,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
               <li>Activer l'automatisation avec le bouton ci-dessus</li>
               <li>Définir une fréquence de génération</li>
               <li>Sauvegarder vos paramètres avec le bouton "Sauvegarder"</li>
-              <li>Un brouillon sera généré selon la fréquence définie</li>
+              <li>Un brouillon sera généré selon la fréquence définie (visible dans le compte à rebours)</li>
             </ol>
           </div>
 

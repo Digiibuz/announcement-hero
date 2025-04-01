@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -51,15 +52,18 @@ export const useTomeAutomation = (configId: string) => {
     }
     
     // Set up a new interval that respects throttling
+    // Vérifie beaucoup moins souvent (toutes les 5 minutes au lieu de chaque minute)
+    // pour éviter les rechargements constants qui perturbent le compte à rebours
     intervalRef.current = window.setInterval(() => {
       const now = Date.now();
-      // Only fetch if more than 10 seconds have passed since last fetch
-      if (now - lastFetchTimeRef.current > 30000) { // Increased to 30 seconds to reduce polling pressure
+      // Only fetch if more than 5 minutes have passed since last fetch
+      if (now - lastFetchTimeRef.current > 300000) { // 5 minutes (300,000 ms)
+        console.log("Vérification périodique des paramètres d'automatisation");
         checkAutomationSettings(false);
         setLastAutomationCheck(new Date());
         lastFetchTimeRef.current = now;
       }
-    }, 60000); // Reduced to check every minute instead of every 30 seconds
+    }, 300000); // Vérifie toutes les 5 minutes
 
     return () => {
       if (intervalRef.current) {
@@ -93,6 +97,9 @@ export const useTomeAutomation = (configId: string) => {
         if (showToast && automationData.is_enabled) {
           toast.info(`Automatisation configurée et ${automationData.is_enabled ? 'activée' : 'désactivée'}`);
         }
+        
+        // Mise à jour explicite du dernier temps de vérification
+        setLastAutomationCheck(new Date());
       } else if (error) {
         addLog(`Erreur lors de la vérification: ${error.message}`);
       } else {
