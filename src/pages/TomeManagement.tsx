@@ -138,16 +138,16 @@ const TomeManagement = () => {
               {selectedConfigId && <Tabs defaultValue="publications" key={`tabs-${key}`}>
                   <TabsList className="w-full mb-6">
                     <TabsTrigger value="publications" className="flex-1">Publications</TabsTrigger>
-                    <TabsTrigger value="automation" className="flex-1">Automatisation</TabsTrigger>
+                    {!isClient && <TabsTrigger value="automation" className="flex-1">Automatisation</TabsTrigger>}
                     <TabsTrigger value="categories" className="flex-1">Catégories & Mots-clés</TabsTrigger>
                     <TabsTrigger value="localities" className="flex-1">Localités</TabsTrigger>
                   </TabsList>
                   <TabsContent value="publications">
                     <TomePublications key={`pub-${key}-${selectedConfigId}`} configId={selectedConfigId} isClientView={isClient} />
                   </TabsContent>
-                  <TabsContent value="automation">
+                  {!isClient && <TabsContent value="automation">
                     <TomeAutomation key={`auto-${key}-${selectedConfigId}`} configId={selectedConfigId} />
-                  </TabsContent>
+                  </TabsContent>}
                   <TabsContent value="categories">
                     <TomeCategories key={`cat-${key}-${selectedConfigId}`} configId={selectedConfigId} isClientView={isClient} />
                   </TabsContent>
