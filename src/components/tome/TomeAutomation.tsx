@@ -31,7 +31,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { categories, isLoading: isLoadingCategories } = useCategoriesKeywords(configId);
   const { activeLocalities, isLoading: isLoadingLocalities } = useLocalities(configId);
-  const { generateContent } = useTomeScheduler();
+  const { generateContent, runScheduler } = useTomeScheduler();
 
   // Vérifier si l'automatisation est déjà activée à l'initialisation
   React.useEffect(() => {
@@ -41,11 +41,15 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   // Récupérer l'état d'automatisation depuis la base de données
   const checkAutomationSettings = async () => {
     try {
+      console.log("Vérification des paramètres d'automatisation pour configId:", configId);
+      
       const { data, error } = await supabase
         .from('tome_automation')
         .select('*')
         .eq('wordpress_config_id', configId)
-        .single();
+        .maybeSingle();
+
+      console.log("Résultat de la vérification:", { data, error });
 
       if (!error && data) {
         // Cast data to the correct type
@@ -62,25 +66,45 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const saveAutomationSettings = async () => {
     setIsSubmitting(true);
     try {
+      console.log("Sauvegarde des paramètres d'automatisation:", {
+        configId,
+        isEnabled,
+        frequency: parseFloat(frequency)
+      });
+      
       // Vérifier si des entrées existent déjà
-      const { data: existingData } = await supabase
+      const { data: existingData, error: checkError } = await supabase
         .from('tome_automation')
         .select('id')
         .eq('wordpress_config_id', configId);
+        
+      if (checkError) {
+        console.error("Erreur lors de la vérification des données existantes:", checkError);
+        throw new Error(`Erreur de vérification: ${checkError.message}`);
+      }
 
+      console.log("Données existantes:", existingData);
+
+      // Préparer les données à envoyer
+      const automationData = {
+        is_enabled: isEnabled,
+        frequency: parseFloat(frequency),
+        updated_at: new Date().toISOString()
+      };
+
+      let result;
+      
       if (existingData && existingData.length > 0) {
         // Mettre à jour l'entrée existante
-        await supabase
+        console.log("Mise à jour d'une entrée existante:", existingData[0].id);
+        result = await supabase
           .from('tome_automation')
-          .update({
-            is_enabled: isEnabled,
-            frequency: parseFloat(frequency),
-            updated_at: new Date().toISOString()
-          })
+          .update(automationData)
           .eq('wordpress_config_id', configId);
       } else {
         // Créer une nouvelle entrée
-        await supabase
+        console.log("Création d'une nouvelle entrée");
+        result = await supabase
           .from('tome_automation')
           .insert({
             wordpress_config_id: configId,
@@ -89,10 +113,22 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
           });
       }
 
+      if (result.error) {
+        console.error("Erreur Supabase lors de l'enregistrement:", result.error);
+        throw new Error(`Erreur d'enregistrement: ${result.error.message}`);
+      }
+
+      console.log("Résultat de l'opération:", result);
       toast.success(`Automatisation ${isEnabled ? 'activée' : 'désactivée'}`);
-    } catch (error) {
-      console.error("Erreur lors de l'enregistrement des paramètres:", error);
-      toast.error("Erreur lors de l'enregistrement des paramètres");
+      
+      // Si l'automatisation est activée, exécuter le planificateur immédiatement
+      if (isEnabled) {
+        console.log("Exécution immédiate du planificateur");
+        await runScheduler();
+      }
+    } catch (error: any) {
+      console.error("Erreur détaillée lors de l'enregistrement des paramètres:", error);
+      toast.error(`Erreur: ${error.message || "Erreur lors de l'enregistrement des paramètres"}`);
     } finally {
       setIsSubmitting(false);
     }

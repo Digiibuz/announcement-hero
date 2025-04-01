@@ -20,6 +20,8 @@ export const useTomeScheduler = () => {
     try {
       setIsLoading(true);
       
+      console.log("Génération de contenu pour ID:", generationId);
+      
       // Call tome-generate-draft to create the content (using AI) but NOT publish
       const { data: draftData, error: draftError } = await supabase.functions.invoke('tome-generate-draft', {
         body: { generationId }
@@ -178,13 +180,13 @@ export const useTomeScheduler = () => {
         return false;
       }
       
-      if (!data.success) {
-        console.error("Scheduler run failed:", data.error);
-        toast.error("Échec de l'exécution du planificateur: " + data.error);
+      if (!data || !data.success) {
+        console.error("Scheduler run failed:", data?.error || "Réponse invalide");
+        toast.error("Échec de l'exécution du planificateur: " + (data?.error || "Erreur inconnue"));
         return false;
       }
       
-      toast.success(`Planificateur exécuté avec succès. ${data.generationsCreated} publications générées.`);
+      toast.success(`Planificateur exécuté avec succès. ${data.generationsCreated || 0} publications générées.`);
       return true;
     } catch (error: any) {
       console.error("Error running scheduler:", error);

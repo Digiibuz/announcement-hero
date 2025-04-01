@@ -26,6 +26,8 @@ serve(async (req) => {
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    console.log("Tome-scheduler function starting execution");
+
     // Get all automation settings that are enabled
     const { data: automationSettings, error: automationError } = await supabase
       .from('tome_automation')
@@ -33,10 +35,14 @@ serve(async (req) => {
       .eq('is_enabled', true);
 
     if (automationError) {
+      console.error("Error fetching automation settings:", automationError);
       throw new Error('Error fetching automation settings: ' + automationError.message);
     }
 
+    console.log(`Found ${automationSettings?.length || 0} automation settings:`, automationSettings);
+
     if (!automationSettings || automationSettings.length === 0) {
+      console.log("No enabled automation settings found");
       return new Response(
         JSON.stringify({
           success: true,
@@ -58,6 +64,8 @@ serve(async (req) => {
       const wordpressConfigId = setting.wordpress_config_id;
       const frequency = setting.frequency;
 
+      console.log(`Processing automation for WordPress config ${wordpressConfigId} with frequency ${frequency}`);
+
       // Check if it's time to generate content based on frequency
       const { data: lastGeneration, error: lastGenError } = await supabase
         .from('tome_generations')
@@ -70,6 +78,8 @@ serve(async (req) => {
         console.error(`Error fetching last generation for config ${wordpressConfigId}:`, lastGenError);
         continue;
       }
+
+      console.log(`Last generation for config ${wordpressConfigId}:`, lastGeneration);
 
       const shouldGenerate = shouldGenerateContent(lastGeneration, frequency);
       
@@ -153,6 +163,8 @@ serve(async (req) => {
         continue;
       }
 
+      console.log(`Created generation ${generation.id} for WordPress config ${wordpressConfigId}`);
+
       // Call tome-generate-draft to create the content (using AI) but NOT publish
       const { error: draftError } = await supabase.functions.invoke('tome-generate-draft', {
         body: { generationId: generation.id }
@@ -163,6 +175,7 @@ serve(async (req) => {
         continue;
       }
 
+      console.log(`Successfully generated draft for generation ${generation.id}`);
       generationsCreated++;
     }
 
@@ -198,6 +211,7 @@ serve(async (req) => {
 function shouldGenerateContent(lastGeneration: any[], frequency: number): boolean {
   // If no previous generations, always generate
   if (!lastGeneration || lastGeneration.length === 0) {
+    console.log("No previous generations found, will generate content");
     return true;
   }
 
@@ -214,7 +228,7 @@ function shouldGenerateContent(lastGeneration: any[], frequency: number): boolea
     const diffMinutes = Math.floor(diffTime / (1000 * 60));
     const frequencyMinutes = Math.floor(frequency * 24 * 60); // Convertir en minutes
     
-    console.log(`Dernière génération il y a ${diffMinutes} minutes, fréquence configurée à ${frequencyMinutes} minutes`);
+    console.log(`Dernière génération il y a ${diffMinutes} minutes, fréquence configurée à ${frequencyMinutes} minutes (${frequency} jours)`);
     
     // Comparer directement les minutes au lieu de jours fractionnés
     return diffMinutes >= frequencyMinutes;
