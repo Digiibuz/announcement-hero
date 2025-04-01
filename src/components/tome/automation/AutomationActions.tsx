@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Download, Loader2, Play, RefreshCw, Trash, Zap } from "lucide-react";
 import {
@@ -37,8 +36,36 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
   const [isLogsOpen, setIsLogsOpen] = useState(false);
   const [isActionInProgress, setIsActionInProgress] = useState(false);
   const [currentAction, setCurrentAction] = useState<string | null>(null);
+  const [logUpdateTimeoutId, setLogUpdateTimeoutId] = useState<number | null>(null);
 
-  // Wrapper functions to handle loading states with improved error handling
+  useEffect(() => {
+    const hasNewErrors = logs.some(log => 
+      log.toLowerCase().includes('erreur') || 
+      log.toLowerCase().includes('échec') || 
+      log.toLowerCase().includes('error') ||
+      log.toLowerCase().includes('shutdown') ||
+      log.toLowerCase().includes('failed')
+    );
+    
+    if (hasNewErrors && currentAction && !isLogsOpen) {
+      if (logUpdateTimeoutId) {
+        clearTimeout(logUpdateTimeoutId);
+      }
+      
+      const timeoutId = window.setTimeout(() => {
+        setIsLogsOpen(true);
+      }, 500);
+      
+      setLogUpdateTimeoutId(timeoutId as unknown as number);
+    }
+    
+    return () => {
+      if (logUpdateTimeoutId) {
+        clearTimeout(logUpdateTimeoutId);
+      }
+    };
+  }, [logs, currentAction, isLogsOpen]);
+
   const handleGenerateRandomDraft = async () => {
     if (isActionInProgress) return;
     
@@ -72,8 +99,10 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
       toast.error("Échec de l'exécution du planificateur");
       setIsLogsOpen(true); // Automatically open logs on error
     } finally {
-      setIsActionInProgress(false);
-      setCurrentAction(null);
+      setTimeout(() => {
+        setIsActionInProgress(false);
+        setCurrentAction(null);
+      }, 2000);
     }
   };
 
@@ -115,13 +144,21 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
     }
   };
 
-  // Helper function to detect error messages in logs
   const hasErrors = logs.some(log => 
     log.toLowerCase().includes('erreur') || 
     log.toLowerCase().includes('échec') || 
     log.toLowerCase().includes('error') ||
-    log.toLowerCase().includes('shutdown')
+    log.toLowerCase().includes('shutdown') ||
+    log.toLowerCase().includes('failed')
   );
+
+  const recentErrors = logs.slice(-10).filter(log => 
+    log.toLowerCase().includes('erreur') || 
+    log.toLowerCase().includes('échec') || 
+    log.toLowerCase().includes('error') ||
+    log.toLowerCase().includes('shutdown') ||
+    log.toLowerCase().includes('failed')
+  ).length;
 
   return (
     <div className="flex flex-wrap justify-between items-center w-full gap-2">
@@ -192,6 +229,11 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
                 {logs.length > 99 ? "99+" : logs.length}
               </span>
             )}
+            {recentErrors > 0 && (
+              <span className="ml-2 text-xs rounded-full bg-red-100 text-red-700 px-2 py-0.5">
+                {recentErrors} erreur(s)
+              </span>
+            )}
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-[700px] max-h-[80vh]">
@@ -219,11 +261,23 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
                       const isError = log.toLowerCase().includes('erreur') || 
                                       log.toLowerCase().includes('échec') || 
                                       log.toLowerCase().includes('error') ||
-                                      log.toLowerCase().includes('shutdown');
+                                      log.toLowerCase().includes('shutdown') ||
+                                      log.toLowerCase().includes('failed');
+                      
+                      const isImportant = log.toLowerCase().includes('généré avec succès') ||
+                                          log.toLowerCase().includes('success') ||
+                                          log.toLowerCase().includes('créée avec succès');
+                                          
                       return (
                         <div 
                           key={index} 
-                          className={`whitespace-pre-wrap break-words ${isError ? 'text-red-600 font-semibold bg-red-50 p-1 rounded' : ''}`}
+                          className={`whitespace-pre-wrap break-words ${
+                            isError 
+                              ? 'text-red-600 font-semibold bg-red-50 p-1 rounded' 
+                              : isImportant 
+                                ? 'text-green-600 font-semibold bg-green-50 p-1 rounded'
+                                : ''
+                          }`}
                         >
                           {log}
                         </div>

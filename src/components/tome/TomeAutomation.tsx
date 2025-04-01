@@ -37,7 +37,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const { logs } = useTomeScheduler();
   const { isLoading: isCategoriesLoading } = useCategoriesKeywords(configId);
 
-  // Helper functions to convert Promise<boolean> to Promise<void>
+  // Fixed: Helper functions to convert Promise<boolean> to Promise<void>
   const handleGenerateRandomDraft = async (): Promise<void> => {
     await generateRandomDraft();
   };
