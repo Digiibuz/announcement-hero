@@ -67,11 +67,14 @@ export const useTomeScheduler = () => {
       // Ajout d'un timestamp aléatoire pour éviter la mise en cache de la requête
       const timestamp = new Date().getTime();
       
+      // IMPORTANT: S'assurer que configCheck n'est PAS envoyé comme true
+      // et que forceGeneration est correctement défini
       const { data, error } = await supabase.functions.invoke('tome-scheduler', {
         body: { 
-          forceGeneration, 
+          forceGeneration: true, // Toujours forcer la génération lors de l'exécution manuelle
           timestamp,
-          debug: true
+          debug: true,
+          configCheck: false // Explicitement mettre à false pour être sûr
         }
       });
 

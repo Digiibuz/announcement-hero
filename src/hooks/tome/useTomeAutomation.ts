@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -282,7 +281,7 @@ export const useTomeAutomation = (configId: string) => {
     }
   };
 
-  const forceRunScheduler = async () => {
+  const forceRunScheduler = async (): Promise<boolean> => {
     setIsSubmitting(true);
     try {
       addLog("Exécution forcée du planificateur");

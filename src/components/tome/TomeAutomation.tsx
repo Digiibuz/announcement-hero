@@ -37,13 +37,14 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const { logs } = useTomeScheduler();
   const { isLoading: isCategoriesLoading } = useCategoriesKeywords(configId);
 
-  // Fixed: Helper functions to convert Promise<boolean> to Promise<void>
+  // Helper functions to convert Promise<boolean> to Promise<void>
   const handleGenerateRandomDraft = async (): Promise<void> => {
     await generateRandomDraft();
   };
   
   const handleForceRunScheduler = async (): Promise<void> => {
-    await forceRunScheduler();
+    console.log("Exécution forcée du planificateur avec forceGeneration=true");
+    await forceRunScheduler(); // Assurez-vous que cette fonction envoie forceGeneration=true
   };
   
   const handleSaveSettings = async (): Promise<void> => {
