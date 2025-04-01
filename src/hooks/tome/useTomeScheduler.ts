@@ -1,10 +1,22 @@
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export const useTomeScheduler = () => {
   const [isRunning, setIsRunning] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [isAutoGenerating, setIsAutoGenerating] = useState(false);
+  const countdownIntervalRef = useRef<number | null>(null);
+
+  // Nettoyage de l'intervalle à la destruction du composant
+  useEffect(() => {
+    return () => {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+      }
+    };
+  }, []);
 
   // Fonction pour exécuter manuellement le planificateur (sans générer de contenu)
   const checkSchedulerConfig = async (): Promise<boolean> => {
@@ -31,6 +43,42 @@ export const useTomeScheduler = () => {
     } finally {
       setIsRunning(false);
     }
+  };
+
+  // Fonction pour démarrer le décompte pour l'autogénération
+  const startAutoGeneration = (frequencyInMinutes: number) => {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+    }
+
+    const frequencyInSeconds = frequencyInMinutes * 60;
+    setCountdown(frequencyInSeconds);
+    setIsAutoGenerating(true);
+
+    countdownIntervalRef.current = window.setInterval(() => {
+      setCountdown((prevCountdown) => {
+        if (prevCountdown === null || prevCountdown <= 1) {
+          // Lorsque le compteur arrive à zéro, générer un nouveau brouillon
+          runScheduler(true).catch(console.error);
+          // Réinitialiser le compteur
+          return frequencyInSeconds;
+        }
+        return prevCountdown - 1;
+      });
+    }, 1000);
+
+    toast.success(`Autogénération activée. Prochain brouillon dans ${frequencyInMinutes} minute(s).`);
+  };
+
+  // Fonction pour arrêter l'autogénération
+  const stopAutoGeneration = () => {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    setIsAutoGenerating(false);
+    setCountdown(null);
+    toast.info("Autogénération désactivée");
   };
 
   // Fonction pour exécuter manuellement le planificateur
@@ -130,9 +178,13 @@ export const useTomeScheduler = () => {
 
   return {
     isRunning,
+    countdown,
+    isAutoGenerating,
     runScheduler,
     generateContent,
     publishContent,
-    checkSchedulerConfig
+    checkSchedulerConfig,
+    startAutoGeneration,
+    stopAutoGeneration
   };
 };

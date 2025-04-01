@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -7,20 +8,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useTomeScheduler } from "@/hooks/tome/useTomeScheduler";
 import { useCategoriesKeywords, useLocalities } from "@/hooks/tome";
 import { toast } from "sonner";
-import { Loader2, Clock, PlayCircle } from "lucide-react";
+import { Loader2, Clock, PlayCircle, Pause, Timer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { format, addMinutes, addHours, addDays } from "date-fns";
+import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-
-// Define the type for tome_automation table
-interface TomeAutomation {
-  id: string;
-  wordpress_config_id: string;
-  is_enabled: boolean;
-  frequency: number;
-  created_at: string;
-  updated_at: string;
-}
 
 interface TomeAutomationProps {
   configId: string;
@@ -28,13 +19,20 @@ interface TomeAutomationProps {
 
 const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const [isEnabled, setIsEnabled] = useState(false);
-  const [frequency, setFrequency] = useState("2"); // jours
+  const [frequency, setFrequency] = useState("2"); // minutes
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [nextGenerationTime, setNextGenerationTime] = useState<Date | null>(null);
   const [lastGenerationTime, setLastGenerationTime] = useState<Date | null>(null);
   const { categories, isLoading: isLoadingCategories } = useCategoriesKeywords(configId);
   const { activeLocalities, isLoading: isLoadingLocalities } = useLocalities(configId);
-  const { generateContent, runScheduler } = useTomeScheduler();
+  const { 
+    generateContent, 
+    runScheduler, 
+    isRunning, 
+    countdown, 
+    isAutoGenerating, 
+    startAutoGeneration, 
+    stopAutoGeneration 
+  } = useTomeScheduler();
 
   useEffect(() => {
     checkAutomationSettings();
@@ -54,11 +52,8 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       console.log("Résultat de la vérification:", { data, error });
 
       if (!error && data) {
-        const automationData = data as unknown as TomeAutomation;
-        setIsEnabled(automationData.is_enabled);
-        setFrequency(automationData.frequency.toString());
-        
-        updateNextGenerationTime(automationData.frequency);
+        setIsEnabled(data.is_enabled);
+        setFrequency(data.frequency.toString());
       }
     } catch (error) {
       console.error("Erreur lors de la récupération des paramètres d'automatisation:", error);
@@ -77,30 +72,10 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       if (!error && data && data.length > 0) {
         const lastGenDate = new Date(data[0].created_at);
         setLastGenerationTime(lastGenDate);
-        
-        if (frequency) {
-          updateNextGenerationTime(parseFloat(frequency), lastGenDate);
-        }
       }
     } catch (error) {
       console.error("Erreur lors de la récupération de la dernière génération:", error);
     }
-  };
-
-  const updateNextGenerationTime = (freq: number, lastGeneration?: Date) => {
-    const baseDate = lastGeneration || new Date();
-    let nextDate: Date;
-    
-    if (freq < 1) {
-      const minutes = Math.round(freq * 24 * 60);
-      nextDate = addMinutes(baseDate, minutes);
-    } else if (freq < 24) {
-      nextDate = addDays(baseDate, freq);
-    } else {
-      nextDate = addHours(baseDate, freq);
-    }
-    
-    setNextGenerationTime(nextDate);
   };
 
   const saveAutomationSettings = async () => {
@@ -158,12 +133,18 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       }
 
       console.log("Résultat de l'opération:", result);
-      toast.success(`Automatisation ${isEnabled ? 'activée' : 'désactivée'}`);
+      
+      if (isEnabled) {
+        // Démarrer l'autogénération avec la fréquence spécifiée
+        startAutoGeneration(frequencyNumber);
+        toast.success(`Automatisation activée avec fréquence de ${frequencyNumber} minute(s)`);
+      } else {
+        // Arrêter l'autogénération
+        stopAutoGeneration();
+        toast.info("Automatisation désactivée");
+      }
       
       fetchLastGenerationTime();
-      updateNextGenerationTime(frequencyNumber);
-      
-      await runScheduler();
     } catch (error: any) {
       console.error("Erreur détaillée lors de l'enregistrement des paramètres:", error);
       toast.error(`Erreur: ${error.message || "Erreur lors de l'enregistrement des paramètres"}`);
@@ -253,6 +234,13 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
     }
   };
 
+  // Formater le temps restant en minutes:secondes
+  const formatCountdown = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+  };
+
   const isLoading = isLoadingCategories || isLoadingLocalities;
 
   if (isLoading) {
@@ -290,7 +278,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="frequency-select">Fréquence de génération</Label>
+          <Label htmlFor="frequency-select">Fréquence de génération (minutes)</Label>
           <Select 
             value={frequency} 
             onValueChange={setFrequency}
@@ -300,34 +288,54 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
               <SelectValue placeholder="Sélectionner une fréquence" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="0.0007">Toutes les minutes (test)</SelectItem>
-              <SelectItem value="0.0014">Toutes les 2 minutes (test)</SelectItem>
-              <SelectItem value="0.01">Toutes les 15 minutes (test)</SelectItem>
-              <SelectItem value="0.02">Toutes les 30 minutes (test)</SelectItem>
-              <SelectItem value="0.05">Toutes les heures (test)</SelectItem>
-              <SelectItem value="1">Tous les jours</SelectItem>
-              <SelectItem value="2">Tous les 2 jours</SelectItem>
-              <SelectItem value="3">Tous les 3 jours</SelectItem>
-              <SelectItem value="7">Toutes les semaines</SelectItem>
-              <SelectItem value="14">Toutes les 2 semaines</SelectItem>
+              <SelectItem value="1">1 minute</SelectItem>
+              <SelectItem value="2">2 minutes</SelectItem>
+              <SelectItem value="5">5 minutes</SelectItem>
+              <SelectItem value="10">10 minutes</SelectItem>
+              <SelectItem value="15">15 minutes</SelectItem>
+              <SelectItem value="30">30 minutes</SelectItem>
+              <SelectItem value="60">1 heure</SelectItem>
+              <SelectItem value="120">2 heures</SelectItem>
+              <SelectItem value="360">6 heures</SelectItem>
+              <SelectItem value="720">12 heures</SelectItem>
+              <SelectItem value="1440">24 heures</SelectItem>
             </SelectContent>
           </Select>
         </div>
         
-        {(lastGenerationTime || nextGenerationTime) && (
-          <div className="bg-muted p-3 rounded-md space-y-2">
-            {lastGenerationTime && (
-              <div className="flex items-center text-sm">
-                <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-                <span>Dernière génération: {format(lastGenerationTime, "dd/MM/yyyy à HH:mm:ss", { locale: fr })}</span>
+        {isAutoGenerating && countdown !== null && (
+          <div className="bg-primary/10 p-4 rounded-md space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Timer className="h-5 w-5 mr-2 text-primary" />
+                <span className="font-medium">Autogénération active</span>
               </div>
-            )}
-            {nextGenerationTime && (
-              <div className="flex items-center text-sm">
-                <PlayCircle className="h-4 w-4 mr-2 text-muted-foreground" />
-                <span>Prochaine génération: {format(nextGenerationTime, "dd/MM/yyyy à HH:mm:ss", { locale: fr })}</span>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={stopAutoGeneration}
+                className="h-8"
+              >
+                <Pause className="h-4 w-4 mr-1" /> Arrêter
+              </Button>
+            </div>
+            <div className="flex justify-center">
+              <div className="text-2xl font-bold text-primary">
+                {formatCountdown(countdown)}
               </div>
-            )}
+            </div>
+            <div className="text-sm text-muted-foreground text-center">
+              Prochain brouillon dans {formatCountdown(countdown)}
+            </div>
+          </div>
+        )}
+        
+        {lastGenerationTime && (
+          <div className="bg-muted p-3 rounded-md">
+            <div className="flex items-center text-sm">
+              <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+              <span>Dernière génération: {format(lastGenerationTime, "dd/MM/yyyy à HH:mm:ss", { locale: fr })}</span>
+            </div>
           </div>
         )}
 
@@ -341,24 +349,24 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
         <Button 
           variant="outline" 
           onClick={generateRandomDraft}
-          disabled={!hasNecessaryData || isSubmitting}
+          disabled={!hasNecessaryData || isSubmitting || isRunning}
           className="w-full sm:w-auto"
         >
-          {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+          {isRunning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
           Générer un brouillon maintenant
         </Button>
         <Button 
           variant="outline"
           onClick={forceRunScheduler}
-          disabled={!hasNecessaryData || isSubmitting}
+          disabled={!hasNecessaryData || isSubmitting || isRunning}
           className="w-full sm:w-auto"
         >
-          {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+          {isRunning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
           Exécuter planificateur
         </Button>
         <Button 
           onClick={saveAutomationSettings}
-          disabled={isSubmitting}
+          disabled={isSubmitting || isRunning}
           className="w-full sm:w-auto"
         >
           {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}

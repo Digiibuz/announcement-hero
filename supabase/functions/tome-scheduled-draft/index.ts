@@ -20,6 +20,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
     
     // On appelle directement la fonction tome-scheduler avec forceGeneration=true
+    // Cela permet de générer un brouillon sans vérifier les fréquences
     const { data, error } = await supabase.functions.invoke('tome-scheduler', {
       body: { forceGeneration: true }
     });
