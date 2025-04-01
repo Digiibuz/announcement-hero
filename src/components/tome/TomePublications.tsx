@@ -15,9 +15,14 @@ interface TomePublicationsProps {
   isClientView?: boolean;
 }
 
+// Extend TomeGeneration with an optional wordpress_site_url property
+interface ExtendedTomeGeneration extends TomeGeneration {
+  wordpress_site_url?: string | null;
+}
+
 const TomePublications: React.FC<TomePublicationsProps> = ({ configId, isClientView = false }) => {
   const navigate = useNavigate();
-  const [generations, setGenerations] = React.useState<TomeGeneration[]>([]);
+  const [generations, setGenerations] = React.useState<ExtendedTomeGeneration[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
   const fetchGenerations = React.useCallback(async () => {

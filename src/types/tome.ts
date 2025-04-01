@@ -32,6 +32,12 @@ export interface TomeGeneration {
   content: string | null;
   description: string | null;
   error_message: string | null;
+  // These are derived properties that can be added at runtime
+  wordpress_site_url?: string | null;
+  category_name?: string | null;
+  keyword_text?: string | null;
+  locality_name?: string | null;
+  locality_region?: string | null;
 }
 
 export interface DipiCptCategory {
