@@ -65,9 +65,9 @@ function initSupabaseClient() {
 async function parseRequestParams(req: Request) {
   // Default values for scheduled execution:
   // - configCheck should be false by default to allow content generation
-  // - forceGeneration should be true for scheduled tasks
-  let isConfigCheck = false;
-  let forceGeneration = true; // Default to true for automated tasks
+  // - forceGeneration should be true for automated tasks
+  let isConfigCheck = false;        // DEFAULT TO FALSE - very important
+  let forceGeneration = true;       // DEFAULT TO TRUE - very important 
   let apiKey = null;
   let debug = false;
   let timestamp = new Date().getTime(); // Current timestamp for logging/debugging
