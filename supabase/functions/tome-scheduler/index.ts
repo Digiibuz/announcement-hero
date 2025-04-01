@@ -28,15 +28,54 @@ serve(async (req) => {
 
     console.log("Tome-scheduler function starting execution");
 
-    // Parse the request to check if this is just a configuration check
+    // Parse the request to check if this is just a configuration check or force generation
     let isConfigCheck = false;
+    let forceGeneration = false;
+    let apiKey = null;
+    
     try {
       const body = await req.json();
       isConfigCheck = body.configCheck === true;
+      forceGeneration = body.forceGeneration === true;
+      apiKey = body.api_key;
       console.log("Request body:", body);
     } catch (e) {
       // Si pas de body JSON ou erreur de parsing, ce n'est pas une vérification de config
       console.log("No JSON body or parsing error, assuming regular execution");
+    }
+    
+    // Vérification de l'API key si fournie
+    if (apiKey) {
+      // Vérifier si l'API key correspond à une automatisation
+      const { data: automationWithKey, error: apiKeyError } = await supabase
+        .from('tome_automation')
+        .select('*')
+        .eq('api_key', apiKey)
+        .single();
+        
+      if (apiKeyError || !automationWithKey) {
+        console.error("Invalid API key:", apiKey);
+        throw new Error('Invalid API key');
+      }
+      
+      console.log("Valid API key for automation:", automationWithKey.id);
+      
+      // Si l'API key est valide mais que l'automatisation est désactivée
+      if (!automationWithKey.is_enabled) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: 'Automation is disabled for this API key',
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 403,
+          }
+        );
+      }
+      
+      // Si l'API key est valide, on force la génération pour cette config spécifique
+      forceGeneration = true;
     }
 
     // Get all automation settings that are enabled
@@ -90,6 +129,12 @@ serve(async (req) => {
     for (const setting of automationSettings) {
       const wordpressConfigId = setting.wordpress_config_id;
       const frequency = setting.frequency;
+      
+      // Si une API key a été utilisée, on ne traite que l'automatisation correspondante
+      if (apiKey && setting.api_key !== apiKey) {
+        console.log(`Skipping automation for WordPress config ${wordpressConfigId}, not matching API key`);
+        continue;
+      }
 
       console.log(`Processing automation for WordPress config ${wordpressConfigId} with frequency ${frequency}`);
 
@@ -108,7 +153,7 @@ serve(async (req) => {
 
       console.log(`Last generation for config ${wordpressConfigId}:`, lastGeneration);
 
-      const shouldGenerate = shouldGenerateContent(lastGeneration, frequency);
+      const shouldGenerate = forceGeneration || shouldGenerateContent(lastGeneration, frequency);
       
       if (!shouldGenerate) {
         console.log(`Skipping generation for config ${wordpressConfigId}, not due yet`);
@@ -192,18 +237,58 @@ serve(async (req) => {
 
       console.log(`Created generation ${generation.id} for WordPress config ${wordpressConfigId}`);
 
-      // Call tome-generate-draft to create the content (using AI) but NOT publish
-      const { error: draftError } = await supabase.functions.invoke('tome-generate-draft', {
-        body: { generationId: generation.id }
-      });
-      
-      if (draftError) {
-        console.error(`Error generating draft for generation ${generation.id}:`, draftError);
-        continue;
-      }
+      // Appel direct de tome-generate-draft pour créer le contenu (using AI) mais sans publier
+      try {
+        console.log(`Invoking tome-generate-draft for generation ${generation.id}`);
+        const { data: draftData, error: draftError } = await supabase.functions.invoke('tome-generate-draft', {
+          body: { generationId: generation.id }
+        });
+        
+        if (draftError) {
+          console.error(`Error generating draft for generation ${generation.id}:`, draftError);
+          
+          // Mettre à jour le statut en cas d'erreur
+          await supabase
+            .from('tome_generations')
+            .update({ 
+              status: 'failed',
+              error_message: draftError.message || 'Error invoking tome-generate-draft'
+            })
+            .eq('id', generation.id);
+            
+          continue;
+        }
+        
+        if (draftData && draftData.error) {
+          console.error(`Draft API returned error for generation ${generation.id}:`, draftData.error);
+          
+          // Mettre à jour le statut en cas d'erreur
+          await supabase
+            .from('tome_generations')
+            .update({ 
+              status: 'failed',
+              error_message: draftData.error
+            })
+            .eq('id', generation.id);
+            
+          continue;
+        }
 
-      console.log(`Successfully generated draft for generation ${generation.id}`);
-      generationsCreated++;
+        console.log(`Successfully generated draft for generation ${generation.id}`);
+        generationsCreated++;
+        
+      } catch (error) {
+        console.error(`Exception when generating draft for ${generation.id}:`, error);
+        
+        // Mettre à jour le statut en cas d'erreur
+        await supabase
+          .from('tome_generations')
+          .update({ 
+            status: 'failed',
+            error_message: error.message || 'Exception in tome-generate-draft'
+          })
+          .eq('id', generation.id);
+      }
     }
 
     // Return successful response

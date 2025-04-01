@@ -6,7 +6,7 @@ import { toast } from "sonner";
 export const useTomeScheduler = () => {
   const [isRunning, setIsRunning] = useState(false);
 
-  // Fonction pour exécuter manuellement le planificateur (sans générer de contenu)
+  // Fonction pour vérifier la configuration du planificateur (sans générer de contenu)
   const checkSchedulerConfig = async (): Promise<boolean> => {
     try {
       setIsRunning(true);
@@ -34,12 +34,14 @@ export const useTomeScheduler = () => {
   };
 
   // Fonction pour exécuter manuellement le planificateur
-  const runScheduler = async (): Promise<boolean> => {
+  const runScheduler = async (forceGeneration = false): Promise<boolean> => {
     try {
       setIsRunning(true);
-      console.log("Démarrage manuel du planificateur");
+      console.log("Démarrage manuel du planificateur", forceGeneration ? "avec génération forcée" : "");
 
-      const { data, error } = await supabase.functions.invoke('tome-scheduler', {});
+      const { data, error } = await supabase.functions.invoke('tome-scheduler', {
+        body: { forceGeneration }
+      });
 
       if (error) {
         console.error("Erreur lors de l'exécution du planificateur:", error);
@@ -82,6 +84,15 @@ export const useTomeScheduler = () => {
       }
 
       console.log("Résultat de la génération:", data);
+      
+      if (data && data.success) {
+        toast.success("Contenu généré avec succès");
+        return true;
+      } else if (data && data.error) {
+        toast.error(`Erreur: ${data.error}`);
+        return false;
+      }
+      
       return true;
     } catch (error: any) {
       console.error("Erreur dans generateContent:", error);
