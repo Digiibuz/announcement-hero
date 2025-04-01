@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useTomeScheduler } from "@/hooks/tome/useTomeScheduler";
 import { useCategoriesKeywords, useLocalities } from "@/hooks/tome";
 import { toast } from "sonner";
-import { Loader2, Calendar } from "lucide-react";
+import { Loader2, RefreshCw, Play } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 
@@ -32,9 +32,10 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastGeneration, setLastGeneration] = useState<string | null>(null);
   const [nextGeneration, setNextGeneration] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { categories, isLoading: isLoadingCategories } = useCategoriesKeywords(configId);
   const { activeLocalities, isLoading: isLoadingLocalities } = useLocalities(configId);
-  const { generateContent, runScheduler, checkSchedulerConfig } = useTomeScheduler();
+  const { generateContent, runScheduler, checkSchedulerConfig, forceSchedulerRun } = useTomeScheduler();
 
   // Vérifier si l'automatisation est déjà activée à l'initialisation
   useEffect(() => {
@@ -48,6 +49,37 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
     
     return () => clearInterval(interval);
   }, [configId]);
+
+  // Fonction pour rafraîchir manuellement les données
+  const refreshData = useCallback(async () => {
+    setIsRefreshing(true);
+    await fetchLastGeneration();
+    await checkSchedulerConfig();
+    setIsRefreshing(false);
+  }, []);
+
+  // Fonction pour calculer précisément la prochaine génération
+  const calculateNextGeneration = useCallback((lastGenerationTime: Date, frequencyValue: number): Date => {
+    if (frequencyValue < 1) {
+      // Convertir la fréquence (jours) en minutes puis en millisecondes
+      const frequencyMinutes = Math.floor(frequencyValue * 24 * 60);
+      const intervalMs = frequencyMinutes * 60 * 1000;
+      
+      // Calculer la prochaine date de génération basée sur la dernière
+      const nextDate = new Date(lastGenerationTime.getTime() + intervalMs);
+      
+      // Si la date calculée est dans le passé, utiliser maintenant + intervalle
+      const now = new Date();
+      if (nextDate <= now) {
+        return new Date(now.getTime() + intervalMs);
+      }
+      return nextDate;
+    } else {
+      // Pour les fréquences en jours
+      const intervalMs = frequencyValue * 24 * 60 * 60 * 1000;
+      return new Date(lastGenerationTime.getTime() + intervalMs);
+    }
+  }, []);
 
   // Récupérer la dernière génération
   const fetchLastGeneration = async () => {
@@ -78,28 +110,16 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
           .single();
           
         if (autoData && autoData.is_enabled) {
-          const freq = autoData.frequency;
-          let intervalMs: number;
+          const nextGenTime = calculateNextGeneration(lastDate, autoData.frequency);
+          setNextGeneration(nextGenTime.toLocaleString());
           
-          if (freq < 1) {
-            // Convertir la fréquence (jours) en minutes puis en millisecondes
-            intervalMs = Math.floor(freq * 24 * 60) * 60 * 1000;
-          } else {
-            // Convertir la fréquence (jours) en millisecondes
-            intervalMs = freq * 24 * 60 * 60 * 1000;
-          }
-          
-          const nextDate = new Date(lastDate.getTime() + intervalMs);
-          
-          // Vérifier si la date calculée est dans le passé
+          // Afficher le temps restant en minutes pour un débogage facile
           const now = new Date();
-          if (nextDate <= now) {
-            // Si c'est le cas, utiliser la formule: maintenant + intervalle
-            const adjustedNextDate = new Date(now.getTime() + intervalMs);
-            setNextGeneration(adjustedNextDate.toLocaleString());
-          } else {
-            setNextGeneration(nextDate.toLocaleString());
-          }
+          const remainingMs = nextGenTime.getTime() - now.getTime();
+          const remainingMinutes = Math.max(0, Math.floor(remainingMs / (1000 * 60)));
+          console.log(`Temps restant avant prochaine génération: ${remainingMinutes} minutes`);
+        } else {
+          setNextGeneration("Automatisation désactivée");
         }
       } else {
         setLastGeneration("Aucune");
@@ -269,12 +289,30 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       
       if (result) {
         toast.success("Brouillon généré avec succès");
+        // Rafraîchir les données après une génération réussie
+        fetchLastGeneration();
       } else {
         toast.error("Échec de la génération du brouillon");
       }
     } catch (error: any) {
       console.error("Erreur lors de la génération du brouillon:", error);
       toast.error("Erreur: " + error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Fonction pour exécuter immédiatement le planificateur, en ignorant les vérifications de fréquence
+  const forceGeneration = async () => {
+    setIsSubmitting(true);
+    try {
+      const result = await forceSchedulerRun();
+      if (result) {
+        // Rafraîchir les données après une exécution réussie
+        fetchLastGeneration();
+      }
+    } catch (error) {
+      console.error("Erreur lors de l'exécution forcée:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -354,28 +392,41 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
           </Select>
         </div>
 
-        {isEnabled && (
-          <div className="bg-gray-100 p-4 rounded-md space-y-2">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="bg-gray-200">
-                Dernière génération
-              </Badge>
-              <span>{lastGeneration || "Aucune"}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="bg-gray-200">
-                Prochaine génération
-              </Badge>
-              <span>{nextGeneration || "Non planifiée"}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="bg-gray-200">
-                Fréquence actuelle
-              </Badge>
-              <span>{formatFrequency(frequency)}</span>
-            </div>
+        <div className="bg-gray-100 p-4 rounded-md space-y-2">
+          <div className="flex items-center justify-between mb-2">
+            <Badge variant="outline" className="bg-gray-200">
+              Statut de l'automatisation
+            </Badge>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={refreshData}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Actualiser
+            </Button>
           </div>
-        )}
+          
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-sm">Dernière génération:</span>
+            <span className="text-sm">{lastGeneration || "Aucune"}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-sm">Prochaine génération:</span>
+            <span className="text-sm">{nextGeneration || "Non planifiée"}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-sm">Fréquence actuelle:</span>
+            <span className="text-sm">{formatFrequency(frequency)}</span>
+          </div>
+          
+          {isEnabled && (
+            <div className="mt-2 text-xs text-gray-600">
+              <p>Le planificateur s'exécute toutes les minutes et vérifie si la fréquence définie est atteinte avant de générer du contenu.</p>
+            </div>
+          )}
+        </div>
 
         {!hasNecessaryData && (
           <div className="bg-amber-100 text-amber-800 p-3 rounded-md text-sm">
@@ -383,7 +434,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
           </div>
         )}
       </CardContent>
-      <CardFooter className="flex justify-between">
+      <CardFooter className="flex flex-wrap gap-2">
         <Button 
           variant="outline" 
           onClick={generateRandomDraft}
@@ -392,9 +443,20 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
           {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
           Générer un brouillon maintenant
         </Button>
+        
+        <Button 
+          variant="outline"
+          onClick={forceGeneration}
+          disabled={!hasNecessaryData || isSubmitting || !isEnabled}
+        >
+          {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+          Forcer l'exécution du planificateur
+        </Button>
+        
         <Button 
           onClick={saveAutomationSettings}
           disabled={isSubmitting}
+          className="ml-auto"
         >
           {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
           Enregistrer les paramètres
