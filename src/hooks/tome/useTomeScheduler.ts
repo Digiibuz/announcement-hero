@@ -52,6 +52,26 @@ export const useTomeScheduler = (wordpressConfigId: string | null) => {
     try {
       setIsLoading(true);
       
+      console.log("Publishing content for generation ID:", generationId);
+      
+      // Vérifier que le contenu et le titre sont présents
+      const { data: generation, error: generationError } = await supabase
+        .from('tome_generations')
+        .select('*')
+        .eq('id', generationId)
+        .single();
+        
+      if (generationError || !generation) {
+        console.error("Error fetching generation:", generationError);
+        toast.error("Erreur lors de la récupération des données: " + (generationError?.message || "Génération non trouvée"));
+        return false;
+      }
+      
+      if (!generation.title || !generation.content) {
+        toast.error("Le titre et le contenu sont obligatoires pour publier");
+        return false;
+      }
+      
       // Use the same approach as announcements - call the tome-publish function
       const { data, error } = await supabase.functions.invoke('tome-publish', {
         body: { generationId }
@@ -63,9 +83,9 @@ export const useTomeScheduler = (wordpressConfigId: string | null) => {
         return false;
       }
       
-      if (!data.success) {
-        console.error("Publication failed:", data.error);
-        toast.error("Échec de la publication: " + data.error);
+      if (!data || data.success === false) {
+        console.error("Publication failed:", data?.error || "Unknown error");
+        toast.error("Échec de la publication: " + (data?.error || "Erreur inconnue"));
         return false;
       }
       
