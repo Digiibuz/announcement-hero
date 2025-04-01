@@ -1,10 +1,9 @@
-
 import React from "react";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { CheckCircle, AlertTriangle } from "lucide-react";
+import { RefreshCw, CheckCircle, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-
 interface AutomationStatusProps {
   isEnabled: boolean;
   onEnabledChange: (value: boolean) => void;
@@ -13,17 +12,17 @@ interface AutomationStatusProps {
   lastAutomationCheck: Date | null;
   onRefresh: () => void;
 }
-
 const AutomationStatus: React.FC<AutomationStatusProps> = ({
   isEnabled,
   onEnabledChange,
   hasNecessaryData,
-  isSubmitting
+  isSubmitting,
+  onRefresh
 }) => {
   return <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="space-y-0.5">
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
             <Label htmlFor="automation-switch" className="text-base">Activer l'automatisation</Label>
             {isEnabled && hasNecessaryData && <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                 <CheckCircle className="h-3 w-3 mr-1" /> Actif
@@ -38,7 +37,8 @@ const AutomationStatus: React.FC<AutomationStatusProps> = ({
         </div>
         <Switch id="automation-switch" checked={isEnabled} onCheckedChange={onEnabledChange} disabled={isSubmitting} />
       </div>
+      
+      
     </div>;
 };
-
 export default AutomationStatus;
