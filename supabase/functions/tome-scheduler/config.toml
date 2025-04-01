@@ -1,2 +1,6 @@
 
 project_id = "rdwqedmvzicerwotjseg"
+
+[schedule]
+cron = "0 * * * *"
+payload = { forceGeneration = true, configCheck = false }

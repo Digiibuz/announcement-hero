@@ -29,7 +29,7 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
   
   // Wrapper pour onForceRunScheduler qui capture les paramètres
   const handleForceRun = async () => {
-    // Simuler les paramètres qui seront envoyés
+    // Paramètres corrects pour forcer l'exécution
     const params = {
       forceGeneration: true,
       configCheck: false,
