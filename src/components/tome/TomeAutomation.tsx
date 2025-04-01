@@ -8,8 +8,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useTomeScheduler } from "@/hooks/tome/useTomeScheduler";
 import { useCategoriesKeywords, useLocalities } from "@/hooks/tome";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
 
 // Define the type for tome_automation table
 interface TomeAutomation {
@@ -29,14 +30,85 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const [isEnabled, setIsEnabled] = useState(false);
   const [frequency, setFrequency] = useState("2"); // jours
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lastGeneration, setLastGeneration] = useState<string | null>(null);
+  const [nextGeneration, setNextGeneration] = useState<string | null>(null);
   const { categories, isLoading: isLoadingCategories } = useCategoriesKeywords(configId);
   const { activeLocalities, isLoading: isLoadingLocalities } = useLocalities(configId);
-  const { generateContent, runScheduler } = useTomeScheduler();
+  const { generateContent, runScheduler, checkSchedulerConfig } = useTomeScheduler();
 
   // Vérifier si l'automatisation est déjà activée à l'initialisation
   useEffect(() => {
     checkAutomationSettings();
+    fetchLastGeneration();
+    
+    // Rafraîchir les données toutes les 30 secondes
+    const interval = setInterval(() => {
+      fetchLastGeneration();
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, [configId]);
+
+  // Récupérer la dernière génération
+  const fetchLastGeneration = async () => {
+    try {
+      if (!configId) return;
+      
+      const { data, error } = await supabase
+        .from('tome_generations')
+        .select('created_at')
+        .eq('wordpress_config_id', configId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+        
+      if (error) {
+        console.error("Erreur lors de la récupération de la dernière génération:", error);
+        return;
+      }
+      
+      if (data && data.length > 0) {
+        const lastDate = new Date(data[0].created_at);
+        setLastGeneration(lastDate.toLocaleString());
+        
+        // Récupérer les paramètres d'automatisation pour calculer la prochaine génération
+        const { data: autoData } = await supabase
+          .from('tome_automation')
+          .select('frequency, is_enabled')
+          .eq('wordpress_config_id', configId)
+          .single();
+          
+        if (autoData && autoData.is_enabled) {
+          const freq = autoData.frequency;
+          let intervalMs: number;
+          
+          if (freq < 1) {
+            // Convertir la fréquence (jours) en minutes puis en millisecondes
+            intervalMs = Math.floor(freq * 24 * 60) * 60 * 1000;
+          } else {
+            // Convertir la fréquence (jours) en millisecondes
+            intervalMs = freq * 24 * 60 * 60 * 1000;
+          }
+          
+          const nextDate = new Date(lastDate.getTime() + intervalMs);
+          
+          // Vérifier si la date calculée est dans le passé
+          const now = new Date();
+          if (nextDate <= now) {
+            // Si c'est le cas, utiliser la formule: maintenant + intervalle
+            const adjustedNextDate = new Date(now.getTime() + intervalMs);
+            setNextGeneration(adjustedNextDate.toLocaleString());
+          } else {
+            setNextGeneration(nextDate.toLocaleString());
+          }
+        }
+      } else {
+        setLastGeneration("Aucune");
+        setNextGeneration("Dès que possible");
+      }
+    } catch (error) {
+      console.error("Erreur lors de la récupération des données de génération:", error);
+    }
+  };
 
   // Récupérer l'état d'automatisation depuis la base de données
   const checkAutomationSettings = async () => {
@@ -125,12 +197,11 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       console.log("Résultat de l'opération:", result);
       toast.success(`Automatisation ${isEnabled ? 'activée' : 'désactivée'}`);
       
-      // Ne plus exécuter le planificateur immédiatement
-      // Cette ligne était responsable de la génération immédiate d'un brouillon
-      // if (isEnabled) {
-      //   console.log("Exécution immédiate du planificateur");
-      //   await runScheduler();
-      // }
+      // Vérifier la configuration du planificateur pour mettre à jour les informations
+      await checkSchedulerConfig();
+      
+      // Rafraîchir les données de la dernière génération
+      await fetchLastGeneration();
     } catch (error: any) {
       console.error("Erreur détaillée lors de l'enregistrement des paramètres:", error);
       toast.error(`Erreur: ${error.message || "Erreur lors de l'enregistrement des paramètres"}`);
@@ -221,6 +292,19 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
 
   const hasNecessaryData = categories.length > 0;
 
+  // Fonction pour formatter la fréquence de manière lisible
+  const formatFrequency = (freq: string): string => {
+    const freqNum = parseFloat(freq);
+    if (freqNum < 1) {
+      const minutes = Math.floor(freqNum * 24 * 60);
+      return `${minutes} minute${minutes > 1 ? 's' : ''}`;
+    } else if (freqNum === 1) {
+      return '1 jour';
+    } else {
+      return `${freqNum} jours`;
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -269,6 +353,29 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
             </SelectContent>
           </Select>
         </div>
+
+        {isEnabled && (
+          <div className="bg-gray-100 p-4 rounded-md space-y-2">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-gray-200">
+                Dernière génération
+              </Badge>
+              <span>{lastGeneration || "Aucune"}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-gray-200">
+                Prochaine génération
+              </Badge>
+              <span>{nextGeneration || "Non planifiée"}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-gray-200">
+                Fréquence actuelle
+              </Badge>
+              <span>{formatFrequency(frequency)}</span>
+            </div>
+          </div>
+        )}
 
         {!hasNecessaryData && (
           <div className="bg-amber-100 text-amber-800 p-3 rounded-md text-sm">

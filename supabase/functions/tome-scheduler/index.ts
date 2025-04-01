@@ -260,14 +260,29 @@ function shouldGenerateContent(lastGeneration: any[], frequency: number): boolea
     console.log(`Dernière génération il y a ${diffMinutes} minutes, fréquence configurée à ${frequencyMinutes} minutes (${frequency} jours)`);
     
     // Debugging plus détaillé
-    console.log(`Comparaison: ${diffMinutes} >= ${frequencyMinutes}`);
+    console.log(`Comparaison: ${diffMinutes} >= ${frequencyMinutes} = ${diffMinutes >= frequencyMinutes}`);
     
-    // Comparer directement les minutes
-    return diffMinutes >= frequencyMinutes;
+    // Debuggage plus détaillé: afficher les dates exactes
+    console.log(`Dernière génération: ${lastGenerationDate.toISOString()}`);
+    console.log(`Heure actuelle: ${now.toISOString()}`);
+    console.log(`Différence en ms: ${diffTime}, en minutes: ${diffMinutes}`);
+    
+    // Afficher le seuil pour la prochaine génération
+    const nextGenTime = new Date(lastGenerationDate.getTime() + (frequencyMinutes * 60 * 1000));
+    console.log(`Prochaine génération prévue après: ${nextGenTime.toISOString()}`);
+    
+    // Pour résoudre le problème de comparaison avec des valeurs très petites
+    // Nous allons utiliser un seuil minimum d'une minute
+    const minimumThreshold = 1;
+    
+    // Comparer directement les minutes, mais avec un seuil minimum
+    return diffMinutes >= Math.max(frequencyMinutes, minimumThreshold);
   }
   
   // Pour les fréquences en jours
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
   console.log(`Dernière génération il y a ${diffDays} jours, fréquence configurée à ${frequency} jours`);
+  console.log(`Comparaison: ${diffDays} >= ${frequency} = ${diffDays >= frequency}`);
+  
   return diffDays >= frequency;
 }
