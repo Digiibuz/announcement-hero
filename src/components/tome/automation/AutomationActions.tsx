@@ -1,8 +1,9 @@
 
-import React, { useState } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, Zap, RotateCcw, Save, Terminal } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 interface AutomationActionsProps {
   onGenerateRandomDraft: () => Promise<boolean>;
@@ -23,31 +24,45 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
   logs,
   onClearLogs
 }) => {
-  const [logsDialogOpen, setLogsDialogOpen] = useState(false);
-
+  const isMobile = useMediaQuery("(max-width: 767px)");
+  
   return <div className="space-y-4">
-      <div className="flex justify-between flex-wrap gap-2">
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={onGenerateRandomDraft} disabled={!hasNecessaryData || isSubmitting}>
+      <div className={`flex ${isMobile ? 'flex-col' : 'justify-between flex-wrap'} gap-2`}>
+        <div className={`flex ${isMobile ? 'flex-col w-full' : 'gap-2'}`}>
+          <Button 
+            variant="outline" 
+            onClick={onGenerateRandomDraft} 
+            disabled={!hasNecessaryData || isSubmitting}
+            className={isMobile ? 'w-full mb-2' : ''}
+          >
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
             Générer un brouillon
           </Button>
-          <Button variant="outline" onClick={onForceRunScheduler} disabled={!hasNecessaryData || isSubmitting}>
+          <Button 
+            variant="outline" 
+            onClick={onForceRunScheduler} 
+            disabled={!hasNecessaryData || isSubmitting}
+            className={isMobile ? 'w-full mb-2' : ''}
+          >
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RotateCcw className="h-4 w-4 mr-2" />}
             Exécuter maintenant
           </Button>
         </div>
-        <Button onClick={onSaveSettings} disabled={isSubmitting}>
+        <Button 
+          onClick={onSaveSettings} 
+          disabled={isSubmitting}
+          className={isMobile ? 'w-full' : ''}
+        >
           {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
           Sauvegarder
         </Button>
       </div>
 
-      <Dialog open={logsDialogOpen} onOpenChange={setLogsDialogOpen}>
+      <Dialog>
         <DialogTrigger asChild>
-          <Button variant="outline" className="w-full">
+          <Button variant="outline" size="sm" className="w-full mt-4">
             <Terminal className="h-4 w-4 mr-2" />
-            Afficher les logs ({logs.length})
+            Voir les journaux d'exécution
           </Button>
         </DialogTrigger>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">

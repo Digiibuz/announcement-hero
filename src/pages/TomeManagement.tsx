@@ -16,7 +16,7 @@ import WordPressConnectionStatus from "@/components/wordpress/WordPressConnectio
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import TomePublicationForm from "@/components/tome/TomePublicationForm";
 import TomePublicationDetail from "@/components/tome/TomePublicationDetail";
-import { Toaster } from "@/components/ui/sonner";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 const TomeManagement = () => {
   const {
@@ -32,6 +32,7 @@ const TomeManagement = () => {
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = useMediaQuery("(max-width: 767px)");
   
   // Force component rerender when selectedConfigId changes
   const [key, setKey] = useState(0);
@@ -117,18 +118,18 @@ const TomeManagement = () => {
       </PageLayout>;
   }
 
-  return <>
-    <Toaster />
-    <Routes>
+  return <Routes>
       <Route path="/" element={<PageLayout title="Tom-E" onRefresh={handleRefresh}>
             <AnimatedContainer delay={200}>
-              <div className="mb-4 flex justify-between items-center">
-                {selectedConfigId && <WordPressConnectionStatus configId={selectedConfigId} showDetails={true} />}
+              <div className="mb-4 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+                {selectedConfigId && <div className="w-full">
+                    <WordPressConnectionStatus configId={selectedConfigId} showDetails={!isMobile} />
+                  </div>}
               </div>
               
               {!isClient && <div className="mb-6">
                   <select 
-                    className="w-full md:w-64 p-2 border rounded-md" 
+                    className="w-full p-2 border rounded-md bg-background" 
                     value={selectedConfigId || ""} 
                     onChange={e => handleConfigChange(e.target.value)}
                   >
@@ -139,11 +140,11 @@ const TomeManagement = () => {
                 </div>}
 
               {selectedConfigId && <Tabs defaultValue="publications" key={`tabs-${key}`}>
-                  <TabsList className="w-full mb-6">
-                    <TabsTrigger value="publications" className="flex-1">Publications</TabsTrigger>
-                    {!isClient && <TabsTrigger value="automation" className="flex-1">Automatisation</TabsTrigger>}
-                    <TabsTrigger value="categories" className="flex-1">Catégories & Mots-clés</TabsTrigger>
-                    <TabsTrigger value="localities" className="flex-1">Localités</TabsTrigger>
+                  <TabsList className={`w-full mb-6 ${isMobile ? 'flex overflow-x-auto' : ''}`}>
+                    <TabsTrigger value="publications" className="flex-1 text-xs md:text-sm">Publications</TabsTrigger>
+                    {!isClient && <TabsTrigger value="automation" className="flex-1 text-xs md:text-sm">Automatisation</TabsTrigger>}
+                    <TabsTrigger value="categories" className="flex-1 text-xs md:text-sm">Catégories</TabsTrigger>
+                    <TabsTrigger value="localities" className="flex-1 text-xs md:text-sm">Localités</TabsTrigger>
                   </TabsList>
                   <TabsContent value="publications">
                     <TomePublications key={`pub-${key}-${selectedConfigId}`} configId={selectedConfigId} isClientView={isClient} />
@@ -170,8 +171,7 @@ const TomeManagement = () => {
               <TomePublicationDetail />
             </AnimatedContainer>
           </PageLayout>} />
-    </Routes>
-  </>;
+    </Routes>;
 };
 
 export default TomeManagement;

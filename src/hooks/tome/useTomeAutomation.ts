@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTomeScheduler } from "@/hooks/tome/useTomeScheduler";
@@ -17,13 +17,11 @@ export interface TomeAutomation {
 
 export const useTomeAutomation = (configId: string) => {
   const [isEnabled, setIsEnabled] = useState(false);
-  const [frequency, setFrequency] = useState("0.0021"); // Default: every 3 minutes (for testing)
+  const [frequency, setFrequency] = useState("0.0007"); // Default: every minute (for testing)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastAutomationCheck, setLastAutomationCheck] = useState<Date | null>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [savingStatus, setSavingStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const intervalRef = useRef<number | null>(null);
-  const lastFetchTimeRef = useRef<number>(0);
   
   const { generateContent, runScheduler, checkSchedulerConfig, addLog, clearLogs } = useTomeScheduler();
   const { categories } = useCategoriesKeywords(configId);
@@ -33,43 +31,17 @@ export const useTomeAutomation = (configId: string) => {
     if (configId) {
       checkAutomationSettings();
     }
-    
-    return () => {
-      // Clear interval on unmount
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
   }, [configId]);
 
   useEffect(() => {
     if (!configId) return;
     
-    // Clear any existing interval
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-    
-    // Set up a new interval that respects throttling
-    // Vérifie beaucoup moins souvent (toutes les 5 minutes au lieu de chaque minute)
-    // pour éviter les rechargements constants qui perturbent le compte à rebours
-    intervalRef.current = window.setInterval(() => {
-      const now = Date.now();
-      // Only fetch if more than 5 minutes have passed since last fetch
-      if (now - lastFetchTimeRef.current > 300000) { // 5 minutes (300,000 ms)
-        console.log("Vérification périodique des paramètres d'automatisation");
-        checkAutomationSettings(false);
-        setLastAutomationCheck(new Date());
-        lastFetchTimeRef.current = now;
-      }
-    }, 300000); // Vérifie toutes les 5 minutes
+    const intervalId = setInterval(() => {
+      checkAutomationSettings(false);
+      setLastAutomationCheck(new Date());
+    }, 30000);
 
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
+    return () => clearInterval(intervalId);
   }, [configId]);
 
   const checkAutomationSettings = async (showToast = true) => {
@@ -97,17 +69,11 @@ export const useTomeAutomation = (configId: string) => {
         if (showToast && automationData.is_enabled) {
           toast.info(`Automatisation configurée et ${automationData.is_enabled ? 'activée' : 'désactivée'}`);
         }
-        
-        // Mise à jour explicite du dernier temps de vérification
-        setLastAutomationCheck(new Date());
       } else if (error) {
         addLog(`Erreur lors de la vérification: ${error.message}`);
       } else {
         addLog("Aucune configuration d'automatisation trouvée");
       }
-      
-      // Update last fetch time
-      lastFetchTimeRef.current = Date.now();
     } catch (error: any) {
       console.error("Erreur lors de la récupération des paramètres d'automatisation:", error);
       addLog(`Erreur: ${error.message}`);
@@ -117,20 +83,6 @@ export const useTomeAutomation = (configId: string) => {
   const refreshAutomationStatus = useCallback(async () => {
     await checkAutomationSettings(true);
     setLastAutomationCheck(new Date());
-    
-    // Force a scheduler check when manually refreshing
-    try {
-      const result = await checkSchedulerConfig();
-      if (result) {
-        addLog("Vérification du planificateur réussie");
-        toast.success("État du planificateur vérifié avec succès");
-      } else {
-        addLog("Échec de la vérification du planificateur");
-        toast.error("Impossible de vérifier l'état du planificateur");
-      }
-    } catch (error: any) {
-      addLog(`Erreur lors de la vérification du planificateur: ${error.message}`);
-    }
   }, [configId]);
 
   const toggleAutomationStatus = useCallback((newStatus: boolean) => {
@@ -209,36 +161,17 @@ export const useTomeAutomation = (configId: string) => {
 
       console.log("Résultat de l'opération:", result);
       addLog(`Résultat de l'opération: ${result.error ? 'Erreur' : 'Succès'}`);
+      toast.success(`Paramètres d'automatisation sauvegardés avec succès`);
       
-      // Force scheduler to acknowledge updated frequency
-      // Exécuter deux fois pour s'assurer que le planificateur prend en compte les nouveaux paramètres
+      await checkAutomationSettings();
+      setSavingStatus('success');
+      
       const configValid = await checkSchedulerConfig();
       if (configValid) {
         addLog("Configuration du planificateur validée avec succès");
       } else {
         addLog("Échec de la validation de la configuration du planificateur");
       }
-      
-      // Pause brève pour permettre au système de prendre en compte les changements
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Forcer l'exécution du planificateur pour qu'il prenne en compte les nouveaux paramètres
-      const forceRun = await runScheduler(true);
-      if (forceRun) {
-        addLog("Planificateur exécuté avec succès après sauvegarde");
-        toast.success(`Paramètres sauvegardés et planificateur notifié`);
-      } else {
-        addLog("Échec de l'exécution du planificateur après sauvegarde");
-        toast.success(`Paramètres d'automatisation sauvegardés avec succès`);
-      }
-      
-      await checkAutomationSettings();
-      setSavingStatus('success');
-      
-      toast.info("N'oubliez pas que la génération automatique se produira selon la fréquence définie", {
-        description: "Si l'automatisation est activée, le système vérifiera toutes les 3 minutes si une génération est nécessaire",
-        duration: 10000
-      });
       
       return true;
     } catch (error: any) {
@@ -361,10 +294,6 @@ export const useTomeAutomation = (configId: string) => {
         toast.error("Échec de l'exécution du planificateur");
       } else {
         addLog("Planificateur exécuté avec succès");
-        toast.success("Planificateur exécuté avec succès", {
-          description: "Selon vos paramètres, une génération peut être lancée si la fréquence est atteinte",
-          duration: 5000
-        });
       }
       
       return result;
