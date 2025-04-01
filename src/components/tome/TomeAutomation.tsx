@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -304,7 +305,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
                 <li>Créez un nouveau scénario dans Make.com</li>
                 <li>Ajoutez un déclencheur HTTP</li>
                 <li>Configurez une requête HTTP POST vers <code className="bg-slate-100 px-1 rounded">https://rdwqedmvzicerwotjseg.supabase.co/functions/v1/tome-scheduler</code></li>
-                <li>Dans le corps de la requête, ajoutez: <code className="bg-slate-100 px-1 rounded">{"{"}"api_key": "{apiKey}"{"}}"}</code></li>
+                <li>Dans le corps de la requête, ajoutez: <code className="bg-slate-100 px-1 rounded">{"{"}"api_key": "{apiKey}"{"}"}}</code></li>
                 <li>Configurez le déclencheur pour s'exécuter selon la fréquence souhaitée</li>
               </ol>
             </div>
