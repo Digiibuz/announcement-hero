@@ -303,44 +303,6 @@ export type Database = {
         }
         Relationships: []
       }
-      tome_automation: {
-        Row: {
-          api_key: string | null
-          created_at: string
-          frequency: number
-          id: string
-          is_enabled: boolean
-          updated_at: string
-          wordpress_config_id: string | null
-        }
-        Insert: {
-          api_key?: string | null
-          created_at?: string
-          frequency?: number
-          id?: string
-          is_enabled?: boolean
-          updated_at?: string
-          wordpress_config_id?: string | null
-        }
-        Update: {
-          api_key?: string | null
-          created_at?: string
-          frequency?: number
-          id?: string
-          is_enabled?: boolean
-          updated_at?: string
-          wordpress_config_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tome_automation_wordpress_config_id_fkey"
-            columns: ["wordpress_config_id"]
-            isOneToOne: true
-            referencedRelation: "wordpress_configs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       tome_generations: {
         Row: {
           category_id: string
