@@ -9,6 +9,7 @@ import AutomationStatus from "./automation/AutomationStatus";
 import FrequencySelector from "./automation/FrequencySelector";
 import WarningMessage from "./automation/WarningMessage";
 import AutomationActions from "./automation/AutomationActions";
+import NotificationDisplay from "./automation/NotificationDisplay";
 
 interface TomeAutomationProps {
   configId: string;
@@ -50,47 +51,50 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Automatisation des publications</CardTitle>
-        <CardDescription>
-          Configurez la génération automatique de brouillons avec des mots-clés et localités aléatoires
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <AutomationStatus
-          isEnabled={isEnabled}
-          onEnabledChange={toggleAutomationStatus}
-          hasNecessaryData={hasNecessaryData}
-          isSubmitting={isSubmitting || savingStatus === 'loading'}
-          lastAutomationCheck={lastAutomationCheck}
-          onRefresh={refreshAutomationStatus}
-        />
+    <>
+      <NotificationDisplay configId={configId} />
+      <Card>
+        <CardHeader>
+          <CardTitle>Automatisation des publications</CardTitle>
+          <CardDescription>
+            Configurez la génération automatique de brouillons avec des mots-clés et localités aléatoires
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <AutomationStatus
+            isEnabled={isEnabled}
+            onEnabledChange={toggleAutomationStatus}
+            hasNecessaryData={hasNecessaryData}
+            isSubmitting={isSubmitting || savingStatus === 'loading'}
+            lastAutomationCheck={lastAutomationCheck}
+            onRefresh={refreshAutomationStatus}
+          />
 
-        <FrequencySelector
-          frequency={frequency}
-          onFrequencyChange={updateAutomationFrequency}
-          isEnabled={isEnabled}
-          isSubmitting={isSubmitting || savingStatus === 'loading'}
-        />
+          <FrequencySelector
+            frequency={frequency}
+            onFrequencyChange={updateAutomationFrequency}
+            isEnabled={isEnabled}
+            isSubmitting={isSubmitting || savingStatus === 'loading'}
+          />
 
-        <WarningMessage 
-          hasNecessaryData={hasNecessaryData} 
-          logs={logs.slice(-5)} // Show only the last 5 logs
-        />
-      </CardContent>
-      <CardFooter>
-        <AutomationActions
-          onGenerateRandomDraft={generateRandomDraft}
-          onForceRunScheduler={forceRunScheduler}
-          onSaveSettings={saveAutomationSettings}
-          hasNecessaryData={hasNecessaryData}
-          isSubmitting={isSubmitting || savingStatus === 'loading'}
-          logs={logs}
-          onClearLogs={clearLogs}
-        />
-      </CardFooter>
-    </Card>
+          <WarningMessage 
+            hasNecessaryData={hasNecessaryData} 
+            logs={logs.slice(-5)} // Show only the last 5 logs
+          />
+        </CardContent>
+        <CardFooter>
+          <AutomationActions
+            onGenerateRandomDraft={generateRandomDraft}
+            onForceRunScheduler={forceRunScheduler}
+            onSaveSettings={saveAutomationSettings}
+            hasNecessaryData={hasNecessaryData}
+            isSubmitting={isSubmitting || savingStatus === 'loading'}
+            logs={logs}
+            onClearLogs={clearLogs}
+          />
+        </CardFooter>
+      </Card>
+    </>
   );
 };
 

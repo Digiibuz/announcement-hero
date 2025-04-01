@@ -1,7 +1,9 @@
-import React from "react";
+
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, Zap, RotateCcw, Save, Terminal } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+
 interface AutomationActionsProps {
   onGenerateRandomDraft: () => Promise<boolean>;
   onForceRunScheduler: () => Promise<boolean>;
@@ -11,6 +13,7 @@ interface AutomationActionsProps {
   logs: string[];
   onClearLogs: () => void;
 }
+
 const AutomationActions: React.FC<AutomationActionsProps> = ({
   onGenerateRandomDraft,
   onForceRunScheduler,
@@ -20,6 +23,8 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
   logs,
   onClearLogs
 }) => {
+  const [logsDialogOpen, setLogsDialogOpen] = useState(false);
+
   return <div className="space-y-4">
       <div className="flex justify-between flex-wrap gap-2">
         <div className="flex gap-2">
@@ -38,9 +43,12 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
         </Button>
       </div>
 
-      <Dialog>
+      <Dialog open={logsDialogOpen} onOpenChange={setLogsDialogOpen}>
         <DialogTrigger asChild>
-          
+          <Button variant="outline" className="w-full">
+            <Terminal className="h-4 w-4 mr-2" />
+            Afficher les logs ({logs.length})
+          </Button>
         </DialogTrigger>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
@@ -58,4 +66,5 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
       </Dialog>
     </div>;
 };
+
 export default AutomationActions;

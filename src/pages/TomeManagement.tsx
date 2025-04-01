@@ -16,6 +16,7 @@ import WordPressConnectionStatus from "@/components/wordpress/WordPressConnectio
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import TomePublicationForm from "@/components/tome/TomePublicationForm";
 import TomePublicationDetail from "@/components/tome/TomePublicationDetail";
+import { Toaster } from "@/components/ui/sonner";
 
 const TomeManagement = () => {
   const {
@@ -116,7 +117,9 @@ const TomeManagement = () => {
       </PageLayout>;
   }
 
-  return <Routes>
+  return <>
+    <Toaster />
+    <Routes>
       <Route path="/" element={<PageLayout title="Tom-E" onRefresh={handleRefresh}>
             <AnimatedContainer delay={200}>
               <div className="mb-4 flex justify-between items-center">
@@ -167,7 +170,8 @@ const TomeManagement = () => {
               <TomePublicationDetail />
             </AnimatedContainer>
           </PageLayout>} />
-    </Routes>;
+    </Routes>
+  </>;
 };
 
 export default TomeManagement;

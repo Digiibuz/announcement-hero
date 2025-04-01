@@ -412,6 +412,23 @@ async function runScheduler(supabase, automationSettings, apiKey, forceGeneratio
 
   debugLog(`Lancement du planificateur - forceGeneration: ${forceGeneration}, settings: ${automationSettings.length}`);
 
+  // Enable real-time for tome_generations table if not already enabled
+  try {
+    const { error: realtimeError } = await supabase.rpc('supabase_functions.enable_replication', {
+      relation: 'tome_generations',
+      enable: true
+    });
+    
+    if (realtimeError) {
+      debugLog(`Avertissement: Impossible d'activer la réplication en temps réel: ${realtimeError.message}`);
+    } else {
+      debugLog("Réplication en temps réel pour 'tome_generations' activée avec succès");
+    }
+  } catch (err) {
+    debugLog(`Erreur lors de l'activation de la réplication en temps réel: ${err.message}`);
+    // Continue execution - this is not critical
+  }
+
   // Process each automation setting
   for (const setting of automationSettings) {
     try {
