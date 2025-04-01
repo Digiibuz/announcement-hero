@@ -34,15 +34,10 @@ serve(async (req) => {
       throw new Error('Generation ID is required');
     }
 
-    // Get generation data with all related information
+    // Get generation data directly without complex joins
     const { data: generation, error: generationError } = await supabase
       .from('tome_generations')
-      .select(`
-        *,
-        category:categories_keywords!tome_generations_category_id_fkey(category_name),
-        keyword:categories_keywords(keyword),
-        locality:localities(name, region)
-      `)
+      .select('*')
       .eq('id', generationId)
       .single();
 
@@ -56,6 +51,50 @@ serve(async (req) => {
 
     if (!generation.content) {
       throw new Error('No content to publish');
+    }
+
+    // Get category name separately if needed
+    let categoryName = null;
+    if (generation.category_id) {
+      const { data: categoryData } = await supabase
+        .from('categories_keywords')
+        .select('category_name')
+        .eq('id', generation.category_id)
+        .single();
+      
+      if (categoryData) {
+        categoryName = categoryData.category_name;
+      }
+    }
+
+    // Get keyword separately if needed
+    let keywordText = null;
+    if (generation.keyword_id) {
+      const { data: keywordData } = await supabase
+        .from('categories_keywords')
+        .select('keyword')
+        .eq('id', generation.keyword_id)
+        .single();
+      
+      if (keywordData) {
+        keywordText = keywordData.keyword;
+      }
+    }
+
+    // Get locality data separately if needed
+    let localityName = null;
+    let localityRegion = null;
+    if (generation.locality_id) {
+      const { data: localityData } = await supabase
+        .from('localities')
+        .select('name, region')
+        .eq('id', generation.locality_id)
+        .single();
+      
+      if (localityData) {
+        localityName = localityData.name;
+        localityRegion = localityData.region;
+      }
     }
 
     // Update status to processing
