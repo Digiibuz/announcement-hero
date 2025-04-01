@@ -49,12 +49,16 @@ serve(async (req) => {
       throw new Error('Generation not found: ' + (generationError?.message || 'Unknown error'));
     }
 
+    console.log(`Processing generation ${generationId} for WordPress config ${generation.wordpress_config_id}`);
+    
     // Update status to processing
     await supabase
       .from('tome_generations')
       .update({ status: 'processing' })
       .eq('id', generationId);
 
+    console.log(`Updated generation ${generationId} status to 'processing'`);
+    
     // Get WordPress config
     const { data: wpConfig, error: wpConfigError } = await supabase
       .from('wordpress_configs')
@@ -66,6 +70,8 @@ serve(async (req) => {
       throw new Error('WordPress config not found');
     }
 
+    console.log(`Found WordPress config for site: ${wpConfig.site_url}`);
+    
     // Get category and keyword data
     let categoryName = "Non spécifiée";
     let keyword = null;
@@ -80,6 +86,7 @@ serve(async (req) => {
       if (!categoryError && categoryKeyword) {
         categoryName = categoryKeyword.category_name || categoryName;
         keyword = categoryKeyword.keyword || null;
+        console.log(`Using category: ${categoryName}, keyword: ${keyword}`);
       }
     }
 
@@ -97,6 +104,7 @@ serve(async (req) => {
         if (locality.region) {
           localityName += ` (${locality.region})`;
         }
+        console.log(`Using locality: ${localityName}`);
       }
     }
 
@@ -129,6 +137,7 @@ serve(async (req) => {
     console.log("Sending prompt to OpenAI:", prompt.substring(0, 100) + "...\n");
     
     // Generate content with OpenAI
+    console.log("Calling OpenAI API...");
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -155,9 +164,11 @@ serve(async (req) => {
     const completion = await openaiResponse.json();
     
     if (!completion.choices || completion.choices.length === 0) {
+      console.error("OpenAI API error:", completion);
       throw new Error('Failed to generate content with OpenAI');
     }
     
+    console.log("Received response from OpenAI");
     const generatedContent = completion.choices[0].message.content;
     
     // Extract title from the generated content
@@ -165,9 +176,11 @@ serve(async (req) => {
     const titleMatch = generatedContent.match(/<h1[^>]*>(.*?)<\/h1>/i);
     if (titleMatch && titleMatch[1]) {
       title = titleMatch[1].replace(/<[^>]*>/g, '').trim();
+      console.log(`Extracted title: ${title}`);
     }
     
     // Update the generation with content but keep as draft
+    console.log(`Updating generation ${generationId} with title and content`);
     await supabase
       .from('tome_generations')
       .update({ 
@@ -177,12 +190,15 @@ serve(async (req) => {
       })
       .eq('id', generationId);
     
+    console.log(`Successfully updated generation ${generationId} to draft status`);
+    
     // Return successful response
     return new Response(
       JSON.stringify({
         success: true,
         message: 'Content generated successfully as draft',
-        generationId
+        generationId,
+        title
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -201,6 +217,7 @@ serve(async (req) => {
       const { generationId } = await reqClone2.json();
       
       if (generationId) {
+        console.log(`Updating generation ${generationId} to failed status due to error: ${errorMessage}`);
         const supabaseUrl = Deno.env.get('SUPABASE_URL');
         const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
         
