@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -31,6 +30,7 @@ import { useTomeScheduler } from "@/hooks/tome/useTomeScheduler";
 import PublishingLoadingOverlay from "@/components/announcements/PublishingLoadingOverlay";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
 import { FileImage, Server, Database } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 const TomePublicationDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -41,14 +41,12 @@ const TomePublicationDetail = () => {
   const [isScheduling, setIsScheduling] = useState(false);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
+  const { user } = useAuth();
   
-  const wordpressConfigId = generation?.wordpress_config_id || null;
-  
-  const { publishContent, generateContent } = useTomeScheduler(wordpressConfigId);
+  const { publishContent, generateContent } = useTomeScheduler();
   
   const { publishingState, isPublishing } = useWordPressPublishing();
 
-  // Create steps array for PublishingLoadingOverlay from publishingState
   const publishingSteps = [
     {
       id: "prepare",
@@ -105,7 +103,7 @@ const TomePublicationDetail = () => {
         const { data: wpConfig } = await supabase
           .from("wordpress_configs")
           .select("site_url")
-          .eq("id", generationData.wordpress_config_id)
+          .eq("id", user?.wordpressConfigId || generationData.wordpress_config_id)
           .single();
 
         const enhancedGeneration: TomeGeneration = {
@@ -128,7 +126,7 @@ const TomePublicationDetail = () => {
     };
 
     fetchGeneration();
-  }, [id, navigate]);
+  }, [id, navigate, user?.wordpressConfigId]);
 
   const form = useForm({
     defaultValues: {

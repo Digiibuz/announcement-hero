@@ -6,7 +6,7 @@ import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
 import { Announcement } from "@/types/announcement";
 import { useAuth } from "@/context/AuthContext";
 
-export const useTomeScheduler = (wordpressConfigId: string | null) => {
+export const useTomeScheduler = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { publishToWordPress, isPublishing, publishingState } = useWordPressPublishing();
   const { user } = useAuth();
@@ -94,9 +94,11 @@ export const useTomeScheduler = (wordpressConfigId: string | null) => {
         return false;
       }
       
-      // If the client's config is different from the generation's config, update the generation
+      // Si la configuration WordPress de l'utilisateur est différente de celle de la génération,
+      // mettre à jour la génération avec la configuration de l'utilisateur actuel
       if (clientWordpressConfigId !== generation.wordpress_config_id) {
         console.log("Updating generation WordPress config ID to client's config:", clientWordpressConfigId);
+        
         const { error: updateError } = await supabase
           .from('tome_generations')
           .update({ wordpress_config_id: clientWordpressConfigId })
@@ -128,6 +130,7 @@ export const useTomeScheduler = (wordpressConfigId: string | null) => {
         wordpress_category_id: generation.category_id
       };
       
+      // Crucial: nous utilisons la configuration WordPress de l'utilisateur connecté
       const result = await publishToWordPress(
         announcement, 
         generation.category_id, 
