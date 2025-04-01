@@ -91,20 +91,16 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
   const handleViewContent = async (generationId: string, postId: number | null, title: string) => {
     if (!postId) return;
     
-    // Find the base URL for the WordPress site
+    // Find the generation to get site URL
     const generation = generations.find(g => g.id === generationId);
     if (!generation) return;
 
-    // Get site URL from the category
-    const categoryDetails = categories.find(c => c.id.toString() === generation.category_id);
-    const siteUrl = categoryDetails?.link?.split('/wp-json/')[0] || 
-                  (categories.length > 0 && categories[0]?.link?.split('/wp-json/')[0]);
-    
+    // Set the generation for viewing
     setViewingGeneration({
       id: generationId,
       title,
       postId,
-      siteUrl
+      siteUrl: generation.wordpress_site_url
     });
     
     // Fetch the content if we don't have it yet
@@ -341,15 +337,10 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
           ) : (
             <div className="space-y-4">
               {generations.map((generation) => {
-                const keywordDetails = generation.keyword_id 
-                  ? keywords.find(k => k.id === generation.keyword_id) 
-                  : null;
-                
-                const localityDetails = generation.locality_id
-                  ? allLocalities.find(l => l.id === generation.locality_id)
-                  : null;
-                  
-                const categoryDetails = categories.find(c => c.id.toString() === generation.category_id);
+                const keywordText = generation.keyword_text || null;
+                const localityName = generation.locality_name || null;
+                const localityRegion = generation.locality_region || null;
+                const categoryName = generation.category_name || generation.category_id;
                 
                 let statusLabel = "";
                 let statusColor = "";
@@ -442,18 +433,18 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
                         )}
                         
                         <h3 className="text-lg font-medium">
-                          {categoryDetails?.name || generation.category_id}
+                          {categoryName}
                         </h3>
                         <div className="mt-1 space-y-1">
-                          {keywordDetails && (
+                          {keywordText && (
                             <p className="text-sm">
-                              <span className="font-medium">Mot-clé:</span> {keywordDetails.keyword}
+                              <span className="font-medium">Mot-clé:</span> {keywordText}
                             </p>
                           )}
-                          {localityDetails && (
+                          {localityName && (
                             <p className="text-sm">
-                              <span className="font-medium">Localité:</span> {localityDetails.name}
-                              {localityDetails.region ? ` (${localityDetails.region})` : ''}
+                              <span className="font-medium">Localité:</span> {localityName}
+                              {localityRegion ? ` (${localityRegion})` : ''}
                             </p>
                           )}
                         </div>
@@ -480,7 +471,7 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
                             onClick={() => handleViewContent(
                               generation.id, 
                               generation.wordpress_post_id,
-                              categoryDetails?.name || "Contenu généré"
+                              categoryName || "Contenu généré"
                             )}
                           >
                             <Eye className="h-4 w-4" />
@@ -491,9 +482,7 @@ const TomeGenerations: React.FC<TomeGenerationsProps> = ({ configId, isClientVie
                         {generation.wordpress_post_id && (
                           <Button variant="outline" size="sm" className="flex items-center gap-2 mb-2 md:mb-0" asChild>
                             <a 
-                              href={`${categoryDetails?.link?.split('/wp-json/')[0] || 
-                                (categories.length > 0 && categories[0]?.link?.split('/wp-json/')[0]) || 
-                                '#'}${isClientView ? `/?p=${generation.wordpress_post_id}` : `/wp-admin/post.php?post=${generation.wordpress_post_id}&action=edit`}`} 
+                              href={`${generation.wordpress_site_url || '#'}${isClientView ? `/?p=${generation.wordpress_post_id}` : `/wp-admin/post.php?post=${generation.wordpress_post_id}&action=edit`}`} 
                               target="_blank" 
                               rel="noopener noreferrer"
                             >

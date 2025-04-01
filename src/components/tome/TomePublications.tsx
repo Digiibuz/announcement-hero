@@ -1,13 +1,12 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTomeGeneration } from "@/hooks/tome";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Plus, Loader2, FileEdit, Eye, ExternalLink, Clock, Calendar } from "lucide-react";
+import { RefreshCw, Plus, Loader2, FileEdit, Eye, ExternalLink, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { fr } from 'date-fns/locale';
 
 interface TomePublicationsProps {
   configId: string;

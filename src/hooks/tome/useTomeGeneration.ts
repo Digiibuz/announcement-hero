@@ -8,6 +8,10 @@ import { format } from "date-fns";
 // Extend TomeGeneration with optional additional fields
 interface ExtendedTomeGeneration extends TomeGeneration {
   wordpress_site_url?: string | null;
+  category_name?: string | null;
+  keyword_text?: string | null;
+  locality_name?: string | null;
+  locality_region?: string | null;
 }
 
 export const useTomeGeneration = (configId: string | null) => {
@@ -27,52 +31,105 @@ export const useTomeGeneration = (configId: string | null) => {
 
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
+      
+      // Get basic generation data first
+      const { data: basicGenerations, error: genError } = await supabase
         .from("tome_generations")
-        .select(`
-          *,
-          category:categories_keywords!tome_generations_category_id_fkey(category_name),
-          keyword:categories_keywords(keyword),
-          locality:localities(name, region),
-          wordpress_config:wordpress_configs(site_url)
-        `)
+        .select("*")
         .eq("wordpress_config_id", configId)
         .order("created_at", { ascending: false });
 
-      if (error) {
-        console.error("Error fetching generations:", error);
-        toast.error("Erreur lors du chargement des générations: " + error.message);
+      if (genError) {
+        console.error("Error fetching generations:", genError);
+        toast.error("Erreur lors du chargement des générations: " + genError.message);
         return;
       }
 
-      // Properly map the data to ensure it matches the ExtendedTomeGeneration interface
-      const typedData = data.map(item => ({
-        id: item.id,
-        wordpress_config_id: item.wordpress_config_id,
-        category_id: item.category_id,
-        keyword_id: item.keyword_id,
-        locality_id: item.locality_id,
-        status: item.status,
-        created_at: item.created_at,
-        scheduled_at: item.scheduled_at,
-        published_at: item.published_at,
-        wordpress_post_id: item.wordpress_post_id,
-        title: item.title,
-        content: item.content,
-        description: item.description,
-        error_message: item.error_message,
-        wordpress_site_url: item.wordpress_config?.site_url
-      })) as ExtendedTomeGeneration[];
+      // Get WordPress config for site URL
+      const { data: wpConfig, error: wpConfigError } = await supabase
+        .from("wordpress_configs")
+        .select("id, site_url")
+        .eq("id", configId)
+        .single();
+
+      if (wpConfigError) {
+        console.error("Error fetching WordPress config:", wpConfigError);
+      }
+
+      // Prepare data for lookups
+      const categoryIds = [...new Set(basicGenerations.map(g => g.category_id))];
+      const keywordIds = [...new Set(basicGenerations.filter(g => g.keyword_id).map(g => g.keyword_id as string))];
+      const localityIds = [...new Set(basicGenerations.filter(g => g.locality_id).map(g => g.locality_id as string))];
+
+      // Fetch related data
+      const [categoriesData, keywordsData, localitiesData] = await Promise.all([
+        // Categories
+        categoryIds.length > 0 
+          ? supabase
+              .from("categories_keywords")
+              .select("id, category_name")
+              .in("id", categoryIds)
+          : Promise.resolve({ data: [], error: null }),
+        
+        // Keywords
+        keywordIds.length > 0
+          ? supabase
+              .from("categories_keywords")
+              .select("id, keyword")
+              .in("id", keywordIds)
+          : Promise.resolve({ data: [], error: null }),
+        
+        // Localities
+        localityIds.length > 0
+          ? supabase
+              .from("localities")
+              .select("id, name, region")
+              .in("id", localityIds)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+
+      // Create lookup maps
+      const categoryMap = new Map<string, string>();
+      const keywordMap = new Map<string, string>();
+      const localityMap = new Map<string, { name: string, region: string | null }>();
+
+      // Fill maps
+      if (categoriesData.data) {
+        categoriesData.data.forEach(cat => categoryMap.set(cat.id, cat.category_name));
+      }
       
-      setGenerations(typedData);
+      if (keywordsData.data) {
+        keywordsData.data.forEach(kw => keywordMap.set(kw.id, kw.keyword));
+      }
       
-      const pendingIds = typedData
+      if (localitiesData.data) {
+        localitiesData.data.forEach(loc => 
+          localityMap.set(loc.id, { name: loc.name, region: loc.region })
+        );
+      }
+
+      // Map the data to the extended type
+      const extendedGenerations: ExtendedTomeGeneration[] = basicGenerations.map(gen => {
+        const enhanced: ExtendedTomeGeneration = {
+          ...gen,
+          wordpress_site_url: wpConfig?.site_url || null,
+          category_name: categoryMap.get(gen.category_id) || null,
+          keyword_text: gen.keyword_id ? keywordMap.get(gen.keyword_id as string) || null : null,
+          locality_name: gen.locality_id ? localityMap.get(gen.locality_id as string)?.name || null : null,
+          locality_region: gen.locality_id ? localityMap.get(gen.locality_id as string)?.region || null : null
+        };
+        return enhanced;
+      });
+      
+      setGenerations(extendedGenerations);
+      
+      const pendingIds = extendedGenerations
         .filter(gen => gen.status === 'pending' || gen.status === 'processing')
         .map(gen => gen.id);
       
       setPollingGenerations(pendingIds);
       
-      for (const generation of typedData) {
+      for (const generation of extendedGenerations) {
         if (generation.content) {
           setGeneratedContent(prev => ({
             ...prev,
@@ -177,15 +234,9 @@ export const useTomeGeneration = (configId: string | null) => {
     try {
       if (!id) return null;
       
-      const { data, error } = await supabase
+      const { data: generation, error } = await supabase
         .from("tome_generations")
-        .select(`
-          *,
-          category:categories_keywords!tome_generations_category_id_fkey(category_name),
-          keyword:categories_keywords(keyword),
-          locality:localities(name, region),
-          wordpress_config:wordpress_configs(site_url)
-        `)
+        .select("*")
         .eq("id", id)
         .single();
 
@@ -195,26 +246,53 @@ export const useTomeGeneration = (configId: string | null) => {
         return null;
       }
 
-      // Explicitly map properties to match the ExtendedTomeGeneration interface
-      const typedData: ExtendedTomeGeneration = {
-        id: data.id,
-        wordpress_config_id: data.wordpress_config_id,
-        category_id: data.category_id,
-        keyword_id: data.keyword_id,
-        locality_id: data.locality_id,
-        status: data.status,
-        created_at: data.created_at,
-        scheduled_at: data.scheduled_at,
-        published_at: data.published_at,
-        wordpress_post_id: data.wordpress_post_id,
-        title: data.title,
-        content: data.content,
-        description: data.description,
-        error_message: data.error_message,
-        wordpress_site_url: data.wordpress_config?.site_url
+      // Fetch WordPress config
+      const { data: wpConfig } = await supabase
+        .from("wordpress_configs")
+        .select("site_url")
+        .eq("id", generation.wordpress_config_id)
+        .single();
+
+      // Fetch category
+      const { data: category } = await supabase
+        .from("categories_keywords")
+        .select("category_name")
+        .eq("id", generation.category_id)
+        .single();
+
+      // Fetch keyword if exists
+      let keyword = null;
+      if (generation.keyword_id) {
+        const { data: keywordData } = await supabase
+          .from("categories_keywords")
+          .select("keyword")
+          .eq("id", generation.keyword_id)
+          .single();
+        keyword = keywordData;
+      }
+
+      // Fetch locality if exists
+      let locality = null;
+      if (generation.locality_id) {
+        const { data: localityData } = await supabase
+          .from("localities")
+          .select("name, region")
+          .eq("id", generation.locality_id)
+          .single();
+        locality = localityData;
+      }
+
+      // Build the extended generation object
+      const enhancedGeneration: ExtendedTomeGeneration = {
+        ...generation,
+        wordpress_site_url: wpConfig?.site_url || null,
+        category_name: category?.category_name || null,
+        keyword_text: keyword?.keyword || null,
+        locality_name: locality?.name || null,
+        locality_region: locality?.region || null
       };
       
-      return typedData;
+      return enhancedGeneration;
     } catch (error: any) {
       console.error("Error in getGenerationById:", error);
       toast.error(`Erreur: ${error.message || "Erreur inconnue"}`);
@@ -317,8 +395,15 @@ export const useTomeGeneration = (configId: string | null) => {
         return false;
       }
 
-      const newData = data as ExtendedTomeGeneration;
-      setGenerations([newData, ...generations]);
+      // Fetch additional data for the newly created generation
+      const newlyCreatedGeneration = await getGenerationById(data.id);
+      
+      if (newlyCreatedGeneration) {
+        setGenerations([newlyCreatedGeneration, ...generations]);
+      } else {
+        // Fallback if we can't get the extended data
+        setGenerations([data as ExtendedTomeGeneration, ...generations]);
+      }
       
       if (effectiveStatus === "draft") {
         toast.info("Génération du contenu en cours. Cela peut prendre quelques minutes.", { 
