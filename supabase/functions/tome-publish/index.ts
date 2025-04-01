@@ -164,10 +164,15 @@ serve(async (req) => {
       
       console.log("Testing DipiPixel API...");
       // Let's first check if we're dealing with a DipiPixel site with custom taxonomy
+      // Use a fetch with the redirect option set to follow a limited number of redirects
       const testResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt_category`, {
         method: 'HEAD',
-        headers: browserLikeHeaders
-      }).catch(() => {
+        headers: browserLikeHeaders,
+        redirect: 'follow',
+        // Set a maximum of 5 redirects to avoid infinite redirect loops
+        signal: AbortSignal.timeout(10000) // 10-second timeout
+      }).catch(err => {
+        console.log("DipiPixel API test error:", err.message);
         // Just catch the error to avoid crashing if endpoint doesn't exist
         return { status: 404 };
       });
@@ -192,22 +197,27 @@ serve(async (req) => {
     try {
       console.log(`Publishing to WordPress: ${siteUrl}${apiEndpoint}`);
       
-      // Add a timeout to the WordPress request
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-      
-      // Publish to WordPress
+      // Use a fetch with the redirect option and a reasonable timeout
       const wpResponse = await fetch(`${siteUrl}${apiEndpoint}`, {
         method: 'POST',
         headers: browserLikeHeaders,
         body: JSON.stringify(postData),
-        signal: controller.signal,
+        redirect: 'follow',
+        // Set a maximum of 5 redirects to avoid infinite redirect loops
+        signal: AbortSignal.timeout(15000) // 15-second timeout
       });
-      
-      clearTimeout(timeoutId);
       
       if (!wpResponse.ok) {
         const errorText = await wpResponse.text();
+        
+        // Check for WAF block (Tiger Protect)
+        if (errorText.includes("<!DOCTYPE HTML>") || 
+            errorText.includes("<html") || 
+            errorText.includes("Tiger Protect") ||
+            errorText.includes("security-challenge")) {
+          throw new Error("The WordPress firewall (WAF) has blocked our request. Please try publishing from the WordPress admin interface.");
+        }
+        
         throw new Error(`WordPress API error: ${wpResponse.status} - ${errorText}`);
       }
       
@@ -241,7 +251,11 @@ serve(async (req) => {
       
       // If the error contains HTML (such as with Tiger Protect), consider it a WAF issue
       const errorMessage = wpError.message || "";
-      if (errorMessage.includes("<!DOCTYPE HTML>") || errorMessage.includes("<html")) {
+      if (errorMessage.includes("<!DOCTYPE HTML>") || 
+          errorMessage.includes("<html") || 
+          errorMessage.includes("Tiger Protect") ||
+          errorMessage.includes("Maximum number of redirects") ||
+          errorMessage.includes("security-challenge")) {
         throw new Error("The WordPress firewall (WAF) has blocked our request. Please try publishing from the WordPress admin interface.");
       }
       
@@ -255,12 +269,17 @@ serve(async (req) => {
     let friendlyMessage = errorMessage;
     
     // Improve error messages for the user
-    if (errorMessage.includes("WAF") || errorMessage.includes("firewall")) {
+    if (errorMessage.includes("WAF") || 
+        errorMessage.includes("firewall") || 
+        errorMessage.includes("Tiger Protect") ||
+        errorMessage.includes("security-challenge")) {
       friendlyMessage = "The WordPress firewall (WAF) is blocking our request. You may need to publish manually from WordPress.";
     } else if (errorMessage.includes("timeout") || errorMessage.includes("abort")) {
       friendlyMessage = "Connection timeout when connecting to WordPress. Please check the URL and credentials.";
     } else if (errorMessage.includes("503")) {
       friendlyMessage = "The WordPress server is temporarily unavailable (503 error). Please try again later.";
+    } else if (errorMessage.includes("redirects")) {
+      friendlyMessage = "Too many redirects detected. This usually indicates a WordPress security plugin. Try publishing manually from WordPress.";
     }
     
     // Try to update generation status to failed
