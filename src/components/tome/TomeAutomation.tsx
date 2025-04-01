@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useTomeScheduler } from "@/hooks/tome/useTomeScheduler";
-import { Loader2, Timer, Clock } from "lucide-react";
+import { Loader2, Timer, Clock, AlarmClock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface TomeAutomationProps {
@@ -256,20 +256,23 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
                     </div>
                     
                     {nextGenerationTime && (
-                      <div className="mt-4 p-4 border rounded-md bg-slate-50">
+                      <div className="mt-4 p-4 border rounded-md bg-primary/5 shadow-sm">
                         <div className="flex items-center gap-2 mb-2">
-                          <Timer className="h-5 w-5 text-primary" />
-                          <h3 className="font-medium">Prochaine génération</h3>
+                          <AlarmClock className="h-5 w-5 text-primary" />
+                          <h3 className="font-medium text-foreground">Prochaine génération automatique</h3>
                         </div>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                            <span>{formatNextGenerationTime()}</span>
+                        <div className="space-y-3 mt-2">
+                          <div className="flex items-center gap-2 text-foreground">
+                            <Clock className="h-4 w-4 text-primary" />
+                            <span className="font-medium">{formatNextGenerationTime()}</span>
                           </div>
                           {timeRemaining && (
-                            <Badge variant="outline" className="text-sm">
-                              Temps restant: {timeRemaining}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Timer className="h-4 w-4 text-primary" />
+                              <Badge variant="secondary" className="text-sm font-medium px-3 py-1 bg-secondary text-foreground">
+                                Temps restant: {timeRemaining}
+                              </Badge>
+                            </div>
                           )}
                         </div>
                       </div>
