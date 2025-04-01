@@ -19,44 +19,44 @@ const debugLog = (message: string, data?: any) => {
 
 // Helper function to determine if content should be generated based on last generation time and frequency
 function shouldGenerateContent(lastGeneration: any[], frequency: number): boolean {
-  // If no previous generations, always generate
+  // Si pas de génération précédente, toujours générer
   if (!lastGeneration || lastGeneration.length === 0) {
-    debugLog("No previous generations found, will generate content");
+    debugLog("Aucune génération précédente trouvée, contenu sera généré");
     return true;
   }
 
   const lastGenerationDate = new Date(lastGeneration[0].created_at);
   const now = new Date();
   
-  // Calculate time difference in milliseconds
+  // Calculer la différence de temps en millisecondes
   const diffTime = Math.abs(now.getTime() - lastGenerationDate.getTime());
   
-  // If frequency is less than 1, it represents fractions of a day
-  // For example, 0.0007 ~ 1 minute (1/1440 day), 0.01 ~ 15 minutes (15/1440 day)
+  // Si la fréquence est inférieure à 1, elle représente des fractions de jour
+  // Par exemple, 0.0007 ~ 1 minute (1/1440 jour), 0.01 ~ 15 minutes (15/1440 jour)
   if (frequency < 1) {
-    // Convert to minutes for better readability in logs
+    // Convertir en minutes pour une meilleure lisibilité dans les logs
     const diffMinutes = Math.floor(diffTime / (1000 * 60));
-    const frequencyMinutes = Math.floor(frequency * 24 * 60); // Convert to minutes
+    const frequencyMinutes = Math.floor(frequency * 24 * 60); // Convertir en minutes
     
-    debugLog(`Last generation ${diffMinutes} minutes ago, configured frequency: ${frequencyMinutes} minutes (${frequency} days)`);
+    debugLog(`Dernière génération il y a ${diffMinutes} minutes, fréquence configurée: ${frequencyMinutes} minutes (${frequency} jours)`);
     
-    // Compare minutes directly instead of fractional days
+    // Comparer les minutes directement au lieu des jours fractionnaires
     return diffMinutes >= frequencyMinutes;
   }
   
-  // For frequencies in days
+  // Pour les fréquences en jours
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  debugLog(`Last generation ${diffDays} days ago, configured frequency: ${frequency} days`);
+  debugLog(`Dernière génération il y a ${diffDays} jours, fréquence configurée: ${frequency} jours`);
   return diffDays >= frequency;
 }
 
-// Initialize Supabase client with environment variables
+// Initialiser le client Supabase avec les variables d'environnement
 function initSupabaseClient() {
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
   if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Supabase URL or key not found');
+    throw new Error('URL ou clé Supabase non trouvée');
   }
 
   return createClient(supabaseUrl, supabaseKey);
@@ -77,13 +77,13 @@ async function parseRequestParams(req: Request) {
     apiKey = body.api_key;
     debug = body.debug === true;
     timestamp = body.timestamp || timestamp;
-    debugLog("Request body:", body);
+    debugLog("Corps de la requête:", body);
   } catch (e) {
     // If no JSON body or parsing error, not a config check
-    debugLog("No JSON body or parsing error, assuming regular execution");
+    debugLog("Pas de corps JSON ou erreur d'analyse, exécution régulière supposée");
   }
   
-  debugLog("Parameter values - isConfigCheck:", isConfigCheck, "forceGeneration:", forceGeneration, "timestamp:", timestamp, "debug:", debug);
+  debugLog("Valeurs des paramètres - isConfigCheck:", isConfigCheck, "forceGeneration:", forceGeneration, "timestamp:", timestamp, "debug:", debug);
   
   return { isConfigCheck, forceGeneration, apiKey, timestamp, debug };
 }
@@ -100,17 +100,17 @@ async function validateApiKey(supabase, apiKey) {
     .single();
     
   if (apiKeyError || !automationWithKey) {
-    debugLog("Invalid API key:", apiKey);
-    throw new Error('Invalid API key');
+    debugLog("Clé API invalide:", apiKey);
+    throw new Error('Clé API invalide');
   }
   
-  debugLog("Valid API key for automation:", automationWithKey.id);
+  debugLog("Clé API valide pour l'automatisation:", automationWithKey.id);
   
   // If API key is valid but automation is disabled
   if (!automationWithKey.is_enabled) {
     return { 
       valid: false, 
-      message: 'Automation is disabled for this API key',
+      message: 'L\'automatisation est désactivée pour cette clé API',
       forceGeneration: false
     };
   }
@@ -127,11 +127,11 @@ async function getEnabledAutomationSettings(supabase) {
     .eq('is_enabled', true);
 
   if (automationError) {
-    debugLog("Error fetching automation settings:", automationError);
-    throw new Error('Error fetching automation settings: ' + automationError.message);
+    debugLog("Erreur lors de la récupération des paramètres d'automatisation:", automationError);
+    throw new Error('Erreur lors de la récupération des paramètres d\'automatisation: ' + automationError.message);
   }
 
-  debugLog(`Found ${automationSettings?.length || 0} automation settings:`, automationSettings);
+  debugLog(`Trouvé ${automationSettings?.length || 0} paramètres d'automatisation:`, automationSettings);
   return automationSettings || [];
 }
 
@@ -139,7 +139,7 @@ async function getEnabledAutomationSettings(supabase) {
 function handleConfigCheck(automationSettings) {
   return {
     success: true,
-    message: 'Configuration check completed successfully',
+    message: 'Vérification de la configuration terminée avec succès',
     automationSettings,
     timestamp: new Date().toISOString()
   };
@@ -155,11 +155,11 @@ async function getLastGeneration(supabase, wordpressConfigId) {
     .limit(1);
 
   if (lastGenError) {
-    debugLog(`Error fetching last generation for config ${wordpressConfigId}:`, lastGenError);
+    debugLog(`Erreur lors de la récupération de la dernière génération pour la config ${wordpressConfigId}:`, lastGenError);
     return null;
   }
 
-  debugLog(`Last generation for config ${wordpressConfigId}:`, lastGeneration);
+  debugLog(`Dernière génération pour la config ${wordpressConfigId}:`, lastGeneration);
   return lastGeneration;
 }
 
@@ -172,7 +172,7 @@ async function getCategories(supabase, wordpressConfigId) {
     .limit(50); // Get more to ensure we have enough unique categories
 
   if (categoriesError) {
-    debugLog(`Error fetching categories for config ${wordpressConfigId}:`, categoriesError);
+    debugLog(`Erreur lors de la récupération des catégories pour la config ${wordpressConfigId}:`, categoriesError);
     return null;
   }
 
@@ -181,7 +181,7 @@ async function getCategories(supabase, wordpressConfigId) {
     new Map(categories?.map(cat => [cat.category_id, cat])).values()
   );
 
-  debugLog(`Found ${uniqueCategories.length} unique categories for config ${wordpressConfigId}`);
+  debugLog(`Trouvé ${uniqueCategories.length} catégories uniques pour la config ${wordpressConfigId}`);
   return uniqueCategories;
 }
 
@@ -194,11 +194,11 @@ async function getKeywordsForCategory(supabase, wordpressConfigId, categoryId) {
     .eq('category_id', categoryId);
 
   if (keywordsError) {
-    debugLog(`Error fetching keywords for category ${categoryId}:`, keywordsError);
+    debugLog(`Erreur lors de la récupération des mots-clés pour la catégorie ${categoryId}:`, keywordsError);
     return null;
   }
 
-  debugLog(`Found ${keywords?.length || 0} keywords for category ${categoryId}`);
+  debugLog(`Trouvé ${keywords?.length || 0} mots-clés pour la catégorie ${categoryId}`);
   return keywords || [];
 }
 
@@ -211,20 +211,20 @@ async function getLocalities(supabase, wordpressConfigId) {
     .eq('active', true);
 
   if (localitiesError) {
-    debugLog(`Error fetching localities for config ${wordpressConfigId}:`, localitiesError);
+    debugLog(`Erreur lors de la récupération des localités pour la config ${wordpressConfigId}:`, localitiesError);
     return null;
   }
 
-  debugLog(`Found ${localities?.length || 0} active localities for config ${wordpressConfigId}`);
+  debugLog(`Trouvé ${localities?.length || 0} localités actives pour la config ${wordpressConfigId}`);
   return localities || [];
 }
 
 // Create a new generation with random content selections
 async function createGeneration(supabase, wordpressConfigId, categoryId, keywordId, localityId) {
-  debugLog(`Creating generation for config ${wordpressConfigId}`, {
+  debugLog(`Création d'une génération pour la config ${wordpressConfigId}`, {
     categoryId,
-    keywordId: keywordId || 'none',
-    localityId: localityId || 'none'
+    keywordId: keywordId || 'aucun',
+    localityId: localityId || 'aucune'
   });
 
   const { data: generation, error: generationError } = await supabase
@@ -240,18 +240,18 @@ async function createGeneration(supabase, wordpressConfigId, categoryId, keyword
     .single();
 
   if (generationError) {
-    debugLog(`Error creating generation for config ${wordpressConfigId}:`, generationError);
+    debugLog(`Erreur lors de la création d'une génération pour la config ${wordpressConfigId}:`, generationError);
     return null;
   }
 
-  debugLog(`Successfully created generation ${generation.id} for WordPress config ${wordpressConfigId}`);
+  debugLog(`Génération ${generation.id} créée avec succès pour la config WordPress ${wordpressConfigId}`);
   return generation;
 }
 
 // Generate a draft using the tome-generate-draft function
 async function generateDraft(supabase, generationId, debug = false) {
   try {
-    debugLog(`Invoking tome-generate-draft for generation ${generationId}`);
+    debugLog(`Appel de tome-generate-draft pour la génération ${generationId}`);
     const { data: draftData, error: draftError } = await supabase.functions.invoke('tome-generate-draft', {
       body: { 
         generationId,
@@ -261,22 +261,22 @@ async function generateDraft(supabase, generationId, debug = false) {
     });
     
     if (draftError) {
-      debugLog(`Error generating draft for generation ${generationId}:`, draftError);
-      await updateGenerationStatus(supabase, generationId, 'failed', draftError.message || 'Error invoking tome-generate-draft');
+      debugLog(`Erreur lors de la génération du brouillon pour ${generationId}:`, draftError);
+      await updateGenerationStatus(supabase, generationId, 'failed', draftError.message || 'Erreur lors de l\'appel à tome-generate-draft');
       return false;
     }
     
     if (draftData && draftData.error) {
-      debugLog(`Draft API returned error for generation ${generationId}:`, draftData.error);
+      debugLog(`L'API de brouillon a retourné une erreur pour ${generationId}:`, draftData.error);
       await updateGenerationStatus(supabase, generationId, 'failed', draftData.error);
       return false;
     }
 
-    debugLog(`Successfully generated draft for generation ${generationId}`);
+    debugLog(`Brouillon généré avec succès pour ${generationId}`);
     return true;
   } catch (error) {
-    debugLog(`Exception when generating draft for ${generationId}:`, error);
-    await updateGenerationStatus(supabase, generationId, 'failed', error.message || 'Exception in tome-generate-draft');
+    debugLog(`Exception lors de la génération du brouillon pour ${generationId}:`, error);
+    await updateGenerationStatus(supabase, generationId, 'failed', error.message || 'Exception dans tome-generate-draft');
     return false;
   }
 }
@@ -288,7 +288,7 @@ async function updateGenerationStatus(supabase, generationId, status, errorMessa
     updateData.error_message = errorMessage.substring(0, 255); // Limit the length
   }
   
-  debugLog(`Updating generation ${generationId} status to ${status}${errorMessage ? ' with error' : ''}`);
+  debugLog(`Mise à jour du statut de la génération ${generationId} à ${status}${errorMessage ? ' avec erreur' : ''}`);
   
   await supabase
     .from('tome_generations')
@@ -310,12 +310,12 @@ async function processAutomationSetting(supabase, setting, apiKeyUsed, forceGene
   
   // If an API key was used, only process the corresponding automation
   if (apiKeyUsed && setting.api_key !== apiKeyUsed) {
-    debugLog(`Skipping automation for WordPress config ${wordpressConfigId}, not matching API key`);
+    debugLog(`Ignorer l'automatisation pour la config WordPress ${wordpressConfigId}, clé API non correspondante`);
     processingResult.reason = 'api_key_mismatch';
     return processingResult;
   }
 
-  debugLog(`Processing automation for WordPress config ${wordpressConfigId} with frequency ${frequency}`);
+  debugLog(`Traitement de l'automatisation pour la config WordPress ${wordpressConfigId} avec fréquence ${frequency}`);
 
   try {
     // Check if it's time to generate content based on frequency
@@ -325,18 +325,18 @@ async function processAutomationSetting(supabase, setting, apiKeyUsed, forceGene
     const shouldGenerate = forceGeneration || shouldGenerateContent(lastGeneration, frequency);
     
     if (!shouldGenerate) {
-      debugLog(`Skipping generation for config ${wordpressConfigId}, not due yet`);
+      debugLog(`Ignorer la génération pour la config ${wordpressConfigId}, pas encore dû selon la fréquence`);
       processingResult.reason = 'frequency_not_reached';
       return processingResult;
     }
 
-    debugLog(`Generating content for WordPress config ${wordpressConfigId}`);
+    debugLog(`Génération de contenu pour la config WordPress ${wordpressConfigId}`);
     processingResult.result = 'processing';
 
     // Get categories for content generation
     const categories = await getCategories(supabase, wordpressConfigId);
     if (!categories || categories.length === 0) {
-      debugLog(`No categories found for config ${wordpressConfigId}`);
+      debugLog(`Aucune catégorie trouvée pour la config ${wordpressConfigId}`);
       processingResult.result = 'failed';
       processingResult.reason = 'no_categories';
       return processingResult;
@@ -347,7 +347,7 @@ async function processAutomationSetting(supabase, setting, apiKeyUsed, forceGene
     const selectedCategory = categories[randomCategoryIndex];
     const categoryId = selectedCategory.category_id;
     
-    debugLog(`Selected category ${selectedCategory.category_name} (${categoryId}) for config ${wordpressConfigId}`);
+    debugLog(`Catégorie sélectionnée ${selectedCategory.category_name} (${categoryId}) pour la config ${wordpressConfigId}`);
 
     // Get keywords for the selected category
     const categoryKeywords = await getKeywordsForCategory(supabase, wordpressConfigId, categoryId);
@@ -357,9 +357,9 @@ async function processAutomationSetting(supabase, setting, apiKeyUsed, forceGene
     if (categoryKeywords && categoryKeywords.length > 0) {
       const randomKeywordIndex = Math.floor(Math.random() * categoryKeywords.length);
       keywordId = categoryKeywords[randomKeywordIndex].id;
-      debugLog(`Selected keyword "${categoryKeywords[randomKeywordIndex].keyword}" (${keywordId})`);
+      debugLog(`Mot-clé sélectionné "${categoryKeywords[randomKeywordIndex].keyword}" (${keywordId})`);
     } else {
-      debugLog(`No keywords found for category ${categoryId}`);
+      debugLog(`Aucun mot-clé trouvé pour la catégorie ${categoryId}`);
     }
     
     // Get localities for the config
@@ -370,9 +370,9 @@ async function processAutomationSetting(supabase, setting, apiKeyUsed, forceGene
     if (localities && localities.length > 0) {
       const randomLocalityIndex = Math.floor(Math.random() * localities.length);
       localityId = localities[randomLocalityIndex].id;
-      debugLog(`Selected locality "${localities[randomLocalityIndex].name}" (${localityId})`);
+      debugLog(`Localité sélectionnée "${localities[randomLocalityIndex].name}" (${localityId})`);
     } else {
-      debugLog(`No localities found for config ${wordpressConfigId}`);
+      debugLog(`Aucune localité trouvée pour la config ${wordpressConfigId}`);
     }
 
     // Create a new generation entry
@@ -387,18 +387,18 @@ async function processAutomationSetting(supabase, setting, apiKeyUsed, forceGene
     const generationSuccess = await generateDraft(supabase, generation.id, debug);
     
     if (generationSuccess) {
-      debugLog(`Successfully generated content for config ${wordpressConfigId}`);
+      debugLog(`Contenu généré avec succès pour la config ${wordpressConfigId}`);
       processingResult.result = 'success';
       processingResult.success = true;
     } else {
-      debugLog(`Failed to generate content for config ${wordpressConfigId}`);
+      debugLog(`Échec de la génération de contenu pour la config ${wordpressConfigId}`);
       processingResult.result = 'failed';
       processingResult.reason = 'content_generation_failed';
     }
     
     return processingResult;
   } catch (error) {
-    debugLog(`Error processing automation for config ${wordpressConfigId}:`, error);
+    debugLog(`Erreur lors du traitement de l'automatisation pour la config ${wordpressConfigId}:`, error);
     processingResult.result = 'error';
     processingResult.reason = error.message || 'unknown_error';
     return processingResult;
@@ -410,6 +410,8 @@ async function runScheduler(supabase, automationSettings, apiKey, forceGeneratio
   let generationsCreated = 0;
   const processingDetails = [];
 
+  debugLog(`Lancement du planificateur - forceGeneration: ${forceGeneration}, settings: ${automationSettings.length}`);
+
   // Process each automation setting
   for (const setting of automationSettings) {
     try {
@@ -420,7 +422,7 @@ async function runScheduler(supabase, automationSettings, apiKey, forceGeneratio
         generationsCreated++;
       }
     } catch (error) {
-      debugLog(`Error processing automation for config ${setting.wordpress_config_id}:`, error);
+      debugLog(`Erreur lors du traitement de l'automatisation pour la config ${setting.wordpress_config_id}:`, error);
       processingDetails.push({
         configId: setting.wordpress_config_id,
         result: 'error',
@@ -442,7 +444,7 @@ serve(async (req) => {
   }
 
   try {
-    debugLog("Tome-scheduler function starting execution");
+    debugLog("Démarrage de la fonction tome-scheduler");
     
     // Initialize Supabase client
     const supabase = initSupabaseClient();
@@ -483,15 +485,15 @@ serve(async (req) => {
     // If using API key with a specific config, filter settings
     if (targetConfigId) {
       automationSettings = automationSettings.filter(s => s.wordpress_config_id === targetConfigId);
-      debugLog(`Filtered settings to only include config ${targetConfigId}`);
+      debugLog(`Filtrage des paramètres pour n'inclure que la config ${targetConfigId}`);
     }
 
     if (!automationSettings || automationSettings.length === 0) {
-      debugLog("No enabled automation settings found");
+      debugLog("Aucun paramètre d'automatisation actif trouvé");
       return new Response(
         JSON.stringify({
           success: true,
-          message: 'No enabled automation settings found',
+          message: 'Aucun paramètre d\'automatisation actif trouvé',
           generationsCreated: 0,
           timestamp: new Date().toISOString()
         }),
@@ -502,7 +504,7 @@ serve(async (req) => {
       );
     }
 
-    debugLog(`Found ${automationSettings.length} enabled automation settings`);
+    debugLog(`Trouvé ${automationSettings.length} paramètres d'automatisation actifs`);
     
     // If just a configuration check, don't generate content
     if (isConfigCheck) {
@@ -528,7 +530,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Scheduler run completed. Created ${generationsCreated} generations.`,
+        message: `Exécution du planificateur terminée. ${generationsCreated} génération(s) créée(s).`,
         generationsCreated,
         processingDetails: debug ? processingDetails : undefined,
         timestamp: new Date().toISOString()
@@ -539,12 +541,12 @@ serve(async (req) => {
       }
     );
   } catch (error: any) {
-    debugLog('Error in tome-scheduler function:', error);
+    debugLog('Erreur dans la fonction tome-scheduler:', error);
     
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || 'An error occurred during scheduling',
+        error: error.message || 'Une erreur est survenue pendant la planification',
         timestamp: new Date().toISOString()
       }),
       {

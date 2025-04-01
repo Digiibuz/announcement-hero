@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -45,7 +46,7 @@ export const useTomeAutomation = (configId: string) => {
 
   const checkAutomationSettings = async (showToast = true) => {
     try {
-      console.log("Checking automation settings for configId:", configId);
+      console.log("Vérification des paramètres d'automatisation pour configId:", configId);
       addLog(`Vérification des paramètres d'automatisation pour configId: ${configId}`);
       
       const { data, error } = await supabase
@@ -54,7 +55,7 @@ export const useTomeAutomation = (configId: string) => {
         .eq('wordpress_config_id', configId)
         .maybeSingle();
 
-      console.log("Check result:", { data, error });
+      console.log("Résultat de la vérification:", { data, error });
       addLog(`Résultat de la vérification: ${error ? 'Erreur' : data ? 'OK' : 'Aucune configuration'}`);
 
       if (!error && data) {
@@ -74,7 +75,7 @@ export const useTomeAutomation = (configId: string) => {
         addLog("Aucune configuration d'automatisation trouvée");
       }
     } catch (error: any) {
-      console.error("Error retrieving automation settings:", error);
+      console.error("Erreur lors de la récupération des paramètres d'automatisation:", error);
       addLog(`Erreur: ${error.message}`);
     }
   };
@@ -100,7 +101,7 @@ export const useTomeAutomation = (configId: string) => {
     try {
       const frequencyNumber = parseFloat(frequency);
       
-      console.log("Saving automation settings:", {
+      console.log("Enregistrement des paramètres d'automatisation:", {
         configId,
         isEnabled,
         frequency: frequencyNumber
@@ -115,12 +116,12 @@ export const useTomeAutomation = (configId: string) => {
         .maybeSingle();
         
       if (checkError) {
-        console.error("Error checking existing data:", checkError);
+        console.error("Erreur lors de la vérification des données existantes:", checkError);
         addLog(`Erreur lors de la vérification des données existantes: ${checkError.message}`);
-        throw new Error(`Verification error: ${checkError.message}`);
+        throw new Error(`Erreur de vérification: ${checkError.message}`);
       }
 
-      console.log("Existing data:", existingData);
+      console.log("Données existantes:", existingData);
       addLog(`Données existantes: ${existingData ? 'Trouvées' : 'Aucune'}`);
 
       const automationData: any = {
@@ -132,7 +133,7 @@ export const useTomeAutomation = (configId: string) => {
       let result;
       
       if (existingData) {
-        console.log("Updating an existing entry:", existingData.id);
+        console.log("Mise à jour d'une entrée existante:", existingData.id);
         addLog(`Mise à jour de l'entrée existante: ${existingData.id}`);
         
         result = await supabase
@@ -142,7 +143,7 @@ export const useTomeAutomation = (configId: string) => {
           
         setApiKey(existingData.api_key || null);
       } else {
-        console.log("Creating a new entry");
+        console.log("Création d'une nouvelle entrée");
         addLog("Création d'une nouvelle entrée avec une nouvelle clé API");
         
         automationData.wordpress_config_id = configId;
@@ -153,12 +154,12 @@ export const useTomeAutomation = (configId: string) => {
       }
 
       if (result.error) {
-        console.error("Supabase error during saving:", result.error);
+        console.error("Erreur Supabase lors de l'enregistrement:", result.error);
         addLog(`Erreur lors de l'enregistrement: ${result.error.message}`);
-        throw new Error(`Save error: ${result.error.message}`);
+        throw new Error(`Erreur d'enregistrement: ${result.error.message}`);
       }
 
-      console.log("Operation result:", result);
+      console.log("Résultat de l'opération:", result);
       addLog(`Résultat de l'opération: ${result.error ? 'Erreur' : 'Succès'}`);
       toast.success(`Paramètres d'automatisation sauvegardés avec succès`);
       
@@ -174,7 +175,7 @@ export const useTomeAutomation = (configId: string) => {
       
       return true;
     } catch (error: any) {
-      console.error("Detailed error saving settings:", error);
+      console.error("Erreur détaillée lors de l'enregistrement des paramètres:", error);
       addLog(`Erreur détaillée: ${error.message}`);
       toast.error(`Erreur: ${error.message || "Erreur lors de l'enregistrement des paramètres"}`);
       setSavingStatus('error');
@@ -254,7 +255,7 @@ export const useTomeAutomation = (configId: string) => {
 
       if (!generationData) {
         addLog("Échec de la création de la génération");
-        throw new Error("Failed to create generation");
+        throw new Error("Échec de la création de la génération");
       }
 
       addLog(`Génération créée avec l'ID: ${generationData.id}`);
@@ -272,7 +273,7 @@ export const useTomeAutomation = (configId: string) => {
         return false;
       }
     } catch (error: any) {
-      console.error("Error generating draft:", error);
+      console.error("Erreur lors de la génération du brouillon:", error);
       addLog(`Erreur lors de la génération du brouillon: ${error.message}`);
       toast.error("Erreur: " + error.message);
       return false;
@@ -297,7 +298,7 @@ export const useTomeAutomation = (configId: string) => {
       
       return result;
     } catch (error: any) {
-      console.error("Error in forceRunScheduler:", error);
+      console.error("Erreur dans forceRunScheduler:", error);
       addLog(`Erreur dans forceRunScheduler: ${error.message}`);
       toast.error(`Erreur: ${error.message || "Une erreur est survenue"}`);
       return false;
