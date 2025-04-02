@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.1';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import 'https://deno.land/x/xhr@0.1.0/mod.ts';
@@ -107,7 +108,7 @@ async function parseRequestParams(req: Request) {
   }
   
   debugLog("Type d'exécution:", isScheduledExecution ? "Planifiée" : "Manuelle");
-  debugLog("Valeurs des paramètres après traitement - isConfigCheck:", isConfigCheck, "forceGeneration:", forceGeneration, "timestamp:", timestamp, "debug:", debug);
+  debugLog("Valeurs des paramètres après traitement - isConfigCheck:", isConfigCheck, "forceGeneration:", forceGeneration, "timestamp:", timestamp, "debug:", debug, "isScheduledExecution:", isScheduledExecution);
   
   return { isConfigCheck, forceGeneration, apiKey, timestamp, debug, isScheduledExecution };
 }
@@ -281,6 +282,7 @@ async function getLocalities(supabase, wordpressConfigId, retryCount = 1) {
 }
 
 // Create a new generation with random content selections
+// IMPORTANT: Status is now set to "pending" explicitly for direct publication
 async function createGeneration(supabase, wordpressConfigId, categoryId, keywordId, localityId) {
   try {
     debugLog(`Création d'une génération pour la config ${wordpressConfigId}`, {
@@ -296,7 +298,7 @@ async function createGeneration(supabase, wordpressConfigId, categoryId, keyword
         category_id: categoryId,
         keyword_id: keywordId,
         locality_id: localityId,
-        status: 'pending'
+        status: 'pending' // Toujours en pending, mais sera publié directement par tome-generate
       })
       .select()
       .single();
@@ -314,7 +316,8 @@ async function createGeneration(supabase, wordpressConfigId, categoryId, keyword
   }
 }
 
-// Trigger the generation function directly for publication
+// MODIFICATION PRINCIPALE: Utiliser directement tome-generate au lieu de tome-generate-draft
+// Cette fonction publiera directement le contenu sur WordPress
 async function queuePublishGeneration(supabase, generationId, debug = false) {
   try {
     debugLog(`Préparation de la génération et publication pour ${generationId}`);
@@ -463,7 +466,8 @@ async function processAutomationSetting(supabase, setting, apiKeyUsed, forceGene
       return processingResult;
     }
 
-    // Now that we have a generation, directly queue it for processing WITH PUBLICATION
+    // MODIFICATION IMPORTANTE: Utiliser directement la fonction queuePublishGeneration 
+    // qui appelle tome-generate (au lieu de tome-generate-draft) pour publication directe
     const success = await queuePublishGeneration(supabase, generation.id, debug);
     
     if (success) {
