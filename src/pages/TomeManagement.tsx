@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TomeCategories from "@/components/tome/TomeCategories";
 import TomeLocalities from "@/components/tome/TomeLocalities";
 import TomePublications from "@/components/tome/TomePublications";
-import TomeGenerations from "@/components/tome/TomeGenerations";
+import TomeSimplified from "@/components/tome/TomeSimplified";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import WordPressConnectionStatus from "@/components/wordpress/WordPressConnectionStatus";
@@ -111,7 +111,7 @@ const TomeManagement = () => {
                 <AlertTitle>Protection anti-bot WordPress</AlertTitle>
                 <AlertDescription>
                   Certains hébergeurs WordPress (comme o2switch) utilisent un pare-feu (WAF) qui peut bloquer 
-                  la publication automatisée. Tom-E publie vos articles directement sur votre site WordPress.
+                  la publication automatisée. Tom-E génère vos articles et les sauvegarde pour publication manuelle.
                 </AlertDescription>
               </Alert>
 
@@ -163,7 +163,7 @@ const TomeManagement = () => {
           >
             <AnimatedContainer delay={200}>
               {selectedConfigId && (
-                <TomeGenerations configId={selectedConfigId} isClientView={isClient} />
+                <TomeSimplified configId={selectedConfigId} isClientView={isClient} />
               )}
             </AnimatedContainer>
           </PageLayout>
