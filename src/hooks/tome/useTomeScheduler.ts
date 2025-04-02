@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -18,11 +17,19 @@ export const useTomeScheduler = () => {
       setIsRunning(true);
       addLog("Vérification de la configuration du planificateur...");
 
+      // IMPORTANT: Pour la vérification de configuration, nous voulons configCheck=true et forceGeneration=false
+      const params = { 
+        configCheck: true,  // Explicitement true pour la vérification
+        forceGeneration: false, // Explicitement false pour la vérification
+        timestamp: new Date().getTime(), // Pour éviter la mise en cache
+        debug: true
+      };
+      
+      addLog(`Paramètres de la requête de vérification: ${JSON.stringify(params)}`);
+      console.log("Paramètres de vérification de configuration:", params);
+
       const { data, error } = await supabase.functions.invoke('tome-scheduler', {
-        body: { 
-          configCheck: true,
-          timestamp: new Date().getTime() // Prevent caching
-        }
+        body: params
       });
 
       if (error) {
@@ -59,20 +66,25 @@ export const useTomeScheduler = () => {
   };
 
   // Fonction pour exécuter manuellement le planificateur
-  const runScheduler = async (forceGeneration = false): Promise<boolean> => {
+  const runScheduler = async (forceGeneration = true): Promise<boolean> => {
     try {
       setIsRunning(true);
       addLog(`Démarrage ${forceGeneration ? "forcé" : "manuel"} du planificateur...`);
-
-      // Ajout d'un timestamp aléatoire pour éviter la mise en cache de la requête
-      const timestamp = new Date().getTime();
       
+      // TRÈS IMPORTANT: Pour l'exécution forcée, nous voulons forceGeneration=true et configCheck=false
+      // C'est ce qui permet de générer du contenu même si la fréquence n'est pas atteinte
+      const params = { 
+        forceGeneration: true, // Toujours forcer la génération lors de l'exécution manuelle
+        configCheck: false,    // Très important: s'assurer que configCheck est explicitement false
+        timestamp: new Date().getTime(),
+        debug: true
+      };
+      
+      addLog(`Paramètres de la requête d'exécution: ${JSON.stringify(params)}`);
+      console.log("Paramètres d'exécution du planificateur:", params);
+
       const { data, error } = await supabase.functions.invoke('tome-scheduler', {
-        body: { 
-          forceGeneration, 
-          timestamp,
-          debug: true
-        }
+        body: params
       });
 
       if (error) {
@@ -103,6 +115,10 @@ export const useTomeScheduler = () => {
       if (data && data.processingDetails) {
         data.processingDetails.forEach((detail: any) => {
           addLog(`Traitement config ${detail.configId.slice(0, 8)}...: ${detail.result}`);
+          
+          if (detail.reason) {
+            addLog(`Raison: ${detail.reason}`);
+          }
         });
       }
 

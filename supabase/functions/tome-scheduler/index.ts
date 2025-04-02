@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.1';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import 'https://deno.land/x/xhr@0.1.0/mod.ts';
@@ -64,28 +63,50 @@ function initSupabaseClient() {
 
 // Parse request parameters from the request body
 async function parseRequestParams(req: Request) {
+  // Default values for scheduled execution:
+  // - configCheck should be false by default to allow content generation
+  // - forceGeneration should be true for scheduled tasks
   let isConfigCheck = false;
-  let forceGeneration = false;
+  let forceGeneration = true; // Default to true for automated tasks
   let apiKey = null;
   let debug = false;
   let timestamp = new Date().getTime(); // Current timestamp for logging/debugging
+  let isScheduledExecution = true; // New flag to track if this is an automated execution
   
   try {
     const body = await req.json();
-    isConfigCheck = body.configCheck === true;
-    forceGeneration = body.forceGeneration === true;
+    isScheduledExecution = false; // If we have a body, this is likely a manual request
+    
+    debugLog("Corps de la requête:", body);
+    
+    // IMPORTANT: Prioritize forceGeneration over configCheck
+    // If forceGeneration is explicitly true, we should generate content
+    if (body.forceGeneration === true) {
+      forceGeneration = true;
+      isConfigCheck = false; // Explicitly set configCheck to false when forcing generation
+      debugLog("forceGeneration=true détecté, isConfigCheck défini sur false");
+    } 
+    // Only if forceGeneration is not explicitly set to true, we check configCheck
+    else if (body.configCheck === true) {
+      isConfigCheck = true;
+      forceGeneration = false; // Explicitly set forceGeneration to false for config checks
+      debugLog("configCheck=true détecté, forceGeneration défini sur false");
+    }
+    // Otherwise keep the defaults (forceGeneration=true, configCheck=false)
+    
     apiKey = body.api_key;
     debug = body.debug === true;
     timestamp = body.timestamp || timestamp;
-    debugLog("Corps de la requête:", body);
   } catch (e) {
-    // If no JSON body or parsing error, not a config check
-    debugLog("Pas de corps JSON ou erreur d'analyse, exécution régulière supposée");
+    // If no JSON body or parsing error, treat as a scheduled execution
+    debugLog("Pas de corps JSON ou erreur d'analyse, exécution planifiée supposée");
+    debugLog("Utilisation des valeurs par défaut pour exécution automatique: forceGeneration=true, configCheck=false");
   }
   
-  debugLog("Valeurs des paramètres - isConfigCheck:", isConfigCheck, "forceGeneration:", forceGeneration, "timestamp:", timestamp, "debug:", debug);
+  debugLog("Type d'exécution:", isScheduledExecution ? "Planifiée" : "Manuelle");
+  debugLog("Valeurs des paramètres après traitement - isConfigCheck:", isConfigCheck, "forceGeneration:", forceGeneration, "timestamp:", timestamp, "debug:", debug);
   
-  return { isConfigCheck, forceGeneration, apiKey, timestamp, debug };
+  return { isConfigCheck, forceGeneration, apiKey, timestamp, debug, isScheduledExecution };
 }
 
 // Validate API key if provided and force generation for that specific config
@@ -374,8 +395,11 @@ async function processAutomationSetting(supabase, setting, apiKeyUsed, forceGene
     // Check if it's time to generate content based on frequency
     const lastGeneration = await getLastGeneration(supabase, wordpressConfigId);
     
-    // ALWAYS generate content if forceGeneration is true
+    // IMPORTANT: Modifié pour être plus clair sur la décision de génération
+    // Si forceGeneration est true, générer du contenu quelle que soit la fréquence
     const shouldGenerate = forceGeneration || shouldGenerateContent(lastGeneration, frequency);
+    
+    debugLog(`Décision de génération pour ${wordpressConfigId}: ${shouldGenerate ? "OUI" : "NON"} (forceGeneration=${forceGeneration})`);
     
     if (!shouldGenerate) {
       debugLog(`Ignorer la génération pour la config ${wordpressConfigId}, pas encore dû selon la fréquence`);
@@ -474,7 +498,9 @@ serve(async (req) => {
     const supabase = initSupabaseClient();
     
     // Parse request parameters
-    const { isConfigCheck, forceGeneration, apiKey, timestamp, debug } = await parseRequestParams(req);
+    const { isConfigCheck, forceGeneration, apiKey, timestamp, debug, isScheduledExecution } = await parseRequestParams(req);
+    
+    debugLog("Paramètres après analyse: forceGeneration=" + forceGeneration + ", isConfigCheck=" + isConfigCheck + ", isScheduledExecution=" + isScheduledExecution);
     
     // Validate API key if provided
     let effectiveForceGeneration = forceGeneration;
@@ -545,20 +571,23 @@ serve(async (req) => {
       );
     }
     
-    // For a real scheduler run, process only the first setting if forced or API key
-    if (effectiveForceGeneration || apiKey) {
-      // For better performance and reliability, just process the first setting
+    // Pour un forceGeneration=true explicite ou une exécution avec API key,
+    // nous exécutons directement le traitement pour une meilleure réponse
+    if (effectiveForceGeneration || apiKey || isScheduledExecution) {
+      debugLog(`EXÉCUTION DIRECTE AVEC forceGeneration=${effectiveForceGeneration}, isScheduledExecution=${isScheduledExecution}`);
+      
+      // Pour de meilleures performances, traitons juste le premier paramètre
       if (automationSettings.length > 0) {
         const settingToProcess = automationSettings[0];
         
         debugLog(`Lancement du planificateur - forceGeneration: ${effectiveForceGeneration}, traitement direct de la config: ${settingToProcess.wordpress_config_id}`);
         
-        // Process this one setting
+        // Traiter ce paramètre
         const processingResult = await processAutomationSetting(
           supabase, 
           settingToProcess, 
           apiKey, 
-          effectiveForceGeneration, 
+          effectiveForceGeneration || true,  // Toujours forcer la génération en mode manuel ou planifié
           debug
         );
         
@@ -571,6 +600,7 @@ serve(async (req) => {
             message: `Exécution du planificateur terminée. Résultat: ${processingResult.result}`,
             processingDetails: [processingResult],
             generationsCreated: processingResult.success ? 1 : 0,
+            executionType: isScheduledExecution ? 'scheduled' : 'manual',
             executionTime: elapsedTime.toFixed(1),
             timestamp: new Date().toISOString()
           }),
