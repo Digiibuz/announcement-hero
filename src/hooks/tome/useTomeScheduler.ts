@@ -18,11 +18,11 @@ export const useTomeScheduler = () => {
       setIsRunning(true);
       addLog("Vérification de la configuration du planificateur...");
 
-      // IMPORTANT: Pour la vérification de configuration uniquement, nous voulons configCheck=true
+      // IMPORTANT: Paramètres standardisés pour la vérification de configuration
       const params = { 
-        configCheck: true,  // Explicitement true pour la vérification de configuration
+        configCheck: true,  // Explicitement true pour la vérification
         forceGeneration: false, // Explicitement false pour la vérification
-        timestamp: new Date().getTime(), // Pour éviter la mise en cache
+        timestamp: new Date().getTime(),
         debug: true
       };
       
@@ -72,11 +72,11 @@ export const useTomeScheduler = () => {
       setIsRunning(true);
       addLog(`Démarrage ${forceGeneration ? "forcé" : "manuel"} du planificateur...`);
       
-      // TRÈS IMPORTANT: Toujours s'assurer que les paramètres sont corrects
-      // forceGeneration=true, configCheck=false pour l'exécution manuelle
+      // STANDARDISATION DES PARAMÈTRES: Toujours utiliser ces paramètres pour l'exécution
+      // que ce soit en mode manuel ou automatique
       const params = { 
-        forceGeneration: true, // Toujours forcer la génération lors de l'exécution manuelle
-        configCheck: false,    // Très important: s'assurer que configCheck est explicitement false
+        forceGeneration: true, // TOUJOURS true pour exécution (manuelle ou auto)
+        configCheck: false,    // TOUJOURS false pour exécution (manuelle ou auto)
         timestamp: new Date().getTime(),
         debug: true
       };

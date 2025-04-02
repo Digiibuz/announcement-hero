@@ -29,12 +29,14 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
   
   // Wrapper pour onForceRunScheduler qui capture les paramètres
   const handleForceRun = async () => {
-    // Paramètres corrects pour forcer l'exécution
+    // STANDARDISATION: Utiliser les paramètres corrects et identiques pour les exécutions manuelles
+    // Ces paramètres doivent correspondre à ceux utilisés dans useTomeScheduler.runScheduler
     const params = {
       forceGeneration: true,
       configCheck: false,
       timestamp: new Date().getTime(),
-      debug: true
+      debug: true,
+      requestId: `manual-${Date.now()}-${Math.random().toString(36).substring(2, 9)}` // ID unique pour traçage
     };
     
     // Afficher les paramètres dans les logs et l'état local
