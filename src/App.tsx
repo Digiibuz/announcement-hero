@@ -13,6 +13,7 @@ import Support from "@/pages/Support";
 import UserProfile from "@/pages/UserProfile";
 import WordPressManagement from "@/pages/WordPressManagement";
 import TomeManagement from "@/pages/TomeManagement";
+import { ThemeProvider } from "next-themes";
 
 // Composant pour protéger les routes qui nécessitent une authentification
 const PrivateRoute = ({ element }: { element: React.ReactNode }) => {
@@ -61,10 +62,12 @@ function AppRoutes() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppRoutes />
-      <Toaster />
-    </AuthProvider>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+      <AuthProvider>
+        <AppRoutes />
+        <Toaster />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

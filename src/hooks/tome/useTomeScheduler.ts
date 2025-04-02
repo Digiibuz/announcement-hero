@@ -1,172 +1,228 @@
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
-import { Announcement } from "@/types/announcement";
-import { useAuth } from "@/context/AuthContext";
 
 export const useTomeScheduler = () => {
-  const [isLoading, setIsLoading] = useState(false);
-  const { publishToWordPress, isPublishing, publishingState } = useWordPressPublishing();
-  const { user } = useAuth();
+  const [isRunning, setIsRunning] = useState(false);
+  const [logs, setLogs] = useState<string[]>([]);
 
-  const generateContent = async (generationId: string) => {
-    if (!generationId) {
-      toast.error("ID de génération manquant");
-      return false;
-    }
+  const addLog = useCallback((message: string) => {
+    console.log("Scheduler log:", message);
+    setLogs(prev => [...prev, message]);
+  }, []);
 
+  // Fonction pour vérifier la configuration du planificateur (sans générer de contenu)
+  const checkSchedulerConfig = async (): Promise<boolean> => {
     try {
-      setIsLoading(true);
-      
-      // Call tome-generate to create and publish content directly
-      const { data, error } = await supabase.functions.invoke('tome-generate', {
-        body: { generationId }
-      });
-      
-      if (error) {
-        console.error("Error calling tome-generate function:", error);
-        toast.error("Erreur lors de la génération et publication: " + error.message);
-        return false;
-      }
-      
-      if (!data.success) {
-        console.error("Generation failed:", data.error);
-        toast.error("Échec de la génération: " + data.error);
-        return false;
-      }
-      
-      toast.success("Contenu généré et publié avec succès");
-      return true;
-    } catch (error: any) {
-      console.error("Error generating content:", error);
-      toast.error("Erreur: " + error.message);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      setIsRunning(true);
+      addLog("Vérification de la configuration du planificateur...");
 
-  const publishContent = async (generationId: string) => {
-    if (!generationId) {
-      toast.error("ID de génération manquant");
-      return false;
-    }
-
-    try {
-      setIsLoading(true);
-      
-      console.log("Publishing content for generation ID:", generationId);
-      
-      // Fetch the generation data to get details needed for WordPress
-      const { data: generation, error: generationError } = await supabase
-        .from('tome_generations')
-        .select('*')
-        .eq('id', generationId)
-        .single();
-        
-      if (generationError || !generation) {
-        console.error("Error fetching generation:", generationError);
-        toast.error("Erreur lors de la récupération des données: " + (generationError?.message || "Génération non trouvée"));
-        return false;
-      }
-      
-      if (!generation.title || !generation.content) {
-        toast.error("Le titre et le contenu sont obligatoires pour publier");
-        return false;
-      }
-      
-      // Get the current user
-      if (!user) {
-        toast.error("Utilisateur non identifié");
-        return false;
-      }
-
-      // Get the correct WordPress config ID for the current user
-      const clientWordpressConfigId = user.wordpressConfigId;
-      
-      console.log("Client user WordPress config ID:", clientWordpressConfigId);
-      console.log("Generation WordPress config ID:", generation.wordpress_config_id);
-      
-      if (!clientWordpressConfigId) {
-        toast.error("Aucune configuration WordPress associée à cet utilisateur");
-        return false;
-      }
-      
-      // Si la configuration WordPress de l'utilisateur est différente de celle de la génération,
-      // mettre à jour la génération avec la configuration de l'utilisateur actuel
-      if (clientWordpressConfigId !== generation.wordpress_config_id) {
-        console.log("Updating generation WordPress config ID to client's config:", clientWordpressConfigId);
-        
-        const { error: updateError } = await supabase
-          .from('tome_generations')
-          .update({ wordpress_config_id: clientWordpressConfigId })
-          .eq('id', generationId);
-          
-        if (updateError) {
-          console.error("Error updating generation WordPress config:", updateError);
-          toast.error("Erreur lors de la mise à jour de la configuration WordPress");
-          return false;
+      const { data, error } = await supabase.functions.invoke('tome-scheduler', {
+        body: { 
+          configCheck: true,
+          timestamp: new Date().getTime() // Prevent caching
         }
+      });
+
+      if (error) {
+        console.error("Erreur lors de la vérification de la configuration:", error);
+        addLog(`Erreur: ${error.message || "Une erreur s'est produite"}`);
+        toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
+        return false;
+      }
+
+      console.log("Résultat de la vérification de configuration:", data);
+      
+      if (data && data.automationSettings) {
+        const settingsCount = data.automationSettings.length;
+        addLog(`Configuration validée: ${settingsCount} configuration(s) d'automatisation active(s)`);
         
-        // Update the local generation variable with the new config ID
-        generation.wordpress_config_id = clientWordpressConfigId;
+        if (settingsCount > 0) {
+          data.automationSettings.forEach((setting: any) => {
+            addLog(`Config ID: ${setting.wordpress_config_id.slice(0, 8)}... | Fréquence: ${setting.frequency} jour(s)`);
+          });
+        }
+      } else {
+        addLog("Aucune configuration d'automatisation active trouvée");
       }
       
-      // Use the same approach as announcements - with useWordPressPublishing hook
-      const currentDate = new Date().toISOString();
-      const announcement: Announcement = {
-        id: generation.id,
-        title: generation.title,
-        description: generation.content,
-        status: 'published',
-        images: [],
-        seo_title: generation.title,
-        seo_description: "",
-        user_id: user.id,
-        created_at: currentDate,
-        updated_at: currentDate,
-        wordpress_category_id: generation.category_id
-      };
+      return true;
+    } catch (error: any) {
+      console.error("Erreur dans checkSchedulerConfig:", error);
+      addLog(`Erreur: ${error.message || "Une erreur s'est produite"}`);
+      toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
+      return false;
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  // Fonction pour exécuter manuellement le planificateur
+  const runScheduler = async (forceGeneration = false): Promise<boolean> => {
+    try {
+      setIsRunning(true);
+      addLog(`Démarrage ${forceGeneration ? "forcé" : "manuel"} du planificateur...`);
+
+      // Ajout d'un timestamp aléatoire pour éviter la mise en cache de la requête
+      const timestamp = new Date().getTime();
       
-      // Crucial: nous utilisons la configuration WordPress de l'utilisateur connecté
-      const result = await publishToWordPress(
-        announcement, 
-        generation.category_id, 
-        user.id
-      );
+      const { data, error } = await supabase.functions.invoke('tome-scheduler', {
+        body: { 
+          forceGeneration, 
+          timestamp,
+          debug: true
+        }
+      });
+
+      if (error) {
+        console.error("Erreur lors de l'exécution du planificateur:", error);
+        addLog(`Erreur: ${error.message || "Une erreur s'est produite"}`);
+        toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
+        return false;
+      }
+
+      console.log("Résultat de l'exécution du planificateur:", data);
+      addLog(`Réponse du serveur: ${JSON.stringify(data)}`);
+
+      if (data && typeof data.generationsCreated === 'number') {
+        if (data.generationsCreated === 0) {
+          const message = forceGeneration 
+            ? "Aucun contenu généré. Vérifiez que des catégories et mots-clés existent." 
+            : "Aucun contenu généré. La fréquence n'est peut-être pas atteinte ou aucune configuration n'est activée.";
+          
+          addLog(message);
+          toast.info(message);
+        } else {
+          const message = `${data.generationsCreated} brouillon(s) généré(s) avec succès`;
+          addLog(message);
+          toast.success(message);
+        }
+      }
       
-      if (!result.success) {
-        console.error("Publication failed:", result.message);
-        toast.error("Échec de la publication: " + result.message);
+      if (data && data.processingDetails) {
+        data.processingDetails.forEach((detail: any) => {
+          addLog(`Traitement config ${detail.configId.slice(0, 8)}...: ${detail.result}`);
+        });
+      }
+
+      return true;
+    } catch (error: any) {
+      console.error("Erreur dans runScheduler:", error);
+      addLog(`Erreur: ${error.message || "Une erreur s'est produite"}`);
+      toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
+      return false;
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  // Fonction pour générer du contenu à partir d'une génération existante
+  const generateContent = async (generationId: string): Promise<boolean> => {
+    try {
+      setIsRunning(true);
+      addLog(`Génération de contenu pour: ${generationId.slice(0, 8)}...`);
+
+      // Ajout d'un timestamp aléatoire pour éviter la mise en cache de la requête
+      const timestamp = new Date().getTime();
+      
+      const { data, error } = await supabase.functions.invoke('tome-generate-draft', {
+        body: { 
+          generationId, 
+          timestamp,
+          debug: true
+        }
+      });
+
+      if (error) {
+        console.error("Erreur lors de la génération du contenu:", error);
+        addLog(`Erreur: ${error.message || "Une erreur s'est produite"}`);
+        toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
+        return false;
+      }
+
+      console.log("Résultat de la génération:", data);
+      addLog(`Réponse du serveur: ${JSON.stringify(data)}`);
+      
+      if (data && data.success) {
+        addLog("Contenu généré avec succès");
+        toast.success("Contenu généré avec succès");
+        return true;
+      } else if (data && data.error) {
+        addLog(`Erreur: ${data.error}`);
+        toast.error(`Erreur: ${data.error}`);
         return false;
       }
       
-      // Update the generation status in Supabase
-      await supabase
-        .from('tome_generations')
-        .update({ 
-          status: 'published',
-          wordpress_post_id: result.wordpressPostId,
-          published_at: new Date().toISOString()
-        })
-        .eq('id', generationId);
-      
-      toast.success("Contenu publié avec succès");
       return true;
     } catch (error: any) {
-      console.error("Error publishing content:", error);
-      toast.error("Erreur: " + error.message);
+      console.error("Erreur dans generateContent:", error);
+      addLog(`Erreur: ${error.message || "Une erreur s'est produite"}`);
+      toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
       return false;
     } finally {
-      setIsLoading(false);
+      setIsRunning(false);
     }
   };
+
+  // Fonction pour publier du contenu
+  const publishContent = async (generationId: string): Promise<boolean> => {
+    try {
+      setIsRunning(true);
+      addLog(`Publication de contenu pour: ${generationId.slice(0, 8)}...`);
+
+      // Ajout d'un timestamp aléatoire pour éviter la mise en cache de la requête
+      const timestamp = new Date().getTime();
+      
+      const { data, error } = await supabase.functions.invoke('tome-publish', {
+        body: { 
+          generationId, 
+          timestamp,
+          debug: true
+        }
+      });
+
+      if (error) {
+        console.error("Erreur lors de la publication du contenu:", error);
+        addLog(`Erreur: ${error.message || "Une erreur s'est produite"}`);
+        toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
+        return false;
+      }
+
+      console.log("Résultat de la publication:", data);
+      addLog(`Réponse du serveur: ${JSON.stringify(data)}`);
+
+      if (data && data.success) {
+        addLog("Contenu publié avec succès");
+        toast.success("Contenu publié avec succès");
+        return true;
+      } else {
+        addLog(`Échec de la publication: ${data?.message || "Une erreur s'est produite"}`);
+        toast.error(`Échec de la publication: ${data?.message || "Une erreur s'est produite"}`);
+        return false;
+      }
+    } catch (error: any) {
+      console.error("Erreur dans publishContent:", error);
+      addLog(`Erreur: ${error.message || "Une erreur s'est produite"}`);
+      toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
+      return false;
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  const clearLogs = useCallback(() => {
+    setLogs([]);
+  }, []);
 
   return {
-    isLoading,
+    isRunning,
+    runScheduler,
     generateContent,
-    publishContent
+    publishContent,
+    checkSchedulerConfig,
+    logs,
+    addLog,
+    clearLogs
   };
 };

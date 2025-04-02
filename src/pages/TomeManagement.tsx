@@ -9,51 +9,82 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TomeCategories from "@/components/tome/TomeCategories";
 import TomeLocalities from "@/components/tome/TomeLocalities";
 import TomePublications from "@/components/tome/TomePublications";
-import TomeSimplified from "@/components/tome/TomeSimplified";
+import TomeAutomation from "@/components/tome/TomeAutomation";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import WordPressConnectionStatus from "@/components/wordpress/WordPressConnectionStatus";
-import { AlertTriangle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Routes, Route, useNavigate } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import TomePublicationForm from "@/components/tome/TomePublicationForm";
 import TomePublicationDetail from "@/components/tome/TomePublicationDetail";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 const TomeManagement = () => {
-  const { isAdmin, user } = useAuth();
+  const {
+    isAdmin,
+    user
+  } = useAuth();
   const isClient = user?.role === "client";
-  const { configs, isLoading, fetchConfigs } = useWordPressConfigs();
+  const {
+    configs,
+    isLoading,
+    fetchConfigs
+  } = useWordPressConfigs();
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const isMobile = useMediaQuery("(max-width: 767px)");
+  
+  // Force component rerender when selectedConfigId changes
+  const [key, setKey] = useState(0);
 
   useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const configIdFromUrl = queryParams.get('configId');
+
+    if (configIdFromUrl) {
+      const configExists = configs.some(config => config.id === configIdFromUrl);
+      if (configExists) {
+        setSelectedConfigId(configIdFromUrl);
+        return;
+      }
+    }
+
     if (!isLoading && configs.length > 0 && !selectedConfigId) {
-      // Pour les clients, on sélectionne automatiquement leur configuration WordPress
       if (isClient && user?.wordpressConfigId) {
         setSelectedConfigId(user.wordpressConfigId);
       } else {
         setSelectedConfigId(configs[0].id);
       }
     }
-  }, [configs, isLoading, selectedConfigId, isClient, user]);
+  }, [configs, isLoading, selectedConfigId, isClient, user, location.search]);
 
-  // Fonction de rafraîchissement pour le bouton
+  // Handle config selection change
+  const handleConfigChange = (configId: string) => {
+    setSelectedConfigId(configId);
+    // Force rerender of child components when config changes
+    setKey(prevKey => prevKey + 1);
+    // Update the URL with the new config ID
+    const newSearchParams = new URLSearchParams(location.search);
+    newSearchParams.set('configId', configId);
+    navigate({
+      pathname: location.pathname,
+      search: newSearchParams.toString()
+    });
+  };
+
   const handleRefresh = () => {
     fetchConfigs();
     toast.success("Configurations WordPress mises à jour");
   };
 
-  // Si l'utilisateur n'est ni admin ni client, on affiche une page d'accès refusé
   if (!isAdmin && !isClient) {
-    return (
-      <PageLayout title="Tom-E">
+    return <PageLayout title="Tom-E">
         <AccessDenied />
-      </PageLayout>
-    );
+      </PageLayout>;
   }
 
   if (isLoading) {
-    return (
-      <PageLayout title="Tom-E" onRefresh={handleRefresh}>
+    return <PageLayout title="Tom-E" onRefresh={handleRefresh}>
         <AnimatedContainer delay={200}>
           <Card>
             <CardContent className="p-6">
@@ -65,13 +96,11 @@ const TomeManagement = () => {
             </CardContent>
           </Card>
         </AnimatedContainer>
-      </PageLayout>
-    );
+      </PageLayout>;
   }
 
   if (configs.length === 0) {
-    return (
-      <PageLayout title="Tom-E" onRefresh={handleRefresh}>
+    return <PageLayout title="Tom-E" onRefresh={handleRefresh}>
         <AnimatedContainer delay={200}>
           <Card>
             <CardContent className="p-6">
@@ -86,104 +115,63 @@ const TomeManagement = () => {
             </CardContent>
           </Card>
         </AnimatedContainer>
-      </PageLayout>
-    );
+      </PageLayout>;
   }
 
-  return (
-    <Routes>
-      <Route 
-        path="/" 
-        element={
-          <PageLayout 
-            title="Tom-E" 
-            onRefresh={handleRefresh}
-          >
+  return <Routes>
+      <Route path="/" element={<PageLayout title="Tom-E" onRefresh={handleRefresh}>
             <AnimatedContainer delay={200}>
-              {/* Informations sur l'état de la connexion WordPress */}
-              <div className="mb-4 flex justify-between items-center">
-                {selectedConfigId && <WordPressConnectionStatus configId={selectedConfigId} showDetails={true} />}
+              <div className="mb-4 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+                {selectedConfigId && <div className="w-full">
+                    <WordPressConnectionStatus configId={selectedConfigId} showDetails={!isMobile} />
+                  </div>}
               </div>
               
-              {/* Alerte d'information concernant le WAF */}
-              <Alert className="mb-4">
-                <AlertTriangle className="h-5 w-5" />
-                <AlertTitle>Protection anti-bot WordPress</AlertTitle>
-                <AlertDescription>
-                  Certains hébergeurs WordPress (comme o2switch) utilisent un pare-feu (WAF) qui peut bloquer 
-                  la publication automatisée. Tom-E génère vos articles et les sauvegarde pour publication manuelle.
-                </AlertDescription>
-              </Alert>
-
-              {/* Pour les clients, on ne montre pas le sélecteur de configuration */}
-              {!isClient && (
-                <div className="mb-6">
+              {!isClient && <div className="mb-6">
                   <select 
-                    className="w-full md:w-64 p-2 border rounded-md" 
-                    value={selectedConfigId || ""}
-                    onChange={(e) => setSelectedConfigId(e.target.value)}
+                    className="w-full p-2 border rounded-md bg-background" 
+                    value={selectedConfigId || ""} 
+                    onChange={e => handleConfigChange(e.target.value)}
                   >
-                    {configs.map(config => (
-                      <option key={config.id} value={config.id}>
+                    {configs.map(config => <option key={config.id} value={config.id}>
                         {config.name}
-                      </option>
-                    ))}
+                      </option>)}
                   </select>
-                </div>
-              )}
+                </div>}
 
-              {selectedConfigId && (
-                <Tabs defaultValue="publications">
-                  <TabsList className="w-full mb-6">
-                    <TabsTrigger value="publications" className="flex-1">Publications</TabsTrigger>
-                    <TabsTrigger value="categories" className="flex-1">Catégories & Mots-clés</TabsTrigger>
-                    <TabsTrigger value="localities" className="flex-1">Localités</TabsTrigger>
+              {selectedConfigId && <Tabs defaultValue="publications" key={`tabs-${key}`}>
+                  <TabsList className={`w-full mb-6 ${isMobile ? 'flex overflow-x-auto' : ''}`}>
+                    <TabsTrigger value="publications" className="flex-1 text-xs md:text-sm">Publications</TabsTrigger>
+                    {!isClient && <TabsTrigger value="automation" className="flex-1 text-xs md:text-sm">Automatisation</TabsTrigger>}
+                    <TabsTrigger value="categories" className="flex-1 text-xs md:text-sm">Catégories</TabsTrigger>
+                    <TabsTrigger value="localities" className="flex-1 text-xs md:text-sm">Localités</TabsTrigger>
                   </TabsList>
                   <TabsContent value="publications">
-                    <TomePublications configId={selectedConfigId} isClientView={isClient} />
+                    <TomePublications key={`pub-${key}-${selectedConfigId}`} configId={selectedConfigId} isClientView={isClient} />
                   </TabsContent>
+                  {!isClient && <TabsContent value="automation">
+                    <TomeAutomation key={`auto-${key}-${selectedConfigId}`} configId={selectedConfigId} />
+                  </TabsContent>}
                   <TabsContent value="categories">
-                    <TomeCategories configId={selectedConfigId} isClientView={isClient} />
+                    <TomeCategories key={`cat-${key}-${selectedConfigId}`} configId={selectedConfigId} isClientView={isClient} />
                   </TabsContent>
                   <TabsContent value="localities">
-                    <TomeLocalities configId={selectedConfigId} isClientView={isClient} />
+                    <TomeLocalities key={`loc-${key}-${selectedConfigId}`} configId={selectedConfigId} isClientView={isClient} />
                   </TabsContent>
-                </Tabs>
-              )}
+                </Tabs>}
             </AnimatedContainer>
-          </PageLayout>
-        } 
-      />
-      <Route 
-        path="/new" 
-        element={
-          <PageLayout 
-            title="Nouvelle publication" 
-            onBack={() => navigate("/tome")}
-          >
+          </PageLayout>} />
+      <Route path="/new" element={<PageLayout title="Nouvelle publication" onBack={() => navigate("/tome")}>
             <AnimatedContainer delay={200}>
-              {selectedConfigId && (
-                <TomeSimplified configId={selectedConfigId} isClientView={isClient} />
-              )}
+              {selectedConfigId && <TomePublicationForm configId={selectedConfigId} isClientView={isClient} />}
             </AnimatedContainer>
-          </PageLayout>
-        } 
-      />
-      <Route 
-        path="/:id" 
-        element={
-          <PageLayout 
-            title="Détail de la publication" 
-            onBack={() => navigate("/tome")}
-          >
+          </PageLayout>} />
+      <Route path="/:id" element={<PageLayout title="Détail de la publication" onBack={() => navigate("/tome")}>
             <AnimatedContainer delay={200}>
               <TomePublicationDetail />
             </AnimatedContainer>
-          </PageLayout>
-        } 
-      />
-    </Routes>
-  );
+          </PageLayout>} />
+    </Routes>;
 };
 
 export default TomeManagement;

@@ -30,7 +30,7 @@ export interface TomeGeneration {
   wordpress_post_id: number | null;
   title: string | null;
   content: string | null;
-  description: string | null; // Added missing description property
+  description: string | null;
   error_message: string | null;
   // These are derived properties that can be added at runtime
   wordpress_site_url?: string | null;
@@ -40,14 +40,14 @@ export interface TomeGeneration {
   locality_region?: string | null;
 }
 
-// Added missing DipiCptCategory interface
 export interface DipiCptCategory {
-  id: string | number;
+  id: string;
   name: string;
-  slug?: string;
-  description?: string;
-  count?: number;
+  count: number;
+  description: string;
+  slug: string;
+  taxonomy: string;
+  parent: number;
+  meta: any[];
   link?: string;
-  parent?: number;
-  meta?: any[];
 }
