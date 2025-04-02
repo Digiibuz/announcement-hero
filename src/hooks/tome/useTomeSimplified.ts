@@ -181,23 +181,80 @@ export const useTomeSimplified = (configId: string | null) => {
       // Appeler la fonction Edge pour générer le contenu
       console.log("Invoking tome-generate with generation ID:", data.id);
       
-      const { data: genData, error: genError } = await supabase.functions.invoke('tome-generate-simplified', {
-        body: { 
-          generationId: data.id,
-          userId: user.id 
-        }
-      });
-      
-      if (genError) {
-        console.error("Error invoking tome-generate-simplified:", genError);
-        toast.error("Erreur lors de la génération: " + genError.message);
+      try {
+        const { data: genData, error: genError } = await supabase.functions.invoke('tome-generate-simplified', {
+          body: { 
+            generationId: data.id,
+            userId: user.id 
+          }
+        });
         
-        // Mettre à jour le statut
+        if (genError) {
+          console.error("Error invoking tome-generate-simplified:", genError);
+          toast.error("Erreur lors de la génération: " + genError.message);
+          
+          // Mettre à jour le statut
+          await supabase
+            .from("tome_generations")
+            .update({ 
+              status: "failed",
+              error_message: "Erreur lors de l'appel à la fonction de génération: " + genError.message
+            })
+            .eq("id", data.id);
+            
+          setGenerations(prev => 
+            prev.map(gen => 
+              gen.id === data.id 
+                ? { 
+                    ...gen, 
+                    status: 'failed',
+                    error_message: "Erreur lors de l'appel à la fonction de génération: " + genError.message
+                  } 
+                : gen
+            )
+          );
+          
+          return false;
+        }
+        
+        if (genData && genData.error) {
+          console.error("Generation API returned error:", genData.error);
+          toast.error("Erreur lors de la génération: " + genData.error);
+          
+          await supabase
+            .from("tome_generations")
+            .update({ 
+              status: "failed",
+              error_message: genData.error
+            })
+            .eq("id", data.id);
+            
+          setGenerations(prev => 
+            prev.map(gen => 
+              gen.id === data.id 
+                ? { ...gen, status: 'failed', error_message: genData.error } 
+                : gen
+            )
+          );
+          
+          return false;
+        }
+        
+        console.log("Generation initiated successfully:", genData);
+        
+        // Rafraîchir les données pour obtenir la version mise à jour
+        fetchGenerations();
+        
+        return true;
+      } catch (invocationError: any) {
+        console.error("Exception caught during function invocation:", invocationError);
+        
+        // Mettre à jour le statut en cas d'exception
         await supabase
           .from("tome_generations")
           .update({ 
             status: "failed",
-            error_message: "Erreur lors de l'appel à la fonction de génération: " + genError.message
+            error_message: "Exception lors de l'appel à la fonction: " + (invocationError.message || "Erreur inconnue")
           })
           .eq("id", data.id);
           
@@ -207,44 +264,15 @@ export const useTomeSimplified = (configId: string | null) => {
               ? { 
                   ...gen, 
                   status: 'failed',
-                  error_message: "Erreur lors de l'appel à la fonction de génération: " + genError.message
+                  error_message: "Exception lors de l'appel à la fonction: " + (invocationError.message || "Erreur inconnue")
                 } 
               : gen
           )
         );
         
+        toast.error(`Erreur lors de l'appel à la fonction: ${invocationError.message || "Erreur inconnue"}`);
         return false;
       }
-      
-      if (genData && genData.error) {
-        console.error("Generation API returned error:", genData.error);
-        toast.error("Erreur lors de la génération: " + genData.error);
-        
-        await supabase
-          .from("tome_generations")
-          .update({ 
-            status: "failed",
-            error_message: genData.error
-          })
-          .eq("id", data.id);
-          
-        setGenerations(prev => 
-          prev.map(gen => 
-            gen.id === data.id 
-              ? { ...gen, status: 'failed', error_message: genData.error } 
-              : gen
-          )
-        );
-        
-        return false;
-      }
-      
-      console.log("Generation initiated successfully:", genData);
-      
-      // Rafraîchir les données pour obtenir la version mise à jour
-      fetchGenerations();
-      
-      return true;
     } catch (error: any) {
       console.error("Error in createGeneration:", error);
       toast.error(`Erreur: ${error.message || "Erreur inconnue"}`);

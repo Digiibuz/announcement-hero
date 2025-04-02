@@ -81,186 +81,209 @@ serve(async (req) => {
 
     console.log("Found WordPress config:", wpConfig.name);
 
-    // Get category name
-    const { data: category, error: categoryError } = await supabase
-      .from('categories_keywords')
-      .select('category_name')
-      .eq('id', generation.category_id)
-      .single();
-
-    if (categoryError) {
-      console.log('Error fetching category:', categoryError.message);
-      throw new Error('Catégorie non trouvée');
-    }
-
-    const categoryName = category?.category_name || 'Non spécifiée';
-    
-    // Get keyword data
-    let keyword = null;
-    if (generation.keyword_id) {
-      const { data: keywordData, error: keywordError } = await supabase
-        .from('categories_keywords')
-        .select('keyword')
-        .eq('id', generation.keyword_id)
-        .single();
-        
-      if (!keywordError && keywordData) {
-        keyword = keywordData.keyword;
-      }
-    }
-
-    // Get locality data
-    let localityName = null;
-    let localityRegion = null;
-    if (generation.locality_id) {
-      const { data: locality, error: localityError } = await supabase
-        .from('localities')
-        .select('name, region')
-        .eq('id', generation.locality_id)
-        .single();
-
-      if (!localityError && locality) {
-        localityName = locality.name;
-        localityRegion = locality.region;
-      }
-    }
-
-    // Format the prompt
-    let prompt = "Vous êtes un expert en rédaction de contenu SEO optimisé pour le web.";
-    
-    if (wpConfig.prompt) {
-      prompt = wpConfig.prompt;
-    }
-    
-    prompt += "\n\nVeuillez créer un contenu optimisé pour une page web sur le sujet suivant:";
-    prompt += `\n- Catégorie: ${categoryName}`;
-    
-    if (keyword) {
-      prompt += `\n- Mot-clé principal: ${keyword}`;
-    }
-    
-    if (localityName) {
-      prompt += `\n- Localité: ${localityName}`;
-      if (localityRegion) {
-        prompt += ` (${localityRegion})`;
-      }
-    }
-    
-    prompt += "\n\nLe contenu doit:";
-    prompt += "\n- Être optimisé pour le SEO";
-    prompt += "\n- Contenir entre 600 et 900 mots";
-    prompt += "\n- Inclure un titre H1 accrocheur";
-    prompt += "\n- Avoir une structure avec des sous-titres H2 et H3";
-    prompt += "\n- Être écrit en français courant";
-    
-    if (localityName) {
-      prompt += `\n- Être localisé pour ${localityName}`;
-      if (localityRegion) {
-        prompt += ` dans la région ${localityRegion}`;
-      }
-    }
-    
-    prompt += "\n\nFormat souhaité: HTML avec balises pour les titres (h1, h2, h3), paragraphes (p) et listes (ul, li).";
-    
-    console.log("Prompt prepared, calling OpenAI...");
-    
-    // Generate content with OpenAI
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: 'Vous êtes un expert en rédaction web SEO qui génère du contenu HTML optimisé.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        max_tokens: 1500,
-        temperature: 0.7,
-      }),
-    });
-
-    if (!openaiResponse.ok) {
-      const errorText = await openaiResponse.text();
-      throw new Error(`OpenAI API error: ${openaiResponse.status} - ${errorText}`);
-    }
-
-    const completion = await openaiResponse.json();
-    
-    if (!completion.choices || completion.choices.length === 0) {
-      throw new Error('Failed to generate content with OpenAI');
-    }
-    
-    console.log("Content generated from OpenAI");
-    
-    const generatedContent = completion.choices[0].message.content;
-    
-    // Extract title from the generated content
-    let title = "Nouveau contenu généré";
-    const titleMatch = generatedContent.match(/<h1[^>]*>(.*?)<\/h1>/i);
-    if (titleMatch && titleMatch[1]) {
-      title = titleMatch[1].replace(/<[^>]*>/g, '').trim();
-    }
-
-    // Approche simplifiée similaire aux annonces
+    // Get category name - FIX: Uses text category_id, not UUID
     try {
-      console.log("Preparing WordPress publication data");
+      let categoryName = "Non spécifiée";
       
-      // Obtenir les données de profil de l'utilisateur
-      const { data: userProfile, error: userProfileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      // Si category_id est un nombre ou un texte (pas un UUID), il s'agit peut-être d'un ID WordPress direct
+      if (generation.category_id && !generation.category_id.includes('-')) {
+        // Essayer de récupérer depuis categories_keywords en utilisant la correspondance exacte sur category_id
+        const { data: categoryData } = await supabase
+          .from('categories_keywords')
+          .select('category_name')
+          .eq('category_id', generation.category_id)
+          .eq('wordpress_config_id', generation.wordpress_config_id)
+          .maybeSingle();
+          
+        if (categoryData) {
+          categoryName = categoryData.category_name;
+        } else {
+          // Utiliser l'ID directement comme nom de catégorie si on ne trouve pas de correspondance
+          categoryName = `Catégorie ${generation.category_id}`;
+        }
+      } else {
+        // C'est probablement un UUID, on essaie avec l'approche originale
+        const { data: category, error: categoryError } = await supabase
+          .from('categories_keywords')
+          .select('category_name')
+          .eq('id', generation.category_id)
+          .maybeSingle();
         
-      if (userProfileError) {
-        throw new Error('Profil utilisateur non trouvé: ' + userProfileError.message);
+        if (category) {
+          categoryName = category.category_name;
+        }
       }
       
-      // Préparer les données pour WordPress en utilisant une approche similaire aux annonces
-      const wpPostData = {
-        title: title,
-        content: generatedContent,
-        status: 'publish',
-        categoryId: generation.category_id
-      };
+      // Get keyword data
+      let keyword = null;
+      if (generation.keyword_id) {
+        const { data: keywordData, error: keywordError } = await supabase
+          .from('categories_keywords')
+          .select('keyword')
+          .eq('id', generation.keyword_id)
+          .maybeSingle();
+          
+        if (!keywordError && keywordData) {
+          keyword = keywordData.keyword;
+        }
+      }
+
+      // Get locality data
+      let localityName = null;
+      let localityRegion = null;
+      if (generation.locality_id) {
+        const { data: locality, error: localityError } = await supabase
+          .from('localities')
+          .select('name, region')
+          .eq('id', generation.locality_id)
+          .maybeSingle();
+
+        if (!localityError && locality) {
+          localityName = locality.name;
+          localityRegion = locality.region;
+        }
+      }
+
+      // Format the prompt
+      let prompt = "Vous êtes un expert en rédaction de contenu SEO optimisé pour le web.";
       
-      console.log("Updating generation with content");
+      if (wpConfig.prompt) {
+        prompt = wpConfig.prompt;
+      }
       
-      // Mettre à jour la génération avec le contenu généré
-      await supabase
-        .from('tome_generations')
-        .update({ 
+      prompt += "\n\nVeuillez créer un contenu optimisé pour une page web sur le sujet suivant:";
+      prompt += `\n- Catégorie: ${categoryName}`;
+      
+      if (keyword) {
+        prompt += `\n- Mot-clé principal: ${keyword}`;
+      }
+      
+      if (localityName) {
+        prompt += `\n- Localité: ${localityName}`;
+        if (localityRegion) {
+          prompt += ` (${localityRegion})`;
+        }
+      }
+      
+      prompt += "\n\nLe contenu doit:";
+      prompt += "\n- Être optimisé pour le SEO";
+      prompt += "\n- Contenir entre 600 et 900 mots";
+      prompt += "\n- Inclure un titre H1 accrocheur";
+      prompt += "\n- Avoir une structure avec des sous-titres H2 et H3";
+      prompt += "\n- Être écrit en français courant";
+      
+      if (localityName) {
+        prompt += `\n- Être localisé pour ${localityName}`;
+        if (localityRegion) {
+          prompt += ` dans la région ${localityRegion}`;
+        }
+      }
+      
+      prompt += "\n\nFormat souhaité: HTML avec balises pour les titres (h1, h2, h3), paragraphes (p) et listes (ul, li).";
+      
+      console.log("Prompt prepared, calling OpenAI...");
+      
+      // Generate content with OpenAI
+      const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [
+            {
+              role: 'system',
+              content: 'Vous êtes un expert en rédaction web SEO qui génère du contenu HTML optimisé.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          max_tokens: 1500,
+          temperature: 0.7,
+        }),
+      });
+
+      if (!openaiResponse.ok) {
+        const errorText = await openaiResponse.text();
+        throw new Error(`OpenAI API error: ${openaiResponse.status} - ${errorText}`);
+      }
+
+      const completion = await openaiResponse.json();
+      
+      if (!completion.choices || completion.choices.length === 0) {
+        throw new Error('Failed to generate content with OpenAI');
+      }
+      
+      console.log("Content generated from OpenAI");
+      
+      const generatedContent = completion.choices[0].message.content;
+      
+      // Extract title from the generated content
+      let title = "Nouveau contenu généré";
+      const titleMatch = generatedContent.match(/<h1[^>]*>(.*?)<\/h1>/i);
+      if (titleMatch && titleMatch[1]) {
+        title = titleMatch[1].replace(/<[^>]*>/g, '').trim();
+      }
+
+      // Approche simplifiée similaire aux annonces
+      try {
+        console.log("Preparing WordPress publication data");
+        
+        // Obtenir les données de profil de l'utilisateur
+        const { data: userProfile, error: userProfileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+          
+        if (userProfileError) {
+          throw new Error('Profil utilisateur non trouvé: ' + userProfileError.message);
+        }
+        
+        // Préparer les données pour WordPress en utilisant une approche similaire aux annonces
+        const wpPostData = {
           title: title,
           content: generatedContent,
-          status: 'ready', // Prêt à être publié manuellement
-          published_at: null // Sera mis à jour à la publication
-        })
-        .eq('id', generationId);
-      
-      // Retourner une réponse réussie
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: 'Contenu généré avec succès',
-          generationId
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
-      );
-    } catch (wpError) {
-      console.error("WordPress preparation error:", wpError);
-      throw wpError;
+          status: 'publish',
+          categoryId: generation.category_id
+        };
+        
+        console.log("Updating generation with content");
+        
+        // Mettre à jour la génération avec le contenu généré
+        await supabase
+          .from('tome_generations')
+          .update({ 
+            title: title,
+            content: generatedContent,
+            status: 'ready', // Prêt à être publié manuellement
+            published_at: null // Sera mis à jour à la publication
+          })
+          .eq('id', generationId);
+        
+        // Retourner une réponse réussie
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: 'Contenu généré avec succès',
+            generationId
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        );
+      } catch (wpError) {
+        console.error("WordPress preparation error:", wpError);
+        throw wpError;
+      }
+    } catch (categoryError) {
+      console.error("Error processing category:", categoryError);
+      throw new Error("Erreur lors du traitement de la catégorie: " + categoryError.message);
     }
     
   } catch (error) {
