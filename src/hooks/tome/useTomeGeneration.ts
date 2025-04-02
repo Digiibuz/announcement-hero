@@ -7,6 +7,9 @@ import { format } from "date-fns";
 
 interface ExtendedTomeGeneration extends TomeGeneration {
   error_message?: string | null;
+  title?: string | null;
+  content?: string | null;
+  wordpress_site_url?: string | null;
 }
 
 export const useTomeGeneration = (configId: string | null) => {
@@ -28,7 +31,13 @@ export const useTomeGeneration = (configId: string | null) => {
       setIsLoading(true);
       const { data, error } = await supabase
         .from("tome_generations")
-        .select("*")
+        .select(`
+          *,
+          category:categories_keywords!tome_generations_category_id_fkey(category_name),
+          keyword:categories_keywords(keyword),
+          locality:localities(name, region),
+          wordpress_config:wordpress_configs(site_url)
+        `)
         .eq("wordpress_config_id", configId)
         .order("created_at", { ascending: false });
 
@@ -38,7 +47,12 @@ export const useTomeGeneration = (configId: string | null) => {
         return;
       }
 
-      const typedData = data as ExtendedTomeGeneration[];
+      // Transformer les données pour inclure l'URL du site WordPress
+      const typedData = data.map(item => ({
+        ...item,
+        wordpress_site_url: item.wordpress_config?.site_url
+      })) as ExtendedTomeGeneration[];
+      
       setGenerations(typedData);
       
       // Identify generations that are in progress
@@ -49,10 +63,13 @@ export const useTomeGeneration = (configId: string | null) => {
       // Update polling list
       setPollingGenerations(pendingIds);
       
-      // Fetch content for completed generations
+      // Fetch content for completed generations with content field
       for (const generation of typedData) {
-        if (generation.status === 'published' && generation.wordpress_post_id) {
-          fetchGeneratedContent(generation.id, generation.wordpress_post_id);
+        if (generation.content) {
+          setGeneratedContent(prev => ({
+            ...prev,
+            [generation.id]: generation.content
+          }));
         }
       }
     } catch (error: any) {
@@ -157,7 +174,10 @@ export const useTomeGeneration = (configId: string | null) => {
     categoryId: string,
     keyword: CategoryKeyword | null,
     locality: Locality | null,
-    scheduleDate: Date | null
+    scheduleDate: Date | null,
+    title?: string,
+    description?: string,
+    status: 'pending' | 'draft' | 'scheduled' = 'pending'
   ) => {
     if (!configId) return false;
 
@@ -171,14 +191,20 @@ export const useTomeGeneration = (configId: string | null) => {
       const keywordId = keyword?.id === "none" ? null : keyword?.id || null;
       const localityId = locality?.id === "none" ? null : locality?.id || null;
       
+      // Statut déterminé par les paramètres ou la planification
+      const effectiveStatus = isScheduled ? "scheduled" : status;
+      
       const newGeneration = {
         wordpress_config_id: configId,
         category_id: categoryId,
         keyword_id: keywordId,
         locality_id: localityId,
-        status: isScheduled ? "scheduled" : "pending",
+        status: effectiveStatus,
         scheduled_at: formattedDate,
-        error_message: null // Initialiser le champ d'erreur
+        error_message: null,
+        title: title || null,
+        content: effectiveStatus === "draft" ? "" : null,
+        description: description || null
       };
 
       const { data, error } = await supabase
@@ -193,10 +219,79 @@ export const useTomeGeneration = (configId: string | null) => {
         return false;
       }
 
-      setGenerations([data as ExtendedTomeGeneration, ...generations]);
+      const newData = data as ExtendedTomeGeneration;
+      setGenerations([newData, ...generations]);
       
-      // Si ce n'est pas planifié, lancer la génération immédiate
-      if (!isScheduled) {
+      // Si c'est un brouillon, générer le contenu sans publier
+      if (effectiveStatus === "draft") {
+        toast.info("Génération du contenu en cours. Cela peut prendre quelques minutes.", { 
+          duration: 5000
+        });
+        
+        // Appeler la fonction edge pour démarrer la génération sans publication
+        const { data: genData, error: genError } = await supabase.functions.invoke('tome-generate-draft', {
+          body: { 
+            generationId: data.id,
+            skipPublishing: true
+          }
+        });
+        
+        if (genError) {
+          console.error("Error triggering generation:", genError);
+          toast.error("Erreur lors du démarrage de la génération: " + genError.message);
+          return false;
+        } else if (genData && genData.error) {
+          console.error("Generation API returned error:", genData.error);
+          toast.error("Erreur lors de la génération: " + genData.error);
+          
+          // Mettre à jour le statut avec l'erreur
+          await supabase
+            .from("tome_generations")
+            .update({ 
+              status: "failed",
+              error_message: genData.error
+            })
+            .eq("id", data.id);
+            
+          // Mettre à jour la génération locale
+          setGenerations(prev => 
+            prev.map(gen => 
+              gen.id === data.id 
+                ? { ...gen, status: 'failed', error_message: genData.error } 
+                : gen
+            )
+          );
+          
+          return false;
+        } else if (genData && genData.success) {
+          // Mettre à jour la génération locale avec le contenu généré
+          setGenerations(prev => 
+            prev.map(gen => 
+              gen.id === data.id 
+                ? { 
+                    ...gen, 
+                    status: 'draft',
+                    title: genData.title || gen.title,
+                    content: genData.content || gen.content
+                  } 
+                : gen
+            )
+          );
+          
+          // Mettre à jour dans Supabase
+          await supabase
+            .from("tome_generations")
+            .update({ 
+              status: "draft",
+              title: genData.title || title,
+              content: genData.content
+            })
+            .eq("id", data.id);
+            
+          toast.success("Brouillon créé avec succès");
+        }
+      } else if (!isScheduled) {
+        // Pour les générations immédiates
         toast.info("Génération lancée. Cela peut prendre plusieurs minutes. Le statut sera mis à jour automatiquement.", { 
           duration: 5000
         });
@@ -230,6 +325,8 @@ export const useTomeGeneration = (configId: string | null) => {
                 : gen
             )
           );
+          
+          return false;
         } else {
           // Add to polling list
           setPollingGenerations(prev => [...prev, data.id]);
