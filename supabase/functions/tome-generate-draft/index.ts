@@ -170,8 +170,8 @@ serve(async (req) => {
     
     // If status is 'pending', publish directly to WordPress
     if (generation.status === 'pending') {
-      // Update the generation with content and title
-      await supabase
+      // Update the generation with content and title first
+      const { error: updateError } = await supabase
         .from('tome_generations')
         .update({ 
           title: title,
@@ -179,27 +179,55 @@ serve(async (req) => {
         })
         .eq('id', generationId);
       
-      // Call the tome-publish function to publish to WordPress
-      const publishResponse = await supabase.functions.invoke('tome-publish', {
-        body: { generationId: generationId }
-      });
-      
-      if (publishResponse.error) {
-        console.error("Error publishing to WordPress:", publishResponse.error);
-        throw new Error("Error publishing to WordPress: " + publishResponse.error.message);
+      if (updateError) {
+        console.error("Error updating generation with content:", updateError);
+        throw new Error("Error updating generation: " + updateError.message);
       }
       
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: 'Content generated and published successfully',
-          generationId
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
+      try {
+        // Call the tome-publish function to publish to WordPress
+        console.log("Calling tome-publish for generation ID:", generationId);
+        const { data: publishData, error: publishError } = await supabase.functions.invoke('tome-publish', {
+          body: { generationId }
+        });
+        
+        if (publishError) {
+          console.error("Error invoking tome-publish function:", publishError);
+          throw new Error("Error publishing to WordPress: " + publishError.message);
         }
-      );
+        
+        if (!publishData.success) {
+          console.error("Publishing failed:", publishData.error);
+          throw new Error("Publishing failed: " + (publishData.error || "Unknown error"));
+        }
+        
+        console.log("Publishing successful, WordPress post ID:", publishData.wordpressPostId);
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: 'Content generated and published successfully',
+            generationId,
+            wordpressPostId: publishData.wordpressPostId
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        );
+      } catch (publishError) {
+        console.error("Error in publishing process:", publishError);
+        
+        // If publishing fails, mark generation as draft so user can try again
+        await supabase
+          .from('tome_generations')
+          .update({ 
+            status: 'draft'
+          })
+          .eq('id', generationId);
+        
+        throw new Error("Publishing failed: " + publishError.message);
+      }
     } else {
       // If not pending, just save as draft (previous behavior)
       await supabase

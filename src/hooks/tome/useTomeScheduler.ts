@@ -29,13 +29,13 @@ export const useTomeScheduler = () => {
       
       if (draftError) {
         console.error("Error calling tome-generate-draft function:", draftError);
-        toast.error("Erreur lors de la génération du brouillon: " + draftError.message);
+        toast.error("Erreur lors de la génération du contenu: " + draftError.message);
         return false;
       }
       
-      if (!draftData.success) {
-        console.error("Draft generation failed:", draftData.error);
-        toast.error("Échec de la génération du brouillon: " + draftData.error);
+      if (!draftData || !draftData.success) {
+        console.error("Content generation failed:", draftData?.error || "Unknown error");
+        toast.error("Échec de la génération: " + (draftData?.error || "Erreur inconnue"));
         return false;
       }
       
