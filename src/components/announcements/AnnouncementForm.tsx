@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -46,7 +47,7 @@ const AnnouncementForm = ({
     description: "",
     wordpressCategory: "",
     publishDate: undefined,
-    status: "published",
+    status: "published", // Fixed: Now explicitly using a literal type value
     images: [],
     seoTitle: "",
     seoDescription: "",
@@ -57,6 +58,7 @@ const AnnouncementForm = ({
     defaultValues: initialValues || defaultValues
   });
 
+  // Update form values when initialValues changes
   useEffect(() => {
     if (initialValues) {
       Object.keys(initialValues).forEach((key) => {
@@ -79,10 +81,16 @@ const AnnouncementForm = ({
 
   useEffect(() => {
     if (title) {
+      // Generate slug from title
       const normalizedTitle = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
       setValue("seoSlug", normalizedTitle);
+      
+      // Fix: Set the full title as seoTitle rather than just first letter
+      if (!form.getValues("seoTitle") || form.getValues("seoTitle") === "") {
+        setValue("seoTitle", title);
+      }
     }
-  }, [title, setValue]);
+  }, [title, setValue, form]);
 
   const optimizeSeoContent = async (field: 'seoTitle' | 'seoDescription') => {
     try {

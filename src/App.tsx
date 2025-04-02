@@ -1,70 +1,190 @@
 
-import { Route, Routes, Navigate, useLocation } from "react-router-dom";
-import { Toaster } from "@/components/ui/toaster";
-import Login from "@/pages/Login";
-import Dashboard from "@/pages/Dashboard";
-import { AuthProvider, useAuth } from "@/context/AuthContext";
-import NotFound from "@/pages/NotFound";
-import UserManagement from "@/pages/UserManagement";
-import Announcements from "@/pages/Announcements";
-import CreateAnnouncement from "@/pages/CreateAnnouncement";
-import AnnouncementDetail from "@/pages/AnnouncementDetail";
-import Support from "@/pages/Support";
-import UserProfile from "@/pages/UserProfile";
-import WordPressManagement from "@/pages/WordPressManagement";
-import TomeManagement from "@/pages/TomeManagement";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { Toaster as UIToaster } from "@/components/ui/toaster";
+import { Toaster as SonnerToaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "next-themes";
+import { Suspense, lazy, useEffect } from 'react';
 
-// Composant pour protéger les routes qui nécessitent une authentification
-const PrivateRoute = ({ element }: { element: React.ReactNode }) => {
+// Lazy loading des pages pour améliorer les performances
+const Login = lazy(() => import("./pages/Login"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const CreateAnnouncement = lazy(() => import("./pages/CreateAnnouncement"));
+const Announcements = lazy(() => import("./pages/Announcements"));
+const AnnouncementDetail = lazy(() => import("./pages/AnnouncementDetail"));
+const UserManagement = lazy(() => import("./pages/UserManagement"));
+const WordPressManagement = lazy(() => import("./pages/WordPressManagement"));
+const UserProfile = lazy(() => import("./pages/UserProfile"));
+const Support = lazy(() => import("./pages/Support"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+
+// Composant de chargement
+const LoadingFallback = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    Chargement...
+  </div>
+);
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Configurer React Query pour éviter les requêtes inutiles
+      refetchOnWindowFocus: false,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    },
+  },
+});
+
+// Protected route component with improved memory
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
-  
-  // Pendant le chargement, ne rien afficher pour éviter un flash de redirection
+
+  // Store current location in session storage to survive tab changes
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      sessionStorage.setItem('lastAuthenticatedPath', location.pathname);
+    }
+  }, [location.pathname, isAuthenticated, isLoading]);
+
   if (isLoading) {
-    return null;
+    return <LoadingFallback />;
   }
-  
-  // Si l'utilisateur n'est pas authentifié, rediriger vers la page de connexion
-  // en conservant l'URL d'origine pour pouvoir y revenir après connexion
+
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" replace />;
   }
-  
-  // Si l'utilisateur est authentifié, afficher le composant demandé
-  return <>{element}</>;
+
+  return <>{children}</>;
 };
 
-function AppRoutes() {
-  return (
-    <Routes>
-      {/* Routes publiques */}
-      <Route path="/login" element={<Login />} />
-      
-      {/* Routes protégées - nécessitent une authentification */}
-      <Route path="/" element={<PrivateRoute element={<Dashboard />} />} />
-      <Route path="/dashboard" element={<Navigate to="/" replace />} />
-      <Route path="/users" element={<PrivateRoute element={<UserManagement />} />} />
-      <Route path="/announcements" element={<PrivateRoute element={<Announcements />} />} />
-      <Route path="/announcements/create" element={<PrivateRoute element={<CreateAnnouncement />} />} />
-      <Route path="/announcements/:id" element={<PrivateRoute element={<AnnouncementDetail />} />} />
-      <Route path="/support" element={<PrivateRoute element={<Support />} />} />
-      <Route path="/profile" element={<PrivateRoute element={<UserProfile />} />} />
-      <Route path="/wordpress" element={<PrivateRoute element={<WordPressManagement />} />} />
-      <Route path="/tome/*" element={<PrivateRoute element={<TomeManagement />} />} />
-      <Route path="/create" element={<Navigate to="/announcements/create" replace />} />
-      
-      {/* Route par défaut - page non trouvée */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  );
-}
+// Admin only route component with improved state persistence
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isLoading, isAdmin, isClient } = useAuth();
+  const location = useLocation();
 
+  // Enhanced admin route persistence
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      if (isAdmin || isClient) {
+        console.log("Saving admin path:", location.pathname);
+        sessionStorage.setItem('lastAdminPath', location.pathname);
+      }
+    }
+  }, [location.pathname, isAuthenticated, isAdmin, isClient, isLoading]);
+
+  if (isLoading) {
+    return <LoadingFallback />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Autoriser l'accès aux utilisateurs admin et client
+  if (!isAdmin && !isClient) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+// Contents of AppRoutes moved directly into App component to avoid
+// AuthProvider context issues and fix the useAuth error
 function App() {
   return (
-    <AuthProvider>
-      <AppRoutes />
-      <Toaster />
-    </AuthProvider>
+    <BrowserRouter>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <TooltipProvider>
+              <Suspense fallback={<LoadingFallback />}>
+                <Routes>
+                  {/* Redirect root to login */}
+                  <Route path="/" element={<Navigate to="/login" replace />} />
+                  <Route path="/login" element={<Login />} />
+                  
+                  {/* Protected routes */}
+                  <Route 
+                    path="/dashboard" 
+                    element={
+                      <ProtectedRoute>
+                        <Dashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/announcements" 
+                    element={
+                      <ProtectedRoute>
+                        <Announcements />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/announcements/:id" 
+                    element={
+                      <ProtectedRoute>
+                        <AnnouncementDetail />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/create" 
+                    element={
+                      <ProtectedRoute>
+                        <CreateAnnouncement />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/profile" 
+                    element={
+                      <ProtectedRoute>
+                        <UserProfile />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/support" 
+                    element={
+                      <ProtectedRoute>
+                        <Support />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  
+                  {/* Admin/Client only routes */}
+                  <Route 
+                    path="/users" 
+                    element={
+                      <AdminRoute>
+                        <UserManagement />
+                      </AdminRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/wordpress" 
+                    element={
+                      <AdminRoute>
+                        <WordPressManagement />
+                      </AdminRoute>
+                    } 
+                  />
+                  
+                  {/* Fallback route */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                <SonnerToaster />
+                <UIToaster />
+              </Suspense>
+            </TooltipProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </BrowserRouter>
   );
 }
 
