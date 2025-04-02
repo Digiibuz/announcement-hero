@@ -1,5 +1,46 @@
 
 project_id = "rdwqedmvzicerwotjseg"
 
-[functions.tome-scheduler]
-verify_jwt = false
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[realtime]
+enabled = true
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://localhost"
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+
+[auth]
+enabled = true
+
+[auth.email]
+enable_confirmations = false
+
+[auth.sms]
+# SMS auth settings
+
+[analytics]
+enabled = false
+port = 54327
+vector_port = 54328
+backend = "postgres"
+
+[functions]
+[functions.tome-generate-simplified]
+verify_jwt = true
