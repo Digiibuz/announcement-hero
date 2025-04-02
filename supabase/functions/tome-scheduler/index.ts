@@ -331,13 +331,17 @@ async function queueDraftGeneration(supabase, generationId, debug = false) {
       
     debugLog(`Appel de tome-generate-draft pour la génération ${generationId}`);
     
-    // Make the API call to the draft generation function
+    // Make the API call to the draft generation function with explicit timestamp and debug parameters
+    const requestBody = { 
+      generationId,
+      timestamp: new Date().getTime(),
+      debug: true  // Always enable debug mode for better traceability
+    };
+    
+    debugLog(`Paramètres d'appel à tome-generate-draft:`, requestBody);
+    
     const { data, error } = await supabase.functions.invoke('tome-generate-draft', {
-      body: { 
-        generationId,
-        timestamp: new Date().getTime(),
-        debug
-      }
+      body: requestBody
     });
     
     if (error) {
@@ -346,6 +350,7 @@ async function queueDraftGeneration(supabase, generationId, debug = false) {
       return false;
     }
     
+    debugLog(`Réponse de tome-generate-draft:`, data);
     debugLog(`Brouillon généré avec succès pour ${generationId}`);
     return true;
   } catch (error) {
