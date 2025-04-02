@@ -1,5 +1,0 @@
-
-project_id = "rdwqedmvzicerwotjseg"
-
-[functions.tome-scheduler.triggers]
-crons = ["0 * * * *"]

@@ -1,301 +1,282 @@
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
+import React from "react";
+import { useForm } from "react-hook-form";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { SaveIcon, Loader2 } from "lucide-react";
-import { WordPressConfig } from '@/types/wordpress';
-import { Separator } from '@/components/ui/separator';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Loader2 } from "lucide-react";
+import { WordPressConfig } from "@/types/wordpress";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 
 interface WordPressConfigFormProps {
-  onSubmit: (data: any) => Promise<void>;
-  initialData?: WordPressConfig;
-  isLoading?: boolean;
-  // Added the new props that were missing
-  config?: WordPressConfig;
+  initialConfig?: Partial<WordPressConfig>;
+  config?: WordPressConfig; // Add config prop as an alternative to initialConfig
+  onSubmit: (data: any) => void;
+  isSubmitting?: boolean;
   buttonText?: string;
   dialogTitle?: string;
   dialogDescription?: string;
-  isSubmitting?: boolean;
   trigger?: React.ReactNode;
 }
 
-const WordPressConfigForm: React.FC<WordPressConfigFormProps> = ({ 
-  onSubmit, 
-  initialData,
-  config,  // Added new prop
-  isLoading = false,
-  isSubmitting = false, // Added new prop with default
-  buttonText = "Enregistrer", // Added new prop with default
-  dialogTitle = "Configuration WordPress", // Added new prop with default
-  dialogDescription, // Added new prop
-  trigger // Added new prop
-}) => {
-  const [formData, setFormData] = useState({
-    name: '',
-    site_url: '',
-    username: '',
-    password: '',
-    app_username: '',
-    app_password: '',
-    rest_api_key: '',
-    prompt: ''
+const WordPressConfigForm = ({
+  initialConfig,
+  config, // Add this prop
+  onSubmit,
+  isSubmitting = false,
+  buttonText, // Make it optional
+  dialogTitle,
+  dialogDescription,
+  trigger,
+}: WordPressConfigFormProps) => {
+  // Use config if provided, otherwise use initialConfig
+  const configToUse = config || initialConfig || {};
+  
+  // Define the values for the form
+  const defaultValues = {
+    name: configToUse.name || "",
+    site_url: configToUse.site_url || "",
+    app_username: configToUse.app_username || "",
+    app_password: configToUse.app_password || "",
+    prompt: configToUse.prompt || "",
+  };
+
+  const form = useForm({
+    defaultValues,
   });
-  const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    // Use either config or initialData for the initial form state
-    const configData = config || initialData;
-    if (configData) {
-      setFormData({
-        name: configData.name || '',
-        site_url: configData.site_url || '',
-        username: configData.username || '',
-        password: configData.password || '',
-        app_username: configData.app_username || '',
-        app_password: configData.app_password || '',
-        rest_api_key: configData.rest_api_key || '',
-        prompt: configData.prompt || ''
-      });
+  const handleSubmit = (data: any) => {
+    // Normalize the URL of the site if it doesn't end with a slash
+    if (data.site_url && !data.site_url.endsWith('/')) {
+      data.site_url = data.site_url + '/';
     }
-  }, [config, initialData]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    onSubmit(data);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await onSubmit(formData);
-    if (trigger) {
-      setOpen(false);
-    }
-  };
-
-  // If there's a trigger, render the form in a dialog
+  // If trigger is provided, render the dialog with the form
   if (trigger) {
     return (
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog>
         <DialogTrigger asChild>
           {trigger}
         </DialogTrigger>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{dialogTitle}</DialogTitle>
-            {dialogDescription && <p className="text-sm text-muted-foreground">{dialogDescription}</p>}
+            <DialogTitle>{dialogTitle || "Configuration WordPress"}</DialogTitle>
+            {dialogDescription && <DialogDescription>{dialogDescription}</DialogDescription>}
           </DialogHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nom de la configuration</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    placeholder="Mon site WordPress"
-                    value={formData.name}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="site_url">URL du site</Label>
-                  <Input
-                    id="site_url"
-                    name="site_url"
-                    placeholder="https://monsite.com"
-                    value={formData.site_url}
-                    onChange={handleChange}
-                    required
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    URL complète du site sans slash final
-                  </p>
-                </div>
-              </div>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nom</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nom de la configuration" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-              <div className="space-y-2 pt-2">
-                <Label htmlFor="prompt">Description de l'activité (prompt pour Tom-E)</Label>
-                <Textarea
-                  id="prompt"
-                  name="prompt"
-                  placeholder="Décrivez l'activité de votre entreprise en détail..."
-                  value={formData.prompt}
-                  onChange={handleChange}
-                  rows={5}
-                />
-                <p className="text-sm text-muted-foreground">
-                  Ce texte sera utilisé par Tom-E pour générer du contenu pertinent pour votre activité.
-                </p>
-              </div>
+              <FormField
+                control={form.control}
+                name="site_url"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>URL du site</FormLabel>
+                    <FormControl>
+                      <Input placeholder="https://example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-              <Separator className="my-4" />
+              <FormField
+                control={form.control}
+                name="app_username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nom d'utilisateur (Application Password)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Nom d'utilisateur pour Application Password"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-              <div className="space-y-2">
-                <h3 className="text-lg font-medium">Authentification REST API</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Ces informations sont nécessaires pour la publication automatique.
-                </p>
+              <FormField
+                control={form.control}
+                name="app_password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Mot de passe (Application Password)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder="Mot de passe pour Application Password"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="app_username">Nom d'utilisateur Application</Label>
-                    <Input
-                      id="app_username"
-                      name="app_username"
-                      placeholder="admin"
-                      value={formData.app_username}
-                      onChange={handleChange}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="app_password">Mot de passe Application</Label>
-                    <Input
-                      id="app_password"
-                      name="app_password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={formData.app_password}
-                      onChange={handleChange}
-                    />
-                  </div>
-                </div>
-              </div>
+              <FormField
+                control={form.control}
+                name="prompt"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description d'activité (Prompt)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Décrivez l'activité ou les services proposés (ex: plombier, électricien, etc.)"
+                        className="resize-none min-h-[120px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-              <div className="flex justify-end pt-4">
-                <Button type="submit" disabled={isSubmitting || isLoading}>
-                  {(isSubmitting || isLoading) ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Enregistrement...
-                    </>
-                  ) : (
-                    <>
-                      <SaveIcon className="mr-2 h-4 w-4" />
-                      {buttonText}
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </form>
+              <Button type="submit" disabled={isSubmitting} className="w-full">
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {configToUse.id ? "Mise à jour..." : "Création..."}
+                  </>
+                ) : (
+                  buttonText || (configToUse.id ? "Mettre à jour" : "Créer")
+                )}
+              </Button>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     );
   }
 
-  // Standard form without dialog
+  // If trigger is not provided, render just the form
   return (
-    <form onSubmit={handleSubmit}>
-      <Card>
-        <CardHeader>
-          <CardTitle>{dialogTitle}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nom de la configuration</Label>
-              <Input
-                id="name"
-                name="name"
-                placeholder="Mon site WordPress"
-                value={formData.name}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="site_url">URL du site</Label>
-              <Input
-                id="site_url"
-                name="site_url"
-                placeholder="https://monsite.com"
-                value={formData.site_url}
-                onChange={handleChange}
-                required
-              />
-              <p className="text-sm text-muted-foreground">
-                URL complète du site sans slash final
-              </p>
-            </div>
-          </div>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nom</FormLabel>
+              <FormControl>
+                <Input placeholder="Nom de la configuration" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-          <div className="space-y-2 pt-2">
-            <Label htmlFor="prompt">Description de l'activité (prompt pour Tom-E)</Label>
-            <Textarea
-              id="prompt"
-              name="prompt"
-              placeholder="Décrivez l'activité de votre entreprise en détail..."
-              value={formData.prompt}
-              onChange={handleChange}
-              rows={5}
-            />
-            <p className="text-sm text-muted-foreground">
-              Ce texte sera utilisé par Tom-E pour générer du contenu pertinent pour votre activité.
-            </p>
-          </div>
+        <FormField
+          control={form.control}
+          name="site_url"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>URL du site</FormLabel>
+              <FormControl>
+                <Input placeholder="https://example.com" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-          <Separator className="my-4" />
-
-          <div className="space-y-2">
-            <h3 className="text-lg font-medium">Authentification REST API</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Ces informations sont nécessaires pour la publication automatique.
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="app_username">Nom d'utilisateur Application</Label>
+        <FormField
+          control={form.control}
+          name="app_username"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nom d'utilisateur (Application Password)</FormLabel>
+              <FormControl>
                 <Input
-                  id="app_username"
-                  name="app_username"
-                  placeholder="admin"
-                  value={formData.app_username}
-                  onChange={handleChange}
+                  placeholder="Nom d'utilisateur pour Application Password"
+                  {...field}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="app_password">Mot de passe Application</Label>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="app_password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Mot de passe (Application Password)</FormLabel>
+              <FormControl>
                 <Input
-                  id="app_password"
-                  name="app_password"
                   type="password"
-                  placeholder="••••••••"
-                  value={formData.app_password}
-                  onChange={handleChange}
+                  placeholder="Mot de passe pour Application Password"
+                  {...field}
                 />
-              </div>
-            </div>
-          </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-          <div className="flex justify-end pt-4">
-            <Button type="submit" disabled={isSubmitting || isLoading}>
-              {(isSubmitting || isLoading) ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Enregistrement...
-                </>
-              ) : (
-                <>
-                  <SaveIcon className="mr-2 h-4 w-4" />
-                  {buttonText}
-                </>
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </form>
+        <FormField
+          control={form.control}
+          name="prompt"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description d'activité (Prompt)</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Décrivez l'activité ou les services proposés (ex: plombier, électricien, etc.)"
+                  className="resize-none min-h-[120px]"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <Button type="submit" disabled={isSubmitting} className="w-full">
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {configToUse.id ? "Mise à jour..." : "Création..."}
+            </>
+          ) : (
+            buttonText || (configToUse.id ? "Mettre à jour" : "Créer")
+          )}
+        </Button>
+      </form>
+    </Form>
   );
 };
 

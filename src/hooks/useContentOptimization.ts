@@ -3,14 +3,13 @@ import { useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-export type OptimizationType = "description" | "seoTitle" | "seoDescription" | "generateDescription";
+export type OptimizationType = "description" | "seoTitle" | "seoDescription";
 
 export const useContentOptimization = () => {
   const [isOptimizing, setIsOptimizing] = useState<Record<OptimizationType, boolean>>({
     description: false,
     seoTitle: false,
     seoDescription: false,
-    generateDescription: false,
   });
 
   const optimizeContent = useCallback(async (
@@ -25,13 +24,8 @@ export const useContentOptimization = () => {
       console.log(`Paramètres: Type=${type}, Titre="${title.substring(0, 20)}...", Description="${description.substring(0, 30)}..."`);
       
       // Vérification des entrées
-      if (!title) {
-        throw new Error("Le titre est requis pour l'optimisation");
-      }
-      
-      // Pour la génération, la description n'est pas obligatoire
-      if (type !== "generateDescription" && !description) {
-        throw new Error("La description est requise pour l'optimisation");
+      if (!title || !description) {
+        throw new Error("Le titre et la description sont requis pour l'optimisation");
       }
       
       const { data, error } = await supabase.functions.invoke("optimize-content", {
@@ -49,12 +43,9 @@ export const useContentOptimization = () => {
         throw new Error(data?.error || "L'optimisation a échoué pour une raison inconnue");
       }
       
-      const messageType = type === "description" ? "Contenu optimisé" : 
-                          type === "generateDescription" ? "Contenu généré" :
-                          type === "seoTitle" ? "Titre SEO optimisé" : 
-                          "Méta-description optimisée";
-      
-      toast.success(`${messageType} avec succès`);
+      toast.success(`${type === "description" ? "Contenu" : 
+                     type === "seoTitle" ? "Titre SEO" : 
+                     "Méta-description"} optimisé avec succès`);
       
       return data.content;
     } catch (error: any) {

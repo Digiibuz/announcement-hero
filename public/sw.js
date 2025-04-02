@@ -1,5 +1,6 @@
+
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v13';
+const CACHE_NAME = 'digiibuz-cache-v5';
 
 // Liste des ressources à mettre en cache
 const urlsToCache = [
@@ -26,29 +27,13 @@ function isValidCacheUrl(url) {
   }
 }
 
-// Ne jamais mettre en cache ces types de fichiers
-function shouldSkipCaching(url) {
+// Ne jamais mettre en cache les fichiers JavaScript pour éviter les problèmes de chargement de modules
+function isJavaScriptAsset(url) {
   try {
     const urlObj = new URL(url);
-    return (
-      urlObj.pathname.endsWith('.js') || 
-      urlObj.pathname.endsWith('.ts') || 
-      urlObj.pathname.endsWith('.tsx') || 
-      url.includes('assets/') ||
-      url.includes('/api/') || 
-      url.includes('supabase.co') || 
-      url.includes('wp-json') ||
-      url.includes('storage.googleapis.com') || // Pour éviter les conflits avec les images Supabase
-      url.includes('images/') ||
-      url.includes('camera') || // Éviter les conflits avec la capture de caméra
-      url.includes('image/') || // Éviter les problèmes avec les routes d'images
-      url.includes('upload') || // Éviter les conflits avec les téléversements
-      url.includes('media') || // Éviter les conflits avec les médias WordPress
-      url.includes('openai.com') || // Ne jamais mettre en cache les appels à OpenAI
-      !isValidCacheUrl(url)
-    );
+    return urlObj.pathname.endsWith('.js') || url.includes('assets/');
   } catch (e) {
-    return true;
+    return false;
   }
 }
 
@@ -89,8 +74,12 @@ self.addEventListener('activate', event => {
 
 // Gestion des requêtes avec stratégie pour éviter les rechargements complets
 self.addEventListener('fetch', event => {
-  // IMPORTANT: Ne jamais intercepter certaines requêtes qui poseraient problème
-  if (shouldSkipCaching(event.request.url)) {
+  // Ne pas intercepter les requêtes API, assets non essentiels ou JavaScript
+  if (event.request.url.includes('/api/') || 
+      event.request.url.includes('supabase.co') ||
+      event.request.url.includes('wp-json') ||
+      !isValidCacheUrl(event.request.url) ||
+      isJavaScriptAsset(event.request.url)) {
     return;
   }
   
@@ -120,7 +109,7 @@ self.addEventListener('fetch', event => {
                 networkResponse.status === 200 && 
                 networkResponse.type === 'basic' && 
                 isValidCacheUrl(event.request.url) &&
-                !shouldSkipCaching(event.request.url)) {
+                !isJavaScriptAsset(event.request.url)) { // Ne jamais mettre en cache les JS
               const responseToCache = networkResponse.clone();
               caches.open(CACHE_NAME)
                 .then(cache => {

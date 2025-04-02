@@ -66,7 +66,6 @@ export type Database = {
       categories_keywords: {
         Row: {
           category_id: string
-          category_name: string
           created_at: string
           id: string
           keyword: string
@@ -74,7 +73,6 @@ export type Database = {
         }
         Insert: {
           category_id: string
-          category_name: string
           created_at?: string
           id?: string
           keyword: string
@@ -82,7 +80,6 @@ export type Database = {
         }
         Update: {
           category_id?: string
-          category_name?: string
           created_at?: string
           id?: string
           keyword?: string
@@ -129,38 +126,21 @@ export type Database = {
       }
       localities: {
         Row: {
-          active: boolean
           created_at: string
           id: string
           name: string
-          region: string | null
-          wordpress_config_id: string
         }
         Insert: {
-          active?: boolean
           created_at?: string
           id?: string
           name: string
-          region?: string | null
-          wordpress_config_id: string
         }
         Update: {
-          active?: boolean
           created_at?: string
           id?: string
           name?: string
-          region?: string | null
-          wordpress_config_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "localities_wordpress_config_id_fkey"
-            columns: ["wordpress_config_id"]
-            isOneToOne: false
-            referencedRelation: "wordpress_configs"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -196,217 +176,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "profiles_wordpress_config_id_fkey"
-            columns: ["wordpress_config_id"]
-            isOneToOne: false
-            referencedRelation: "wordpress_configs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ticket_read_status: {
-        Row: {
-          id: string
-          read_at: string
-          ticket_id: string
-          user_id: string
-        }
-        Insert: {
-          id?: string
-          read_at?: string
-          ticket_id: string
-          user_id: string
-        }
-        Update: {
-          id?: string
-          read_at?: string
-          ticket_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ticket_read_status_ticket_id_fkey"
-            columns: ["ticket_id"]
-            isOneToOne: false
-            referencedRelation: "tickets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ticket_responses: {
-        Row: {
-          created_at: string
-          id: string
-          is_admin: boolean
-          message: string
-          ticket_id: string
-          user_id: string
-          username: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_admin?: boolean
-          message: string
-          ticket_id: string
-          user_id: string
-          username: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_admin?: boolean
-          message?: string
-          ticket_id?: string
-          user_id?: string
-          username?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ticket_responses_ticket_id_fkey"
-            columns: ["ticket_id"]
-            isOneToOne: false
-            referencedRelation: "tickets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      tickets: {
-        Row: {
-          created_at: string
-          id: string
-          message: string
-          priority: string
-          status: string
-          subject: string
-          user_id: string
-          username: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          message: string
-          priority: string
-          status: string
-          subject: string
-          user_id: string
-          username: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          message?: string
-          priority?: string
-          status?: string
-          subject?: string
-          user_id?: string
-          username?: string
-        }
-        Relationships: []
-      }
-      tome_automation: {
-        Row: {
-          api_key: string | null
-          created_at: string
-          frequency: number
-          id: string
-          is_enabled: boolean
-          updated_at: string
-          wordpress_config_id: string | null
-        }
-        Insert: {
-          api_key?: string | null
-          created_at?: string
-          frequency?: number
-          id?: string
-          is_enabled?: boolean
-          updated_at?: string
-          wordpress_config_id?: string | null
-        }
-        Update: {
-          api_key?: string | null
-          created_at?: string
-          frequency?: number
-          id?: string
-          is_enabled?: boolean
-          updated_at?: string
-          wordpress_config_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tome_automation_wordpress_config_id_fkey"
-            columns: ["wordpress_config_id"]
-            isOneToOne: true
-            referencedRelation: "wordpress_configs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      tome_generations: {
-        Row: {
-          category_id: string
-          content: string | null
-          created_at: string
-          description: string | null
-          error_message: string | null
-          id: string
-          keyword_id: string | null
-          locality_id: string | null
-          published_at: string | null
-          scheduled_at: string | null
-          status: string
-          title: string | null
-          wordpress_config_id: string
-          wordpress_post_id: number | null
-        }
-        Insert: {
-          category_id: string
-          content?: string | null
-          created_at?: string
-          description?: string | null
-          error_message?: string | null
-          id?: string
-          keyword_id?: string | null
-          locality_id?: string | null
-          published_at?: string | null
-          scheduled_at?: string | null
-          status: string
-          title?: string | null
-          wordpress_config_id: string
-          wordpress_post_id?: number | null
-        }
-        Update: {
-          category_id?: string
-          content?: string | null
-          created_at?: string
-          description?: string | null
-          error_message?: string | null
-          id?: string
-          keyword_id?: string | null
-          locality_id?: string | null
-          published_at?: string | null
-          scheduled_at?: string | null
-          status?: string
-          title?: string | null
-          wordpress_config_id?: string
-          wordpress_post_id?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tome_generations_keyword_id_fkey"
-            columns: ["keyword_id"]
-            isOneToOne: false
-            referencedRelation: "categories_keywords"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tome_generations_locality_id_fkey"
-            columns: ["locality_id"]
-            isOneToOne: false
-            referencedRelation: "localities"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tome_generations_wordpress_config_id_fkey"
             columns: ["wordpress_config_id"]
             isOneToOne: false
             referencedRelation: "wordpress_configs"

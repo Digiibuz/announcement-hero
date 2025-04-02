@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
-import { Loader2, AlertTriangle, UserMinus, Clock, User, Mail, BadgeCheck, UserCog } from "lucide-react";
+import { Loader2, AlertTriangle, UserMinus, Clock, User, Mail, BadgeCheck } from "lucide-react";
 import { UserProfile } from "@/types/auth";
 import UserEditForm from "./UserEditForm";
 import {
@@ -35,7 +35,7 @@ interface UserListProps {
   onResetPassword: (email: string) => void;
   onUpdateUser: (userId: string, userData: Partial<UserProfile>) => Promise<void>;
   onDeleteUser: (userId: string) => Promise<void>;
-  onImpersonateUser: (user: UserProfile) => void;
+  onImpersonateUser: (user: UserProfile) => void; // Add this prop to match what UserManagement is passing
 }
 
 const UserList: React.FC<UserListProps> = ({ 
@@ -44,9 +44,9 @@ const UserList: React.FC<UserListProps> = ({
   isDeleting,
   isUpdating,
   onResetPassword, 
+  onImpersonateUser,
   onUpdateUser,
-  onDeleteUser,
-  onImpersonateUser
+  onDeleteUser
 }) => {
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -170,17 +170,6 @@ const UserList: React.FC<UserListProps> = ({
                     Réinitialiser MDP
                   </Button>
                   
-                  {user.role === 'client' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onImpersonateUser(user)}
-                    >
-                      <UserCog className="h-4 w-4 mr-1" />
-                      Se connecter en tant que
-                    </Button>
-                  )}
-                  
                   <Button 
                     variant="destructive" 
                     size="sm"
@@ -280,17 +269,6 @@ const UserList: React.FC<UserListProps> = ({
                     >
                       Réinitialiser MDP
                     </Button>
-                    
-                    {user.role === 'client' && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onImpersonateUser(user)}
-                      >
-                        <UserCog className="h-4 w-4 mr-1" />
-                        Se connecter en tant que
-                      </Button>
-                    )}
                     
                     <Button 
                       variant="destructive" 

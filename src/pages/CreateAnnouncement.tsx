@@ -11,66 +11,32 @@ import PageLayout from "@/components/ui/layout/PageLayout";
 import { toast } from "@/hooks/use-toast";
 import { Announcement } from "@/types/announcement";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
-import { ArrowLeft, Wand2, FileImage, Server, Database, FileCheck } from "lucide-react";
+import { ArrowLeft, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import PublishingLoadingOverlay, { PublishingStep } from "@/components/announcements/PublishingLoadingOverlay";
 
 const CreateAnnouncement = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const {
+    user
+  } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { publishToWordPress, isPublishing, publishingState, resetPublishingState } = useWordPressPublishing();
+  const {
+    publishToWordPress,
+    isPublishing
+  } = useWordPressPublishing();
   const isMobile = useMediaQuery("(max-width: 767px)");
-  const [showPublishingOverlay, setShowPublishingOverlay] = useState(false);
-
-  // Define the publishing steps
-  const publishingSteps: PublishingStep[] = [
-    {
-      id: "prepare",
-      label: "Préparation de la publication",
-      status: publishingState.steps.prepare?.status || "idle",
-      icon: <FileCheck className="h-5 w-5 text-muted-foreground" />
-    },
-    {
-      id: "image",
-      label: "Téléversement de l'image principale",
-      status: publishingState.steps.image?.status || "idle",
-      icon: <FileImage className="h-5 w-5 text-muted-foreground" />
-    },
-    {
-      id: "wordpress",
-      label: "Publication sur WordPress",
-      status: publishingState.steps.wordpress?.status || "idle",
-      icon: <Server className="h-5 w-5 text-muted-foreground" />
-    },
-    {
-      id: "database",
-      label: "Mise à jour de la base de données",
-      status: publishingState.steps.database?.status || "idle",
-      icon: <Database className="h-5 w-5 text-muted-foreground" />
-    }
-  ];
 
   const handleSubmit = async (data: any) => {
     try {
       setIsSubmitting(true);
-      setShowPublishingOverlay(true);
-      
-      // Show immediate feedback on mobile
-      if (isMobile) {
-        toast({
-          title: "Traitement en cours",
-          description: "Enregistrement de votre annonce...",
-        });
-      }
 
       // Prepare the announcement data
       const announcementData = {
         user_id: user?.id,
         title: data.title,
         description: data.description,
-        status: data.status as "draft" | "published" | "scheduled",
+        status: data.status as "draft" | "published" | "scheduled", // Explicit casting to ensure type safety
         images: data.images || [],
         wordpress_category_id: data.wordpressCategory,
         publish_date: data.publishDate ? new Date(data.publishDate).toISOString() : null,
@@ -78,21 +44,15 @@ const CreateAnnouncement = () => {
         seo_description: data.seoDescription || null,
         seo_slug: data.seoSlug || null
       };
-      
+      console.log("Enregistrement de l'annonce:", announcementData);
+
       // Save to Supabase
-      const { data: newAnnouncement, error } = await supabase
-        .from("announcements")
-        .insert(announcementData)
-        .select()
-        .single();
-        
+      const {
+        data: newAnnouncement,
+        error
+      } = await supabase.from("announcements").insert(announcementData).select().single();
       if (error) throw error;
-      
-      // Feedback on successful save
-      toast({
-        title: "Succès",
-        description: "Annonce enregistrée avec succès" + (isMobile ? ", publication en cours..." : ""),
-      });
+      console.log("Annonce enregistrée dans Supabase:", newAnnouncement);
 
       // If status is published or scheduled, try to publish to WordPress
       let wordpressResult = {
@@ -102,44 +62,50 @@ const CreateAnnouncement = () => {
       };
       
       if ((data.status === 'published' || data.status === 'scheduled') && data.wordpressCategory && user?.id) {
-        // For mobile, we don't need to show this toast since we already showed feedback
-        if (!isMobile) {
-          toast({
-            title: "WordPress",
-            description: "Publication de l'annonce sur WordPress en cours..."
-          });
-        }
+        console.log("Tentative de publication sur WordPress...");
+        wordpressResult = await publishToWordPress(newAnnouncement as Announcement, data.wordpressCategory, user.id);
         
-        wordpressResult = await publishToWordPress(
-          newAnnouncement as Announcement, 
-          data.wordpressCategory, 
-          user.id
-        );
+        console.log("Résultat de la publication WordPress:", wordpressResult);
         
-        if (wordpressResult.success) {
-          if (wordpressResult.wordpressPostId) {
+        if (wordpressResult.wordpressPostId) {
+          console.log("WordPress post ID returned:", wordpressResult.wordpressPostId);
+          
+          // Si un ID WordPress a été retourné, mettre à jour l'annonce dans Supabase
+          const { error: updateError } = await supabase
+            .from("announcements")
+            .update({ wordpress_post_id: wordpressResult.wordpressPostId })
+            .eq("id", newAnnouncement.id);
+            
+          if (updateError) {
+            console.error("Erreur lors de la mise à jour de l'ID WordPress:", updateError);
             toast({
-              title: "WordPress",
-              description: `Publication réussie (ID: ${wordpressResult.wordpressPostId})`,
+              title: "Attention",
+              description: "L'annonce a été publiée mais l'ID WordPress n'a pas pu être enregistré",
+              variant: "destructive"
             });
+          } else {
+            console.log("ID WordPress mis à jour avec succès:", wordpressResult.wordpressPostId);
           }
         } else {
-          toast({
-            title: "Attention",
-            description: "Annonce enregistrée dans la base de données, mais la publication WordPress a échoué: " + (wordpressResult.message || "Erreur inconnue"),
-            variant: "destructive"
-          });
+          console.warn("No WordPress post ID was returned");
         }
       }
-
-      // Hide the overlay after a short delay to allow the user to see the completion
-      setTimeout(() => {
-        setShowPublishingOverlay(false);
-        resetPublishingState();
-        // Redirect to the announcements list
-        navigate("/announcements");
-      }, 1500);
       
+      if (wordpressResult.success) {
+        toast({
+          title: "Succès",
+          description: "Annonce enregistrée avec succès" + (wordpressResult.wordpressPostId ? " et publiée sur WordPress (ID: " + wordpressResult.wordpressPostId + ")" : "")
+        });
+      } else {
+        toast({
+          title: "Attention",
+          description: "Annonce enregistrée dans la base de données, mais la publication WordPress a échoué: " + (wordpressResult.message || "Erreur inconnue"),
+          variant: "destructive"
+        });
+      }
+
+      // Redirect to the announcements list
+      navigate("/announcements");
     } catch (error: any) {
       console.error("Error saving announcement:", error);
       toast({
@@ -147,8 +113,6 @@ const CreateAnnouncement = () => {
         description: "Erreur lors de l'enregistrement: " + error.message,
         variant: "destructive"
       });
-      setShowPublishingOverlay(false);
-      resetPublishingState();
     } finally {
       setIsSubmitting(false);
     }
@@ -177,7 +141,7 @@ const CreateAnnouncement = () => {
           {isMobile && (
             <div className="bg-muted/30 px-4 py-3 mb-4 text-sm text-muted-foreground flex items-center">
               <Wand2 className="h-4 w-4 mr-2 flex-shrink-0" />
-              <span>Utilisez les boutons <b>Générer</b> pour améliorer votre contenu avec l'IA.</span>
+              <span>Utilisez les boutons <b>Optimiser</b> pour améliorer votre contenu avec l'IA.</span>
             </div>
           )}
           
@@ -188,13 +152,6 @@ const CreateAnnouncement = () => {
           />
         </div>
       </AnimatedContainer>
-      
-      <PublishingLoadingOverlay
-        isOpen={showPublishingOverlay}
-        steps={publishingSteps}
-        currentStepId={publishingState.currentStep}
-        progress={publishingState.progress}
-      />
     </PageLayout>
   );
 };
