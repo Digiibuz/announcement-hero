@@ -305,6 +305,7 @@ export type Database = {
       }
       tome_automation: {
         Row: {
+          api_key: string | null
           created_at: string
           frequency: number
           id: string
@@ -313,6 +314,7 @@ export type Database = {
           wordpress_config_id: string | null
         }
         Insert: {
+          api_key?: string | null
           created_at?: string
           frequency?: number
           id?: string
@@ -321,6 +323,7 @@ export type Database = {
           wordpress_config_id?: string | null
         }
         Update: {
+          api_key?: string | null
           created_at?: string
           frequency?: number
           id?: string

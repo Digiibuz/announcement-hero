@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,7 +10,8 @@ import { useForm } from "react-hook-form";
 import { useTomeGeneration, useCategoriesKeywords, useLocalities } from "@/hooks/tome";
 import { toast } from "sonner";
 import DescriptionField from "@/components/tome/TomeDescriptionField";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, BookText, Globe } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 interface TomePublicationFormProps {
   configId: string;
@@ -23,6 +24,7 @@ interface PublicationFormData {
   keywordId: string | null;
   localityId: string | null;
   description: string;
+  publishDirectly: boolean;
 }
 
 const TomePublicationForm: React.FC<TomePublicationFormProps> = ({ 
@@ -55,11 +57,13 @@ const TomePublicationForm: React.FC<TomePublicationFormProps> = ({
       keywordId: null,
       localityId: null,
       description: "",
+      publishDirectly: false
     }
   });
 
   const { watch, setValue } = form;
   const categoryId = watch("categoryId");
+  const publishDirectly = watch("publishDirectly");
 
   // Lorsque la catégorie change, réinitialiser le mot-clé
   React.useEffect(() => {
@@ -85,7 +89,9 @@ const TomePublicationForm: React.FC<TomePublicationFormProps> = ({
         ? activeLocalities.find(l => l.id === data.localityId) || null
         : null;
       
-      // Créer la génération en mode brouillon
+      // Créer la génération avec le statut approprié
+      const status = data.publishDirectly ? "pending" : "draft";
+      
       const success = await createGeneration(
         data.categoryId,
         keywordObj,
@@ -93,11 +99,14 @@ const TomePublicationForm: React.FC<TomePublicationFormProps> = ({
         null, // Pas de planification
         data.title,
         data.description,
-        "draft" // Statut brouillon
+        status // Statut "pending" pour publication directe ou "draft" pour brouillon
       );
       
       if (success) {
-        toast.success("Publication créée en mode brouillon");
+        toast.success(data.publishDirectly 
+          ? "Publication en cours de génération et publication" 
+          : "Publication créée en mode brouillon"
+        );
         // Rediriger vers la liste des publications
         navigate("/tome");
       }
@@ -131,7 +140,6 @@ const TomePublicationForm: React.FC<TomePublicationFormProps> = ({
         <CardTitle>{isClientView ? "Nouvelle publication" : "Créer une publication"}</CardTitle>
         <CardDescription>
           Créez un contenu optimisé avec l'IA en utilisant vos catégories, mots-clés et localités.
-          Le contenu sera créé en mode brouillon pour vous permettre de l'éditer avant publication.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -253,6 +261,27 @@ const TomePublicationForm: React.FC<TomePublicationFormProps> = ({
                   </FormItem>
                 )}
               />
+              
+              <FormField
+                control={form.control}
+                name="publishDirectly"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between space-y-0 pt-6">
+                    <div className="space-y-0.5">
+                      <FormLabel>Publication directe</FormLabel>
+                      <FormDescription className="text-xs text-muted-foreground">
+                        Générer et publier directement sur WordPress
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
             </div>
 
             <FormField
@@ -290,9 +319,14 @@ const TomePublicationForm: React.FC<TomePublicationFormProps> = ({
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Création...
                   </>
+                ) : publishDirectly ? (
+                  <>
+                    <Globe className="mr-2 h-4 w-4" />
+                    Générer et publier
+                  </>
                 ) : (
                   <>
-                    <Save className="mr-2 h-4 w-4" />
+                    <BookText className="mr-2 h-4 w-4" />
                     Créer en brouillon
                   </>
                 )}
