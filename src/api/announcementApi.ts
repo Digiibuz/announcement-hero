@@ -170,7 +170,14 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
  */
 export const publishAnnouncement = async (id: string): Promise<void> => {
   const response = await fetch(`/api/announcements/${id}/publish`, {
-    method: 'POST'
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ 
+      status: 'published',  // Directement publié sans étapes intermédiaires
+      skip_draft: true      // Flag pour indiquer de sauter l'étape brouillon
+    })
   });
   
   if (!response.ok) {

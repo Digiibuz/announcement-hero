@@ -18,3 +18,6 @@ export interface ClientWordPressConfig {
   wordpress_config_id: string;
   created_at: string;
 }
+
+// Statuts de publication WordPress
+export type WordPressPostStatus = "publish" | "draft" | "future" | "pending" | "private";

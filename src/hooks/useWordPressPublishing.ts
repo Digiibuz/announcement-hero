@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Announcement } from "@/types/announcement";
@@ -255,11 +254,11 @@ export const useWordPressPublishing = () => {
       // Update WordPress step status
       updatePublishingStep("wordpress", "loading", "Publication sur WordPress", 70);
       
-      // Prepare post data - simplify for mobile
+      // Prepare post data - toujours utiliser "publish" pour publier immédiatement
       const wpPostData: any = {
         title: announcement.title,
         content: announcement.description || "",
-        status: announcement.status === 'published' ? 'publish' : announcement.status === 'scheduled' ? 'future' : 'draft',
+        status: announcement.status === 'scheduled' ? 'future' : 'publish', // Passer directement à "publish" sans étape draft/ready
       };
       
       // Set featured image if available
