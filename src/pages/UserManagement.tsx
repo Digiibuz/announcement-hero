@@ -8,10 +8,10 @@ import AccessDenied from "@/components/users/AccessDenied";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import { useUserManagement } from "@/hooks/useUserManagement";
 import { UserProfile } from "@/types/auth";
-import { toast } from "sonner"; // Import toast from sonner
+import { toast } from "sonner";
 
 const UserManagement = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, impersonateUser } = useAuth();
   const { 
     users, 
     isLoading, 
@@ -40,10 +40,11 @@ const UserManagement = () => {
     toast.success("Liste des utilisateurs mise à jour");
   };
 
-  // Add impersonation handler (empty for now since this requirement was removed)
   const handleImpersonateUser = (user: UserProfile) => {
-    // This functionality is not implemented but required by the UserList component
-    console.log("Impersonation feature not implemented");
+    if (user.role === 'client') {
+      impersonateUser(user);
+      toast.success(`Vous êtes maintenant connecté en tant que ${user.name}`);
+    }
   };
 
   const titleAction = isAdmin ? (
@@ -69,7 +70,7 @@ const UserManagement = () => {
             onResetPassword={handleResetPassword}
             onUpdateUser={updateUser}
             onDeleteUser={deleteUser}
-            onImpersonateUser={handleImpersonateUser} // Add the missing prop
+            onImpersonateUser={handleImpersonateUser}
           />
         </AnimatedContainer>
       )}

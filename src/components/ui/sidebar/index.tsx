@@ -8,6 +8,13 @@ export {
   SidebarInset
 } from "./sidebar-controls"
 export {
+  SidebarInput,
+  SidebarHeader,
+  SidebarFooter,
+  SidebarSeparator,
+  SidebarContent
+} from "./sidebar-structure"
+export {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarGroupAction,

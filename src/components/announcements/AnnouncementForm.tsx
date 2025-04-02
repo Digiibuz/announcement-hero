@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -47,7 +46,7 @@ const AnnouncementForm = ({
     description: "",
     wordpressCategory: "",
     publishDate: undefined,
-    status: "published", // Fixed: Now explicitly using a literal type value
+    status: "published",
     images: [],
     seoTitle: "",
     seoDescription: "",
@@ -58,7 +57,6 @@ const AnnouncementForm = ({
     defaultValues: initialValues || defaultValues
   });
 
-  // Update form values when initialValues changes
   useEffect(() => {
     if (initialValues) {
       Object.keys(initialValues).forEach((key) => {
@@ -83,9 +81,6 @@ const AnnouncementForm = ({
     if (title) {
       const normalizedTitle = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
       setValue("seoSlug", normalizedTitle);
-      if (!form.getValues("seoTitle")) {
-        setValue("seoTitle", title);
-      }
     }
   }, [title, setValue]);
 
@@ -204,7 +199,7 @@ const AnnouncementForm = ({
                                 <span className="text-xs">Optimisation...</span>
                               </> : <>
                                 <Sparkles size={14} />
-                                <span className="text-xs">Optimiser</span>
+                                <span className="text-xs">Générer</span>
                               </>}
                           </Button>
                         </div>
@@ -228,7 +223,7 @@ const AnnouncementForm = ({
                                 <span className="text-xs">Optimisation...</span>
                               </> : <>
                                 <Sparkles size={14} />
-                                <span className="text-xs">Optimiser</span>
+                                <span className="text-xs">Générer</span>
                               </>}
                           </Button>
                         </div>

@@ -48,13 +48,17 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
   const [configDetails, setConfigDetails] = useState<{name?: string, site_url?: string}>({});
   const [showHelp, setShowHelp] = useState(false);
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
+  
+  // Utiliser le configId passé en prop plutôt que d'utiliser wordpressConfigId de l'utilisateur
+  const effectiveConfigId = configId || user?.wordpressConfigId;
+  
   const { 
     categories, 
     isLoading: isCategoriesLoading, 
     refetch: refetchCategories,
     hasCategories,
     error: categoriesError
-  } = useWordPressCategories();
+  } = useWordPressCategories(effectiveConfigId);
   
   const { 
     pages, 
@@ -62,18 +66,17 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
     refetch: refetchPages,
     hasPages,
     error: pagesError
-  } = useWordPressPages();
+  } = useWordPressPages(effectiveConfigId);
 
   useEffect(() => {
     // Fetch WordPress config details for additional info
     const fetchConfigDetails = async () => {
-      const id = configId || user?.wordpressConfigId;
-      if (id) {
+      if (effectiveConfigId) {
         try {
           const { data, error } = await supabase
             .from('wordpress_configs')
             .select('name, site_url')
-            .eq('id', id)
+            .eq('id', effectiveConfigId)
             .single();
           
           if (!error && data) {
@@ -86,20 +89,18 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
     };
     
     fetchConfigDetails();
-  }, [configId, user?.wordpressConfigId]);
+  }, [effectiveConfigId]);
 
   // Vérifier la connexion au chargement du composant
   useEffect(() => {
-    if (status === "unknown" && configId) {
-      checkConnection(configId);
+    if (status === "unknown" && effectiveConfigId) {
+      checkConnection(effectiveConfigId);
       setLastChecked(new Date());
     }
-  }, [configId, status]);
+  }, [effectiveConfigId, status, checkConnection]);
 
   const handleSync = async () => {
     try {
-      const effectiveConfigId = configId || user?.wordpressConfigId;
-      
       if (!effectiveConfigId) {
         toast.error("Aucune configuration WordPress associée");
         return;
@@ -111,7 +112,10 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
       if (result.success) {
         toast.success("Connexion WordPress établie avec succès");
         // Actualiser les catégories et les pages
-        await Promise.all([refetchCategories(), refetchPages()]);
+        await Promise.all([
+          refetchCategories(effectiveConfigId), 
+          refetchPages(effectiveConfigId)
+        ]);
         toast.success("Données WordPress synchronisées avec succès");
       } else {
         toast.error(`Échec de connexion: ${result.message}`);

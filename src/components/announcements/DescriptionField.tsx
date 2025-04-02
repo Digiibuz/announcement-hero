@@ -1,8 +1,9 @@
+
 import React, { useRef, useState } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Loader2, Sparkles, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Link } from "lucide-react";
+import { Loader2, Sparkles, Wand2, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Link } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
@@ -65,6 +66,31 @@ const DescriptionField = ({
     }
   };
 
+  const generateNewContent = async () => {
+    const currentTitle = form.getValues('title');
+    const currentDescription = form.getValues('description') || "";
+    
+    if (!currentTitle) {
+      toast.warning("Veuillez d'abord saisir un titre pour générer du contenu");
+      return;
+    }
+
+    try {
+      const generatedContent = await optimizeContent(
+        "generateDescription", 
+        currentTitle, 
+        currentDescription
+      );
+      
+      if (generatedContent && editorRef.current) {
+        editorRef.current.innerHTML = generatedContent;
+        updateFormValue();
+      }
+    } catch (error: any) {
+      console.error("Error generating content:", error);
+    }
+  };
+
   const applyFormatting = (format: string) => {
     document.execCommand(format, false);
     if (editorRef.current) {
@@ -118,6 +144,15 @@ const DescriptionField = ({
         <Label>Description</Label>
         
         <div className="flex gap-2">
+          <Button type="button" size="sm" variant="outline" className="flex items-center gap-1" onClick={generateNewContent} disabled={isOptimizing.generateDescription}>
+            {isOptimizing.generateDescription ? <>
+                <Loader2 size={16} className="animate-spin" />
+                <span>Génération...</span>
+              </> : <>
+                <Wand2 size={16} />
+                <span>Générer avec l'IA</span>
+              </>}
+          </Button>
           <Button type="button" size="sm" variant="secondary" className="flex items-center gap-1" onClick={generateImprovedContent} disabled={isOptimizing.description}>
             {isOptimizing.description ? <>
                 <Loader2 size={16} className="animate-spin" />

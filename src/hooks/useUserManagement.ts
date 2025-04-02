@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { UserProfile, Role } from "@/types/auth";
@@ -126,10 +126,10 @@ export const useUserManagement = () => {
     }
   };
 
-  // Chargement des utilisateurs au montage
-  useState(() => {
+  // Chargement des utilisateurs au montage - Fixed from useState to useEffect
+  useEffect(() => {
     fetchUsers();
-  });
+  }, [fetchUsers]);
 
   return {
     users,
