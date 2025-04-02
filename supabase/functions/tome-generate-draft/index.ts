@@ -25,6 +25,7 @@ serve(async (req) => {
 
   try {
     debugLog("Fonction tome-generate-draft démarrée");
+    debugLog("Méthode de la requête:", req.method);
     
     // Get API keys from environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -32,11 +33,15 @@ serve(async (req) => {
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
 
     if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Supabase URL or key not found');
+      const errorMsg = 'Supabase URL or key not found';
+      debugLog(`Erreur: ${errorMsg}`);
+      throw new Error(errorMsg);
     }
 
     if (!openaiApiKey) {
-      throw new Error('OpenAI API key not found');
+      const errorMsg = 'OpenAI API key not found';
+      debugLog(`Erreur: ${errorMsg}`);
+      throw new Error(errorMsg);
     }
 
     // Initialize Supabase client

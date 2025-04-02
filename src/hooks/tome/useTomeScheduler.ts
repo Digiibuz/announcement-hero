@@ -143,12 +143,16 @@ export const useTomeScheduler = () => {
       // Ajout d'un timestamp aléatoire pour éviter la mise en cache de la requête
       const timestamp = new Date().getTime();
       
+      const params = {
+        generationId,
+        timestamp,
+        debug: true
+      };
+      
+      addLog(`Paramètres d'appel à tome-generate-draft: ${JSON.stringify(params)}`);
+      
       const { data, error } = await supabase.functions.invoke('tome-generate-draft', {
-        body: { 
-          generationId, 
-          timestamp,
-          debug: true
-        }
+        body: params
       });
 
       if (error) {

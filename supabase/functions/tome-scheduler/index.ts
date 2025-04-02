@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.1';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import 'https://deno.land/x/xhr@0.1.0/mod.ts';
@@ -328,7 +329,7 @@ async function queueDraftGeneration(supabase, generationId, debug = false) {
       })
       .eq('id', generationId);
       
-    // ADD THE REQUESTED DEBUG LOG HERE TO CONFIRM EXECUTION REACHES THIS POINT
+    // Log before invoking tome-generate-draft to confirm execution reaches this point
     debugLog("Avant d'invoquer tome-generate-draft", { generationId, timestamp: new Date().getTime() });
     
     // Make the API call to the draft generation function with explicit timestamp and debug parameters
@@ -340,21 +341,35 @@ async function queueDraftGeneration(supabase, generationId, debug = false) {
     
     debugLog(`Paramètres d'appel à tome-generate-draft:`, requestBody);
     
-    const { data, error } = await supabase.functions.invoke('tome-generate-draft', {
-      body: requestBody
-    });
-    
-    if (error) {
-      debugLog(`Erreur lors de l'appel à tome-generate-draft pour ${generationId}:`, error);
-      await updateGenerationStatus(supabase, generationId, 'failed', error.message);
+    // Use try-catch explicitly around the invoke to catch any potential errors
+    try {
+      const { data, error } = await supabase.functions.invoke('tome-generate-draft', {
+        body: requestBody
+      });
+      
+      if (error) {
+        debugLog(`Erreur lors de l'appel à tome-generate-draft pour ${generationId}:`, error);
+        await updateGenerationStatus(supabase, generationId, 'failed', `Erreur d'invocation: ${error.message}`);
+        return false;
+      }
+      
+      debugLog(`Réponse de tome-generate-draft:`, data);
+      
+      if (data && data.success === false) {
+        debugLog(`Échec de la génération du brouillon pour ${generationId}: ${data.error || 'Erreur inconnue'}`);
+        await updateGenerationStatus(supabase, generationId, 'failed', data.error || 'Échec de la génération');
+        return false;
+      }
+      
+      debugLog(`Brouillon généré avec succès pour ${generationId}`);
+      return true;
+    } catch (invokeError) {
+      debugLog(`Exception lors de l'invocation de tome-generate-draft:`, invokeError);
+      await updateGenerationStatus(supabase, generationId, 'failed', `Exception d'invocation: ${invokeError.message}`);
       return false;
     }
-    
-    debugLog(`Réponse de tome-generate-draft:`, data);
-    debugLog(`Brouillon généré avec succès pour ${generationId}`);
-    return true;
   } catch (error) {
-    debugLog(`Exception lors de la génération du brouillon pour ${generationId}:`, error);
+    debugLog(`Exception générale lors de la génération du brouillon pour ${generationId}:`, error);
     await updateGenerationStatus(supabase, generationId, 'failed', error.message);
     return false;
   }
