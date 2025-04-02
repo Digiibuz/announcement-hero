@@ -1,2 +1,7 @@
 
 project_id = "rdwqedmvzicerwotjseg"
+
+# La fonction n'a pas besoin de vérification JWT car elle est appelée 
+# par d'autres edge functions ou depuis l'application authentifiée
+[functions.tome-generate]
+verify_jwt = false

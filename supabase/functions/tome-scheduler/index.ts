@@ -332,13 +332,14 @@ async function queuePublishGeneration(supabase, generationId, debug = false) {
       .eq('id', generationId);
       
     debugLog(`Appel de tome-generate pour la génération ET publication ${generationId}`);
+    debugLog(`Paramètres d'invocation:`, { generationId, timestamp: new Date().getTime(), debug });
     
-    // Make the API call to the publication generation function
+    // Make the API call to the publication generation function with explicit debug info
     const { data, error } = await supabase.functions.invoke('tome-generate', {
       body: { 
         generationId,
         timestamp: new Date().getTime(),
-        debug
+        debug: true // Force debug à true pour améliorer la journalisation
       }
     });
     
@@ -348,7 +349,13 @@ async function queuePublishGeneration(supabase, generationId, debug = false) {
       return false;
     }
     
-    debugLog(`Contenu généré et publié avec succès pour ${generationId}`);
+    if (data && data.error) {
+      debugLog(`L'API tome-generate a retourné une erreur pour ${generationId}:`, data.error);
+      await updateGenerationStatus(supabase, generationId, 'failed', data.error);
+      return false;
+    }
+    
+    debugLog(`Contenu généré et publié avec succès pour ${generationId}`, data);
     return true;
   } catch (error) {
     debugLog(`Exception lors de la génération et publication pour ${generationId}:`, error);
