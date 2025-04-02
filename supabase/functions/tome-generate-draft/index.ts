@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.1';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import 'https://deno.land/x/xhr@0.1.0/mod.ts';
@@ -24,8 +23,6 @@ serve(async (req) => {
   }
 
   try {
-    debugLog("Fonction tome-generate-draft démarrée");
-    
     // Get API keys from environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -43,20 +40,9 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Parse request body
-    const reqClone = req.clone();
-    let reqBody;
-    try {
-      reqBody = await reqClone.json();
-      debugLog("Corps de la requête reçue:", reqBody);
-    } catch (parseError) {
-      debugLog("Erreur d'analyse du corps de la requête:", parseError);
-      throw new Error("Impossible d'analyser le corps de la requête JSON");
-    }
-
-    const { generationId, debug = false } = reqBody;
+    const { generationId, debug = false } = await req.json();
 
     if (!generationId) {
-      debugLog("Erreur: generationId manquant dans la requête");
       throw new Error('Generation ID is required');
     }
 
@@ -70,7 +56,6 @@ serve(async (req) => {
       .single();
 
     if (generationError || !generation) {
-      debugLog(`Erreur lors de la récupération de generation ${generationId}:`, generationError);
       throw new Error('Generation not found: ' + (generationError?.message || 'Unknown error'));
     }
 
@@ -92,7 +77,6 @@ serve(async (req) => {
       .single();
 
     if (wpConfigError || !wpConfig) {
-      debugLog(`Erreur: Configuration WordPress non trouvée pour ${generation.wordpress_config_id}:`, wpConfigError);
       throw new Error('WordPress config not found');
     }
 
@@ -179,39 +163,35 @@ serve(async (req) => {
     prompt += "\n\nFormat souhaité: HTML avec balises pour les titres (h1, h2, h3), paragraphes (p) et listes (ul, li).";
     
     if (debug) {
-      debugLog("Prompt complet pour OpenAI:", prompt);
+      debugLog("Prompt prepared for OpenAI");
     } else {
-      debugLog("Prompt préparé pour OpenAI (aperçu):", prompt.substring(0, 100) + "...");
+      debugLog("Prompt prepared for OpenAI:", prompt.substring(0, 100) + "...");
     }
     
     try {
       // Generate content with OpenAI
-      debugLog("Envoi de la requête à OpenAI");
-      const openAiRequestBody = {
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: 'Vous êtes un expert en rédaction web SEO qui génère du contenu HTML optimisé.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        max_tokens: 1500,
-        temperature: 0.7,
-      };
-      
-      debugLog("Corps de la requête OpenAI:", openAiRequestBody);
-      
+      debugLog("Sending request to OpenAI");
       const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${openaiApiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(openAiRequestBody),
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [
+            {
+              role: 'system',
+              content: 'Vous êtes un expert en rédaction web SEO qui génère du contenu HTML optimisé.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          max_tokens: 1500,
+          temperature: 0.7,
+        }),
       });
 
       if (!openaiResponse.ok) {
@@ -221,7 +201,7 @@ serve(async (req) => {
       }
 
       const completion = await openaiResponse.json();
-      debugLog("Received response from OpenAI:", completion);
+      debugLog("Received response from OpenAI");
       
       if (!completion.choices || completion.choices.length === 0) {
         throw new Error('Failed to generate content with OpenAI: No choices returned');

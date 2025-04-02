@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.1';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import 'https://deno.land/x/xhr@0.1.0/mod.ts';
@@ -63,53 +64,28 @@ function initSupabaseClient() {
 
 // Parse request parameters from the request body
 async function parseRequestParams(req: Request) {
-  // Default values for scheduled execution:
-  // - configCheck should be false by default to allow content generation
-  // - forceGeneration should be true for automated tasks
-  let isConfigCheck = false;        // DEFAULT TO FALSE - very important
-  let forceGeneration = true;       // DEFAULT TO TRUE - very important 
+  let isConfigCheck = false;
+  let forceGeneration = false;
   let apiKey = null;
   let debug = false;
   let timestamp = new Date().getTime(); // Current timestamp for logging/debugging
-  let isScheduledExecution = true; // New flag to track if this is an automated execution
   
   try {
     const body = await req.json();
-    isScheduledExecution = false; // If we have a body, this is likely a manual request
-    
-    debugLog("Corps de la requête:", body);
-    
-    // CRITICAL FIX: Prioritize forceGeneration over configCheck
-    // If forceGeneration is explicitly set to true in the request, always use it regardless of configCheck
-    if (body.forceGeneration === true) {
-      debugLog("PRIORITÉ: forceGeneration=true détecté dans la requête, ignorant configCheck");
-      forceGeneration = true;
-      isConfigCheck = false; // Explicitly override configCheck
-    } 
-    // Only check configCheck if forceGeneration is not explicitly true
-    else if (body.configCheck === true) {
-      isConfigCheck = true;
-      forceGeneration = false; // Explicitly set forceGeneration to false for config checks
-      debugLog("configCheck=true détecté, forceGeneration défini sur false");
-    }
-    // For any other case, use defaults (which are forceGeneration=true, configCheck=false)
-    else {
-      debugLog("Aucun paramètre prioritaire détecté, utilisation des valeurs par défaut");
-    }
-    
+    isConfigCheck = body.configCheck === true;
+    forceGeneration = body.forceGeneration === true;
     apiKey = body.api_key;
     debug = body.debug === true;
     timestamp = body.timestamp || timestamp;
+    debugLog("Corps de la requête:", body);
   } catch (e) {
-    // If no JSON body or parsing error, treat as a scheduled execution
-    debugLog("Pas de corps JSON ou erreur d'analyse, exécution planifiée supposée");
-    debugLog("Utilisation des valeurs par défaut pour exécution automatique: forceGeneration=true, configCheck=false");
+    // If no JSON body or parsing error, not a config check
+    debugLog("Pas de corps JSON ou erreur d'analyse, exécution régulière supposée");
   }
   
-  debugLog("Type d'exécution:", isScheduledExecution ? "Planifiée" : "Manuelle");
-  debugLog("Valeurs des paramètres après traitement - isConfigCheck:", isConfigCheck, "forceGeneration:", forceGeneration, "timestamp:", timestamp, "debug:", debug);
+  debugLog("Valeurs des paramètres - isConfigCheck:", isConfigCheck, "forceGeneration:", forceGeneration, "timestamp:", timestamp, "debug:", debug);
   
-  return { isConfigCheck, forceGeneration, apiKey, timestamp, debug, isScheduledExecution };
+  return { isConfigCheck, forceGeneration, apiKey, timestamp, debug };
 }
 
 // Validate API key if provided and force generation for that specific config
@@ -192,21 +168,16 @@ async function getLastGeneration(supabase, wordpressConfigId) {
   }
 }
 
-// Fetch categories for a WordPress config with retry mechanism
-async function getCategories(supabase, wordpressConfigId, retryCount = 1) {
+// Fetch categories for a WordPress config
+async function getCategories(supabase, wordpressConfigId) {
   try {
     const { data: categories, error: categoriesError } = await supabase
       .from('categories_keywords')
       .select('category_id, category_name')
       .eq('wordpress_config_id', wordpressConfigId)
-      .limit(20); // Reduced from 50 to improve performance
+      .limit(50); // Get more to ensure we have enough unique categories
 
     if (categoriesError) {
-      if (retryCount > 0) {
-        debugLog(`Erreur lors de la récupération des catégories, nouvelle tentative (${retryCount})...`);
-        await new Promise(resolve => setTimeout(resolve, 300));
-        return getCategories(supabase, wordpressConfigId, retryCount - 1);
-      }
       debugLog(`Erreur lors de la récupération des catégories pour la config ${wordpressConfigId}:`, categoriesError);
       return null;
     }
@@ -224,22 +195,16 @@ async function getCategories(supabase, wordpressConfigId, retryCount = 1) {
   }
 }
 
-// Fetch keywords for a WordPress config category with retry mechanism
-async function getKeywordsForCategory(supabase, wordpressConfigId, categoryId, retryCount = 1) {
+// Fetch keywords for a WordPress config category
+async function getKeywordsForCategory(supabase, wordpressConfigId, categoryId) {
   try {
     const { data: keywords, error: keywordsError } = await supabase
       .from('categories_keywords')
       .select('*')
       .eq('wordpress_config_id', wordpressConfigId)
-      .eq('category_id', categoryId)
-      .limit(10); // Limit to improve performance
+      .eq('category_id', categoryId);
 
     if (keywordsError) {
-      if (retryCount > 0) {
-        debugLog(`Erreur lors de la récupération des mots-clés, nouvelle tentative (${retryCount})...`);
-        await new Promise(resolve => setTimeout(resolve, 300));
-        return getKeywordsForCategory(supabase, wordpressConfigId, categoryId, retryCount - 1);
-      }
       debugLog(`Erreur lors de la récupération des mots-clés pour la catégorie ${categoryId}:`, keywordsError);
       return null;
     }
@@ -252,22 +217,16 @@ async function getKeywordsForCategory(supabase, wordpressConfigId, categoryId, r
   }
 }
 
-// Fetch active localities for a WordPress config with retry mechanism
-async function getLocalities(supabase, wordpressConfigId, retryCount = 1) {
+// Fetch active localities for a WordPress config
+async function getLocalities(supabase, wordpressConfigId) {
   try {
     const { data: localities, error: localitiesError } = await supabase
       .from('localities')
       .select('*')
       .eq('wordpress_config_id', wordpressConfigId)
-      .eq('active', true)
-      .limit(20); // Limit to improve performance
+      .eq('active', true);
 
     if (localitiesError) {
-      if (retryCount > 0) {
-        debugLog(`Erreur lors de la récupération des localités, nouvelle tentative (${retryCount})...`);
-        await new Promise(resolve => setTimeout(resolve, 300));
-        return getLocalities(supabase, wordpressConfigId, retryCount - 1);
-      }
       debugLog(`Erreur lors de la récupération des localités pour la config ${wordpressConfigId}:`, localitiesError);
       return null;
     }
@@ -314,48 +273,39 @@ async function createGeneration(supabase, wordpressConfigId, categoryId, keyword
   }
 }
 
-// Trigger the draft generation function
-async function queueDraftGeneration(supabase, generationId, debug = false) {
+// Generate a draft using the tome-generate-draft function
+async function generateDraft(supabase, generationId, debug = false) {
   try {
-    debugLog(`Préparation de la génération du brouillon pour ${generationId}`);
+    debugLog(`Appel de tome-generate-draft pour la génération ${generationId}`);
     
-    // Update status to processing first
-    await supabase
-      .from('tome_generations')
-      .update({ 
-        status: 'processing', 
-        error_message: null 
-      })
-      .eq('id', generationId);
-      
-    // ADD THE REQUESTED DEBUG LOG HERE TO CONFIRM EXECUTION REACHES THIS POINT
-    debugLog("Avant d'invoquer tome-generate-draft", { generationId, timestamp: new Date().getTime() });
+    // Utiliser setTimeout pour laisser un peu de temps au système entre les opérations
+    await new Promise(resolve => setTimeout(resolve, 500));
     
-    // Make the API call to the draft generation function with explicit timestamp and debug parameters
-    const requestBody = { 
-      generationId,
-      timestamp: new Date().getTime(),
-      debug: true  // Always enable debug mode for better traceability
-    };
-    
-    debugLog(`Paramètres d'appel à tome-generate-draft:`, requestBody);
-    
-    const { data, error } = await supabase.functions.invoke('tome-generate-draft', {
-      body: requestBody
+    const { data: draftData, error: draftError } = await supabase.functions.invoke('tome-generate-draft', {
+      body: { 
+        generationId,
+        timestamp: new Date().getTime(), // Add timestamp to avoid caching
+        debug
+      }
     });
     
-    if (error) {
-      debugLog(`Erreur lors de l'appel à tome-generate-draft pour ${generationId}:`, error);
-      await updateGenerationStatus(supabase, generationId, 'failed', error.message);
+    if (draftError) {
+      debugLog(`Erreur lors de la génération du brouillon pour ${generationId}:`, draftError);
+      await updateGenerationStatus(supabase, generationId, 'failed', draftError.message || 'Erreur lors de l\'appel à tome-generate-draft');
       return false;
     }
     
-    debugLog(`Réponse de tome-generate-draft:`, data);
+    if (draftData && draftData.error) {
+      debugLog(`L'API de brouillon a retourné une erreur pour ${generationId}:`, draftData.error);
+      await updateGenerationStatus(supabase, generationId, 'failed', draftData.error);
+      return false;
+    }
+
     debugLog(`Brouillon généré avec succès pour ${generationId}`);
     return true;
   } catch (error) {
     debugLog(`Exception lors de la génération du brouillon pour ${generationId}:`, error);
-    await updateGenerationStatus(supabase, generationId, 'failed', error.message);
+    await updateGenerationStatus(supabase, generationId, 'failed', error.message || 'Exception dans tome-generate-draft');
     return false;
   }
 }
@@ -404,11 +354,8 @@ async function processAutomationSetting(supabase, setting, apiKeyUsed, forceGene
     // Check if it's time to generate content based on frequency
     const lastGeneration = await getLastGeneration(supabase, wordpressConfigId);
     
-    // IMPORTANT: Modifié pour être plus clair sur la décision de génération
-    // Si forceGeneration est true, générer du contenu quelle que soit la fréquence
+    // ALWAYS generate content if forceGeneration is true
     const shouldGenerate = forceGeneration || shouldGenerateContent(lastGeneration, frequency);
-    
-    debugLog(`Décision de génération pour ${wordpressConfigId}: ${shouldGenerate ? "OUI" : "NON"} (forceGeneration=${forceGeneration})`);
     
     if (!shouldGenerate) {
       debugLog(`Ignorer la génération pour la config ${wordpressConfigId}, pas encore dû selon la fréquence`);
@@ -469,18 +416,35 @@ async function processAutomationSetting(supabase, setting, apiKeyUsed, forceGene
       return processingResult;
     }
 
-    // Now that we have a generation, directly queue it for processing (THIS IS KEY)
-    const success = await queueDraftGeneration(supabase, generation.id, debug);
+    // Pour éviter le timeout, retourner un résultat de succès immédiatement
+    // et utiliser setTimeout pour lancer la génération en arrière-plan
+    debugLog(`Lancement de la génération du brouillon pour ${generation.id} en arrière-plan`);
     
-    if (success) {
-      debugLog(`Contenu généré avec succès pour la config ${wordpressConfigId}`);
-      processingResult.result = 'success';
-      processingResult.success = true;
+    // Si nous sommes dans un environnement Edge, utiliser Deno.EventSource.waitUntil
+    if (typeof EdgeRuntime !== 'undefined') {
+      debugLog("Utilisation de EdgeRuntime.waitUntil pour la génération du brouillon");
+      EdgeRuntime.waitUntil((async () => {
+        try {
+          await generateDraft(supabase, generation.id, debug);
+          debugLog(`Génération en arrière-plan terminée pour ${generation.id}`);
+        } catch (e) {
+          debugLog(`Erreur lors de la génération en arrière-plan pour ${generation.id}:`, e);
+        }
+      })());
     } else {
-      debugLog(`Échec de la génération du contenu pour la config ${wordpressConfigId}`);
-      processingResult.result = 'draft_generation_failed';
+      // Sinon, utiliser setTimeout, mais cela ne garantit pas l'achèvement
+      setTimeout(async () => {
+        try {
+          await generateDraft(supabase, generation.id, debug);
+          debugLog(`Génération par setTimeout terminée pour ${generation.id}`);
+        } catch (e) {
+          debugLog(`Erreur lors de la génération par setTimeout pour ${generation.id}:`, e);
+        }
+      }, 100);
     }
     
+    processingResult.result = 'success';
+    processingResult.success = true;
     return processingResult;
   } catch (error) {
     debugLog(`Erreur lors du traitement de l'automatisation pour la config ${wordpressConfigId}:`, error);
@@ -490,7 +454,50 @@ async function processAutomationSetting(supabase, setting, apiKeyUsed, forceGene
   }
 }
 
-// Main handler for the edge function with early response pattern
+// Main function to run the scheduler
+async function runScheduler(supabase, automationSettings, apiKey, forceGeneration, debug = false) {
+  let generationsCreated = 0;
+  const processingDetails = [];
+
+  debugLog(`Lancement du planificateur - forceGeneration: ${forceGeneration}, settings: ${automationSettings.length}`);
+
+  try {
+    // Pour éviter les timeouts, limiter le nombre de traitements simultanés
+    const maxConcurrentProcessing = 1;
+    
+    // Traiter par lots pour éviter les timeouts
+    for (let i = 0; i < automationSettings.length; i += maxConcurrentProcessing) {
+      const batch = automationSettings.slice(i, i + maxConcurrentProcessing);
+      debugLog(`Traitement du lot ${i / maxConcurrentProcessing + 1}, taille: ${batch.length}`);
+      
+      // Process each automation setting in the batch
+      const results = await Promise.all(
+        batch.map(setting => 
+          processAutomationSetting(supabase, setting, apiKey, forceGeneration, debug)
+        )
+      );
+      
+      results.forEach(result => {
+        processingDetails.push(result);
+        if (result.success) {
+          generationsCreated++;
+        }
+      });
+      
+      // Ajouter un petit délai entre les lots
+      if (i + maxConcurrentProcessing < automationSettings.length) {
+        debugLog(`Pause entre les lots de traitement (${i + maxConcurrentProcessing}/${automationSettings.length})`);
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+    }
+  } catch (error) {
+    debugLog("Erreur lors de l'exécution du planificateur:", error);
+  }
+
+  return { generationsCreated, processingDetails };
+}
+
+// Main handler for the edge function
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -507,9 +514,7 @@ serve(async (req) => {
     const supabase = initSupabaseClient();
     
     // Parse request parameters
-    const { isConfigCheck, forceGeneration, apiKey, timestamp, debug, isScheduledExecution } = await parseRequestParams(req);
-    
-    debugLog("Paramètres après analyse: forceGeneration=" + forceGeneration + ", isConfigCheck=" + isConfigCheck + ", isScheduledExecution=" + isScheduledExecution);
+    const { isConfigCheck, forceGeneration, apiKey, timestamp, debug } = await parseRequestParams(req);
     
     // Validate API key if provided
     let effectiveForceGeneration = forceGeneration;
@@ -565,7 +570,7 @@ serve(async (req) => {
 
     debugLog(`Trouvé ${automationSettings.length} paramètres d'automatisation actifs`);
     
-    // If just a configuration check, return quickly
+    // If just a configuration check, don't generate content
     if (isConfigCheck) {
       const checkResult = handleConfigCheck(automationSettings);
       const elapsedTime = performance.now() - startTime;
@@ -580,83 +585,28 @@ serve(async (req) => {
       );
     }
     
-    // Pour un forceGeneration=true explicite ou une exécution avec API key,
-    // nous exécutons directement le traitement pour une meilleure réponse
-    if (effectiveForceGeneration || apiKey || isScheduledExecution) {
-      debugLog(`EXÉCUTION DIRECTE AVEC forceGeneration=${effectiveForceGeneration}, isScheduledExecution=${isScheduledExecution}`);
-      
-      // Pour de meilleures performances, traitons juste le premier paramètre
-      if (automationSettings.length > 0) {
-        const settingToProcess = automationSettings[0];
-        
-        debugLog(`Lancement du planificateur - forceGeneration: ${effectiveForceGeneration}, traitement direct de la config: ${settingToProcess.wordpress_config_id}`);
-        
-        // Traiter ce paramètre
-        const processingResult = await processAutomationSetting(
-          supabase, 
-          settingToProcess, 
-          apiKey, 
-          effectiveForceGeneration || true,  // Toujours forcer la génération en mode manuel ou planifié
-          debug
-        );
-        
-        const elapsedTime = performance.now() - startTime;
-        debugLog(`Traitement terminé en ${elapsedTime.toFixed(1)}ms pour ${settingToProcess.wordpress_config_id}: ${processingResult.result}`);
-        
-        return new Response(
-          JSON.stringify({
-            success: processingResult.success,
-            message: `Exécution du planificateur terminée. Résultat: ${processingResult.result}`,
-            processingDetails: [processingResult],
-            generationsCreated: processingResult.success ? 1 : 0,
-            executionType: isScheduledExecution ? 'scheduled' : 'manual',
-            executionTime: elapsedTime.toFixed(1),
-            timestamp: new Date().toISOString()
-          }),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200,
-          }
-        );
-      }
-    }
+    // Run the scheduler to process automation settings
+    const { generationsCreated, processingDetails } = await runScheduler(
+      supabase, 
+      automationSettings, 
+      apiKey, 
+      effectiveForceGeneration,
+      debug
+    );
+
+    const elapsedTime = performance.now() - startTime;
+    debugLog(`Exécution du planificateur terminée en ${elapsedTime.toFixed(1)}ms. ${generationsCreated} génération(s) créée(s).`);
     
-    // Return a quick response for regular scheduled runs
-    const quickResponse = {
-      success: true,
-      message: `Exécution du planificateur démarrée.`,
-      automationSettingsCount: automationSettings.length,
-      executionTime: (performance.now() - startTime).toFixed(1),
-      timestamp: new Date().toISOString()
-    };
-    
-    // Use EdgeRuntime.waitUntil for background processing if not a forced run
-    if (typeof EdgeRuntime !== 'undefined' && !effectiveForceGeneration && !apiKey) {
-      EdgeRuntime.waitUntil((async () => {
-        try {
-          debugLog(`Traitement en arrière-plan pour les ${automationSettings.length} configuration(s)`);
-          
-          // Just process the first config to avoid timeouts
-          if (automationSettings.length > 0) {
-            const processingResult = await processAutomationSetting(
-              supabase, 
-              automationSettings[0], 
-              null, 
-              false, 
-              debug
-            );
-            
-            debugLog(`Traitement en arrière-plan terminé: ${processingResult.result}`);
-          }
-        } catch (e) {
-          debugLog(`Erreur lors du traitement en arrière-plan:`, e);
-        }
-      })());
-    }
-    
-    // Return quick response
+    // Return successful response
     return new Response(
-      JSON.stringify(quickResponse),
+      JSON.stringify({
+        success: true,
+        message: `Exécution du planificateur terminée. ${generationsCreated} génération(s) créée(s).`,
+        generationsCreated,
+        processingDetails: debug ? processingDetails : undefined,
+        executionTime: elapsedTime.toFixed(1),
+        timestamp: new Date().toISOString()
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,

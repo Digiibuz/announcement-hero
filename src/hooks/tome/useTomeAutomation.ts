@@ -282,29 +282,25 @@ export const useTomeAutomation = (configId: string) => {
     }
   };
 
-  const forceRunScheduler = async (): Promise<boolean> => {
+  const forceRunScheduler = async () => {
     setIsSubmitting(true);
     try {
-      // Assurez-vous d'utiliser les bons paramètres pour le planificateur
-      addLog("Exécution forcée du planificateur avec forceGeneration=true et configCheck=false");
-      console.log("Exécution forcée du planificateur avec forceGeneration=true et configCheck=false");
+      addLog("Exécution forcée du planificateur");
       
-      // IMPORTANT: Assurez-vous que runScheduler appelle tome-scheduler avec les bons paramètres
-      const result = await runScheduler(true); // Le paramètre true explicite que nous voulons forcer la génération
+      const result = await runScheduler(true);
       
       if (!result) {
         addLog("Échec de l'exécution du planificateur");
         toast.error("Échec de l'exécution du planificateur");
       } else {
         addLog("Planificateur exécuté avec succès");
-        toast.success("Planificateur exécuté avec succès");
       }
       
       return result;
     } catch (error: any) {
       console.error("Erreur dans forceRunScheduler:", error);
       addLog(`Erreur dans forceRunScheduler: ${error.message}`);
-      toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
+      toast.error(`Erreur: ${error.message || "Une erreur est survenue"}`);
       return false;
     } finally {
       setIsSubmitting(false);

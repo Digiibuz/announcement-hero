@@ -3,7 +3,3 @@ project_id = "rdwqedmvzicerwotjseg"
 
 [functions.tome-scheduler]
 verify_jwt = false
-
-[functions.tome-generate-draft]
-verify_jwt = false
-
