@@ -29,11 +29,11 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
   
   // Wrapper pour onForceRunScheduler qui capture les paramètres
   const handleForceRun = async () => {
-    // CORRECTION: Paramètres standardisés pour les exécutions manuelles 
+    // STANDARDISATION: Paramètres standardisés pour les exécutions manuelles 
     // Ces paramètres doivent être identiques à ceux utilisés dans tome-scheduler et useTomeScheduler
     const params = {
-      forceGeneration: true,  // TOUJOURS true pour exécution manuelle
-      configCheck: false,     // TOUJOURS false pour exécution manuelle
+      forceGeneration: true,     // TOUJOURS true pour exécution manuelle
+      configCheck: false,        // TOUJOURS false pour exécution manuelle
       timestamp: new Date().getTime(),
       debug: true,
       requestId: `manual-${Date.now()}-${Math.random().toString(36).substring(2, 9)}` // ID unique pour traçage
@@ -91,7 +91,7 @@ const AutomationActions: React.FC<AutomationActionsProps> = ({
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">
-              <p>Force l'exécution immédiate du planificateur avec paramètres: forceGeneration=true, configCheck=false</p>
+              <p>Force l'exécution immédiate du planificateur avec paramètres standardisés</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
