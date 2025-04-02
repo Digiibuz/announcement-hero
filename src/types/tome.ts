@@ -28,10 +28,16 @@ export interface TomeGeneration {
   scheduled_at: string | null;
   published_at: string | null;
   wordpress_post_id: number | null;
-  title?: string | null;
-  content?: string | null;
-  error_message?: string | null;
-  description?: string | null;
+  title: string | null;
+  content: string | null;
+  description: string | null;
+  error_message: string | null;
+  // These are derived properties that can be added at runtime
+  wordpress_site_url?: string | null;
+  category_name?: string | null;
+  keyword_text?: string | null;
+  locality_name?: string | null;
+  locality_region?: string | null;
 }
 
 export interface DipiCptCategory {
