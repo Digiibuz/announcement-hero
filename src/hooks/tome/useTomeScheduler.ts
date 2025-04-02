@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -18,12 +17,13 @@ export const useTomeScheduler = () => {
       setIsRunning(true);
       addLog("Vérification de la configuration du planificateur...");
 
-      // IMPORTANT: Paramètres standardisés pour la vérification de configuration
+      // CORRECTION: Paramètres standardisés pour la vérification de configuration
       const params = { 
-        configCheck: true,  // Explicitement true pour la vérification
-        forceGeneration: false, // Explicitement false pour la vérification
+        configCheck: true,     // Explicitement true pour la vérification
+        forceGeneration: false,  // Explicitement false pour la vérification
         timestamp: new Date().getTime(),
-        debug: true
+        debug: true,
+        requestId: `config-check-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
       };
       
       addLog(`Paramètres de la requête de vérification: ${JSON.stringify(params)}`);
@@ -72,13 +72,13 @@ export const useTomeScheduler = () => {
       setIsRunning(true);
       addLog(`Démarrage ${forceGeneration ? "forcé" : "manuel"} du planificateur...`);
       
-      // STANDARDISATION DES PARAMÈTRES: Toujours utiliser ces paramètres pour l'exécution
-      // que ce soit en mode manuel ou automatique
+      // CORRECTION CRITIQUE: Toujours utiliser les mêmes paramètres que dans AutomationActions.handleForceRun
       const params = { 
-        forceGeneration: true, // TOUJOURS true pour exécution (manuelle ou auto)
-        configCheck: false,    // TOUJOURS false pour exécution (manuelle ou auto)
+        forceGeneration: true,    // TOUJOURS true pour exécution (manuelle ou auto)
+        configCheck: false,       // TOUJOURS false pour exécution (manuelle ou auto)
         timestamp: new Date().getTime(),
-        debug: true
+        debug: true,
+        requestId: `manual-run-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
       };
       
       addLog(`Paramètres de la requête d'exécution: ${JSON.stringify(params)}`);

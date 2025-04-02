@@ -285,12 +285,23 @@ export const useTomeAutomation = (configId: string) => {
     setIsSubmitting(true);
     try {
       // STANDARDISATION: Utiliser EXACTEMENT les mêmes paramètres que dans useTomeScheduler.runScheduler
+      // et AutomationActions.handleForceRun
       addLog("Exécution forcée du planificateur avec forceGeneration=true et configCheck=false");
       console.log("Exécution forcée du planificateur avec forceGeneration=true et configCheck=false");
       
+      // CORRECTION CRITIQUE: Paramètres standardisés pour garantir la cohérence
+      const params = { 
+        forceGeneration: true,    // TOUJOURS true pour exécution manuelle
+        configCheck: false,       // TOUJOURS false pour exécution manuelle
+        timestamp: new Date().getTime(),
+        debug: true,
+        requestId: `force-run-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+      };
+      
+      addLog(`Paramètres d'exécution standardisés: ${JSON.stringify(params)}`);
+      
       // IMPORTANT: Utiliser runScheduler avec true pour forcer la génération
-      // Cela garantit les mêmes paramètres (forceGeneration=true, configCheck=false) 
-      // pour les exécutions manuelles et automatiques
+      // et avec les paramètres standardisés 
       const result = await runScheduler(true);
       
       if (!result) {

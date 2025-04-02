@@ -63,13 +63,14 @@ function initSupabaseClient() {
 
 // Parse request parameters from the request body
 async function parseRequestParams(req: Request) {
-  // STANDARDISATION: ces valeurs par défaut sont CRUCIALES pour l'exécution automatique
+  // CORRECTION CRITIQUE: Standardisation des valeurs par défaut
   // Pour toute exécution (manuelle ou automatique), nous voulons:
   let isConfigCheck = false;        // TOUJOURS false par défaut
   let forceGeneration = true;       // TOUJOURS true par défaut 
   let apiKey = null;
   let debug = true;                 // TOUJOURS true en phase de développement
   let timestamp = new Date().getTime(); 
+  let requestId = `auto-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   let isScheduledExecution = true;  // Flag pour suivre si c'est une exécution automatique
   
   try {
@@ -78,27 +79,34 @@ async function parseRequestParams(req: Request) {
     
     debugLog("Corps de la requête:", body);
     
-    // CORRECTION CRITIQUE: Priorité à forceGeneration sur configCheck
-    // Si forceGeneration est explicitement true dans la requête, toujours l'utiliser indépendamment de configCheck
-    if (body.forceGeneration === true) {
-      debugLog("PRIORITÉ: forceGeneration=true détecté dans la requête, ignorant configCheck");
-      forceGeneration = true;
-      isConfigCheck = false; // Remplacer explicitement configCheck
-    } 
-    // Vérifier configCheck uniquement si forceGeneration n'est pas explicitement true
-    else if (body.configCheck === true) {
+    // CORRECTION CRUCIALE: Analyser explicitement configCheck et forceGeneration
+    // Si configCheck est explicitement défini à true, alors c'est une vérification de configuration
+    if (body.configCheck === true) {
       isConfigCheck = true;
-      forceGeneration = false; // Explicitement définir forceGeneration à false pour les vérifications de config
-      debugLog("configCheck=true détecté, forceGeneration défini sur false");
-    }
-    // Pour tout autre cas, utiliser les valeurs par défaut (forceGeneration=true, configCheck=false)
+      forceGeneration = false; // On désactive forceGeneration pour les vérifications
+      debugLog("Mode vérification de configuration détecté: configCheck=true, forceGeneration=false");
+    } 
+    // Sinon, si forceGeneration est défini ou non, on l'utilise comme valeur par défaut
     else {
-      debugLog("Aucun paramètre prioritaire détecté, utilisation des valeurs par défaut");
+      forceGeneration = body.forceGeneration !== false; // true par défaut sauf si explicitement false
+      isConfigCheck = false; // Toujours false si ce n'est pas une vérification de configuration
+      debugLog(`Mode exécution détecté: forceGeneration=${forceGeneration}, configCheck=false`);
     }
     
+    // Autres paramètres
     apiKey = body.api_key;
-    debug = body.debug === true;
+    debug = body.debug !== false; // true par défaut sauf si explicitement false
     timestamp = body.timestamp || timestamp;
+    requestId = body.requestId || requestId;
+    
+    debugLog("Paramètres extraits du corps:", {
+      isConfigCheck,
+      forceGeneration,
+      apiKey: apiKey ? "présent" : "absent",
+      debug,
+      timestamp,
+      requestId
+    });
   } catch (e) {
     // Si pas de corps JSON ou erreur d'analyse, traiter comme une exécution planifiée
     debugLog("Pas de corps JSON ou erreur d'analyse, exécution planifiée supposée");
@@ -106,9 +114,9 @@ async function parseRequestParams(req: Request) {
   }
   
   debugLog("Type d'exécution:", isScheduledExecution ? "Planifiée" : "Manuelle");
-  debugLog("Valeurs des paramètres après traitement - isConfigCheck:", isConfigCheck, "forceGeneration:", forceGeneration, "timestamp:", timestamp, "debug:", debug);
+  debugLog("Valeurs des paramètres après traitement - isConfigCheck:", isConfigCheck, "forceGeneration:", forceGeneration, "timestamp:", timestamp, "debug:", debug, "requestId:", requestId);
   
-  return { isConfigCheck, forceGeneration, apiKey, timestamp, debug, isScheduledExecution };
+  return { isConfigCheck, forceGeneration, apiKey, timestamp, debug, requestId, isScheduledExecution };
 }
 
 // Validate API key if provided and force generation for that specific config
@@ -520,9 +528,9 @@ serve(async (req) => {
     const supabase = initSupabaseClient();
     
     // Parse request parameters - STANDARDISATION DES PARAMÈTRES
-    const { isConfigCheck, forceGeneration, apiKey, timestamp, debug, isScheduledExecution } = await parseRequestParams(req);
+    const { isConfigCheck, forceGeneration, apiKey, timestamp, debug, requestId, isScheduledExecution } = await parseRequestParams(req);
     
-    debugLog("Paramètres après analyse: forceGeneration=" + forceGeneration + ", isConfigCheck=" + isConfigCheck + ", isScheduledExecution=" + isScheduledExecution);
+    debugLog("Paramètres après analyse: forceGeneration=" + forceGeneration + ", isConfigCheck=" + isConfigCheck + ", isScheduledExecution=" + isScheduledExecution + ", requestId=" + requestId);
     
     // Validate API key if provided
     let effectiveForceGeneration = forceGeneration;
