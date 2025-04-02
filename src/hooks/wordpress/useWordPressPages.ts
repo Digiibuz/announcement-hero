@@ -1,52 +1,80 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-export const useWordPressPages = (configIdProp?: string | null) => {
-  const [pages, setPages] = useState<any[]>([]);
+export interface WordPressPage {
+  id: number;
+  date: string;
+  modified: string;
+  slug: string;
+  status: string;
+  type: string;
+  link: string;
+  title: {
+    rendered: string;
+  };
+  content: {
+    rendered: string;
+    protected: boolean;
+  };
+  author: number;
+  featured_media: number;
+  parent: number;
+  menu_order: number;
+  comment_status: string;
+  ping_status: string;
+  template: string;
+}
+
+export const useWordPressPages = () => {
+  const [pages, setPages] = useState<WordPressPage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
-  const fetchPages = useCallback(async (configId?: string | null) => {
-    // Utiliser la configId passée en paramètre ou celle de la prop
-    const effectiveConfigId = configId || configIdProp || user?.wordpressConfigId;
-    
-    if (!effectiveConfigId) {
-      console.error("No WordPress configuration ID found for pages", user);
-      setError("No WordPress configuration found for pages");
+  const fetchPages = async () => {
+    if (!user?.wordpressConfigId) {
+      console.error("No WordPress configuration ID found for user", user);
+      setError("No WordPress configuration found for this user");
       return;
     }
 
     try {
       setIsLoading(true);
       setError(null);
-      console.log("Fetching pages for WordPress config ID:", effectiveConfigId);
+      console.log("Fetching pages for WordPress config ID:", user.wordpressConfigId);
 
-      // First get the WordPress config
+      // First get the WordPress config for the user
       const { data: wpConfig, error: wpConfigError } = await supabase
         .from('wordpress_configs')
         .select('site_url, rest_api_key, app_username, app_password')
-        .eq('id', effectiveConfigId)
+        .eq('id', user.wordpressConfigId)
         .single();
 
       if (wpConfigError) {
-        console.error("Error fetching WordPress config for pages:", wpConfigError);
+        console.error("Error fetching WordPress config:", wpConfigError);
         throw wpConfigError;
       }
       
       if (!wpConfig) {
-        console.error("WordPress configuration not found for pages");
-        throw new Error("WordPress configuration not found for pages");
+        console.error("WordPress configuration not found");
+        throw new Error("WordPress configuration not found");
       }
 
-      // Normalize the URL (remove double slashes)
+      console.log("WordPress config found:", {
+        site_url: wpConfig.site_url,
+        hasRestApiKey: !!wpConfig.rest_api_key,
+        hasAppUsername: !!wpConfig.app_username,
+        hasAppPassword: !!wpConfig.app_password
+      });
+
+      // Normaliser l'URL (supprimer les doubles slashes)
       const siteUrl = wpConfig.site_url.replace(/([^:]\/)\/+/g, "$1");
-      
-      // First try the pages endpoint
-      let apiUrl = `${siteUrl}/wp-json/wp/v2/pages`;
+
+      // Construct the WordPress API URL
+      const apiUrl = `${siteUrl}/wp-json/wp/v2/pages`;
       
       // Prepare headers
       const headers: Record<string, string> = {
@@ -55,23 +83,23 @@ export const useWordPressPages = (configIdProp?: string | null) => {
       
       // Prioritize Application Password authentication
       if (wpConfig.app_username && wpConfig.app_password) {
-        console.log("Using Application Password authentication for pages");
+        console.log("Using Application Password authentication");
         const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
         headers['Authorization'] = `Basic ${basicAuth}`;
       } else if (wpConfig.rest_api_key) {
-        console.log("Using REST API Key authentication for pages");
+        console.log("Using REST API Key authentication");
         headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
       } else {
-        console.log("No authentication credentials provided for pages");
+        console.log("No authentication credentials provided");
       }
       
-      // Add timeout to the request
+      console.log("Fetching pages from:", apiUrl);
+      
+      // Ajouter un délai d'expiration à la requête
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes de timeout
       
       try {
-        console.log("Fetching WordPress pages from:", apiUrl);
-        
         const response = await fetch(apiUrl, {
           method: 'GET',
           headers: headers,
@@ -82,7 +110,7 @@ export const useWordPressPages = (configIdProp?: string | null) => {
   
         if (!response.ok) {
           const errorText = await response.text();
-          console.error("WordPress API error for pages:", response.status, errorText);
+          console.error("WordPress API error:", response.status, errorText);
           
           if (response.status === 401 || response.status === 403) {
             throw new Error("Identifiants incorrects ou autorisations insuffisantes");
@@ -92,7 +120,7 @@ export const useWordPressPages = (configIdProp?: string | null) => {
         }
   
         const pagesData = await response.json();
-        console.log("WordPress pages fetched successfully:", pagesData.length);
+        console.log("Pages fetched successfully:", pagesData.length);
         setPages(pagesData);
       } catch (fetchError: any) {
         if (fetchError.name === 'AbortError') {
@@ -105,7 +133,7 @@ export const useWordPressPages = (configIdProp?: string | null) => {
       
       let errorMessage = err.message || "Failed to fetch WordPress pages";
       
-      // Improve error messages
+      // Améliorer les messages d'erreur
       if (err.message.includes("Failed to fetch")) {
         errorMessage = "Erreur réseau: impossible d'accéder au site WordPress";
       } else if (err.message.includes("NetworkError")) {
@@ -115,19 +143,18 @@ export const useWordPressPages = (configIdProp?: string | null) => {
       }
       
       setError(errorMessage);
-      toast.error("Erreur lors de la récupération des pages");
+      toast.error("Erreur lors de la récupération des pages WordPress");
     } finally {
       setIsLoading(false);
     }
-  }, [configIdProp, user?.wordpressConfigId]);
+  };
 
   useEffect(() => {
-    const effectiveConfigId = configIdProp || user?.wordpressConfigId;
-    console.log("useWordPressPages effect running, user:", user?.id, "configId:", effectiveConfigId);
-    if (effectiveConfigId) {
-      fetchPages(effectiveConfigId);
+    console.log("useWordPressPages effect running, user:", user?.id, "wordpressConfigId:", user?.wordpressConfigId);
+    if (user?.wordpressConfigId) {
+      fetchPages();
     }
-  }, [configIdProp, user?.wordpressConfigId, fetchPages]);
+  }, [user?.wordpressConfigId]);
 
   return { 
     pages, 

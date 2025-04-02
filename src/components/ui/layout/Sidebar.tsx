@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useEffect } from "react";
@@ -18,8 +19,7 @@ import {
   FileText,
   Menu,
   UserCircle,
-  Ticket,
-  BookText
+  Ticket
 } from "lucide-react";
 import { useTicketNotifications } from "@/hooks/useTicketNotifications";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,13 +32,16 @@ const Sidebar = () => {
   const { unreadCount, resetTicketTabView } = useTicketNotifications();
   const [localUnreadCount, setLocalUnreadCount] = React.useState(0);
 
+  // Initialize local unread count with the value from the hook
   useEffect(() => {
     setLocalUnreadCount(unreadCount);
   }, [unreadCount]);
 
+  // Set up real-time listener for ticket responses and read status changes
   useEffect(() => {
     if (!user?.id) return;
 
+    // Listen for new ticket responses
     const responsesChannel = supabase
       .channel('sidebar_ticket_responses')
       .on('postgres_changes', {
@@ -46,10 +49,12 @@ const Sidebar = () => {
         schema: 'public',
         table: 'ticket_responses'
       }, () => {
+        // Update the local unread count with a slight delay
         setTimeout(() => setLocalUnreadCount(unreadCount), 300);
       })
       .subscribe();
 
+    // Listen for changes in ticket read status
     const readStatusChannel = supabase
       .channel('sidebar_ticket_read_status')
       .on('postgres_changes', {
@@ -57,6 +62,7 @@ const Sidebar = () => {
         schema: 'public',
         table: 'ticket_read_status'
       }, () => {
+        // Update the local unread count with a slight delay
         setTimeout(() => setLocalUnreadCount(unreadCount), 300);
       })
       .on('postgres_changes', {
@@ -64,6 +70,7 @@ const Sidebar = () => {
         schema: 'public',
         table: 'ticket_read_status'
       }, () => {
+        // Update the local unread count with a slight delay
         setTimeout(() => setLocalUnreadCount(unreadCount), 300);
       })
       .subscribe();
@@ -100,12 +107,6 @@ const Sidebar = () => {
       href: "/create",
       icon: <Newspaper className="h-5 w-5" />,
       isActive: pathname === "/create",
-    },
-    {
-      name: "Tom-E",
-      href: "/tome",
-      icon: <BookText className="h-5 w-5" />,
-      isActive: pathname.startsWith("/tome"),
     },
   ];
 
@@ -165,6 +166,7 @@ const Sidebar = () => {
       </div>
 
       <div className={`h-[calc(100vh-4rem)] overflow-y-auto px-3 py-4 flex flex-col ${isMobile ? "" : "relative"}`}>
+        {/* Main navigation items */}
         <div className="flex-grow">
           <ul className="space-y-2">
             {navItems.map((item) => (
@@ -214,6 +216,7 @@ const Sidebar = () => {
           </ul>
         </div>
 
+        {/* Profile, support and logout items - always at the bottom */}
         <div className="mt-auto border-t border-border pt-4">
           {profileItems.map((item) => (
             <Link key={item.href} to={item.href} onClick={() => isMobile && setIsOpen(false)}>
