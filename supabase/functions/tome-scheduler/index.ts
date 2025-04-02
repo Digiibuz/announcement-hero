@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.1';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import 'https://deno.land/x/xhr@0.1.0/mod.ts';
@@ -329,7 +328,8 @@ async function queueDraftGeneration(supabase, generationId, debug = false) {
       })
       .eq('id', generationId);
       
-    debugLog(`Appel de tome-generate-draft pour la génération ${generationId}`);
+    // ADD THE REQUESTED DEBUG LOG HERE TO CONFIRM EXECUTION REACHES THIS POINT
+    debugLog("Avant d'invoquer tome-generate-draft", { generationId, timestamp: new Date().getTime() });
     
     // Make the API call to the draft generation function with explicit timestamp and debug parameters
     const requestBody = { 
