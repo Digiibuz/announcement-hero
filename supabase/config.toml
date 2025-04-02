@@ -30,12 +30,10 @@ enabled = true
 enabled = true
 
 [auth.email]
-enabled = true
-double_confirm_changes = true
 enable_confirmations = false
 
 [auth.sms]
-enabled = false
+# SMS auth settings
 
 [analytics]
 enabled = false
