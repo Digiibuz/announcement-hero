@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useTomeScheduler } from "@/hooks/tome/useTomeScheduler";
 import { useCategoriesKeywords, useLocalities } from "@/hooks/tome";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 // Define the type for tome_automation table
@@ -31,7 +31,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { categories, isLoading: isLoadingCategories } = useCategoriesKeywords(configId);
   const { activeLocalities, isLoading: isLoadingLocalities } = useLocalities(configId);
-  const { generateContent, runScheduler } = useTomeScheduler();
+  const { generateContent, runScheduler, publishContent } = useTomeScheduler();
 
   // Vérifier si l'automatisation est déjà activée à l'initialisation
   React.useEffect(() => {
@@ -134,8 +134,8 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
     }
   };
 
-  // Générer manuellement un brouillon avec des mots-clés et localités aléatoires
-  const generateRandomDraft = async () => {
+  // Générer et publier directement avec des mots-clés et localités aléatoires
+  const generateAndPublishNow = async () => {
     setIsSubmitting(true);
     try {
       if (categories.length === 0) {
@@ -175,7 +175,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
           category_id: selectedCategory.id,
           keyword_id: selectedKeywordId,
           locality_id: selectedLocalityId,
-          status: 'pending'
+          status: 'pending' // Utiliser pending pour générer ET publier
         })
         .select()
         .single();
@@ -192,12 +192,12 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       const result = await generateContent(generationData.id);
       
       if (result) {
-        toast.success("Brouillon généré avec succès");
+        toast.success("Publication en cours de génération et publication");
       } else {
-        toast.error("Échec de la génération du brouillon");
+        toast.error("Échec de la génération et publication");
       }
     } catch (error: any) {
-      console.error("Erreur lors de la génération du brouillon:", error);
+      console.error("Erreur lors de la génération et publication:", error);
       toast.error("Erreur: " + error.message);
     } finally {
       setIsSubmitting(false);
@@ -221,7 +221,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       <CardHeader>
         <CardTitle>Automatisation des publications</CardTitle>
         <CardDescription>
-          Configurez la génération automatique de brouillons avec des mots-clés et localités aléatoires
+          Configurez la génération automatique de publications avec des mots-clés et localités aléatoires
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -229,7 +229,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
           <div className="space-y-0.5">
             <Label htmlFor="automation-switch">Activer l'automatisation</Label>
             <p className="text-sm text-muted-foreground">
-              Génère automatiquement des brouillons selon la fréquence définie
+              Génère automatiquement des publications selon la fréquence définie
             </p>
           </div>
           <Switch
@@ -274,11 +274,11 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       <CardFooter className="flex justify-between">
         <Button 
           variant="outline" 
-          onClick={generateRandomDraft}
+          onClick={generateAndPublishNow}
           disabled={!hasNecessaryData || isSubmitting}
         >
-          {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-          Générer un brouillon maintenant
+          {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Globe className="h-4 w-4 mr-2" />}
+          Générer et publier maintenant
         </Button>
         <Button 
           onClick={saveAutomationSettings}

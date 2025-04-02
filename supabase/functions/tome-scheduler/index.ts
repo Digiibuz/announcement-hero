@@ -145,7 +145,7 @@ serve(async (req) => {
         localityId = localities[randomLocalityIndex].id;
       }
 
-      // Create a new generation entry
+      // Create a new generation entry with status 'pending' for direct publishing
       const { data: generation, error: generationError } = await supabase
         .from('tome_generations')
         .insert({
@@ -153,7 +153,7 @@ serve(async (req) => {
           category_id: categoryId,
           keyword_id: keywordId,
           locality_id: localityId,
-          status: 'pending'
+          status: 'pending'  // Use 'pending' for direct publishing
         })
         .select()
         .single();
@@ -165,7 +165,7 @@ serve(async (req) => {
 
       console.log(`Created generation ${generation.id} for WordPress config ${wordpressConfigId}`);
 
-      // Call tome-generate-draft to create the content (using AI) but NOT publish
+      // Call tome-generate-draft to create the content (using AI) and publish
       const { error: draftError } = await supabase.functions.invoke('tome-generate-draft', {
         body: { generationId: generation.id }
       });
@@ -175,7 +175,7 @@ serve(async (req) => {
         continue;
       }
 
-      console.log(`Successfully generated draft for generation ${generation.id}`);
+      console.log(`Successfully generated content for generation ${generation.id}`);
       generationsCreated++;
     }
 
