@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -120,7 +119,8 @@ const TomePublicationDetail = () => {
 
         const enhancedGeneration: TomeGeneration = {
           ...generationData,
-          wordpress_site_url: wpConfig?.site_url || null
+          wordpress_site_url: wpConfig?.site_url || null,
+          manual_publish_at: generationData.manual_publish_at || null
         };
 
         setGeneration(enhancedGeneration);
@@ -218,12 +218,9 @@ const TomePublicationDetail = () => {
   };
 
   const handleManualPublish = () => {
-    // L'utilisateur confirme qu'il souhaite publier manuellement depuis WordPress
     if (generation && generation.wordpress_site_url) {
-      // Ouvrir l'admin WordPress dans un nouvel onglet
       window.open(`${generation.wordpress_site_url}/wp-admin/post-new.php?post_type=page`, '_blank');
       
-      // Mettre à jour le statut dans la base de données
       if (id) {
         updateGeneration(id, {
           status: 'manual_publish',
@@ -238,7 +235,6 @@ const TomePublicationDetail = () => {
         
         toast.success("N'oubliez pas de copier-coller le contenu dans WordPress");
         
-        // Rediriger après un court délai
         setTimeout(() => {
           navigate("/tome");
         }, 3000);

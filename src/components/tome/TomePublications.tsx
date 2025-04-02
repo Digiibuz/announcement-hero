@@ -58,7 +58,8 @@ const TomePublications: React.FC<TomePublicationsProps> = ({ configId, isClientV
       // Enrichir les données avec l'URL du site
       const enhancedGenerations = data.map(gen => ({
         ...gen,
-        wordpress_site_url: wpConfig?.site_url || null
+        wordpress_site_url: wpConfig?.site_url || null,
+        manual_publish_at: gen.manual_publish_at || null // S'assurer que ce champ existe
       }));
 
       setGenerations(enhancedGenerations);

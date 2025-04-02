@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -12,6 +11,7 @@ interface ExtendedTomeGeneration extends TomeGeneration {
   keyword_text?: string | null;
   locality_name?: string | null;
   locality_region?: string | null;
+  manual_publish_at?: string | null;
 }
 
 export const useTomeGeneration = (configId: string | null) => {
@@ -116,7 +116,8 @@ export const useTomeGeneration = (configId: string | null) => {
           category_name: categoryMap.get(gen.category_id) || null,
           keyword_text: gen.keyword_id ? keywordMap.get(gen.keyword_id as string) || null : null,
           locality_name: gen.locality_id ? localityMap.get(gen.locality_id as string)?.name || null : null,
-          locality_region: gen.locality_id ? localityMap.get(gen.locality_id as string)?.region || null : null
+          locality_region: gen.locality_id ? localityMap.get(gen.locality_id as string)?.region || null : null,
+          manual_publish_at: gen.manual_publish_at || null
         };
         return enhanced;
       });
@@ -289,7 +290,8 @@ export const useTomeGeneration = (configId: string | null) => {
         category_name: category?.category_name || null,
         keyword_text: keyword?.keyword || null,
         locality_name: locality?.name || null,
-        locality_region: locality?.region || null
+        locality_region: locality?.region || null,
+        manual_publish_at: generation.manual_publish_at || null
       };
       
       return enhancedGeneration;
