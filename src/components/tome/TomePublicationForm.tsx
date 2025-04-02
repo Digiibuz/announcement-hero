@@ -10,7 +10,7 @@ import { useForm } from "react-hook-form";
 import { useTomeGeneration, useCategoriesKeywords, useLocalities } from "@/hooks/tome";
 import { toast } from "sonner";
 import DescriptionField from "@/components/tome/TomeDescriptionField";
-import { Loader2, Save, BookText, Globe } from "lucide-react";
+import { Loader2, Globe, BookText } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
 interface TomePublicationFormProps {
@@ -57,7 +57,7 @@ const TomePublicationForm: React.FC<TomePublicationFormProps> = ({
       keywordId: null,
       localityId: null,
       description: "",
-      publishDirectly: false
+      publishDirectly: true // Changé à true par défaut
     }
   });
 
@@ -89,8 +89,8 @@ const TomePublicationForm: React.FC<TomePublicationFormProps> = ({
         ? activeLocalities.find(l => l.id === data.localityId) || null
         : null;
       
-      // Créer la génération avec le statut approprié
-      const status = data.publishDirectly ? "pending" : "draft";
+      // Créer la génération avec le statut approprié (toujours pending pour publication directe)
+      const status = "pending"; // Utilise toujours "pending" pour déclencher la génération et publication immédiate
       
       const success = await createGeneration(
         data.categoryId,
@@ -99,14 +99,11 @@ const TomePublicationForm: React.FC<TomePublicationFormProps> = ({
         null, // Pas de planification
         data.title,
         data.description,
-        status // Statut "pending" pour publication directe ou "draft" pour brouillon
+        status // Toujours utiliser "pending" pour publication directe
       );
       
       if (success) {
-        toast.success(data.publishDirectly 
-          ? "Publication en cours de génération et publication" 
-          : "Publication créée en mode brouillon"
-        );
+        toast.success("Publication en cours de génération et publication");
         // Rediriger vers la liste des publications
         navigate("/tome");
       }
@@ -261,27 +258,6 @@ const TomePublicationForm: React.FC<TomePublicationFormProps> = ({
                   </FormItem>
                 )}
               />
-              
-              <FormField
-                control={form.control}
-                name="publishDirectly"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between space-y-0 pt-6">
-                    <div className="space-y-0.5">
-                      <FormLabel>Publication directe</FormLabel>
-                      <FormDescription className="text-xs text-muted-foreground">
-                        Générer et publier directement sur WordPress
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
             </div>
 
             <FormField
@@ -319,15 +295,10 @@ const TomePublicationForm: React.FC<TomePublicationFormProps> = ({
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Création...
                   </>
-                ) : publishDirectly ? (
+                ) : (
                   <>
                     <Globe className="mr-2 h-4 w-4" />
                     Générer et publier
-                  </>
-                ) : (
-                  <>
-                    <BookText className="mr-2 h-4 w-4" />
-                    Créer en brouillon
                   </>
                 )}
               </Button>
