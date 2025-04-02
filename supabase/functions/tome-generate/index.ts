@@ -35,6 +35,8 @@ serve(async (req) => {
     const reqClone = req.clone();
     const { generationId } = await reqClone.json();
 
+    console.log("Processing generation ID:", generationId);
+
     if (!generationId) {
       throw new Error('Generation ID is required');
     }
@@ -49,6 +51,8 @@ serve(async (req) => {
     if (generationError || !generation) {
       throw new Error('Generation not found: ' + (generationError?.message || 'Unknown error'));
     }
+
+    console.log("Found generation:", generation);
 
     // Update status to processing
     await supabase
@@ -66,6 +70,8 @@ serve(async (req) => {
     if (wpConfigError || !wpConfig) {
       throw new Error('WordPress config not found');
     }
+
+    console.log("Found WordPress config:", wpConfig.name);
 
     // Get category name
     const { data: categoryKeyword, error: categoryError } = await supabase
@@ -124,6 +130,8 @@ serve(async (req) => {
     
     prompt += "\n\nFormat souhaité: HTML avec balises pour les titres (h1, h2, h3), paragraphes (p) et listes (ul, li).";
     
+    console.log("Prompt prepared, calling OpenAI...");
+    
     // Generate content with OpenAI
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -148,11 +156,18 @@ serve(async (req) => {
       }),
     });
 
+    if (!openaiResponse.ok) {
+      const errorText = await openaiResponse.text();
+      throw new Error(`OpenAI API error: ${openaiResponse.status} - ${errorText}`);
+    }
+
     const completion = await openaiResponse.json();
     
     if (!completion.choices || completion.choices.length === 0) {
       throw new Error('Failed to generate content with OpenAI');
     }
+    
+    console.log("Content generated from OpenAI");
     
     const generatedContent = completion.choices[0].message.content;
     
@@ -205,6 +220,8 @@ serve(async (req) => {
       categoryId: generation.category_id,
     };
     
+    console.log("WordPress publication preparation started");
+
     try {
       // Ajout d'un délai avant de faire la requête WordPress pour éviter la détection du Bot
       console.log("Attente de 3 secondes avant de contacter WordPress...");
@@ -252,14 +269,17 @@ serve(async (req) => {
       }
       
       const wpData = await wpResponse.json();
+      console.log("WordPress publication successful, post ID:", wpData.id);
       
-      // Update generation status in Supabase
+      // Update generation with content and status in Supabase
       await supabase
         .from('tome_generations')
         .update({ 
           status: 'published',
           wordpress_post_id: wpData.id,
-          published_at: new Date().toISOString()
+          published_at: new Date().toISOString(),
+          title: title,
+          content: generatedContent
         })
         .eq('id', generationId);
       
@@ -323,6 +343,8 @@ serve(async (req) => {
               error_message: friendlyMessage.substring(0, 255) // Limiter la taille
             })
             .eq('id', generationId);
+            
+          console.log(`Updated generation ${generationId} to failed status with message: ${friendlyMessage}`);
         }
       }
     } catch (updateError) {
