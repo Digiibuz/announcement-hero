@@ -1,11 +1,9 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { TomeGeneration, CategoryKeyword, Locality } from "@/types/tome";
 import { format } from "date-fns";
 
-// Extend TomeGeneration with optional additional fields
 interface ExtendedTomeGeneration extends TomeGeneration {
   wordpress_site_url?: string | null;
   category_name?: string | null;
@@ -32,7 +30,6 @@ export const useTomeGeneration = (configId: string | null) => {
     try {
       setIsLoading(true);
       
-      // Get basic generation data first
       const { data: basicGenerations, error: genError } = await supabase
         .from("tome_generations")
         .select("*")
@@ -45,7 +42,6 @@ export const useTomeGeneration = (configId: string | null) => {
         return;
       }
 
-      // Get WordPress config for site URL
       const { data: wpConfig, error: wpConfigError } = await supabase
         .from("wordpress_configs")
         .select("id, site_url")
@@ -56,14 +52,11 @@ export const useTomeGeneration = (configId: string | null) => {
         console.error("Error fetching WordPress config:", wpConfigError);
       }
 
-      // Prepare data for lookups
       const categoryIds = [...new Set(basicGenerations.map(g => g.category_id))];
       const keywordIds = [...new Set(basicGenerations.filter(g => g.keyword_id).map(g => g.keyword_id as string))];
       const localityIds = [...new Set(basicGenerations.filter(g => g.locality_id).map(g => g.locality_id as string))];
 
-      // Fetch related data
       const [categoriesData, keywordsData, localitiesData] = await Promise.all([
-        // Categories
         categoryIds.length > 0 
           ? supabase
               .from("categories_keywords")
@@ -71,7 +64,6 @@ export const useTomeGeneration = (configId: string | null) => {
               .in("id", categoryIds)
           : Promise.resolve({ data: [], error: null }),
         
-        // Keywords
         keywordIds.length > 0
           ? supabase
               .from("categories_keywords")
@@ -79,7 +71,6 @@ export const useTomeGeneration = (configId: string | null) => {
               .in("id", keywordIds)
           : Promise.resolve({ data: [], error: null }),
         
-        // Localities
         localityIds.length > 0
           ? supabase
               .from("localities")
@@ -88,12 +79,10 @@ export const useTomeGeneration = (configId: string | null) => {
           : Promise.resolve({ data: [], error: null }),
       ]);
 
-      // Create lookup maps
       const categoryMap = new Map<string, string>();
       const keywordMap = new Map<string, string>();
       const localityMap = new Map<string, { name: string, region: string | null }>();
 
-      // Fill maps
       if (categoriesData.data) {
         categoriesData.data.forEach(cat => categoryMap.set(cat.id, cat.category_name));
       }
@@ -108,7 +97,6 @@ export const useTomeGeneration = (configId: string | null) => {
         );
       }
 
-      // Map the data to the extended type
       const extendedGenerations: ExtendedTomeGeneration[] = basicGenerations.map(gen => {
         const enhanced: ExtendedTomeGeneration = {
           ...gen,
@@ -151,7 +139,7 @@ export const useTomeGeneration = (configId: string | null) => {
     
     const intervalId = setInterval(() => {
       fetchGenerations();
-    }, 5000); // Poll every 5 seconds
+    }, 5000);
     
     return () => clearInterval(intervalId);
   }, [pollingGenerations, fetchGenerations]);
@@ -246,21 +234,18 @@ export const useTomeGeneration = (configId: string | null) => {
         return null;
       }
 
-      // Fetch WordPress config
       const { data: wpConfig } = await supabase
         .from("wordpress_configs")
         .select("site_url")
         .eq("id", generation.wordpress_config_id)
         .single();
 
-      // Fetch category
       const { data: category } = await supabase
         .from("categories_keywords")
         .select("category_name")
         .eq("id", generation.category_id)
         .single();
 
-      // Fetch keyword if exists
       let keyword = null;
       if (generation.keyword_id) {
         const { data: keywordData } = await supabase
@@ -271,7 +256,6 @@ export const useTomeGeneration = (configId: string | null) => {
         keyword = keywordData;
       }
 
-      // Fetch locality if exists
       let locality = null;
       if (generation.locality_id) {
         const { data: localityData } = await supabase
@@ -282,7 +266,6 @@ export const useTomeGeneration = (configId: string | null) => {
         locality = localityData;
       }
 
-      // Build the extended generation object
       const enhancedGeneration: ExtendedTomeGeneration = {
         ...generation,
         wordpress_site_url: wpConfig?.site_url || null,
@@ -309,7 +292,6 @@ export const useTomeGeneration = (configId: string | null) => {
     }
   ): Promise<boolean> => {
     try {
-      // Create a type-safe update object
       const updateData: Partial<TomeGeneration> = {};
       
       if (data.title !== undefined) updateData.title = data.title;
@@ -395,13 +377,11 @@ export const useTomeGeneration = (configId: string | null) => {
         return false;
       }
 
-      // Fetch additional data for the newly created generation
       const newlyCreatedGeneration = await getGenerationById(data.id);
       
       if (newlyCreatedGeneration) {
         setGenerations([newlyCreatedGeneration, ...generations]);
       } else {
-        // Fallback if we can't get the extended data
         setGenerations([data as ExtendedTomeGeneration, ...generations]);
       }
       
@@ -468,7 +448,7 @@ export const useTomeGeneration = (configId: string | null) => {
           toast.success("Brouillon créé avec succès");
         }
       } else if (!isScheduled) {
-        toast.info("Génération lancée. Cela peut prendre plusieurs minutes. Le statut sera mis à jour automatiquement.", { 
+        toast.info("Génération et publication lancées. Cela peut prendre plusieurs minutes. Le statut sera mis à jour automatiquement.", { 
           duration: 5000
         });
         
@@ -500,8 +480,6 @@ export const useTomeGeneration = (configId: string | null) => {
           );
           
           return false;
-        } else {
-          setPollingGenerations(prev => [...prev, data.id]);
         }
       } else {
         toast.success("Génération planifiée avec succès pour " + format(scheduleDate as Date, "dd/MM/yyyy HH:mm"));

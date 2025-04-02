@@ -69,7 +69,7 @@ const TomeAutomation: React.FC<TomeAutomationProps> = ({ configId }) => {
       <CardHeader>
         <CardTitle>Automatisation des publications</CardTitle>
         <CardDescription>
-          Configurez la génération automatique de brouillons avec des mots-clés et localités aléatoires
+          Configurez la génération et publication automatique de contenus avec des mots-clés et localités aléatoires
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

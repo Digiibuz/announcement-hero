@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.1';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import 'https://deno.land/x/xhr@0.1.0/mod.ts';
@@ -315,10 +314,10 @@ async function createGeneration(supabase, wordpressConfigId, categoryId, keyword
   }
 }
 
-// Trigger the draft generation function
-async function queueDraftGeneration(supabase, generationId, debug = false) {
+// Trigger the generation function directly for publication
+async function queuePublishGeneration(supabase, generationId, debug = false) {
   try {
-    debugLog(`Préparation de la génération du brouillon pour ${generationId}`);
+    debugLog(`Préparation de la génération et publication pour ${generationId}`);
     
     // Update status to processing first
     await supabase
@@ -329,10 +328,10 @@ async function queueDraftGeneration(supabase, generationId, debug = false) {
       })
       .eq('id', generationId);
       
-    debugLog(`Appel de tome-generate-draft pour la génération ${generationId}`);
+    debugLog(`Appel de tome-generate pour la génération ET publication ${generationId}`);
     
-    // Make the API call to the draft generation function
-    const { data, error } = await supabase.functions.invoke('tome-generate-draft', {
+    // Make the API call to the publication generation function
+    const { data, error } = await supabase.functions.invoke('tome-generate', {
       body: { 
         generationId,
         timestamp: new Date().getTime(),
@@ -341,15 +340,15 @@ async function queueDraftGeneration(supabase, generationId, debug = false) {
     });
     
     if (error) {
-      debugLog(`Erreur lors de l'appel à tome-generate-draft pour ${generationId}:`, error);
+      debugLog(`Erreur lors de l'appel à tome-generate pour ${generationId}:`, error);
       await updateGenerationStatus(supabase, generationId, 'failed', error.message);
       return false;
     }
     
-    debugLog(`Brouillon généré avec succès pour ${generationId}`);
+    debugLog(`Contenu généré et publié avec succès pour ${generationId}`);
     return true;
   } catch (error) {
-    debugLog(`Exception lors de la génération du brouillon pour ${generationId}:`, error);
+    debugLog(`Exception lors de la génération et publication pour ${generationId}:`, error);
     await updateGenerationStatus(supabase, generationId, 'failed', error.message);
     return false;
   }
@@ -464,16 +463,16 @@ async function processAutomationSetting(supabase, setting, apiKeyUsed, forceGene
       return processingResult;
     }
 
-    // Now that we have a generation, directly queue it for processing (THIS IS KEY)
-    const success = await queueDraftGeneration(supabase, generation.id, debug);
+    // Now that we have a generation, directly queue it for processing WITH PUBLICATION
+    const success = await queuePublishGeneration(supabase, generation.id, debug);
     
     if (success) {
-      debugLog(`Contenu généré avec succès pour la config ${wordpressConfigId}`);
+      debugLog(`Contenu généré et publié avec succès pour la config ${wordpressConfigId}`);
       processingResult.result = 'success';
       processingResult.success = true;
     } else {
-      debugLog(`Échec de la génération du contenu pour la config ${wordpressConfigId}`);
-      processingResult.result = 'draft_generation_failed';
+      debugLog(`Échec de la génération ou publication du contenu pour la config ${wordpressConfigId}`);
+      processingResult.result = 'generation_failed';
     }
     
     return processingResult;
