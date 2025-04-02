@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -8,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import TomeDescriptionField from "./TomeDescriptionField";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Save, ArrowLeft, Calendar, SendHorizonal } from "lucide-react";
+import { Loader2, Save, ArrowLeft, Calendar, SendHorizonal, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { TomeGeneration } from "@/types/tome";
 import { 
@@ -31,6 +32,17 @@ import PublishingLoadingOverlay from "@/components/announcements/PublishingLoadi
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
 import { FileImage, Server, Database } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 const TomePublicationDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -43,7 +55,7 @@ const TomePublicationDetail = () => {
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
   const { user } = useAuth();
   
-  const { publishContent, generateContent } = useTomeScheduler();
+  const { publishContent, generateContent, logs, addLog } = useTomeScheduler();
   
   const { publishingState, isPublishing } = useWordPressPublishing();
 
@@ -202,6 +214,35 @@ const TomePublicationDetail = () => {
       setTimeout(() => {
         navigate("/tome");
       }, 2000);
+    }
+  };
+
+  const handleManualPublish = () => {
+    // L'utilisateur confirme qu'il souhaite publier manuellement depuis WordPress
+    if (generation && generation.wordpress_site_url) {
+      // Ouvrir l'admin WordPress dans un nouvel onglet
+      window.open(`${generation.wordpress_site_url}/wp-admin/post-new.php?post_type=page`, '_blank');
+      
+      // Mettre à jour le statut dans la base de données
+      if (id) {
+        updateGeneration(id, {
+          status: 'manual_publish',
+          manual_publish_at: new Date().toISOString()
+        });
+        
+        setGeneration({
+          ...generation,
+          status: 'manual_publish',
+          manual_publish_at: new Date().toISOString()
+        });
+        
+        toast.success("N'oubliez pas de copier-coller le contenu dans WordPress");
+        
+        // Rediriger après un court délai
+        setTimeout(() => {
+          navigate("/tome");
+        }, 3000);
+      }
     }
   };
 
@@ -483,25 +524,50 @@ const TomePublicationDetail = () => {
                   </DialogContent>
                 </Dialog>
                 
-                <Button 
-                  type="button"
-                  variant="default"
-                  onClick={handlePublish}
-                  disabled={isPublishing}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  {isPublishing ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Publication...
-                    </>
-                  ) : (
-                    <>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      type="button"
+                      variant="default"
+                      className="bg-green-600 hover:bg-green-700"
+                    >
                       <SendHorizonal className="mr-2 h-4 w-4" />
                       Publier
-                    </>
-                  )}
-                </Button>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Options de publication</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        <div className="space-y-4 py-2">
+                          <p>Veuillez choisir comment publier ce contenu</p>
+                          <div className="bg-amber-50 p-3 rounded border border-amber-200 flex items-start space-x-2">
+                            <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5" />
+                            <p className="text-sm text-amber-800">
+                              La publication automatique rencontre parfois des problèmes avec les pare-feu WordPress. 
+                              Si cela échoue, vous pourrez toujours publier manuellement.
+                            </p>
+                          </div>
+                        </div>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="space-x-2">
+                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleManualPublish}
+                        className="bg-amber-500 hover:bg-amber-600"
+                      >
+                        Publier manuellement
+                      </AlertDialogAction>
+                      <AlertDialogAction
+                        onClick={handlePublish}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        Publier automatiquement
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
                 
                 <Button 
                   type="submit"

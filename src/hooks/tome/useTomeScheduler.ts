@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -194,19 +195,30 @@ export const useTomeScheduler = () => {
 
       // Ajout d'un timestamp aléatoire pour éviter la mise en cache de la requête
       const timestamp = new Date().getTime();
+      const requestId = `publish-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
       
       const { data, error } = await supabase.functions.invoke('tome-publish', {
         body: { 
           generationId, 
           timestamp,
-          debug: true
+          debug: true,
+          requestId
         }
       });
 
       if (error) {
         console.error("Erreur lors de la publication du contenu:", error);
         addLog(`Erreur: ${error.message || "Une erreur s'est produite"}`);
-        toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
+        
+        // Message spécifique pour les erreurs de pare-feu
+        if (error.message && error.message.includes("Edge Function returned a non-2xx status code")) {
+          const message = "Le pare-feu WordPress a probablement bloqué la requête. Veuillez publier manuellement depuis WordPress.";
+          toast.error(message);
+          addLog(message);
+        } else {
+          toast.error(`Erreur: ${error.message || "Une erreur s'est produite"}`);
+        }
+        
         return false;
       }
 
@@ -217,6 +229,23 @@ export const useTomeScheduler = () => {
         addLog("Contenu publié avec succès");
         toast.success("Contenu publié avec succès");
         return true;
+      } else if (data && data.error) {
+        // Gestion spécifique pour les erreurs de pare-feu
+        if (data.error.includes("pare-feu") || data.error.includes("WAF") || 
+            data.error.includes("firewall") || data.error.includes("Tiger Protect")) {
+          addLog(`Erreur de pare-feu: ${data.error}`);
+          toast.error(data.error, {
+            duration: 8000,
+            action: {
+              label: "OK",
+              onClick: () => {}
+            }
+          });
+        } else {
+          addLog(`Échec de la publication: ${data.error}`);
+          toast.error(`Échec de la publication: ${data.error}`);
+        }
+        return false;
       } else {
         addLog(`Échec de la publication: ${data?.message || "Une erreur s'est produite"}`);
         toast.error(`Échec de la publication: ${data?.message || "Une erreur s'est produite"}`);

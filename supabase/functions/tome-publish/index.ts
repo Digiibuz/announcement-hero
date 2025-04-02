@@ -28,7 +28,14 @@ serve(async (req) => {
 
     // Clone the request before reading it to avoid "Body already consumed" error
     const reqClone = req.clone();
-    const { generationId } = await reqClone.json();
+    let requestData;
+    try {
+      requestData = await reqClone.json();
+    } catch (error) {
+      throw new Error('Invalid JSON in request body');
+    }
+    
+    const { generationId, debug = true } = requestData;
 
     if (!generationId) {
       throw new Error('Generation ID is required');
@@ -184,11 +191,18 @@ serve(async (req) => {
       console.log("Falling back to standard pages endpoint");
     }
     
-    console.log("Using WordPress endpoint:", postEndpoint, "with custom taxonomy:", useCustomTaxonomy);
+    if (debug) {
+      console.log("Using WordPress endpoint:", postEndpoint, "with custom taxonomy:", useCustomTaxonomy);
+    }
     
     // Prepare headers with authentication - using simpler approach from announcements
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      'Accept': 'application/json, text/plain, */*',
+      'Accept-Language': 'fr,fr-FR;q=0.9,en-US;q=0.8,en;q=0.7',
+      'Referer': siteUrl,
+      'Origin': siteUrl,
     };
     
     // Check for authentication credentials
@@ -215,7 +229,13 @@ serve(async (req) => {
     }
     
     try {
-      console.log("Sending POST request to WordPress:", postEndpoint);
+      if (debug) {
+        console.log("Sending POST request to WordPress:", postEndpoint);
+      }
+      
+      // Ajout d'un délai avant de faire la requête pour éviter la détection par les WAF
+      console.log("Attente de 2 secondes avant de contacter WordPress...");
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Create a timeout controller
       const controller = new AbortController();
@@ -236,8 +256,12 @@ serve(async (req) => {
         console.error("WordPress API error:", errorText);
         
         // Check for HTML response (WAF block)
-        if (errorText.includes("<!DOCTYPE") || errorText.includes("<html")) {
-          throw new Error("The WordPress firewall has blocked the request. Please publish manually from WordPress.");
+        if (errorText.includes("<!DOCTYPE") || 
+            errorText.includes("<html") || 
+            errorText.includes("Tiger Protect") ||
+            errorText.includes("WAF") ||
+            errorText.includes("security-challenge")) {
+          throw new Error("Le pare-feu WordPress a bloqué la requête. Veuillez publier manuellement depuis WordPress.");
         }
         
         throw new Error(`WordPress API error (${postResponse.status}): ${errorText}`);
@@ -247,7 +271,9 @@ serve(async (req) => {
       let wpResponseData;
       try {
         wpResponseData = await postResponse.json();
-        console.log("WordPress response data:", wpResponseData);
+        if (debug) {
+          console.log("WordPress response data:", wpResponseData);
+        }
       } catch (error) {
         console.error("Error parsing WordPress response:", error);
         throw new Error("Error parsing WordPress response");
@@ -292,15 +318,18 @@ serve(async (req) => {
       let errorMessage = error.message || "An error occurred during publishing";
       let statusCode = 'failed';
       
-      if (errorMessage.includes("firewall") || 
+      if (errorMessage.includes("pare-feu") || 
+          errorMessage.includes("firewall") || 
           errorMessage.includes("WAF") || 
           errorMessage.includes("<html") || 
-          errorMessage.includes("<!DOCTYPE")) {
-        errorMessage = "The WordPress firewall has blocked the request. Please publish manually from WordPress.";
+          errorMessage.includes("<!DOCTYPE") ||
+          errorMessage.includes("Tiger Protect") ||
+          errorMessage.includes("security-challenge")) {
+        errorMessage = "Le pare-feu WordPress a bloqué la requête. Veuillez publier manuellement depuis WordPress.";
       } else if (errorMessage.includes("timeout") || errorMessage.includes("abort")) {
-        errorMessage = "Connection timeout when connecting to WordPress. Please check the URL and credentials.";
+        errorMessage = "Délai d'attente dépassé lors de la connexion à WordPress. Veuillez vérifier l'URL et les identifiants.";
       } else if (errorMessage.includes("redirects")) {
-        errorMessage = "Too many redirects detected. This usually indicates a WordPress security plugin. Try publishing manually from WordPress.";
+        errorMessage = "Trop de redirections détectées. Cela indique souvent un plugin de sécurité WordPress. Essayez de publier manuellement depuis WordPress.";
       }
       
       // Reset status to draft on failure so user can try again
@@ -332,7 +361,8 @@ serve(async (req) => {
     try {
       // Clone the request again to read generationId for status update
       const reqClone2 = req.clone();
-      const { generationId } = await reqClone2.json();
+      const requestData = await reqClone2.json();
+      const generationId = requestData.generationId;
       
       if (generationId) {
         const supabaseUrl = Deno.env.get('SUPABASE_URL');
