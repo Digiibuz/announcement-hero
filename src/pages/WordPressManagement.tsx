@@ -1,8 +1,8 @@
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Settings } from "lucide-react";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import WordPressConfigForm from "@/components/wordpress/WordPressConfigForm";
 import WordPressConfigList from "@/components/wordpress/WordPressConfigList";
@@ -19,6 +19,7 @@ import AccessDenied from "@/components/users/AccessDenied";
 import { WordPressConfig } from "@/types/wordpress";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 const WordPressManagement = () => {
   const { isAdmin, isClient, user } = useAuth();
@@ -31,8 +32,10 @@ const WordPressManagement = () => {
     deleteConfig,
     fetchConfigs,
   } = useWordPressConfigs();
+  const navigate = useNavigate();
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
 
   const handleCreateConfig = async (data: any) => {
     await createConfig(data);
@@ -53,25 +56,59 @@ const WordPressManagement = () => {
     toast.success("Configurations WordPress mises à jour");
   };
 
+  // Fonction pour rediriger vers Tom-E avec l'ID de config sélectionné
+  const handleTomeManagement = () => {
+    if (selectedConfigId) {
+      navigate(`/tome?configId=${selectedConfigId}`);
+    } else if (configs.length > 0) {
+      navigate(`/tome?configId=${configs[0].id}`);
+    } else {
+      toast.error("Veuillez d'abord créer une configuration WordPress");
+    }
+  };
+
+  // Handle config selection change
+  const handleConfigChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedConfigId(e.target.value);
+  };
+
+  // Utilisez useEffect pour définir selectedConfigId par défaut
+  useEffect(() => {
+    if (!selectedConfigId && configs.length > 0) {
+      // Pour les clients, on sélectionne automatiquement leur configuration WordPress
+      if (isClient && user?.wordpressConfigId) {
+        setSelectedConfigId(user.wordpressConfigId);
+      } else {
+        setSelectedConfigId(configs[0].id);
+      }
+    }
+  }, [configs, isClient, user, selectedConfigId]);
+
   // Le bouton d'ajout n'est disponible que pour les administrateurs, pas pour les clients
   const titleAction = isAdmin ? (
-    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Ajouter une configuration
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Nouvelle configuration WordPress</DialogTitle>
-        </DialogHeader>
-        <WordPressConfigForm
-          onSubmit={handleCreateConfig}
-          isSubmitting={isSubmitting}
-        />
-      </DialogContent>
-    </Dialog>
+    <div className="flex gap-2">
+      <Button variant="outline" onClick={handleTomeManagement}>
+        <Settings className="h-4 w-4 mr-2" />
+        Gestion Tom-E
+      </Button>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogTrigger asChild>
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Ajouter une configuration
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nouvelle configuration WordPress</DialogTitle>
+          </DialogHeader>
+          <WordPressConfigForm
+            onSubmit={handleCreateConfig}
+            isSubmitting={isSubmitting}
+          />
+        </DialogContent>
+      </Dialog>
+    </div>
   ) : null;
 
   // Change page title based on user role
@@ -102,6 +139,22 @@ const WordPressManagement = () => {
       ) : (
         <AnimatedContainer delay={200}>
           <div className="w-full">
+            {isAdmin && !isClient && configs.length > 0 && (
+              <div className="mb-6">
+                <select 
+                  className="w-full md:w-64 p-2 border rounded-md"
+                  value={selectedConfigId || ""}
+                  onChange={handleConfigChange}
+                >
+                  {configs.map(config => (
+                    <option key={config.id} value={config.id}>
+                      {config.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            
             {isClient && configs.length === 0 ? (
               <NoSiteMessage />
             ) : (

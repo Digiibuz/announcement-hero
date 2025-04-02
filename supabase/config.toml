@@ -1,1 +1,5 @@
+
 project_id = "rdwqedmvzicerwotjseg"
+
+[functions.tome-scheduler]
+verify_jwt = false
