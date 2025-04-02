@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TomeCategories from "@/components/tome/TomeCategories";
 import TomeLocalities from "@/components/tome/TomeLocalities";
 import TomePublications from "@/components/tome/TomePublications";
+import TomeGenerations from "@/components/tome/TomeGenerations";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import WordPressConnectionStatus from "@/components/wordpress/WordPressConnectionStatus";
@@ -148,6 +149,21 @@ const TomeManagement = () => {
                     <TomeLocalities configId={selectedConfigId} isClientView={isClient} />
                   </TabsContent>
                 </Tabs>
+              )}
+            </AnimatedContainer>
+          </PageLayout>
+        } 
+      />
+      <Route 
+        path="/new" 
+        element={
+          <PageLayout 
+            title="Nouvelle publication" 
+            onBack={() => navigate("/tome")}
+          >
+            <AnimatedContainer delay={200}>
+              {selectedConfigId && (
+                <TomeGenerations configId={selectedConfigId} isClientView={isClient} />
               )}
             </AnimatedContainer>
           </PageLayout>
