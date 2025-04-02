@@ -535,86 +535,22 @@ export const useTomeGeneration = (configId: string | null) => {
         duration: 5000
       });
       
-      try {
-        console.log("Invoking tome-generate with generation ID:", generationId);
-        
-        const { data: genData, error: genError } = await supabase.functions.invoke('tome-generate', {
-          body: { generationId }
-        });
-        
-        if (genError) {
-          console.error("Error invoking tome-generate:", genError);
-          toast.error("Erreur lors de la régénération: " + genError.message);
-          
-          // Update status to failed
-          await supabase
-            .from("tome_generations")
-            .update({ 
-              status: "failed",
-              error_message: "Erreur lors de l'appel à la fonction de génération: " + genError.message
-            })
-            .eq("id", generationId);
-            
-          setGenerations(prev => 
-            prev.map(gen => 
-              gen.id === generationId 
-                ? { 
-                    ...gen, 
-                    status: 'failed',
-                    error_message: "Erreur lors de l'appel à la fonction de génération: " + genError.message
-                  } 
-                : gen
-            )
-          );
-          
-          return false;
-        }
-        
-        if (genData && genData.error) {
-          console.error("Regeneration API returned error:", genData.error);
-          toast.error("Erreur lors de la régénération: " + genData.error);
-          
-          await supabase
-            .from("tome_generations")
-            .update({ 
-              status: "failed",
-              error_message: genData.error
-            })
-            .eq("id", generationId);
-            
-          setGenerations(prev => 
-            prev.map(gen => 
-              gen.id === generationId 
-                ? { ...gen, status: 'failed', error_message: genData.error } 
-                : gen
-            )
-          );
-          
-          return false;
-        }
-        
-        console.log("Regeneration initiated successfully:", genData);
-        
-        // Update polling list to track this generation
-        setPollingGenerations(prev => [...prev, generationId]);
-        
-        setGenerations(prev => 
-          prev.map(gen => 
-            gen.id === generationId ? { ...gen, status: 'pending', error_message: null } : gen
-          )
-        );
-        
-        return true;
-      } catch (invokeError: any) {
-        console.error("Exception invoking tome-generate:", invokeError);
-        toast.error(`Erreur lors de la régénération: ${invokeError.message}`);
+      console.log("Invoking tome-generate with generation ID:", generationId);
+      
+      const { data: genData, error: genError } = await supabase.functions.invoke('tome-generate', {
+        body: { generationId }
+      });
+      
+      if (genError) {
+        console.error("Error invoking tome-generate:", genError);
+        toast.error("Erreur lors de la régénération: " + genError.message);
         
         // Update status to failed
         await supabase
           .from("tome_generations")
           .update({ 
             status: "failed",
-            error_message: "Exception: " + invokeError.message
+            error_message: "Erreur lors de l'appel à la fonction de génération: " + genError.message
           })
           .eq("id", generationId);
           
@@ -624,15 +560,50 @@ export const useTomeGeneration = (configId: string | null) => {
               ? { 
                   ...gen, 
                   status: 'failed',
-                  error_message: "Exception: " + invokeError.message
+                  error_message: "Erreur lors de l'appel à la fonction de génération: " + genError.message
                 } 
               : gen
-            )
-          );
-          
-          return false;
-        }
+          )
+        );
+        
+        return false;
       }
+      
+      if (genData && genData.error) {
+        console.error("Regeneration API returned error:", genData.error);
+        toast.error("Erreur lors de la régénération: " + genData.error);
+        
+        await supabase
+          .from("tome_generations")
+          .update({ 
+            status: "failed",
+            error_message: genData.error
+          })
+          .eq("id", generationId);
+          
+        setGenerations(prev => 
+          prev.map(gen => 
+            gen.id === generationId 
+              ? { ...gen, status: 'failed', error_message: genData.error } 
+              : gen
+          )
+        );
+        
+        return false;
+      }
+      
+      console.log("Regeneration initiated successfully:", genData);
+      
+      // Update polling list to track this generation
+      setPollingGenerations(prev => [...prev, generationId]);
+      
+      setGenerations(prev => 
+        prev.map(gen => 
+          gen.id === generationId ? { ...gen, status: 'pending', error_message: null } : gen
+        )
+      );
+      
+      return true;
     } catch (error: any) {
       console.error("Error in regenerate:", error);
       toast.error(`Erreur: ${error.message || "Erreur inconnue"}`);
