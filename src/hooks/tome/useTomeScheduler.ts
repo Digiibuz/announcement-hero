@@ -20,24 +20,24 @@ export const useTomeScheduler = () => {
     try {
       setIsLoading(true);
       
-      // Call tome-generate-draft to create the content (using AI) but NOT publish
-      const { data: draftData, error: draftError } = await supabase.functions.invoke('tome-generate-draft', {
+      // Call tome-generate to create and publish content directly
+      const { data, error } = await supabase.functions.invoke('tome-generate', {
         body: { generationId }
       });
       
-      if (draftError) {
-        console.error("Error calling tome-generate-draft function:", draftError);
-        toast.error("Erreur lors de la génération du brouillon: " + draftError.message);
+      if (error) {
+        console.error("Error calling tome-generate function:", error);
+        toast.error("Erreur lors de la génération et publication: " + error.message);
         return false;
       }
       
-      if (!draftData.success) {
-        console.error("Draft generation failed:", draftData.error);
-        toast.error("Échec de la génération du brouillon: " + draftData.error);
+      if (!data.success) {
+        console.error("Generation failed:", data.error);
+        toast.error("Échec de la génération: " + data.error);
         return false;
       }
       
-      toast.success("Contenu généré avec succès");
+      toast.success("Contenu généré et publié avec succès");
       return true;
     } catch (error: any) {
       console.error("Error generating content:", error);

@@ -15,7 +15,6 @@ import WordPressConnectionStatus from "@/components/wordpress/WordPressConnectio
 import { AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Routes, Route, useNavigate } from "react-router-dom";
-import TomePublicationForm from "@/components/tome/TomePublicationForm";
 import TomePublicationDetail from "@/components/tome/TomePublicationDetail";
 
 const TomeManagement = () => {
@@ -111,8 +110,7 @@ const TomeManagement = () => {
                 <AlertTitle>Protection anti-bot WordPress</AlertTitle>
                 <AlertDescription>
                   Certains hébergeurs WordPress (comme o2switch) utilisent un pare-feu (WAF) qui peut bloquer 
-                  la publication automatisée. Pour contourner cette limitation, Tom-E vous permet maintenant de 
-                  créer des brouillons que vous pourrez éditer et publier manuellement.
+                  la publication automatisée. Tom-E publie vos articles directement sur votre site WordPress.
                 </AlertDescription>
               </Alert>
 
@@ -150,21 +148,6 @@ const TomeManagement = () => {
                     <TomeLocalities configId={selectedConfigId} isClientView={isClient} />
                   </TabsContent>
                 </Tabs>
-              )}
-            </AnimatedContainer>
-          </PageLayout>
-        } 
-      />
-      <Route 
-        path="/new" 
-        element={
-          <PageLayout 
-            title="Nouvelle publication" 
-            onBack={() => navigate("/tome")}
-          >
-            <AnimatedContainer delay={200}>
-              {selectedConfigId && (
-                <TomePublicationForm configId={selectedConfigId} isClientView={isClient} />
               )}
             </AnimatedContainer>
           </PageLayout>
