@@ -65,9 +65,9 @@ function initSupabaseClient() {
 async function parseRequestParams(req: Request) {
   // Default values for scheduled execution:
   // - configCheck should be false by default to allow content generation
-  // - forceGeneration should be true for scheduled tasks
-  let isConfigCheck = false;
-  let forceGeneration = true; // Default to true for automated tasks
+  // - forceGeneration should be true for automated tasks
+  let isConfigCheck = false;        // DEFAULT TO FALSE - very important
+  let forceGeneration = true;       // DEFAULT TO TRUE - very important 
   let apiKey = null;
   let debug = false;
   let timestamp = new Date().getTime(); // Current timestamp for logging/debugging
@@ -79,20 +79,23 @@ async function parseRequestParams(req: Request) {
     
     debugLog("Corps de la requête:", body);
     
-    // IMPORTANT: Prioritize forceGeneration over configCheck
-    // If forceGeneration is explicitly true, we should generate content
+    // CRITICAL FIX: Prioritize forceGeneration over configCheck
+    // If forceGeneration is explicitly set to true in the request, always use it regardless of configCheck
     if (body.forceGeneration === true) {
+      debugLog("PRIORITÉ: forceGeneration=true détecté dans la requête, ignorant configCheck");
       forceGeneration = true;
-      isConfigCheck = false; // Explicitly set configCheck to false when forcing generation
-      debugLog("forceGeneration=true détecté, isConfigCheck défini sur false");
+      isConfigCheck = false; // Explicitly override configCheck
     } 
-    // Only if forceGeneration is not explicitly set to true, we check configCheck
+    // Only check configCheck if forceGeneration is not explicitly true
     else if (body.configCheck === true) {
       isConfigCheck = true;
       forceGeneration = false; // Explicitly set forceGeneration to false for config checks
       debugLog("configCheck=true détecté, forceGeneration défini sur false");
     }
-    // Otherwise keep the defaults (forceGeneration=true, configCheck=false)
+    // For any other case, use defaults (which are forceGeneration=true, configCheck=false)
+    else {
+      debugLog("Aucun paramètre prioritaire détecté, utilisation des valeurs par défaut");
+    }
     
     apiKey = body.api_key;
     debug = body.debug === true;
@@ -325,15 +328,20 @@ async function queueDraftGeneration(supabase, generationId, debug = false) {
       })
       .eq('id', generationId);
       
-    debugLog(`Appel de tome-generate-draft pour la génération ${generationId}`);
+    // ADD THE REQUESTED DEBUG LOG HERE TO CONFIRM EXECUTION REACHES THIS POINT
+    debugLog("Avant d'invoquer tome-generate-draft", { generationId, timestamp: new Date().getTime() });
     
-    // Make the API call to the draft generation function
+    // Make the API call to the draft generation function with explicit timestamp and debug parameters
+    const requestBody = { 
+      generationId,
+      timestamp: new Date().getTime(),
+      debug: true  // Always enable debug mode for better traceability
+    };
+    
+    debugLog(`Paramètres d'appel à tome-generate-draft:`, requestBody);
+    
     const { data, error } = await supabase.functions.invoke('tome-generate-draft', {
-      body: { 
-        generationId,
-        timestamp: new Date().getTime(),
-        debug
-      }
+      body: requestBody
     });
     
     if (error) {
@@ -342,6 +350,7 @@ async function queueDraftGeneration(supabase, generationId, debug = false) {
       return false;
     }
     
+    debugLog(`Réponse de tome-generate-draft:`, data);
     debugLog(`Brouillon généré avec succès pour ${generationId}`);
     return true;
   } catch (error) {
