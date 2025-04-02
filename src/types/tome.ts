@@ -27,6 +27,7 @@ export interface TomeGeneration {
   created_at: string;
   scheduled_at: string | null;
   published_at: string | null;
+  manual_publish_at: string | null; // Added this field to support manual publishing
   wordpress_post_id: number | null;
   title: string | null;
   content: string | null;
