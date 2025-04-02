@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.1';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import 'https://deno.land/x/xhr@0.1.0/mod.ts';
@@ -10,10 +9,14 @@ const corsHeaders = {
 
 // Amélioration pour les logs
 const debugLog = (message: string, data?: any) => {
-  if (data) {
-    console.log(`[tome-generate] ${message}:`, JSON.stringify(data));
-  } else {
-    console.log(`[tome-generate] ${message}`);
+  try {
+    if (data) {
+      console.log(`[tome-generate] ${message}:`, JSON.stringify(data));
+    } else {
+      console.log(`[tome-generate] ${message}`);
+    }
+  } catch (e) {
+    console.log(`[tome-generate] ${message} (données non affichables)`);
   }
 };
 
@@ -26,6 +29,10 @@ serve(async (req) => {
   }
 
   try {
+    // IMPORTANT: Log complet du corps de la requête
+    const reqRaw = await req.text();
+    debugLog("Corps de la requête brut:", reqRaw);
+    
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -41,11 +48,23 @@ serve(async (req) => {
     debugLog("Variables d'environnement validées");
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const reqClone = req.clone();
-    const requestBody = await reqClone.json();
+    // Parser le corps à nouveau
+    let requestBody;
+    try {
+      requestBody = JSON.parse(reqRaw);
+    } catch (e) {
+      debugLog("Erreur de parsing JSON, nouvelle tentative avec req.json()");
+      const reqClone = new Request(req.url, {
+        method: req.method,
+        headers: req.headers,
+        body: reqRaw
+      });
+      requestBody = await reqClone.json();
+    }
+    
     const { generationId } = requestBody;
     
-    debugLog("Corps de la requête reçu", requestBody);
+    debugLog("Corps de la requête parsé", requestBody);
 
     if (!generationId) {
       throw new Error('Generation ID is required');

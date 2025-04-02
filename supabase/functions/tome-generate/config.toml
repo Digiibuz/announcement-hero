@@ -5,3 +5,5 @@ project_id = "rdwqedmvzicerwotjseg"
 # par d'autres edge functions ou depuis l'application authentifiée
 [functions.tome-generate]
 verify_jwt = false
+# Augmenter le timeout pour s'assurer que la fonction a suffisamment de temps pour s'exécuter
+import_map = "../import_map.json"

@@ -332,15 +332,20 @@ async function queuePublishGeneration(supabase, generationId, debug = false) {
       .eq('id', generationId);
       
     debugLog(`Appel de tome-generate pour la génération ET publication ${generationId}`);
-    debugLog(`Paramètres d'invocation:`, { generationId, timestamp: new Date().getTime(), debug });
+    
+    // IMPORTANT: Inclure un timestamp et forcer debug = true pour améliorer la traçabilité
+    const timestamp = new Date().getTime();
+    const params = {
+      generationId,
+      timestamp,
+      debug: true // Toujours activer le debug pour améliorer la visibilité des logs
+    };
+    
+    debugLog(`Paramètres d'invocation:`, params);
     
     // Make the API call to the publication generation function with explicit debug info
     const { data, error } = await supabase.functions.invoke('tome-generate', {
-      body: { 
-        generationId,
-        timestamp: new Date().getTime(),
-        debug: true // Force debug à true pour améliorer la journalisation
-      }
+      body: params
     });
     
     if (error) {
