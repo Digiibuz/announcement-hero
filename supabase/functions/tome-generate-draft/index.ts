@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.1';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import 'https://deno.land/x/xhr@0.1.0/mod.ts';
@@ -167,28 +168,61 @@ serve(async (req) => {
       title = titleMatch[1].replace(/<[^>]*>/g, '').trim();
     }
     
-    // Update the generation with content but keep as draft
-    await supabase
-      .from('tome_generations')
-      .update({ 
-        status: 'draft',
-        title: title,
-        content: generatedContent
-      })
-      .eq('id', generationId);
-    
-    // Return successful response
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: 'Content generated successfully as draft',
-        generationId
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
+    // If status is 'pending', publish directly to WordPress
+    if (generation.status === 'pending') {
+      // Update the generation with content and title
+      await supabase
+        .from('tome_generations')
+        .update({ 
+          title: title,
+          content: generatedContent
+        })
+        .eq('id', generationId);
+      
+      // Call the tome-publish function to publish to WordPress
+      const publishResponse = await supabase.functions.invoke('tome-publish', {
+        body: { generationId: generationId }
+      });
+      
+      if (publishResponse.error) {
+        console.error("Error publishing to WordPress:", publishResponse.error);
+        throw new Error("Error publishing to WordPress: " + publishResponse.error.message);
       }
-    );
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Content generated and published successfully',
+          generationId
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    } else {
+      // If not pending, just save as draft (previous behavior)
+      await supabase
+        .from('tome_generations')
+        .update({ 
+          status: 'draft',
+          title: title,
+          content: generatedContent
+        })
+        .eq('id', generationId);
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Content generated successfully as draft',
+          generationId
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    }
   } catch (error: any) {
     console.error('Error in tome-generate-draft function:', error);
     

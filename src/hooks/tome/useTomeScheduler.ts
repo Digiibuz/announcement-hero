@@ -39,7 +39,7 @@ export const useTomeScheduler = () => {
         return false;
       }
       
-      toast.success("Contenu généré avec succès");
+      toast.success("Contenu généré et publié avec succès");
       return true;
     } catch (error: any) {
       console.error("Error generating content:", error);
@@ -186,7 +186,7 @@ export const useTomeScheduler = () => {
         return false;
       }
       
-      toast.success(`Planificateur exécuté avec succès. ${data.generationsCreated || 0} publications générées.`);
+      toast.success(`Planificateur exécuté avec succès. ${data.generationsCreated || 0} publications générées et publiées.`);
       return true;
     } catch (error: any) {
       console.error("Error running scheduler:", error);
