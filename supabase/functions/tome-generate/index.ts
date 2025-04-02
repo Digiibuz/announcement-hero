@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.1';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import 'https://deno.land/x/xhr@0.1.0/mod.ts';
@@ -7,32 +8,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Amélioration pour les logs
-const debugLog = (message: string, data?: any) => {
-  try {
-    if (data) {
-      console.log(`[tome-generate] ${message}:`, JSON.stringify(data));
-    } else {
-      console.log(`[tome-generate] ${message}`);
-    }
-  } catch (e) {
-    console.log(`[tome-generate] ${message} (données non affichables)`);
-  }
-};
-
 serve(async (req) => {
-  debugLog("Fonction tome-generate démarrée");
-  
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    debugLog("Requête OPTIONS reçue - CORS");
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // IMPORTANT: Log complet du corps de la requête
-    const reqRaw = await req.text();
-    debugLog("Corps de la requête brut:", reqRaw);
-    
+    // Get API keys from environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -45,32 +28,18 @@ serve(async (req) => {
       throw new Error('OpenAI API key not found');
     }
 
-    debugLog("Variables d'environnement validées");
+    // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Parser le corps à nouveau
-    let requestBody;
-    try {
-      requestBody = JSON.parse(reqRaw);
-    } catch (e) {
-      debugLog("Erreur de parsing JSON, nouvelle tentative avec req.json()");
-      const reqClone = new Request(req.url, {
-        method: req.method,
-        headers: req.headers,
-        body: reqRaw
-      });
-      requestBody = await reqClone.json();
-    }
-    
-    const { generationId } = requestBody;
-    
-    debugLog("Corps de la requête parsé", requestBody);
+    // Clone the request before reading it to avoid "Body already consumed" error
+    const reqClone = req.clone();
+    const { generationId } = await reqClone.json();
 
     if (!generationId) {
       throw new Error('Generation ID is required');
     }
 
-    debugLog(`Récupération des données pour la génération ${generationId}`);
+    // Get generation data
     const { data: generation, error: generationError } = await supabase
       .from('tome_generations')
       .select('*')
@@ -78,17 +47,16 @@ serve(async (req) => {
       .single();
 
     if (generationError || !generation) {
-      debugLog("Erreur lors de la récupération de la génération", generationError);
       throw new Error('Generation not found: ' + (generationError?.message || 'Unknown error'));
     }
 
-    debugLog(`Génération trouvée`, generation);
+    // Update status to processing
     await supabase
       .from('tome_generations')
       .update({ status: 'processing' })
       .eq('id', generationId);
-    debugLog(`Statut mis à jour à 'processing'`);
 
+    // Get WordPress config
     const { data: wpConfig, error: wpConfigError } = await supabase
       .from('wordpress_configs')
       .select('*')
@@ -96,15 +64,10 @@ serve(async (req) => {
       .single();
 
     if (wpConfigError || !wpConfig) {
-      debugLog("Erreur lors de la récupération de la config WordPress", wpConfigError);
       throw new Error('WordPress config not found');
     }
 
-    debugLog(`Configuration WordPress trouvée`, {
-      configId: wpConfig.id,
-      siteUrl: wpConfig.site_url
-    });
-
+    // Get category name
     const { data: categoryKeyword, error: categoryError } = await supabase
       .from('categories_keywords')
       .select('category_name, keyword')
@@ -112,13 +75,13 @@ serve(async (req) => {
       .single();
 
     if (categoryError) {
-      debugLog('Error fetching category:', categoryError.message);
+      console.log('Error fetching category:', categoryError.message);
     }
 
     const categoryName = categoryKeyword?.category_name || 'Non spécifiée';
     const keyword = categoryKeyword?.keyword || null;
-    debugLog(`Catégorie: ${categoryName}, Mot-clé: ${keyword || 'aucun'}`);
 
+    // Get locality name
     let localityName = null;
     if (generation.locality_id) {
       const { data: locality, error: localityError } = await supabase
@@ -132,10 +95,10 @@ serve(async (req) => {
         if (locality.region) {
           localityName += ` (${locality.region})`;
         }
-        debugLog(`Localité: ${localityName}`);
       }
     }
 
+    // Format the prompt
     let prompt = wpConfig.prompt || "Vous êtes un expert en rédaction de contenu SEO.";
     prompt += "\n\nVeuillez créer un contenu optimisé pour une page web sur le sujet suivant:";
     prompt += `\n- Catégorie: ${categoryName}`;
@@ -161,7 +124,7 @@ serve(async (req) => {
     
     prompt += "\n\nFormat souhaité: HTML avec balises pour les titres (h1, h2, h3), paragraphes (p) et listes (ul, li).";
     
-    debugLog("Appel à l'API OpenAI");
+    // Generate content with OpenAI
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -186,30 +149,29 @@ serve(async (req) => {
     });
 
     const completion = await openaiResponse.json();
-    debugLog("Réponse reçue de OpenAI", { status: completion.error ? 'error' : 'success' });
     
     if (!completion.choices || completion.choices.length === 0) {
-      debugLog("Erreur: Pas de contenu généré par OpenAI", completion);
       throw new Error('Failed to generate content with OpenAI');
     }
     
     const generatedContent = completion.choices[0].message.content;
-    debugLog("Contenu généré avec succès");
     
+    // Extract title from the generated content
     let title = "Nouveau contenu généré";
     const titleMatch = generatedContent.match(/<h1[^>]*>(.*?)<\/h1>/i);
     if (titleMatch && titleMatch[1]) {
       title = titleMatch[1].replace(/<[^>]*>/g, '').trim();
-      debugLog(`Titre extrait: ${title}`);
     }
 
+    // Now we need to publish to WordPress
+    // Get the WordPress API URL
     const siteUrl = wpConfig.site_url.endsWith('/')
       ? wpConfig.site_url.slice(0, -1)
       : wpConfig.site_url;
     
     let apiEndpoint = '/wp-json/wp/v2/pages';
-    debugLog(`URL WordPress: ${siteUrl}`);
     
+    // Prepare browser-like headers to avoid WAF detection
     const browserLikeHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -224,51 +186,57 @@ serve(async (req) => {
       'Sec-Fetch-Site': 'same-origin',
     };
     
+    // Use Basic Auth with application password
     if (wpConfig.app_username && wpConfig.app_password) {
       const credentials = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
       browserLikeHeaders['Authorization'] = `Basic ${credentials}`;
-      debugLog("Authentification Basic configurée");
     } else {
-      debugLog("ERREUR: Identifiants WordPress non configurés");
       throw new Error('WordPress API credentials not configured');
     }
     
+    // Prepare the post data
     const postData = {
       title: title,
       content: generatedContent,
       status: 'publish',
+      
+      // If we have category ID, add it here
+      // We'll use the categories from WordPress, if available
       categoryId: generation.category_id,
     };
     
-    debugLog("Données à publier préparées", { title, categoryId: generation.category_id, status: 'publish' });
-    
     try {
-      debugLog("Attente de 3 secondes avant de contacter WordPress...");
+      // Ajout d'un délai avant de faire la requête WordPress pour éviter la détection du Bot
+      console.log("Attente de 3 secondes avant de contacter WordPress...");
       await new Promise(resolve => setTimeout(resolve, 3000));
       
-      debugLog("Test de l'API DipiPixel...");
+      console.log("Test de l'API DipiPixel...");
+      // Let's first check if we're dealing with a DipiPixel site with custom taxonomy
       const testResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt_category`, {
         method: 'HEAD',
         headers: browserLikeHeaders
       });
       
-      debugLog(`Test DipiPixel: ${testResponse.status}`);
-      
       if (testResponse.status !== 404) {
-        debugLog("DipiPixel détecté, utilisation de l'API dipi_cpt");
+        // DipiPixel custom post type exists
+        console.log("DipiPixel détecté, utilisation de l'API dipi_cpt");
         apiEndpoint = '/wp-json/wp/v2/dipi_cpt';
+        // Add category using custom taxonomy
         postData["dipi_cpt_category"] = [parseInt(generation.category_id)];
       }
     } catch (error) {
-      debugLog("Error checking for DipiPixel:", error);
+      console.log("Error checking for DipiPixel:", error);
+      // Continue with standard WordPress endpoint
     }
     
     try {
-      debugLog(`Publication sur WordPress: ${siteUrl}${apiEndpoint}`);
+      console.log(`Publication sur WordPress: ${siteUrl}${apiEndpoint}`);
       
+      // Add a timeout to the WordPress request
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
       
+      // Publish to WordPress
       const wpResponse = await fetch(`${siteUrl}${apiEndpoint}`, {
         method: 'POST',
         headers: browserLikeHeaders,
@@ -280,13 +248,12 @@ serve(async (req) => {
       
       if (!wpResponse.ok) {
         const errorText = await wpResponse.text();
-        debugLog(`Erreur API WordPress: ${wpResponse.status}`, errorText);
         throw new Error(`WordPress API error: ${wpResponse.status} - ${errorText}`);
       }
       
       const wpData = await wpResponse.json();
-      debugLog("Publication WordPress réussie", { postId: wpData.id, link: wpData.link });
       
+      // Update generation status in Supabase
       await supabase
         .from('tome_generations')
         .update({ 
@@ -296,8 +263,7 @@ serve(async (req) => {
         })
         .eq('id', generationId);
       
-      debugLog("Mise à jour du statut à 'published' dans la base de données");
-      
+      // Return successful response
       return new Response(
         JSON.stringify({
           success: true,
@@ -311,22 +277,24 @@ serve(async (req) => {
         }
       );
     } catch (wpError) {
-      debugLog("WordPress API error:", wpError);
+      console.error("WordPress API error:", wpError);
       
+      // Si l'erreur contient du HTML (comme avec Tiger Protect), on considère que c'est un problème de WAF
       const errorMessage = wpError.message || "";
       if (errorMessage.includes("<!DOCTYPE HTML>") || errorMessage.includes("<html")) {
-        debugLog("Erreur: Le pare-feu WordPress (WAF) a bloqué notre requête");
         throw new Error("Le pare-feu WordPress (WAF) a bloqué notre requête. Veuillez essayer depuis l'interface d'administration WordPress.");
       }
       
       throw wpError;
     }
+    
   } catch (error) {
-    debugLog('Error in tome-generate function:', error);
+    console.error('Error in tome-generate function:', error);
     
     let errorMessage = error.message || 'An error occurred during generation';
     let friendlyMessage = errorMessage;
     
+    // Améliorer les messages d'erreur pour l'utilisateur
     if (errorMessage.includes("WAF") || errorMessage.includes("pare-feu")) {
       friendlyMessage = "Le pare-feu WordPress (WAF) bloque notre requête. Vous devrez peut-être publier manuellement depuis WordPress.";
     } else if (errorMessage.includes("timeout") || errorMessage.includes("abort")) {
@@ -335,12 +303,13 @@ serve(async (req) => {
       friendlyMessage = "Le serveur WordPress est temporairement indisponible (erreur 503). Veuillez réessayer plus tard.";
     }
     
+    // Try to update generation status to failed
     try {
+      // Clone the request again to read generationId for status update
       const reqClone2 = req.clone();
       const { generationId } = await reqClone2.json();
       
       if (generationId) {
-        debugLog(`Mise à jour du statut de la génération ${generationId} à 'failed'`);
         const supabaseUrl = Deno.env.get('SUPABASE_URL');
         const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
         
@@ -350,13 +319,14 @@ serve(async (req) => {
             .from('tome_generations')
             .update({ 
               status: 'failed',
-              error_message: friendlyMessage.substring(0, 255)
+              // Stocker le message d'erreur pour référence
+              error_message: friendlyMessage.substring(0, 255) // Limiter la taille
             })
             .eq('id', generationId);
         }
       }
     } catch (updateError) {
-      debugLog('Error updating generation status:', updateError);
+      console.error('Error updating generation status:', updateError);
     }
     
     return new Response(

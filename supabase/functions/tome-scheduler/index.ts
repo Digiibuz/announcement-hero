@@ -108,7 +108,7 @@ async function parseRequestParams(req: Request) {
   }
   
   debugLog("Type d'exécution:", isScheduledExecution ? "Planifiée" : "Manuelle");
-  debugLog("Valeurs des paramètres après traitement - isConfigCheck:", isConfigCheck, "forceGeneration:", forceGeneration, "timestamp:", timestamp, "debug:", debug, "isScheduledExecution:", isScheduledExecution);
+  debugLog("Valeurs des paramètres après traitement - isConfigCheck:", isConfigCheck, "forceGeneration:", forceGeneration, "timestamp:", timestamp, "debug:", debug);
   
   return { isConfigCheck, forceGeneration, apiKey, timestamp, debug, isScheduledExecution };
 }
@@ -282,7 +282,6 @@ async function getLocalities(supabase, wordpressConfigId, retryCount = 1) {
 }
 
 // Create a new generation with random content selections
-// IMPORTANT: Status is now set to "pending" explicitly for direct publication
 async function createGeneration(supabase, wordpressConfigId, categoryId, keywordId, localityId) {
   try {
     debugLog(`Création d'une génération pour la config ${wordpressConfigId}`, {
@@ -298,7 +297,7 @@ async function createGeneration(supabase, wordpressConfigId, categoryId, keyword
         category_id: categoryId,
         keyword_id: keywordId,
         locality_id: localityId,
-        status: 'pending' // Toujours en pending, mais sera publié directement par tome-generate
+        status: 'pending'
       })
       .select()
       .single();
@@ -316,11 +315,10 @@ async function createGeneration(supabase, wordpressConfigId, categoryId, keyword
   }
 }
 
-// MODIFICATION PRINCIPALE: Utiliser directement tome-generate au lieu de tome-generate-draft
-// Cette fonction publiera directement le contenu sur WordPress
-async function queuePublishGeneration(supabase, generationId, debug = false) {
+// Trigger the draft generation function
+async function queueDraftGeneration(supabase, generationId, debug = false) {
   try {
-    debugLog(`Préparation de la génération et publication pour ${generationId}`);
+    debugLog(`Préparation de la génération du brouillon pour ${generationId}`);
     
     // Update status to processing first
     await supabase
@@ -331,39 +329,27 @@ async function queuePublishGeneration(supabase, generationId, debug = false) {
       })
       .eq('id', generationId);
       
-    debugLog(`Appel de tome-generate pour la génération ET publication ${generationId}`);
+    debugLog(`Appel de tome-generate-draft pour la génération ${generationId}`);
     
-    // IMPORTANT: Inclure un timestamp et forcer debug = true pour améliorer la traçabilité
-    const timestamp = new Date().getTime();
-    const params = {
-      generationId,
-      timestamp,
-      debug: true // Toujours activer le debug pour améliorer la visibilité des logs
-    };
-    
-    debugLog(`Paramètres d'invocation:`, params);
-    
-    // Make the API call to the publication generation function with explicit debug info
-    const { data, error } = await supabase.functions.invoke('tome-generate', {
-      body: params
+    // Make the API call to the draft generation function
+    const { data, error } = await supabase.functions.invoke('tome-generate-draft', {
+      body: { 
+        generationId,
+        timestamp: new Date().getTime(),
+        debug
+      }
     });
     
     if (error) {
-      debugLog(`Erreur lors de l'appel à tome-generate pour ${generationId}:`, error);
+      debugLog(`Erreur lors de l'appel à tome-generate-draft pour ${generationId}:`, error);
       await updateGenerationStatus(supabase, generationId, 'failed', error.message);
       return false;
     }
     
-    if (data && data.error) {
-      debugLog(`L'API tome-generate a retourné une erreur pour ${generationId}:`, data.error);
-      await updateGenerationStatus(supabase, generationId, 'failed', data.error);
-      return false;
-    }
-    
-    debugLog(`Contenu généré et publié avec succès pour ${generationId}`, data);
+    debugLog(`Brouillon généré avec succès pour ${generationId}`);
     return true;
   } catch (error) {
-    debugLog(`Exception lors de la génération et publication pour ${generationId}:`, error);
+    debugLog(`Exception lors de la génération du brouillon pour ${generationId}:`, error);
     await updateGenerationStatus(supabase, generationId, 'failed', error.message);
     return false;
   }
@@ -478,17 +464,16 @@ async function processAutomationSetting(supabase, setting, apiKeyUsed, forceGene
       return processingResult;
     }
 
-    // MODIFICATION IMPORTANTE: Utiliser directement la fonction queuePublishGeneration 
-    // qui appelle tome-generate (au lieu de tome-generate-draft) pour publication directe
-    const success = await queuePublishGeneration(supabase, generation.id, debug);
+    // Now that we have a generation, directly queue it for processing (THIS IS KEY)
+    const success = await queueDraftGeneration(supabase, generation.id, debug);
     
     if (success) {
-      debugLog(`Contenu généré et publié avec succès pour la config ${wordpressConfigId}`);
+      debugLog(`Contenu généré avec succès pour la config ${wordpressConfigId}`);
       processingResult.result = 'success';
       processingResult.success = true;
     } else {
-      debugLog(`Échec de la génération ou publication du contenu pour la config ${wordpressConfigId}`);
-      processingResult.result = 'generation_failed';
+      debugLog(`Échec de la génération du contenu pour la config ${wordpressConfigId}`);
+      processingResult.result = 'draft_generation_failed';
     }
     
     return processingResult;

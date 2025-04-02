@@ -285,8 +285,8 @@ export const useTomeAutomation = (configId: string) => {
   const forceRunScheduler = async (): Promise<boolean> => {
     setIsSubmitting(true);
     try {
-      // IMPORTANT: Clarifier dans les logs que nous exécutons le planificateur avec publication directe
-      addLog("Exécution forcée du planificateur avec génération et PUBLICATION directe");
+      // Assurez-vous d'utiliser les bons paramètres pour le planificateur
+      addLog("Exécution forcée du planificateur avec forceGeneration=true et configCheck=false");
       console.log("Exécution forcée du planificateur avec forceGeneration=true et configCheck=false");
       
       // IMPORTANT: Assurez-vous que runScheduler appelle tome-scheduler avec les bons paramètres
@@ -296,8 +296,8 @@ export const useTomeAutomation = (configId: string) => {
         addLog("Échec de l'exécution du planificateur");
         toast.error("Échec de l'exécution du planificateur");
       } else {
-        addLog("Planificateur exécuté avec succès - Contenu généré et publié");
-        toast.success("Planificateur exécuté avec succès - Contenu généré et publié");
+        addLog("Planificateur exécuté avec succès");
+        toast.success("Planificateur exécuté avec succès");
       }
       
       return result;

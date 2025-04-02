@@ -6,7 +6,3 @@ verify_jwt = false
 
 [functions.tome-generate-draft]
 verify_jwt = false
-
-[functions.tome-generate]
-verify_jwt = false
-
