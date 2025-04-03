@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 export interface AnnouncementFormProps {
   onSubmit?: (data: AnnouncementFormData) => void;
@@ -57,6 +57,9 @@ const AnnouncementForm = ({
   const form = useForm<AnnouncementFormData>({
     defaultValues: initialValues || defaultValues
   });
+
+  // Persistance du formulaire dans le localStorage
+  const { clearSavedData } = useFormPersistence(form, "announcement-form-draft", initialValues);
 
   // Update form values when initialValues changes
   useEffect(() => {
@@ -117,6 +120,14 @@ const AnnouncementForm = ({
     }
   };
 
+  const handleFormSubmit = (data: AnnouncementFormData) => {
+    if (onSubmit) {
+      // Effacer les données sauvegardées après la soumission
+      clearSavedData();
+      onSubmit(data);
+    }
+  };
+
   const getCardStyles = (isSectionCard = false) => {
     if (isMobile) {
       return isSectionCard ? "border-0 border-b border-border shadow-none rounded-none bg-transparent mb-3 last:border-b-0 last:mb-0" : "border-0 shadow-none bg-transparent";
@@ -126,7 +137,7 @@ const AnnouncementForm = ({
 
   return <div className="space-y-6">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit || (() => {}))} className="space-y-6">
+        <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
           <div className="space-y-6">
             <div className={`${isMobile ? "px-4" : ""}`}>
               <Card className={getCardStyles(true)}>

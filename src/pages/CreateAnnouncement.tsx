@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState } from "react";
@@ -56,6 +55,9 @@ const CreateAnnouncement = () => {
     try {
       setIsSubmitting(true);
       setShowPublishingOverlay(true);
+      
+      // Effacer les données sauvegardées du formulaire dans le localStorage
+      localStorage.removeItem("announcement-form-draft");
       
       // Show immediate feedback on mobile
       if (isMobile) {
