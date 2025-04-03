@@ -1,3 +1,4 @@
+
 import React from "react";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,10 +11,12 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { AnnouncementFormData } from "../AnnouncementForm";
 import { UseFormReturn } from "react-hook-form";
+
 interface PublishingStepProps {
   form: UseFormReturn<AnnouncementFormData>;
   isMobile?: boolean;
 }
+
 const PublishingStep = ({
   form,
   isMobile
@@ -24,14 +27,16 @@ const PublishingStep = ({
     }
     return "border shadow-sm";
   };
-  return <div className="space-y-6">
-      
-      
+  
+  return (
+    <div className="space-y-6 max-w-3xl mx-auto">
       <Card className={getCardStyles()}>
         <CardContent className={`space-y-4 ${isMobile ? "px-0 py-4" : "p-6"}`}>
-          <FormField control={form.control} name="status" render={({
-          field
-        }) => <FormItem>
+          <FormField 
+            control={form.control} 
+            name="status" 
+            render={({ field }) => (
+              <FormItem>
                 <FormLabel>Statut de publication</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
@@ -50,29 +55,48 @@ const PublishingStep = ({
                   Utilisez le bouton "Enregistrer brouillon" en bas de page.
                 </FormDescription>
                 <FormMessage />
-              </FormItem>} />
+              </FormItem>
+            )} 
+          />
 
-          {form.watch('status') === 'scheduled' && <FormField control={form.control} name="publishDate" render={({
-          field
-        }) => <FormItem className="flex flex-col">
+          {form.watch('status') === 'scheduled' && (
+            <FormField 
+              control={form.control} 
+              name="publishDate" 
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
                   <FormLabel>Date de publication</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
-                        <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                        <Button 
+                          variant="outline" 
+                          className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
+                        >
                           {field.value ? format(field.value, "PPP") : "Sélectionnez une date"}
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={date => date < new Date()} initialFocus />
+                      <Calendar 
+                        mode="single" 
+                        selected={field.value} 
+                        onSelect={field.onChange} 
+                        disabled={date => date < new Date()} 
+                        initialFocus 
+                      />
                     </PopoverContent>
                   </Popover>
                   <FormMessage />
-                </FormItem>} />}
+                </FormItem>
+              )}
+            />
+          )}
         </CardContent>
       </Card>
-    </div>;
+    </div>
+  );
 };
+
 export default PublishingStep;
