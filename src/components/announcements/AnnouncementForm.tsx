@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,6 @@ import { useContentOptimization } from "@/hooks/useContentOptimization";
 import { useFormPersistence } from "@/hooks/useFormPersistence";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { InfoIcon } from "lucide-react";
-
 export interface AnnouncementFormProps {
   onSubmit?: (data: AnnouncementFormData) => void;
   isSubmitting?: boolean;
@@ -26,7 +24,6 @@ export interface AnnouncementFormProps {
   initialValues?: AnnouncementFormData;
   storageKey?: string;
 }
-
 export interface AnnouncementFormData {
   title: string;
   description: string;
@@ -38,7 +35,6 @@ export interface AnnouncementFormData {
   seoDescription: string;
   seoSlug: string;
 }
-
 const AnnouncementForm = ({
   onSubmit,
   isSubmitting = false,
@@ -58,41 +54,38 @@ const AnnouncementForm = ({
     seoDescription: "",
     seoSlug: ""
   };
-
   const form = useForm<AnnouncementFormData>({
     defaultValues: initialValues || defaultValues
   });
 
   // Activer la persistance du formulaire avec debug pour faciliter les tests
-  const { clearSavedData, hasSavedData, saveData } = useFormPersistence(
-    form, 
-    storageKey, 
-    initialValues,
-    5000, // Sauvegarde toutes les 5 secondes en plus des changements
-    true  // Activer le debug pour voir ce qui se passe
+  const {
+    clearSavedData,
+    hasSavedData,
+    saveData
+  } = useFormPersistence(form, storageKey, initialValues, 5000,
+  // Sauvegarde toutes les 5 secondes en plus des changements
+  true // Activer le debug pour voir ce qui se passe
   );
-  
   const [showDraftNotice, setShowDraftNotice] = useState(false);
-
   useEffect(() => {
     // Vérifier s'il y a un brouillon sauvegardé après le montage du composant
     const checkForDraft = () => {
       const hasDraft = hasSavedData();
       setShowDraftNotice(hasDraft);
-      
+
       // Force une sauvegarde après le chargement pour s'assurer que tout est persisté
       if (form.getValues().title || form.getValues().description) {
         saveData();
       }
     };
-    
+
     // Attendre que le DOM soit complètement chargé
     setTimeout(checkForDraft, 500);
   }, [hasSavedData, saveData, form]);
-
   useEffect(() => {
     if (initialValues) {
-      Object.keys(initialValues).forEach((key) => {
+      Object.keys(initialValues).forEach(key => {
         const typedKey = key as keyof AnnouncementFormData;
         form.setValue(typedKey, initialValues[typedKey]);
       });
@@ -101,16 +94,16 @@ const AnnouncementForm = ({
 
   // Forcer une sauvegarde lorsque certains champs complexes changent
   useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
+    const subscription = form.watch((value, {
+      name
+    }) => {
       if (name === 'description' || name === 'images' || name === 'wordpressCategory') {
         // Force une sauvegarde après un court délai pour s'assurer que tout est à jour
         setTimeout(saveData, 100);
       }
     });
-    
     return () => subscription.unsubscribe();
   }, [form, saveData]);
-
   const navigate = useNavigate();
   const {
     optimizeContent,
@@ -121,18 +114,15 @@ const AnnouncementForm = ({
     setValue
   } = form;
   const title = watch("title");
-
   useEffect(() => {
     if (title) {
       const normalizedTitle = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
       setValue("seoSlug", normalizedTitle);
-      
       if (!form.getValues("seoTitle") || form.getValues("seoTitle") === "") {
         setValue("seoTitle", title);
       }
     }
   }, [title, setValue, form]);
-
   const optimizeSeoContent = async (field: 'seoTitle' | 'seoDescription') => {
     try {
       const currentTitle = form.getValues('title');
@@ -149,7 +139,6 @@ const AnnouncementForm = ({
       console.error(`Error optimizing ${field}:`, error);
     }
   };
-
   const handleCancel = () => {
     if (window.confirm("Êtes-vous sûr de vouloir quitter ? Votre brouillon sera conservé pour plus tard.")) {
       if (onCancel) {
@@ -159,32 +148,20 @@ const AnnouncementForm = ({
       }
     }
   };
-
   const handleFormSubmit = (data: AnnouncementFormData) => {
     if (onSubmit) {
       clearSavedData();
       onSubmit(data);
     }
   };
-
   const getCardStyles = (isSectionCard = false) => {
     if (isMobile) {
       return isSectionCard ? "border-0 border-b border-border shadow-none rounded-none bg-transparent mb-3 last:border-b-0 last:mb-0" : "border-0 shadow-none bg-transparent";
     }
     return "border shadow-sm";
   };
-
-  return (
-    <div className="space-y-6">
-      {showDraftNotice && (
-        <Alert variant="default" className="bg-amber-50 border-amber-200">
-          <InfoIcon className="h-4 w-4 text-amber-800" />
-          <AlertTitle className="text-amber-800">Brouillon restauré</AlertTitle>
-          <AlertDescription className="text-amber-700">
-            Vos modifications précédentes ont été restaurées automatiquement. Le formulaire est sauvegardé au fur et à mesure de vos modifications.
-          </AlertDescription>
-        </Alert>
-      )}
+  return <div className="space-y-6">
+      {showDraftNotice}
       
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
@@ -359,8 +336,6 @@ const AnnouncementForm = ({
           </div>
         </form>
       </Form>
-    </div>
-  );
+    </div>;
 };
-
 export default AnnouncementForm;
