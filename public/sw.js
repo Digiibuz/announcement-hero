@@ -1,6 +1,6 @@
 
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v14';
+const CACHE_NAME = 'digiibuz-cache-v15';
 
 // Liste des ressources à mettre en cache
 const urlsToCache = [
@@ -8,12 +8,6 @@ const urlsToCache = [
   '/index.html',
   '/manifest.json',
   '/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png',
-  // Ajout des routes principales pour éviter les rechargements
-  '/dashboard',
-  '/announcements',
-  '/create',
-  '/users',
-  '/wordpress'
 ];
 
 // Vérification qu'une URL est valide pour la mise en cache
@@ -39,13 +33,13 @@ function shouldSkipCaching(url) {
       url.includes('/api/') || 
       url.includes('supabase.co') || 
       url.includes('wp-json') ||
-      url.includes('storage.googleapis.com') || // Pour éviter les conflits avec les images Supabase
+      url.includes('storage.googleapis.com') ||
       url.includes('images/') ||
-      url.includes('camera') || // Éviter les conflits avec la capture de caméra
-      url.includes('image/') || // Éviter les problèmes avec les routes d'images
-      url.includes('upload') || // Éviter les conflits avec les téléversements
-      url.includes('media') || // Éviter les conflits avec les médias WordPress
-      url.includes('openai.com') || // Ne jamais mettre en cache les appels à OpenAI
+      url.includes('camera') ||
+      url.includes('image/') ||
+      url.includes('upload') ||
+      url.includes('media') ||
+      url.includes('openai.com') ||
       !isValidCacheUrl(url)
     );
   } catch (e) {
@@ -66,7 +60,7 @@ self.addEventListener('install', event => {
   self.skipWaiting();
 });
 
-// Activation et contrôle immédiat des clients
+// Activation et nettoyage des anciens caches
 self.addEventListener('activate', event => {
   const cacheWhitelist = [CACHE_NAME];
 
@@ -77,6 +71,7 @@ self.addEventListener('activate', event => {
         return Promise.all(
           cacheNames.map(cacheName => {
             if (cacheWhitelist.indexOf(cacheName) === -1) {
+              console.log('Suppression ancien cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
@@ -88,65 +83,65 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Gestion des requêtes avec stratégie pour les applications SPA
+// Gestion des requêtes avec stratégie améliorée
 self.addEventListener('fetch', event => {
-  // IMPORTANT: Ne jamais intercepter certaines requêtes qui poseraient problème
+  // Ne jamais intercepter certaines requêtes qui poseraient problème
   if (shouldSkipCaching(event.request.url)) {
     return;
   }
   
-  // Pour les requêtes de navigation (HTML)
+  // Stratégie pour les requêtes de navigation (HTML)
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      // Renvoyer index.html pour toutes les requêtes de navigation (SPA pattern)
-      caches.match('/index.html')
-        .then(response => {
-          return response || fetch(event.request)
-            .then(networkResponse => {
-              return networkResponse;
-            })
-            .catch(() => caches.match('/index.html'));
+      fetch(event.request)
+        .then(networkResponse => {
+          return networkResponse;
+        })
+        .catch(() => {
+          // En cas d'échec, utiliser le cache
+          return caches.match('/index.html');
         })
     );
     return;
   }
 
-  // Pour les autres requêtes - stratégie "stale-while-revalidate"
+  // Pour les autres requêtes - stratégie "network-first"
   event.respondWith(
-    caches.match(event.request)
-      .then(cachedResponse => {
-        // Créer une promesse pour la requête réseau
-        const fetchPromise = fetch(event.request)
-          .then(networkResponse => {
-            // Mettre à jour le cache avec la nouvelle réponse si valide
-            if (networkResponse && 
-                networkResponse.status === 200 && 
-                networkResponse.type === 'basic' && 
-                isValidCacheUrl(event.request.url) &&
-                !shouldSkipCaching(event.request.url)) {
-              const responseToCache = networkResponse.clone();
-              caches.open(CACHE_NAME)
-                .then(cache => {
-                  try {
-                    cache.put(event.request, responseToCache);
-                  } catch (error) {
-                    console.error('Erreur lors de la mise en cache:', error);
-                  }
-                });
-            }
-            return networkResponse;
-          })
-          .catch(error => {
-            console.error('Fetch failed:', error);
-            // Si le réseau échoue et qu'il n'y a pas de réponse en cache, on renvoie une erreur
-            if (!cachedResponse) {
-              throw error;
-            }
-            return cachedResponse;
+    fetch(event.request)
+      .then(networkResponse => {
+        // Mettre à jour le cache avec la nouvelle réponse si valide
+        if (networkResponse && 
+            networkResponse.status === 200 && 
+            networkResponse.type === 'basic' && 
+            isValidCacheUrl(event.request.url) &&
+            !shouldSkipCaching(event.request.url)) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME)
+            .then(cache => {
+              try {
+                cache.put(event.request, responseToCache);
+              } catch (error) {
+                console.error('Erreur lors de la mise en cache:', error);
+              }
+            });
+        }
+        return networkResponse;
+      })
+      .catch(error => {
+        console.log('Fetch failed, fallback to cache for:', event.request.url);
+        // Si le réseau échoue, on essaie le cache
+        return caches.match(event.request)
+          .catch(err => {
+            console.error('Cache match also failed:', err);
+            throw error;
           });
-
-        // Renvoyer immédiatement la réponse en cache si elle existe
-        return cachedResponse || fetchPromise;
       })
   );
+});
+
+// Ajout d'un gestionnaire pour les messages entre clients
+self.addEventListener('message', event => {
+  if (event.data === 'skipWaiting') {
+    self.skipWaiting();
+  }
 });

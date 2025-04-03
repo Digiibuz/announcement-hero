@@ -9,46 +9,68 @@ if ('scrollRestoration' in history) {
   history.scrollRestoration = 'manual';
 }
 
-// Enregistrer le service worker pour PWA avec gestion améliorée
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', { 
-      updateViaCache: 'none',
-      scope: '/' 
-    }).then(registration => {
-      console.log('SW registered: ', registration);
-      // Force une vérification de mise à jour, mais évite de recharger automatiquement
+// Fonction pour enregistrer le service worker de manière plus robuste
+const registerServiceWorker = async () => {
+  if ('serviceWorker' in navigator) {
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js', {
+        updateViaCache: 'none',
+        scope: '/'
+      });
+      
+      console.log('SW enregistré:', registration);
+      
+      // Vérifier et mettre à jour le service worker
       registration.update();
       
-      // Écoute des mises à jour mais ne force pas de rechargement
+      // Gérer les mises à jour du service worker
       registration.addEventListener('updatefound', () => {
         const newWorker = registration.installing;
         if (newWorker) {
           newWorker.addEventListener('statechange', () => {
-            // Nouveau service worker disponible mais ne force pas de rechargement
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              console.log('Nouvelle version disponible, mais on ne recharge pas automatiquement');
+              console.log('Une nouvelle version du service worker est disponible');
+              
+              // Si la page est visible, demander un rechargement
+              if (document.visibilityState === 'visible') {
+                // Créer une notification pour informer l'utilisateur
+                if ('Notification' in window && Notification.permission === 'granted') {
+                  new Notification('Application mise à jour', {
+                    body: 'Une nouvelle version est disponible. Rechargez la page pour l\'utiliser.'
+                  });
+                }
+              }
             }
           });
         }
       });
-    }).catch(registrationError => {
-      console.log('SW registration failed: ', registrationError);
-    });
-  });
-}
-
-// Empêcher le rechargement complet sur F5 en utilisant l'événement beforeunload
-window.addEventListener('beforeunload', (event) => {
-  // Vérifier si l'utilisateur est sur une page où un formulaire est en cours de remplissage
-  if (window.location.pathname === '/create') {
-    // Ne pas empêcher complètement le rechargement, mais avertir l'utilisateur
-    // que ses données peuvent être perdues s'il n'a pas enregistré
-    const savedData = localStorage.getItem('announcement-form-draft');
-    if (savedData && Object.keys(JSON.parse(savedData)).length > 1) {
-      // Une donnée valide est présente dans le localStorage
-      console.log('Données de formulaire trouvées lors du rechargement');
+      
+    } catch (error) {
+      console.error('Erreur d\'enregistrement du SW:', error);
     }
+  }
+};
+
+// Fonction pour déclencher la mise à jour du service worker
+const updateServiceWorker = async () => {
+  if ('serviceWorker' in navigator) {
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (registration) {
+      registration.update();
+    }
+  }
+};
+
+// Enregistrer le service worker au chargement
+window.addEventListener('load', () => {
+  registerServiceWorker();
+});
+
+// Mettre à jour le service worker lors de la reprise de l'application
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    // L'utilisateur est revenu à l'application
+    updateServiceWorker();
   }
 });
 
