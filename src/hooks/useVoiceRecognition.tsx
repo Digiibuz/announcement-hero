@@ -76,6 +76,7 @@ interface SpeechRecognition extends EventTarget {
 const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
@@ -151,9 +152,18 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
           recognitionRef.current.start();
         }
       });
+      recognitionRef.current.addEventListener('soundstart', () => {
+        // User started speaking
+        setIsProcessing(false);
+      });
+      recognitionRef.current.addEventListener('soundend', () => {
+        // User stopped speaking, now processing the speech
+        setIsProcessing(true);
+      });
       recognitionRef.current.addEventListener('error', (e) => {
         console.error('Speech recognition error', e);
         setIsListening(false);
+        setIsProcessing(false);
       });
     }
     
@@ -197,6 +207,9 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
           });
         }
       }
+      
+      // Set processing to false after final result is processed
+      setIsProcessing(false);
     }
   };
 
@@ -213,6 +226,7 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
         recognitionRef.current.stop();
       }
       setIsRecording(false);
+      setIsProcessing(false);
       toast.info("Dictée vocale désactivée");
     } else {
       // Start recording
@@ -232,6 +246,7 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
   return {
     isRecording,
     isListening,
+    isProcessing,
     toggleVoiceRecording,
     isSupported
   };

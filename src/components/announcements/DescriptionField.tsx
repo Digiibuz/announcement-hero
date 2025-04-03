@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
@@ -31,7 +32,7 @@ const DescriptionField = ({
   const isMobile = useIsMobile();
   
   // Voice recognition integration
-  const { isRecording, isListening, toggleVoiceRecording, isSupported } = 
+  const { isRecording, isListening, isProcessing, toggleVoiceRecording, isSupported } = 
     useVoiceRecognition({ fieldName: 'description', form });
 
   const updateFormValue = () => {
@@ -401,8 +402,16 @@ const DescriptionField = ({
       
       {isRecording && (
         <div className="flex items-center gap-2 text-sm bg-red-50 dark:bg-red-950/20 p-2 rounded border border-red-200 dark:border-red-800">
-          <LoadingIndicator size={16} variant="dots" color="#dc2626" />
-          <span className="text-red-600 dark:text-red-400 font-medium">Dictée active {isListening ? "" : "..."}</span>
+          {isProcessing ? (
+            <>
+              <LoadingIndicator size={16} variant="dots" color="#dc2626" />
+              <span className="text-red-600 dark:text-red-400 font-medium">Transcription en cours...</span>
+            </>
+          ) : (
+            <span className="text-red-600 dark:text-red-400 font-medium">
+              {isListening ? "Dictée active - parlez maintenant" : "Initialisation de la dictée..."}
+            </span>
+          )}
         </div>
       )}
       
