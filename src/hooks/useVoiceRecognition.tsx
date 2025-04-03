@@ -84,35 +84,106 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
   const processCommand = (transcript: string, element: HTMLElement | null): string => {
     // Define command mappings for punctuation and formatting
     const commands: Record<string, (el: HTMLElement | null) => string> = {
-      "point un": (el) => {
-        if (el) {
-          document.execCommand('insertText', false, '.');
-          return '';
-        } else {
-          return '.';
-        }
-      },
-      "point virgule un": (el) => {
-        if (el) {
-          document.execCommand('insertText', false, ';');
-          return '';
-        } else {
-          return ';';
-        }
-      },
-      "à la ligne": (el) => {
-        if (el) {
-          document.execCommand('insertText', false, '\n');
-          return '';
-        } else {
-          return '\n';
-        }
+      // Points
+      "point": (el) => el ? (document.execCommand('insertText', false, '.'), '') : '.',
+      "point un": (el) => el ? (document.execCommand('insertText', false, '.'), '') : '.',
+      
+      // Virgules
+      "virgule": (el) => el ? (document.execCommand('insertText', false, ','), '') : ',',
+      "virgule un": (el) => el ? (document.execCommand('insertText', false, ','), '') : ',',
+      
+      // Point-virgule
+      "point virgule": (el) => el ? (document.execCommand('insertText', false, ';'), '') : ';',
+      "point virgule un": (el) => el ? (document.execCommand('insertText', false, ';'), '') : ';',
+      
+      // Deux-points
+      "deux points": (el) => el ? (document.execCommand('insertText', false, ':'), '') : ':',
+      
+      // Points d'interrogation
+      "point d'interrogation": (el) => el ? (document.execCommand('insertText', false, '?'), '') : '?',
+      "point interrogation": (el) => el ? (document.execCommand('insertText', false, '?'), '') : '?',
+      
+      // Points d'exclamation
+      "point d'exclamation": (el) => el ? (document.execCommand('insertText', false, '!'), '') : '!',
+      "point exclamation": (el) => el ? (document.execCommand('insertText', false, '!'), '') : '!',
+      
+      // Parenthèses
+      "ouvrir parenthèse": (el) => el ? (document.execCommand('insertText', false, '('), '') : '(',
+      "fermer parenthèse": (el) => el ? (document.execCommand('insertText', false, ')'), '') : ')',
+      "parenthèse ouvrante": (el) => el ? (document.execCommand('insertText', false, '('), '') : '(',
+      "parenthèse fermante": (el) => el ? (document.execCommand('insertText', false, ')'), '') : ')',
+      
+      // Guillemets
+      "ouvrir guillemets": (el) => el ? (document.execCommand('insertText', false, '« '), '') : '« ',
+      "fermer guillemets": (el) => el ? (document.execCommand('insertText', false, ' »'), '') : ' »',
+      "guillemets ouvrants": (el) => el ? (document.execCommand('insertText', false, '« '), '') : '« ',
+      "guillemets fermants": (el) => el ? (document.execCommand('insertText', false, ' »'), '') : ' »',
+      
+      // Tirets et traits d'union
+      "tiret": (el) => el ? (document.execCommand('insertText', false, '-'), '') : '-',
+      "tiret cadratin": (el) => el ? (document.execCommand('insertText', false, '—'), '') : '—',
+      "tiret demi cadratin": (el) => el ? (document.execCommand('insertText', false, '–'), '') : '–',
+      
+      // Apostrophe
+      "apostrophe": (el) => el ? (document.execCommand('insertText', false, "'"), '') : "'",
+      
+      // Accolades
+      "ouvrir accolade": (el) => el ? (document.execCommand('insertText', false, '{'), '') : '{',
+      "fermer accolade": (el) => el ? (document.execCommand('insertText', false, '}'), '') : '}',
+      
+      // Crochets
+      "ouvrir crochet": (el) => el ? (document.execCommand('insertText', false, '['), '') : '[',
+      "fermer crochet": (el) => el ? (document.execCommand('insertText', false, ']'), '') : ']',
+      
+      // Pourcentage
+      "pourcent": (el) => el ? (document.execCommand('insertText', false, '%'), '') : '%',
+      
+      // Symbole euro
+      "euro": (el) => el ? (document.execCommand('insertText', false, '€'), '') : '€',
+      
+      // Symbole dollar
+      "dollar": (el) => el ? (document.execCommand('insertText', false, '$'), '') : '$',
+      
+      // Et commercial
+      "et commercial": (el) => el ? (document.execCommand('insertText', false, '&'), '') : '&',
+      "esperluette": (el) => el ? (document.execCommand('insertText', false, '&'), '') : '&',
+      
+      // Saut de ligne
+      "à la ligne": (el) => el ? (document.execCommand('insertText', false, '\n'), '') : '\n',
+      "nouvelle ligne": (el) => el ? (document.execCommand('insertText', false, '\n'), '') : '\n',
+      "saut de ligne": (el) => el ? (document.execCommand('insertText', false, '\n'), '') : '\n',
+      
+      // Paragraphe 
+      "nouveau paragraphe": (el) => el ? (document.execCommand('insertText', false, '\n\n'), '') : '\n\n',
+      
+      // Tabulation
+      "tabulation": (el) => el ? (document.execCommand('insertText', false, '\t'), '') : '\t',
+      "tab": (el) => el ? (document.execCommand('insertText', false, '\t'), '') : '\t',
+      
+      // Majuscules sur les prochains mots
+      "majuscule": (el) => {
+        // Marquer pour le prochain mot
+        // Cette commande est spéciale, on retourne un flag pour traiter le prochain mot
+        return "<CAPITALIZE_NEXT>";
       }
     };
+    
+    // Check for special command pattern that might be followed by text
+    for (const [command, action] of Object.entries(commands)) {
+      // Use regex for prefix matching, to handle cases like "point suivi de texte..."
+      const commandRegex = new RegExp(`^${command}\\s`, 'i');
+      if (commandRegex.test(lowerTranscript)) {
+        const remainingText = transcript.substring(command.length).trim();
+        const punctuation = action(element);
+        
+        // If there's remaining text, append it after the punctuation
+        return punctuation + (remainingText ? " " + remainingText : "");
+      }
+    }
 
     const lowerTranscript = transcript.toLowerCase().trim();
     
-    // Check for commands
+    // Check for exact command match
     for (const [command, action] of Object.entries(commands)) {
       if (lowerTranscript === command) {
         return action(element);
