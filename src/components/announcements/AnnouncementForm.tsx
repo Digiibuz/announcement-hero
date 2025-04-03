@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { toast } from "sonner";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
 import { useFormPersistence } from "@/hooks/useFormPersistence";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { InfoIcon } from "lucide-react";
 
 export interface AnnouncementFormProps {
   onSubmit?: (data: AnnouncementFormData) => void;
@@ -60,7 +63,19 @@ const AnnouncementForm = ({
     defaultValues: initialValues || defaultValues
   });
 
-  const { clearSavedData } = useFormPersistence(form, storageKey, initialValues);
+  const { clearSavedData, hasSavedData } = useFormPersistence(form, storageKey, initialValues);
+  const [showDraftNotice, setShowDraftNotice] = useState(false);
+
+  useEffect(() => {
+    // Vérifier s'il y a un brouillon sauvegardé après le montage du composant
+    const checkForDraft = () => {
+      const hasDraft = hasSavedData();
+      setShowDraftNotice(hasDraft);
+    };
+    
+    // Attendre que le DOM soit complètement chargé
+    setTimeout(checkForDraft, 500);
+  }, [hasSavedData]);
 
   useEffect(() => {
     if (initialValues) {
@@ -136,16 +151,16 @@ const AnnouncementForm = ({
 
   return (
     <div className="space-y-6">
-      {localStorage.getItem(storageKey) && (
-        <div className="bg-amber-50 border border-amber-200 p-3 rounded-md mb-4">
-          <p className="text-sm text-amber-800 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-            Brouillon restauré automatiquement. Vos modifications sont sauvegardées automatiquement.
-          </p>
-        </div>
+      {showDraftNotice && (
+        <Alert variant="default" className="bg-amber-50 border-amber-200">
+          <InfoIcon className="h-4 w-4 text-amber-800" />
+          <AlertTitle className="text-amber-800">Brouillon restauré</AlertTitle>
+          <AlertDescription className="text-amber-700">
+            Vos modifications précédentes ont été restaurées automatiquement. Le formulaire est sauvegardé au fur et à mesure de vos modifications.
+          </AlertDescription>
+        </Alert>
       )}
+      
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
           <div className="space-y-6">

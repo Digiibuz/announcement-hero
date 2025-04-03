@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -54,7 +54,7 @@ const CreateAnnouncement = () => {
   ];
 
   // Function to handle beforeunload event when leaving the page
-  React.useEffect(() => {
+  useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       const savedData = localStorage.getItem(FORM_STORAGE_KEY);
       if (savedData && Object.keys(JSON.parse(savedData)).length > 1) {
