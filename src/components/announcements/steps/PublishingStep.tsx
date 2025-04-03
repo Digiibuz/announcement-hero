@@ -29,7 +29,7 @@ const PublishingStep = ({
   };
   
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto">
       <Card className={getCardStyles()}>
         <CardContent className={`space-y-4 ${isMobile ? "px-0 py-4" : "p-6"}`}>
           <FormField 

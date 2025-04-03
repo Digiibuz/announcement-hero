@@ -4,10 +4,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { AnnouncementFormData } from "../AnnouncementForm";
 import { UseFormReturn } from "react-hook-form";
 import ImageUploader from "../ImageUploader";
+
 interface ImagesStepProps {
   form: UseFormReturn<AnnouncementFormData>;
   isMobile?: boolean;
 }
+
 const ImagesStep = ({
   form,
   isMobile
@@ -18,10 +20,9 @@ const ImagesStep = ({
     }
     return "border shadow-sm";
   };
+  
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
-      <div className="mb-6"></div>
-      
+    <div className="max-w-3xl mx-auto">
       <Card className={getCardStyles()}>
         <CardContent className={`${isMobile ? "px-0 py-4" : "p-6"}`}>
           <ImageUploader form={form} />
@@ -30,4 +31,5 @@ const ImagesStep = ({
     </div>
   );
 };
+
 export default ImagesStep;

@@ -399,10 +399,10 @@ const CreateAnnouncement = () => {
     <div className="min-h-screen bg-background">
       <CreateAnnouncementHeader currentStep={currentStepIndex} totalSteps={stepConfigs.length} />
     
-      <div className="pt-16 pb-20 px-0 md:max-w-4xl md:mx-auto">
+      <div className="pt-16 pb-20 px-4 md:max-w-3xl md:mx-auto">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="h-full">
-            <div className="px-4">
+            <div className="max-w-3xl mx-auto">
               <div className="my-6">
                 <h2 className="text-xl font-semibold mb-1">{currentStep.title}</h2>
                 <p className="text-muted-foreground text-sm">{currentStep.description}</p>
@@ -433,7 +433,7 @@ const CreateAnnouncement = () => {
                 isFirstStep={currentStepIndex === 0} 
                 isSubmitting={isSubmitting || isPublishing || isSavingDraft} 
                 isMobile={isMobile} 
-                className="bg-transparent border-none max-w-4xl mx-auto" 
+                className="bg-transparent border-none max-w-3xl mx-auto" 
               />
             </div>
           </form>
