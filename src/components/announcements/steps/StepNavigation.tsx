@@ -2,6 +2,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Save } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface StepNavigationProps {
   currentStep: number;
@@ -13,6 +14,7 @@ interface StepNavigationProps {
   isFirstStep: boolean;
   isSubmitting: boolean;
   isMobile?: boolean;
+  className?: string;
 }
 
 const StepNavigation = ({
@@ -24,10 +26,48 @@ const StepNavigation = ({
   isLastStep,
   isFirstStep,
   isSubmitting,
-  isMobile
+  isMobile,
+  className
 }: StepNavigationProps) => {
+  if (isMobile) {
+    return (
+      <div className={cn("flex justify-between items-center w-full", className)}>
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={onPrevious}
+          disabled={isFirstStep || isSubmitting}
+          className="w-[130px] h-[50px] rounded-full border-gray-300 text-gray-700 font-medium"
+        >
+          Retour
+        </Button>
+        
+        {isLastStep ? (
+          <Button 
+            type="button" 
+            onClick={onSubmit}
+            disabled={isSubmitting}
+            className="w-[130px] h-[50px] rounded-full bg-orange-500 hover:bg-orange-600 font-medium"
+          >
+            {isSubmitting ? "Envoi..." : "Continuer"}
+          </Button>
+        ) : (
+          <Button 
+            type="button" 
+            onClick={onNext}
+            disabled={isSubmitting}
+            className="w-[130px] h-[50px] rounded-full bg-orange-500 hover:bg-orange-600 font-medium"
+          >
+            Continuer
+          </Button>
+        )}
+      </div>
+    );
+  }
+  
+  // Interface de navigation standard pour desktop
   return (
-    <div className={`flex justify-between ${isMobile ? "border-t border-border pt-4 pb-4 px-4 sticky bottom-0 bg-background" : "mt-6"}`}>
+    <div className={cn("flex justify-between mt-6", className)}>
       <div>
         {!isFirstStep && (
           <Button 

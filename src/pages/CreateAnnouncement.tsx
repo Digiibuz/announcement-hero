@@ -6,16 +6,13 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useForm } from "react-hook-form";
-import AnimatedContainer from "@/components/ui/AnimatedContainer";
-import PageLayout from "@/components/ui/layout/PageLayout";
 import { toast } from "@/hooks/use-toast";
 import { Announcement } from "@/types/announcement";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
-import { ArrowLeft, Wand2 } from "lucide-react";
+import { Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import PublishingLoadingOverlay, { PublishingStep as PublishingStepType } from "@/components/announcements/PublishingLoadingOverlay";
-import StepIndicator from "@/components/announcements/steps/StepIndicator";
 import CategoryStep from "@/components/announcements/steps/CategoryStep";
 import DescriptionStep from "@/components/announcements/steps/DescriptionStep";
 import ImagesStep from "@/components/announcements/steps/ImagesStep";
@@ -23,11 +20,12 @@ import SeoStep from "@/components/announcements/steps/SeoStep";
 import PublishingStep from "@/components/announcements/steps/PublishingStep";
 import StepNavigation from "@/components/announcements/steps/StepNavigation";
 import AnnouncementSummary from "@/components/announcements/steps/AnnouncementSummary";
-import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
-import { AnnouncementFormData } from "@/components/announcements/AnnouncementForm";
 import { Form } from "@/components/ui/form";
 import { useFormPersistence } from "@/hooks/useFormPersistence";
 import { StepConfig, AnnouncementFormStep } from "@/types/steps";
+import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
+import { AnnouncementFormData } from "@/components/announcements/AnnouncementForm";
+import CreateAnnouncementHeader from "@/components/announcements/steps/CreateAnnouncementHeader";
 
 const FORM_STORAGE_KEY = "announcement-form-draft";
 
@@ -325,64 +323,58 @@ const CreateAnnouncement = () => {
   };
 
   return (
-    <PageLayout 
-      title="Créer une nouvelle annonce" 
-      titleAction={
-        <Button variant="outline" size="sm" onClick={() => navigate("/announcements")} className="flex items-center gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Retour aux annonces
-        </Button>
-      } 
-      fullWidthMobile={true}
-      containerClassName="max-w-4xl mx-auto"
-    >
-      <AnimatedContainer delay={200} className={isMobile ? "pb-6" : ""}>
-        <div>
-          {isMobile && (
-            <div className="bg-muted/30 px-4 py-3 mb-4 text-sm text-muted-foreground flex items-center">
-              <Wand2 className="h-4 w-4 mr-2 flex-shrink-0" />
-              <span>Utilisez les boutons <b>Générer</b> pour améliorer votre contenu avec l'IA.</span>
-            </div>
-          )}
-          
-          <StepIndicator 
-            steps={stepConfigs.map(step => step.title)} 
-            currentStep={currentStepIndex} 
-            isMobile={isMobile} 
-          />
-          
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)}>
-              <div className={isMobile ? "px-4" : ""}>
-                {currentStep.id === "category" && (
-                  <CategoryStep form={form} isMobile={isMobile} />
-                )}
-                
-                {currentStep.id === "description" && (
-                  <DescriptionStep form={form} isMobile={isMobile} />
-                )}
-                
-                {currentStep.id === "images" && (
-                  <ImagesStep form={form} isMobile={isMobile} />
-                )}
-                
-                {currentStep.id === "seo" && (
-                  <SeoStep form={form} isMobile={isMobile} />
-                )}
-                
-                {currentStep.id === "publishing" && (
-                  <PublishingStep form={form} isMobile={isMobile} />
-                )}
-                
-                {currentStep.id === "summary" && (
-                  <AnnouncementSummary 
-                    data={form.getValues()} 
-                    isMobile={isMobile}
-                    categoryName={getCategoryName()}
-                  />
-                )}
+    <div className="min-h-screen bg-background">
+      <CreateAnnouncementHeader 
+        currentStep={currentStepIndex} 
+        totalSteps={stepConfigs.length} 
+      />
+    
+      <div className="pt-16 pb-20 px-0">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="h-full">
+            <div className="px-4">
+              {isMobile && (
+                <div className="bg-muted/30 px-4 py-3 mb-4 text-sm text-muted-foreground flex items-center rounded-md">
+                  <Wand2 className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <span>Utilisez les boutons <b>Générer</b> pour améliorer votre contenu avec l'IA.</span>
+                </div>
+              )}
+              
+              <div className="my-6">
+                <h2 className="text-2xl font-bold mb-2">{currentStep.title}</h2>
+                <p className="text-muted-foreground">{currentStep.description}</p>
               </div>
               
+              {currentStep.id === "category" && (
+                <CategoryStep form={form} isMobile={true} />
+              )}
+              
+              {currentStep.id === "description" && (
+                <DescriptionStep form={form} isMobile={true} />
+              )}
+              
+              {currentStep.id === "images" && (
+                <ImagesStep form={form} isMobile={true} />
+              )}
+              
+              {currentStep.id === "seo" && (
+                <SeoStep form={form} isMobile={true} />
+              )}
+              
+              {currentStep.id === "publishing" && (
+                <PublishingStep form={form} isMobile={true} />
+              )}
+              
+              {currentStep.id === "summary" && (
+                <AnnouncementSummary 
+                  data={form.getValues()} 
+                  isMobile={true}
+                  categoryName={getCategoryName()}
+                />
+              )}
+            </div>
+            
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">
               <StepNavigation 
                 currentStep={currentStepIndex}
                 totalSteps={stepConfigs.length}
@@ -392,12 +384,13 @@ const CreateAnnouncement = () => {
                 isLastStep={currentStepIndex === stepConfigs.length - 1}
                 isFirstStep={currentStepIndex === 0}
                 isSubmitting={isSubmitting || isPublishing}
-                isMobile={isMobile}
+                isMobile={true}
+                className="bg-transparent border-none"
               />
-            </form>
-          </Form>
-        </div>
-      </AnimatedContainer>
+            </div>
+          </form>
+        </Form>
+      </div>
       
       <PublishingLoadingOverlay
         isOpen={showPublishingOverlay}
@@ -405,7 +398,7 @@ const CreateAnnouncement = () => {
         currentStepId={publishingState.currentStep}
         progress={publishingState.progress}
       />
-    </PageLayout>
+    </div>
   );
 };
 
