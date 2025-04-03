@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import { useContentOptimization } from "@/hooks/useContentOptimization";
 import { useFormPersistence } from "@/hooks/useFormPersistence";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { InfoIcon } from "lucide-react";
+
 export interface AnnouncementFormProps {
   onSubmit?: (data: AnnouncementFormData) => void;
   isSubmitting?: boolean;
@@ -24,6 +26,7 @@ export interface AnnouncementFormProps {
   initialValues?: AnnouncementFormData;
   storageKey?: string;
 }
+
 export interface AnnouncementFormData {
   title: string;
   description: string;
@@ -35,6 +38,7 @@ export interface AnnouncementFormData {
   seoDescription: string;
   seoSlug: string;
 }
+
 const AnnouncementForm = ({
   onSubmit,
   isSubmitting = false,
@@ -54,9 +58,18 @@ const AnnouncementForm = ({
     seoDescription: "",
     seoSlug: ""
   };
+  
   const form = useForm<AnnouncementFormData>({
     defaultValues: initialValues || defaultValues
   });
+
+  // Clear localStorage data on component mount
+  useEffect(() => {
+    if (!initialValues) {
+      localStorage.removeItem(storageKey);
+      form.reset(defaultValues);
+    }
+  }, [form, initialValues, storageKey]);
 
   // Activer la persistance du formulaire avec debug pour faciliter les tests
   const {
@@ -67,7 +80,9 @@ const AnnouncementForm = ({
   // Sauvegarde toutes les 5 secondes en plus des changements
   true // Activer le debug pour voir ce qui se passe
   );
+  
   const [showDraftNotice, setShowDraftNotice] = useState(false);
+  
   useEffect(() => {
     // Vérifier s'il y a un brouillon sauvegardé après le montage du composant
     const checkForDraft = () => {
@@ -83,6 +98,7 @@ const AnnouncementForm = ({
     // Attendre que le DOM soit complètement chargé
     setTimeout(checkForDraft, 500);
   }, [hasSavedData, saveData, form]);
+  
   useEffect(() => {
     if (initialValues) {
       Object.keys(initialValues).forEach(key => {
@@ -104,6 +120,7 @@ const AnnouncementForm = ({
     });
     return () => subscription.unsubscribe();
   }, [form, saveData]);
+  
   const navigate = useNavigate();
   const {
     optimizeContent,
@@ -114,6 +131,7 @@ const AnnouncementForm = ({
     setValue
   } = form;
   const title = watch("title");
+  
   useEffect(() => {
     if (title) {
       const normalizedTitle = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
@@ -123,6 +141,7 @@ const AnnouncementForm = ({
       }
     }
   }, [title, setValue, form]);
+  
   const optimizeSeoContent = async (field: 'seoTitle' | 'seoDescription') => {
     try {
       const currentTitle = form.getValues('title');
@@ -139,6 +158,7 @@ const AnnouncementForm = ({
       console.error(`Error optimizing ${field}:`, error);
     }
   };
+  
   const handleCancel = () => {
     if (window.confirm("Êtes-vous sûr de vouloir quitter ? Votre brouillon sera conservé pour plus tard.")) {
       if (onCancel) {
@@ -148,18 +168,21 @@ const AnnouncementForm = ({
       }
     }
   };
+  
   const handleFormSubmit = (data: AnnouncementFormData) => {
     if (onSubmit) {
       clearSavedData();
       onSubmit(data);
     }
   };
+  
   const getCardStyles = (isSectionCard = false) => {
     if (isMobile) {
       return isSectionCard ? "border-0 border-b border-border shadow-none rounded-none bg-transparent mb-3 last:border-b-0 last:mb-0" : "border-0 shadow-none bg-transparent";
     }
     return "border shadow-sm";
   };
+  
   return <div className="space-y-6">
       {showDraftNotice}
       
@@ -338,4 +361,5 @@ const AnnouncementForm = ({
       </Form>
     </div>;
 };
+
 export default AnnouncementForm;

@@ -1,7 +1,8 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useForm } from "react-hook-form";
@@ -62,6 +63,7 @@ const stepConfigs: StepConfig[] = [
 
 const CreateAnnouncement = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
@@ -93,6 +95,22 @@ const CreateAnnouncement = () => {
       seoSlug: ""
     }
   });
+
+  // Clear form data when the component mounts
+  useEffect(() => {
+    localStorage.removeItem(FORM_STORAGE_KEY);
+    form.reset({
+      title: "",
+      description: "",
+      wordpressCategory: "",
+      publishDate: undefined,
+      status: "published",
+      images: [],
+      seoTitle: "",
+      seoDescription: "",
+      seoSlug: ""
+    });
+  }, [form]);
 
   // Use the form persistence hook
   const {
@@ -214,6 +232,19 @@ const CreateAnnouncement = () => {
       // Clear the form data from localStorage since it's now saved in the database
       clearSavedData();
       
+      // Reset the form to clear all fields
+      form.reset({
+        title: "",
+        description: "",
+        wordpressCategory: "",
+        publishDate: undefined,
+        status: "published",
+        images: [],
+        seoTitle: "",
+        seoDescription: "",
+        seoSlug: ""
+      });
+      
       // Navigate to announcements page to see the draft
       navigate("/announcements");
     } catch (error: any) {
@@ -296,6 +327,19 @@ const CreateAnnouncement = () => {
           });
         }
       }
+
+      // Reset the form to clear all fields
+      form.reset({
+        title: "",
+        description: "",
+        wordpressCategory: "",
+        publishDate: undefined,
+        status: "published",
+        images: [],
+        seoTitle: "",
+        seoDescription: "",
+        seoSlug: ""
+      });
 
       setTimeout(() => {
         setShowPublishingOverlay(false);
