@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { UseFormReturn } from "react-hook-form";
@@ -18,6 +17,7 @@ interface SpeechRecognition extends EventTarget {
   onaudioend: (event: any) => void;
   onspeechstart: (event: any) => void;
   onspeechend: (event: any) => void;
+  abort(): void; // Added abort method
 }
 
 interface SpeechRecognitionConstructor {
@@ -48,6 +48,7 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTranscriptRef = useRef<string>("");
   const capitalizeNextRef = useRef<boolean>(true);
+  const audioStreamRef = useRef<MediaStream | null>(null); // Track the audio stream
 
   // Define punctuation and formatting commands
   const punctuationCommands: CommandMapping = {
@@ -196,6 +197,44 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
     return processedText;
   };
 
+  // Clean up function to stop recognition and clear resources
+  const cleanupRecognition = () => {
+    console.log("Cleaning up recognition resources");
+    
+    // Stop the recognition if it exists
+    if (recognitionRef.current) {
+      try {
+        // First abort to force immediate stop
+        recognitionRef.current.abort();
+        // Then call stop for cleanup
+        recognitionRef.current.stop();
+        console.log("Recognition stopped successfully");
+      } catch (error) {
+        console.error("Error stopping recognition:", error);
+      }
+    }
+    
+    // Stop the microphone stream if it exists
+    if (audioStreamRef.current) {
+      const tracks = audioStreamRef.current.getTracks();
+      tracks.forEach(track => {
+        track.stop();
+        console.log("Audio track stopped:", track.label);
+      });
+      audioStreamRef.current = null;
+    }
+    
+    // Clear any pending timeouts
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    
+    // Reset states
+    setIsRecording(false);
+    setIsListening(false);
+  };
+
   useEffect(() => {
     // Check if browser supports speech recognition
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -313,6 +352,7 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
       };
       
       recognitionRef.current.onend = () => {
+        console.log("Recognition ended event fired");
         // If recording is still enabled, restart the recognition
         // This helps with continuous recording
         if (isRecording) {
@@ -322,6 +362,10 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
           } catch (error) {
             console.error("Error restarting speech recognition:", error);
           }
+        } else {
+          console.log("Recognition ended and recording is disabled, not restarting");
+          // Make sure states are reset when recognition ends
+          setIsListening(false);
         }
       };
       
@@ -360,17 +404,7 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
     
     return () => {
       // Clean up on unmount
-      if (recognitionRef.current && isRecording) {
-        try {
-          recognitionRef.current.stop();
-        } catch (error) {
-          console.error("Error stopping speech recognition on unmount:", error);
-        }
-      }
-      
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      cleanupRecognition();
     };
   }, [fieldName, form, isRecording]);
 
@@ -381,46 +415,63 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
     }
     
     if (isRecording) {
-      try {
-        recognitionRef.current.stop();
-        setIsRecording(false);
-        setIsListening(false);
-        toast.success("Enregistrement vocal terminé");
-        
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-          timeoutRef.current = null;
-        }
-      } catch (error) {
-        console.error("Error stopping speech recognition:", error);
-      }
+      console.log("Stopping voice recording...");
+      
+      // Use the cleanup function to ensure everything is properly stopped
+      cleanupRecognition();
+      
+      toast.success("Enregistrement vocal terminé");
     } else {
+      console.log("Starting voice recording...");
+      
       try {
         // Request microphone permission explicitly first
         navigator.mediaDevices.getUserMedia({ audio: true })
-          .then(() => {
+          .then((stream) => {
+            // Save the stream for later cleanup
+            audioStreamRef.current = stream;
+            
             // Reset capitalization for new recording session
             capitalizeNextRef.current = true;
             
-            recognitionRef.current?.start();
-            setIsRecording(true);
-            toast.info("Enregistrement vocal démarré... Parlez clairement dans votre microphone.");
-            toast.info("Vous pouvez dicter la ponctuation en disant 'virgule', 'point', etc. ou dire 'à la ligne' pour un retour à la ligne.");
-            
-            // Set a timeout to check if speech is detected
-            timeoutRef.current = setTimeout(() => {
-              if (isRecording && !isListening) {
-                toast.info("Aucune parole détectée. Assurez-vous que votre microphone fonctionne et parlez clairement.");
+            // Make sure recognition is initialized
+            if (!recognitionRef.current) {
+              const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+              if (SpeechRecognitionAPI) {
+                recognitionRef.current = new SpeechRecognitionAPI();
+                recognitionRef.current.lang = 'fr-FR';
+                recognitionRef.current.continuous = true;
+                recognitionRef.current.interimResults = true;
               }
-            }, 3000);
+            }
+            
+            try {
+              recognitionRef.current?.start();
+              setIsRecording(true);
+              toast.info("Enregistrement vocal démarré... Parlez clairement dans votre microphone.");
+              toast.info("Vous pouvez dicter la ponctuation en disant 'virgule', 'point', etc. ou dire 'à la ligne' pour un retour à la ligne.");
+              
+              // Set a timeout to check if speech is detected
+              timeoutRef.current = setTimeout(() => {
+                if (isRecording && !isListening) {
+                  toast.info("Aucune parole détectée. Assurez-vous que votre microphone fonctionne et parlez clairement.");
+                }
+              }, 3000);
+            } catch (error) {
+              console.error("Error starting speech recognition:", error);
+              cleanupRecognition(); // Clean up if starting fails
+              toast.error("Erreur lors du démarrage de la reconnaissance vocale.");
+            }
           })
           .catch((error) => {
             console.error("Error getting microphone permission:", error);
             toast.error("Impossible d'accéder au microphone. Vérifiez vos paramètres de confidentialité.");
+            setIsRecording(false);
           });
       } catch (error) {
         console.error("Error starting speech recognition:", error);
         toast.error("Erreur lors du démarrage de la reconnaissance vocale.");
+        setIsRecording(false);
       }
     }
   };
