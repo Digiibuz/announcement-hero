@@ -1,5 +1,6 @@
+
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v13';
+const CACHE_NAME = 'digiibuz-cache-v14';
 
 // Liste des ressources à mettre en cache
 const urlsToCache = [
@@ -87,7 +88,7 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Gestion des requêtes avec stratégie pour éviter les rechargements complets
+// Gestion des requêtes avec stratégie pour les applications SPA
 self.addEventListener('fetch', event => {
   // IMPORTANT: Ne jamais intercepter certaines requêtes qui poseraient problème
   if (shouldSkipCaching(event.request.url)) {
@@ -96,12 +97,14 @@ self.addEventListener('fetch', event => {
   
   // Pour les requêtes de navigation (HTML)
   if (event.request.mode === 'navigate') {
-    // On utilise principalement le cache pour éviter un rechargement complet
     event.respondWith(
+      // Renvoyer index.html pour toutes les requêtes de navigation (SPA pattern)
       caches.match('/index.html')
         .then(response => {
-          // Utiliser le cache en priorité pour les navigations
           return response || fetch(event.request)
+            .then(networkResponse => {
+              return networkResponse;
+            })
             .catch(() => caches.match('/index.html'));
         })
     );
