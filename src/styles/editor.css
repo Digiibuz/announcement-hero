@@ -84,3 +84,20 @@
   display: inline;
   white-space: normal;
 }
+
+/* Animation pour le bouton de dictée vocale */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.dictation-button-active {
+  animation: pulse 1.5s infinite;
+}
