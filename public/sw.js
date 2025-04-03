@@ -1,6 +1,6 @@
 
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v15';
+const CACHE_NAME = 'digiibuz-cache-v16';
 
 // Liste des ressources à mettre en cache
 const urlsToCache = [
@@ -40,6 +40,8 @@ function shouldSkipCaching(url) {
       url.includes('upload') ||
       url.includes('media') ||
       url.includes('openai.com') ||
+      url.includes('login') ||   // Ne jamais mettre en cache la page de login
+      url.includes('dashboard') || // Ni les pages qui nécessitent une authentification
       !isValidCacheUrl(url)
     );
   } catch (e) {
@@ -98,14 +100,21 @@ self.addEventListener('fetch', event => {
           return networkResponse;
         })
         .catch(() => {
-          // En cas d'échec, utiliser le cache
-          return caches.match('/index.html');
+          // En cas d'échec, utiliser le cache ou rediriger vers la page d'accueil
+          return caches.match('/index.html')
+            .then(response => {
+              if (response) {
+                return response;
+              }
+              // Si même index.html n'est pas en cache, essayer de récupérer depuis le réseau
+              return fetch('/index.html');
+            });
         })
     );
     return;
   }
 
-  // Pour les autres requêtes - stratégie "network-first"
+  // Pour les autres requêtes - stratégie "network-first" avec meilleure gestion d'erreur
   event.respondWith(
     fetch(event.request)
       .then(networkResponse => {
@@ -131,6 +140,21 @@ self.addEventListener('fetch', event => {
         console.log('Fetch failed, fallback to cache for:', event.request.url);
         // Si le réseau échoue, on essaie le cache
         return caches.match(event.request)
+          .then(cachedResponse => {
+            if (cachedResponse) {
+              return cachedResponse;
+            }
+            // Si l'élément n'est pas dans le cache, essayer de récupérer une version plus générique
+            if (event.request.url.includes('.js') || event.request.url.includes('.css')) {
+              return new Response('/* Ressource non disponible hors ligne */', {
+                status: 200,
+                headers: { 'Content-Type': event.request.url.includes('.js') ? 'application/javascript' : 'text/css' }
+              });
+            }
+            
+            // Pour les autres ressources, retourner une réponse vide
+            return new Response('', { status: 404 });
+          })
           .catch(err => {
             console.error('Cache match also failed:', err);
             throw error;
@@ -139,9 +163,26 @@ self.addEventListener('fetch', event => {
   );
 });
 
-// Ajout d'un gestionnaire pour les messages entre clients
+// Amélioration de la gestion des messages entre clients
 self.addEventListener('message', event => {
   if (event.data === 'skipWaiting') {
     self.skipWaiting();
+  }
+  
+  // Ajout d'une commande pour supprimer complètement le cache
+  if (event.data === 'clearCache') {
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          return caches.delete(cacheName);
+        })
+      );
+    }).then(() => {
+      console.log('Tous les caches supprimés');
+      // Informer le client que le cache a été supprimé
+      self.clients.matchAll().then(clients => {
+        clients.forEach(client => client.postMessage({ type: 'cacheCleared' }));
+      });
+    });
   }
 });

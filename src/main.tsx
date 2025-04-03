@@ -9,6 +9,9 @@ if ('scrollRestoration' in history) {
   history.scrollRestoration = 'manual';
 }
 
+// Variable globale pour le contrôle du service worker
+let serviceWorkerRegistration = null;
+
 // Fonction pour enregistrer le service worker de manière plus robuste
 const registerServiceWorker = async () => {
   if ('serviceWorker' in navigator) {
@@ -19,6 +22,7 @@ const registerServiceWorker = async () => {
       });
       
       console.log('SW enregistré:', registration);
+      serviceWorkerRegistration = registration;
       
       // Vérifier et mettre à jour le service worker
       registration.update();
@@ -31,7 +35,7 @@ const registerServiceWorker = async () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
               console.log('Une nouvelle version du service worker est disponible');
               
-              // Si la page est visible, demander un rechargement
+              // Si la page est visible, proposer un rechargement
               if (document.visibilityState === 'visible') {
                 // Créer une notification pour informer l'utilisateur
                 if ('Notification' in window && Notification.permission === 'granted') {
@@ -42,6 +46,14 @@ const registerServiceWorker = async () => {
               }
             }
           });
+        }
+      });
+      
+      // Écouter les messages du service worker
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'cacheCleared') {
+          console.log('Le cache a été vidé, rechargement de la page...');
+          window.location.reload();
         }
       });
       
@@ -61,6 +73,15 @@ const updateServiceWorker = async () => {
   }
 };
 
+// Fonction pour vider complètement le cache et forcer le rechargement
+window.clearCacheAndReload = () => {
+  if (serviceWorkerRegistration && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage('clearCache');
+  } else {
+    window.location.reload();
+  }
+};
+
 // Enregistrer le service worker au chargement
 window.addEventListener('load', () => {
   registerServiceWorker();
@@ -71,6 +92,20 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     // L'utilisateur est revenu à l'application
     updateServiceWorker();
+    
+    // Vérifier si nous sommes sur la page de login et si l'application vient d'être réactivée
+    const isLoginPage = window.location.pathname.includes('login');
+    if (isLoginPage) {
+      console.log('Page de login détectée lors de la reprise, vérification du cache...');
+      // Attendre un court instant avant de vérifier s'il y a des problèmes
+      setTimeout(() => {
+        // Si la page est vide ou incomplète, essayer de la recharger
+        if (document.body.children.length < 2) {
+          console.log('Page incomplète détectée, rechargement...');
+          window.clearCacheAndReload();
+        }
+      }, 1000);
+    }
   }
 });
 
