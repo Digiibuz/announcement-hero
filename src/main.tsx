@@ -9,14 +9,6 @@ if ('scrollRestoration' in history) {
   history.scrollRestoration = 'manual';
 }
 
-// Amélioration des transitions de page
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
-    // Indique aux navigateurs que la page est prête pour les transitions
-    document.documentElement.classList.add('transition-ready');
-  }
-});
-
 // Enregistrer le service worker pour PWA avec gestion améliorée
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

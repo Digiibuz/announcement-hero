@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -164,15 +165,6 @@
 
   .digiibuz-panel {
     @apply bg-digibuz-light/50 dark:bg-digibuz-navy/50 backdrop-blur-md rounded-lg p-6;
-  }
-}
-
-@keyframes loading {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
   }
 }
 
