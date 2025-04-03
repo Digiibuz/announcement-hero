@@ -1,6 +1,6 @@
 
 import { useEffect, useRef } from 'react';
-import { UseFormReturn } from 'react-hook-form';
+import { UseFormReturn, DefaultValues, ResetOptions } from 'react-hook-form';
 
 /**
  * Hook pour persister les données du formulaire dans le localStorage
@@ -14,7 +14,7 @@ import { UseFormReturn } from 'react-hook-form';
 export function useFormPersistence<TFormValues extends Record<string, any>>(
   form: UseFormReturn<TFormValues>,
   storageKey: string,
-  initialValues?: Partial<TFormValues>,
+  initialValues?: DefaultValues<TFormValues>,
   autosaveInterval: number | null = null,
   debug: boolean = false,
   fields?: string[]
@@ -110,7 +110,11 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
         const parsedData = JSON.parse(savedData);
         if (parsedData && Object.keys(parsedData).length > 0) {
           if (debug) console.log('Données du formulaire restaurées:', storageKey, parsedData);
-          reset(parsedData);
+          
+          // Utiliser la réinitialisation avec des options pour éviter l'erreur de type
+          const resetOptions: ResetOptions = { keepDefaultValues: true };
+          reset(parsedData as DefaultValues<TFormValues>, resetOptions);
+          
           initialLoadDone.current = true;
           return;
         }
