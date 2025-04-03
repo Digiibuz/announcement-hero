@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 
 interface SaveDraftDialogProps {
-  onSaveDraft: () => void;
+  onSaveDraft: () => Promise<void>;
   onDiscard: () => void;
+  isSaving: boolean;
 }
 
-const SaveDraftDialog = ({ onSaveDraft, onDiscard }: SaveDraftDialogProps) => {
+const SaveDraftDialog = ({ onSaveDraft, onDiscard, isSaving }: SaveDraftDialogProps) => {
   return (
     <SheetContent side="bottom" className="p-6 rounded-t-xl">
       <div className="space-y-6">
@@ -23,13 +24,18 @@ const SaveDraftDialog = ({ onSaveDraft, onDiscard }: SaveDraftDialogProps) => {
         </div>
         
         <div className="flex flex-col gap-3">
-          <Button onClick={onSaveDraft} className="w-full bg-brand-orange hover:bg-brand-orange/90 text-black">
-            Sauvegarder en brouillon
+          <Button 
+            onClick={onSaveDraft} 
+            className="w-full bg-brand-orange hover:bg-brand-orange/90 text-black"
+            disabled={isSaving}
+          >
+            {isSaving ? "Sauvegarde en cours..." : "Sauvegarder en brouillon"}
           </Button>
           <Button 
             variant="outline" 
             onClick={onDiscard} 
             className="w-full"
+            disabled={isSaving}
           >
             Quitter sans sauvegarder
           </Button>
@@ -42,19 +48,20 @@ const SaveDraftDialog = ({ onSaveDraft, onDiscard }: SaveDraftDialogProps) => {
 interface CreateAnnouncementHeaderProps {
   currentStep: number;
   totalSteps: number;
+  onSaveDraft: () => Promise<void>;
+  isSavingDraft: boolean;
 }
 
 const CreateAnnouncementHeader = ({ 
   currentStep, 
-  totalSteps 
+  totalSteps,
+  onSaveDraft,
+  isSavingDraft
 }: CreateAnnouncementHeaderProps) => {
   const navigate = useNavigate();
   
-  const handleSaveDraft = () => {
-    toast({
-      title: "Brouillon sauvegardé",
-      description: "Vous pourrez reprendre la création de votre annonce plus tard."
-    });
+  const handleSaveDraft = async () => {
+    await onSaveDraft();
     navigate("/announcements");
   };
   
@@ -76,8 +83,9 @@ const CreateAnnouncementHeader = ({
             </Button>
           </SheetTrigger>
           <SaveDraftDialog 
-            onSaveDraft={handleSaveDraft} 
-            onDiscard={handleDiscard} 
+            onSaveDraft={handleSaveDraft}
+            onDiscard={handleDiscard}
+            isSaving={isSavingDraft}
           />
         </Sheet>
       </div>

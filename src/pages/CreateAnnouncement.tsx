@@ -202,6 +202,17 @@ const CreateAnnouncement = () => {
 
       const formData = form.getValues();
 
+      // Vérifier si le formulaire est vide
+      if (!formData.title && !formData.description && (!formData.images || formData.images.length === 0)) {
+        toast({
+          title: "Formulaire vide",
+          description: "Veuillez remplir au moins un champ avant d'enregistrer un brouillon",
+          variant: "destructive"
+        });
+        setIsSavingDraft(false);
+        return;
+      }
+
       // Ensure draft status for this save operation
       const announcementData = {
         user_id: user.id,
@@ -397,7 +408,12 @@ const CreateAnnouncement = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <CreateAnnouncementHeader currentStep={currentStepIndex} totalSteps={stepConfigs.length} />
+      <CreateAnnouncementHeader 
+        currentStep={currentStepIndex} 
+        totalSteps={stepConfigs.length} 
+        onSaveDraft={saveAnnouncementDraft}
+        isSavingDraft={isSavingDraft}
+      />
     
       <div className="pt-16 pb-20 px-4 md:max-w-3xl md:mx-auto">
         <Form {...form}>
