@@ -8,6 +8,7 @@ import AnnouncementActions from "@/components/announcements/detail/AnnouncementA
 import AnnouncementTabs from "@/components/announcements/detail/AnnouncementTabs";
 import { useAnnouncementDetail } from "@/components/announcements/detail/useAnnouncementDetail";
 import { Announcement } from "@/types/announcement";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
 
 const AnnouncementDetail = () => {
   const { user } = useAuth();
@@ -36,11 +37,8 @@ const AnnouncementDetail = () => {
     <PageLayout title={isLoading ? "Chargement..." : announcement?.title} titleAction={titleAction}>
       <AnimatedContainer delay={200}>
         {isLoading ? (
-          <div className="space-y-4">
-            <Skeleton className="h-8 w-3/4" />
-            <Skeleton className="h-4 w-5/6" />
-            <Skeleton className="h-4 w-4/6" />
-            <Skeleton className="h-64" />
+          <div className="space-y-4 flex flex-col items-center py-12">
+            <LoadingIndicator variant="dots" size={32} />
           </div>
         ) : announcement ? (
           <AnnouncementTabs

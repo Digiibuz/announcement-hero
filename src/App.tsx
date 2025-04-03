@@ -7,6 +7,7 @@ import { Toaster as UIToaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
 import { Suspense, lazy, useEffect } from 'react';
+import { LoadingIndicator } from "./components/ui/loading-indicator";
 
 // Lazy loading des pages pour améliorer les performances
 const Login = lazy(() => import("./pages/Login"));
@@ -20,10 +21,10 @@ const UserProfile = lazy(() => import("./pages/UserProfile"));
 const Support = lazy(() => import("./pages/Support"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-// Composant de chargement
+// Composant de chargement amélioré avec animation
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center">
-    Chargement...
+    <LoadingIndicator variant="dots" size={42} />
   </div>
 );
 

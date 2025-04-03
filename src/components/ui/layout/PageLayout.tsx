@@ -11,6 +11,7 @@ import { RefreshCw } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLocation } from "react-router-dom";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
+import { LoadingIndicator } from "../loading-indicator";
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -19,6 +20,7 @@ interface PageLayoutProps {
   fullWidthMobile?: boolean;
   containerClassName?: string;
   onRefresh?: () => void;
+  isLoading?: boolean;
 }
 
 const PageLayout = ({ 
@@ -27,7 +29,8 @@ const PageLayout = ({
   titleAction, 
   fullWidthMobile = false,
   containerClassName,
-  onRefresh
+  onRefresh,
+  isLoading = false
 }: PageLayoutProps) => {
   const isMobile = useMediaQuery("(max-width: 767px)");
   const { isAdmin, isClient, isImpersonating } = useAuth();
@@ -49,6 +52,14 @@ const PageLayout = ({
 
   // Calculer le padding-top supplémentaire si la bannière d'impersonation est visible
   const bannerPadding = isImpersonating ? "pt-12" : "";
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingIndicator variant="dots" size={42} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
