@@ -37,7 +37,7 @@ const StepNavigation = ({
           variant="outline" 
           onClick={onPrevious}
           disabled={isFirstStep || isSubmitting}
-          className="w-[130px] h-[50px] rounded-full border-gray-300 text-gray-700 font-medium"
+          className="w-[130px] mobile-nav-button back-button"
         >
           Retour
         </Button>
@@ -47,7 +47,7 @@ const StepNavigation = ({
             type="button" 
             onClick={onSubmit}
             disabled={isSubmitting}
-            className="w-[130px] h-[50px] rounded-full bg-orange-500 hover:bg-orange-600 font-medium"
+            className="w-[130px] mobile-nav-button next-button"
           >
             {isSubmitting ? "Envoi..." : "Continuer"}
           </Button>
@@ -56,7 +56,7 @@ const StepNavigation = ({
             type="button" 
             onClick={onNext}
             disabled={isSubmitting}
-            className="w-[130px] h-[50px] rounded-full bg-orange-500 hover:bg-orange-600 font-medium"
+            className="w-[130px] mobile-nav-button next-button"
           >
             Continuer
           </Button>
@@ -92,6 +92,7 @@ const StepNavigation = ({
             type="button" 
             onClick={onSubmit}
             disabled={isSubmitting}
+            className="bg-brand-orange hover:bg-brand-orange/90 text-black"
           >
             {isSubmitting ? (
               <>Enregistrement...</>
@@ -107,6 +108,7 @@ const StepNavigation = ({
             type="button" 
             onClick={onNext}
             disabled={isSubmitting}
+            className="bg-brand-orange hover:bg-brand-orange/90 text-black"
           >
             Suivant
             <ChevronRight className="ml-2 h-4 w-4" />

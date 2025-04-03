@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +17,27 @@ interface SeoStepProps {
 
 const SeoStep = ({ form, isMobile }: SeoStepProps) => {
   const { optimizeContent, isOptimizing } = useContentOptimization();
+  const [seoTitleLength, setSeoTitleLength] = useState(0);
+  const [seoDescriptionLength, setSeoDescriptionLength] = useState(0);
+  
+  useEffect(() => {
+    // Mettre à jour les compteurs de caractères lors de l'initialisation et des changements
+    const seoTitle = form.getValues("seoTitle") || "";
+    const seoDescription = form.getValues("seoDescription") || "";
+    setSeoTitleLength(seoTitle.length);
+    setSeoDescriptionLength(seoDescription.length);
+    
+    const subscription = form.watch((value) => {
+      if (value.seoTitle !== undefined) {
+        setSeoTitleLength(value.seoTitle.length);
+      }
+      if (value.seoDescription !== undefined) {
+        setSeoDescriptionLength(value.seoDescription.length);
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [form]);
   
   const getCardStyles = () => {
     if (isMobile) {
@@ -38,6 +59,11 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
       
       if (optimizedContent) {
         form.setValue(field, optimizedContent);
+        if (field === 'seoTitle') {
+          setSeoTitleLength(optimizedContent.length);
+        } else {
+          setSeoDescriptionLength(optimizedContent.length);
+        }
       }
     } catch (error: any) {
       console.error(`Error optimizing ${field}:`, error);
@@ -46,12 +72,7 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
 
   return (
     <div className="space-y-6">
-      <div className="mb-6">
-        <h2 className="text-2xl font-semibold mb-2">Optimisez votre référencement</h2>
-        <p className="text-muted-foreground">
-          Améliorez la visibilité de votre annonce dans les moteurs de recherche comme Google.
-        </p>
-      </div>
+      {/* Le titre et la description sont automatiquement ajoutés dans CreateAnnouncement.tsx */}
       
       <Card className={getCardStyles()}>
         <CardContent className={`space-y-4 ${isMobile ? "px-0 py-4" : "p-6"}`}>
@@ -84,10 +105,21 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
                   </Button>
                 </div>
                 <FormControl>
-                  <Input 
-                    placeholder="Titre optimisé pour les moteurs de recherche" 
-                    {...field} 
-                  />
+                  <div className="space-y-1">
+                    <Input 
+                      placeholder="Titre optimisé pour les moteurs de recherche" 
+                      {...field} 
+                      onChange={(e) => {
+                        field.onChange(e);
+                        setSeoTitleLength(e.target.value.length);
+                      }}
+                    />
+                    <div className="character-counter">
+                      {seoTitleLength} caractères
+                      {seoTitleLength < 30 && " (trop court)"}
+                      {seoTitleLength > 60 && " (trop long)"}
+                    </div>
+                  </div>
                 </FormControl>
                 <FormDescription>
                   Idéalement entre 50 et 60 caractères.
@@ -126,11 +158,22 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
                   </Button>
                 </div>
                 <FormControl>
-                  <Textarea 
-                    placeholder="Description courte qui apparaîtra dans les résultats de recherche" 
-                    className="resize-none min-h-[100px]" 
-                    {...field} 
-                  />
+                  <div className="space-y-1">
+                    <Textarea 
+                      placeholder="Description courte qui apparaîtra dans les résultats de recherche" 
+                      className="resize-none min-h-[100px]" 
+                      {...field}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        setSeoDescriptionLength(e.target.value.length);
+                      }}
+                    />
+                    <div className="character-counter">
+                      {seoDescriptionLength} caractères
+                      {seoDescriptionLength < 120 && " (trop court)"}
+                      {seoDescriptionLength > 158 && " (trop long)"}
+                    </div>
+                  </div>
                 </FormControl>
                 <FormDescription>
                   Idéalement entre 120 et 158 caractères.

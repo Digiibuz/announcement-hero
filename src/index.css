@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -47,6 +46,8 @@
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 230 30% 24%;
     --sidebar-ring: 48 100% 50%;
+    
+    --brand-orange: 45 98% 51%;
   }
 
   .dark {
@@ -86,6 +87,8 @@
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 230 30% 18%;
     --sidebar-ring: 48 100% 50%;
+    
+    --brand-orange: 45 98% 51%;
   }
 
   * {
@@ -142,7 +145,6 @@
     @apply absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-full;
   }
 
-  /* Nouvelles classes de la charte graphique */
   .digiibuz-card {
     @apply bg-white dark:bg-digibuz-navy/90 rounded-lg shadow-md border border-digibuz-light dark:border-digibuz-accent/20;
   }
@@ -165,6 +167,22 @@
 
   .digiibuz-panel {
     @apply bg-digibuz-light/50 dark:bg-digibuz-navy/50 backdrop-blur-md rounded-lg p-6;
+  }
+
+  .mobile-nav-button {
+    @apply h-[50px] rounded-full font-medium;
+  }
+  
+  .back-button {
+    @apply bg-white dark:bg-gray-800 dark:text-white border-gray-300 text-gray-700;
+  }
+  
+  .next-button {
+    @apply bg-brand-orange hover:bg-brand-orange/90 text-black;
+  }
+
+  .character-counter {
+    @apply text-xs text-muted-foreground mt-1 text-right;
   }
 }
 
@@ -189,18 +207,14 @@
   display: none;
 }
 
-/* Amélioration de la lisibilité en mode sombre pour les textes descriptifs */
 .dark .text-muted-foreground {
-  color: rgba(214, 219, 230, 0.8); /* Plus clair que la valeur HSL d'origine */
+  color: rgba(214, 219, 230, 0.8);
 }
 
-/* Amélioration de la lisibilité des icônes en mode sombre */
 .dark svg:not(.text-white):not(.text-destructive):not(.text-accent):not(.text-primary):not(.text-secondary) {
   color: rgba(214, 219, 230, 0.85);
 }
 
-/* Spécifiquement pour les icônes dans les textes muted */
 .dark .text-muted-foreground svg {
   color: rgba(214, 219, 230, 0.85);
 }
-

@@ -1,3 +1,4 @@
+
 import React from "react";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -6,10 +7,12 @@ import { Loader2 } from "lucide-react";
 import { AnnouncementFormData } from "../AnnouncementForm";
 import { UseFormReturn } from "react-hook-form";
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
+
 interface CategoryStepProps {
   form: UseFormReturn<AnnouncementFormData>;
   isMobile?: boolean;
 }
+
 const CategoryStep = ({
   form,
   isMobile
@@ -20,23 +23,25 @@ const CategoryStep = ({
     error: categoriesError,
     hasCategories
   } = useWordPressCategories();
+
   const getCardStyles = () => {
     if (isMobile) {
       return "border-0 border-b border-border shadow-none rounded-none bg-transparent mb-3 last:border-b-0 last:mb-0";
     }
     return "border shadow-sm";
   };
-  return <div className="space-y-6">
-      <div className="mb-6">
-        
-        
-      </div>
+
+  return (
+    <div className="space-y-6">
+      {/* Le titre et la description sont automatiquement ajoutés dans CreateAnnouncement.tsx */}
       
       <Card className={getCardStyles()}>
         <CardContent className={`${isMobile ? "px-0 py-4" : "p-6"}`}>
-          <FormField control={form.control} name="wordpressCategory" render={({
-          field
-        }) => <FormItem className="mb-0">
+          <FormField 
+            control={form.control} 
+            name="wordpressCategory" 
+            render={({ field }) => (
+              <FormItem className="mb-0">
                 <FormLabel>Catégorie</FormLabel>
                 <FormDescription className="mt-0 mb-3">
                   Sélectionnez la catégorie dans laquelle vous souhaitez publier votre annonce
@@ -48,22 +53,36 @@ const CategoryStep = ({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {isCategoriesLoading ? <div className="flex items-center justify-center p-4">
+                    {isCategoriesLoading ? (
+                      <div className="flex items-center justify-center p-4">
                         <Loader2 className="h-5 w-5 animate-spin mr-2" />
                         <span>Chargement des catégories...</span>
-                      </div> : categoriesError ? <div className="p-2 text-center text-sm text-muted-foreground">
+                      </div>
+                    ) : categoriesError ? (
+                      <div className="p-2 text-center text-sm text-muted-foreground">
                         Erreur: {categoriesError}
-                      </div> : hasCategories ? categories.map(category => <SelectItem key={category.id} value={String(category.id)}>
+                      </div>
+                    ) : hasCategories ? (
+                      categories.map(category => (
+                        <SelectItem key={category.id} value={String(category.id)}>
                           {category.name}
-                        </SelectItem>) : <div className="p-2 text-center text-sm text-muted-foreground">
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-2 text-center text-sm text-muted-foreground">
                         Aucune catégorie disponible
-                      </div>}
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
                 <FormMessage />
-              </FormItem>} />
+              </FormItem>
+            )} 
+          />
         </CardContent>
       </Card>
-    </div>;
+    </div>
+  );
 };
+
 export default CategoryStep;

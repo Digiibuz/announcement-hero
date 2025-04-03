@@ -23,7 +23,7 @@ const SaveDraftDialog = ({ onSaveDraft, onDiscard }: SaveDraftDialogProps) => {
         </div>
         
         <div className="flex flex-col gap-3">
-          <Button onClick={onSaveDraft} className="w-full">
+          <Button onClick={onSaveDraft} className="w-full bg-brand-orange hover:bg-brand-orange/90 text-black">
             Sauvegarder en brouillon
           </Button>
           <Button 
@@ -83,7 +83,7 @@ const CreateAnnouncementHeader = ({
       </div>
       <div className="h-1 bg-gray-200">
         <div 
-          className="h-full bg-orange-500 transition-all duration-300" 
+          className="h-full bg-brand-orange transition-all duration-300" 
           style={{ width: `${progressPercentage}%` }}
         ></div>
       </div>
