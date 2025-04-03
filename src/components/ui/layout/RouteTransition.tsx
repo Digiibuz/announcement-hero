@@ -16,7 +16,7 @@ export const RouteTransition = ({ children }: { children: React.ReactNode }) => 
       // Hide loader after a short delay
       const timer = setTimeout(() => {
         setLoading(false);
-      }, 800);
+      }, 1200); // Augmenter légèrement le délai pour l'animation Lottie
       
       return () => clearTimeout(timer);
     }

@@ -3,13 +3,16 @@ import React from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import Lottie from "lottie-react";
+import cornersAnimation from "/animations/corners-loading.json";
 
 interface LoadingIndicatorProps {
-  variant?: "spinner" | "dots" | "skeleton" | "progress";
+  variant?: "spinner" | "dots" | "skeleton" | "progress" | "lottie";
   size?: "sm" | "md" | "lg";
   className?: string;
   text?: string;
   fullPage?: boolean;
+  logo?: string;
 }
 
 const LoadingIndicator = ({
@@ -18,11 +21,18 @@ const LoadingIndicator = ({
   className,
   text,
   fullPage = false,
+  logo,
 }: LoadingIndicatorProps) => {
   const sizeClass = {
     sm: "h-4 w-4",
     md: "h-6 w-6",
     lg: "h-10 w-10",
+  };
+
+  const lottieSizeClass = {
+    sm: "h-20 w-20",
+    md: "h-32 w-32",
+    lg: "h-48 w-48",
   };
 
   const containerClass = fullPage
@@ -66,6 +76,25 @@ const LoadingIndicator = ({
                 }}
               />
             </div>
+          </div>
+        );
+      case "lottie":
+        return (
+          <div className={cn("relative", lottieSizeClass[size])}>
+            {logo ? (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <img 
+                  src={logo} 
+                  alt="Logo" 
+                  className="h-12 w-auto z-10" 
+                />
+              </div>
+            ) : null}
+            <Lottie 
+              animationData={cornersAnimation} 
+              loop={true}
+              className="w-full h-full"
+            />
           </div>
         );
       case "spinner":

@@ -18,7 +18,7 @@ export const LoadingProvider = ({ children }: { children: React.ReactNode }) => 
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 600); // Give components time to load
+    }, 1000); // Augmenter légèrement le délai pour l'animation Lottie
 
     return () => clearTimeout(timer);
   }, [location]);
@@ -28,8 +28,10 @@ export const LoadingProvider = ({ children }: { children: React.ReactNode }) => 
       {children}
       {isLoading && (
         <LoadingIndicator 
-          variant="progress" 
-          fullPage={true} 
+          variant="lottie" 
+          fullPage={true}
+          logo="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png"
+          size="md"
         />
       )}
     </LoadingContext.Provider>
