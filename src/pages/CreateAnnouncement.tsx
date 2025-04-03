@@ -1,21 +1,41 @@
+
 "use client"
 
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import AnnouncementForm from "@/components/announcements/AnnouncementForm";
+import { useForm } from "react-hook-form";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import { toast } from "@/hooks/use-toast";
 import { Announcement } from "@/types/announcement";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
-import { ArrowLeft, Wand2, FileImage, Server, Database, FileCheck } from "lucide-react";
+import { ArrowLeft, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import PublishingLoadingOverlay, { PublishingStep } from "@/components/announcements/PublishingLoadingOverlay";
+import StepIndicator from "@/components/announcements/steps/StepIndicator";
+import CategoryStep from "@/components/announcements/steps/CategoryStep";
+import DescriptionStep from "@/components/announcements/steps/DescriptionStep";
+import ImagesStep from "@/components/announcements/steps/ImagesStep";
+import SeoStep from "@/components/announcements/steps/SeoStep";
+import PublishingStep from "@/components/announcements/steps/PublishingStep";
+import StepNavigation from "@/components/announcements/steps/StepNavigation";
+import AnnouncementSummary from "@/components/announcements/steps/AnnouncementSummary";
+import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
+import { AnnouncementFormData } from "@/components/announcements/AnnouncementForm";
 
 const FORM_STORAGE_KEY = "announcement-form-draft";
+
+const steps = [
+  "Catégorie",
+  "Description",
+  "Images",
+  "SEO",
+  "Publication",
+  "Résumé"
+];
 
 const CreateAnnouncement = () => {
   const navigate = useNavigate();
@@ -24,6 +44,23 @@ const CreateAnnouncement = () => {
   const { publishToWordPress, isPublishing, publishingState, resetPublishingState } = useWordPressPublishing();
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [showPublishingOverlay, setShowPublishingOverlay] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+  const { categories } = useWordPressCategories();
+  
+  // Initializing the form
+  const form = useForm<AnnouncementFormData>({
+    defaultValues: {
+      title: "",
+      description: "",
+      wordpressCategory: "",
+      publishDate: undefined,
+      status: "published",
+      images: [],
+      seoTitle: "",
+      seoDescription: "",
+      seoSlug: ""
+    }
+  });
 
   // Define the publishing steps
   const publishingSteps: PublishingStep[] = [
@@ -31,34 +68,35 @@ const CreateAnnouncement = () => {
       id: "prepare",
       label: "Préparation de la publication",
       status: publishingState.steps.prepare?.status || "idle",
-      icon: <FileCheck className="h-5 w-5 text-muted-foreground" />
+      icon: <div className="h-5 w-5 text-muted-foreground"></div>
     },
     {
       id: "image",
       label: "Téléversement de l'image principale",
       status: publishingState.steps.image?.status || "idle",
-      icon: <FileImage className="h-5 w-5 text-muted-foreground" />
+      icon: <div className="h-5 w-5 text-muted-foreground"></div>
     },
     {
       id: "wordpress",
       label: "Publication sur WordPress",
       status: publishingState.steps.wordpress?.status || "idle",
-      icon: <Server className="h-5 w-5 text-muted-foreground" />
+      icon: <div className="h-5 w-5 text-muted-foreground"></div>
     },
     {
       id: "database",
       label: "Mise à jour de la base de données",
       status: publishingState.steps.database?.status || "idle",
-      icon: <Database className="h-5 w-5 text-muted-foreground" />
+      icon: <div className="h-5 w-5 text-muted-foreground"></div>
     }
   ];
 
   // Function to handle beforeunload event when leaving the page
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      const savedData = localStorage.getItem(FORM_STORAGE_KEY);
-      if (savedData && Object.keys(JSON.parse(savedData)).length > 1) {
-        // Show confirmation only if there's meaningful saved data
+      const formData = form.getValues();
+      const hasContent = formData.title || formData.description || (formData.images && formData.images.length > 0);
+      
+      if (hasContent) {
         const message = "Vous avez un brouillon non publié. Êtes-vous sûr de vouloir quitter ?";
         e.returnValue = message;
         return message;
@@ -69,14 +107,76 @@ const CreateAnnouncement = () => {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, []);
+  }, [form]);
 
-  const handleSubmit = async (data: any) => {
+  // Load form data from localStorage on mount
+  useEffect(() => {
+    const savedData = localStorage.getItem(FORM_STORAGE_KEY);
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        
+        // If we have publishDate as string, convert it to Date
+        if (parsedData.publishDate) {
+          parsedData.publishDate = new Date(parsedData.publishDate);
+        }
+        
+        Object.keys(parsedData).forEach(key => {
+          form.setValue(key as keyof AnnouncementFormData, parsedData[key]);
+        });
+        
+        console.log("Loaded saved form data:", parsedData);
+      } catch (e) {
+        console.error("Error parsing saved form data:", e);
+      }
+    }
+  }, [form]);
+
+  // Save form data to localStorage whenever it changes
+  useEffect(() => {
+    const subscription = form.watch((value) => {
+      if (Object.values(value).some(v => v !== undefined)) {
+        localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(value));
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [form]);
+
+  // Handle title changes to update SEO title and slug
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'title') {
+        const title = value.title as string;
+        if (title) {
+          // Update SEO title if not already set by user
+          if (!form.getValues("seoTitle")) {
+            form.setValue("seoTitle", title);
+          }
+          
+          // Update slug
+          const normalizedTitle = title
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, "")
+            .replace(/\s+/g, "-")
+            .replace(/-+/g, "-");
+          
+          form.setValue("seoSlug", normalizedTitle);
+        }
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [form]);
+
+  const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
       setShowPublishingOverlay(true);
       
-      // Effacer les données sauvegardées du formulaire dans le localStorage
+      // Clear saved form data from localStorage
       localStorage.removeItem(FORM_STORAGE_KEY);
       
       // Show immediate feedback on mobile
@@ -87,18 +187,20 @@ const CreateAnnouncement = () => {
         });
       }
 
+      const formData = form.getValues();
+      
       // Prepare the announcement data
       const announcementData = {
         user_id: user?.id,
-        title: data.title,
-        description: data.description,
-        status: data.status as "draft" | "published" | "scheduled",
-        images: data.images || [],
-        wordpress_category_id: data.wordpressCategory,
-        publish_date: data.publishDate ? new Date(data.publishDate).toISOString() : null,
-        seo_title: data.seoTitle || null,
-        seo_description: data.seoDescription || null,
-        seo_slug: data.seoSlug || null
+        title: formData.title,
+        description: formData.description,
+        status: formData.status as "draft" | "published" | "scheduled",
+        images: formData.images || [],
+        wordpress_category_id: formData.wordpressCategory,
+        publish_date: formData.publishDate ? new Date(formData.publishDate).toISOString() : null,
+        seo_title: formData.seoTitle || null,
+        seo_description: formData.seoDescription || null,
+        seo_slug: formData.seoSlug || null
       };
       
       // Save to Supabase
@@ -123,7 +225,7 @@ const CreateAnnouncement = () => {
         wordpressPostId: null as number | null
       };
       
-      if ((data.status === 'published' || data.status === 'scheduled') && data.wordpressCategory && user?.id) {
+      if ((formData.status === 'published' || formData.status === 'scheduled') && formData.wordpressCategory && user?.id) {
         // For mobile, we don't need to show this toast since we already showed feedback
         if (!isMobile) {
           toast({
@@ -134,7 +236,7 @@ const CreateAnnouncement = () => {
         
         wordpressResult = await publishToWordPress(
           newAnnouncement as Announcement, 
-          data.wordpressCategory, 
+          formData.wordpressCategory, 
           user.id
         );
         
@@ -176,6 +278,46 @@ const CreateAnnouncement = () => {
     }
   };
 
+  const handlePrevious = () => {
+    if (currentStep > 0) {
+      setCurrentStep(current => current - 1);
+    }
+  };
+
+  const handleNext = () => {
+    // Basic validation before proceeding
+    if (currentStep === 0 && !form.getValues().wordpressCategory) {
+      toast({
+        title: "Champ requis",
+        description: "Veuillez sélectionner une catégorie avant de continuer.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (currentStep === 1 && !form.getValues().title) {
+      toast({
+        title: "Champ requis",
+        description: "Veuillez saisir un titre avant de continuer.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(current => current + 1);
+    }
+  };
+
+  // Get the current category name for the summary
+  const getCategoryName = () => {
+    const categoryId = form.getValues().wordpressCategory;
+    if (!categoryId || !categories) return "Non spécifié";
+    
+    const category = categories.find(cat => String(cat.id) === categoryId);
+    return category ? category.name : "Non spécifié";
+  };
+
   return (
     <PageLayout 
       title="Créer une nouvelle annonce" 
@@ -186,15 +328,9 @@ const CreateAnnouncement = () => {
         </Button>
       } 
       fullWidthMobile={true}
-      containerClassName="max-w-5xl mx-auto"
+      containerClassName="max-w-4xl mx-auto"
     >
       <AnimatedContainer delay={200} className={isMobile ? "pb-6" : ""}>
-        {!isMobile && (
-          <div className="mb-4">
-            {/* Empty space for desktop view if needed */}
-          </div>
-        )}
-        
         <div>
           {isMobile && (
             <div className="bg-muted/30 px-4 py-3 mb-4 text-sm text-muted-foreground flex items-center">
@@ -203,12 +339,55 @@ const CreateAnnouncement = () => {
             </div>
           )}
           
-          <AnnouncementForm 
-            onSubmit={handleSubmit} 
-            isSubmitting={isSubmitting || isPublishing} 
-            isMobile={isMobile}
-            storageKey={FORM_STORAGE_KEY}
+          <StepIndicator 
+            steps={steps} 
+            currentStep={currentStep} 
+            isMobile={isMobile} 
           />
+          
+          <form>
+            <div className={isMobile ? "px-4" : ""}>
+              {currentStep === 0 && (
+                <CategoryStep form={form} isMobile={isMobile} />
+              )}
+              
+              {currentStep === 1 && (
+                <DescriptionStep form={form} isMobile={isMobile} />
+              )}
+              
+              {currentStep === 2 && (
+                <ImagesStep form={form} isMobile={isMobile} />
+              )}
+              
+              {currentStep === 3 && (
+                <SeoStep form={form} isMobile={isMobile} />
+              )}
+              
+              {currentStep === 4 && (
+                <PublishingStep form={form} isMobile={isMobile} />
+              )}
+              
+              {currentStep === 5 && (
+                <AnnouncementSummary 
+                  data={form.getValues()} 
+                  isMobile={isMobile}
+                  categoryName={getCategoryName()}
+                />
+              )}
+            </div>
+            
+            <StepNavigation 
+              currentStep={currentStep}
+              totalSteps={steps.length}
+              onPrevious={handlePrevious}
+              onNext={handleNext}
+              onSubmit={handleSubmit}
+              isLastStep={currentStep === steps.length - 1}
+              isFirstStep={currentStep === 0}
+              isSubmitting={isSubmitting || isPublishing}
+              isMobile={isMobile}
+            />
+          </form>
         </div>
       </AnimatedContainer>
       
