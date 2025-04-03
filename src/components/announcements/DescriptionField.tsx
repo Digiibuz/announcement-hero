@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
@@ -12,8 +13,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useContentOptimization } from "@/hooks/useContentOptimization";
 import useVoiceRecognition from "@/hooks/useVoiceRecognition";
 import "@/styles/editor.css";
-import { useIsMobile } from "@/hooks/use-media-query";
-import { LoadingIndicator } from "@/components/ui/loading-indicator";
 
 interface DescriptionFieldProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -28,9 +27,9 @@ const DescriptionField = ({
   const editorRef = useRef<HTMLDivElement>(null);
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const initialRenderRef = useRef(true);
-  const isMobile = useIsMobile();
   
-  const { isRecording, isListening, isProcessing, toggleVoiceRecording, isSupported } = 
+  // Voice recognition integration
+  const { isRecording, isListening, toggleVoiceRecording, isSupported } = 
     useVoiceRecognition({ fieldName: 'description', form });
 
   const updateFormValue = () => {
@@ -189,67 +188,24 @@ const DescriptionField = ({
         <Label>Description</Label>
         
         <div className="flex gap-2">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  type="button" 
-                  size={isMobile ? "icon" : "sm"} 
-                  variant="outline" 
-                  className={`flex items-center gap-1 ${isMobile ? "h-9 w-9" : ""}`} 
-                  onClick={generateNewContent} 
-                  disabled={isOptimizing.generateDescription}
-                >
-                  {isOptimizing.generateDescription ? 
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      {!isMobile && <span>Génération...</span>}
-                    </> : 
-                    <>
-                      <Wand2 size={16} />
-                      {!isMobile && <span>Générer avec l'IA</span>}
-                    </>
-                  }
-                </Button>
-              </TooltipTrigger>
-              {isMobile && (
-                <TooltipContent>
-                  <p>Générer avec l'IA</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
-          
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  type="button" 
-                  size={isMobile ? "icon" : "sm"} 
-                  variant="secondary" 
-                  className={`flex items-center gap-1 ${isMobile ? "h-9 w-9" : ""}`} 
-                  onClick={generateImprovedContent} 
-                  disabled={isOptimizing.description}
-                >
-                  {isOptimizing.description ? 
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      {!isMobile && <span>Optimisation...</span>}
-                    </> : 
-                    <>
-                      <Sparkles size={16} />
-                      {!isMobile && <span>Optimiser avec l'IA</span>}
-                    </>
-                  }
-                </Button>
-              </TooltipTrigger>
-              {isMobile && (
-                <TooltipContent>
-                  <p>Optimiser avec l'IA</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
+          <Button type="button" size="sm" variant="outline" className="flex items-center gap-1" onClick={generateNewContent} disabled={isOptimizing.generateDescription}>
+            {isOptimizing.generateDescription ? <>
+                <Loader2 size={16} className="animate-spin" />
+                <span>Génération...</span>
+              </> : <>
+                <Wand2 size={16} />
+                <span>Générer avec l'IA</span>
+              </>}
+          </Button>
+          <Button type="button" size="sm" variant="secondary" className="flex items-center gap-1" onClick={generateImprovedContent} disabled={isOptimizing.description}>
+            {isOptimizing.description ? <>
+                <Loader2 size={16} className="animate-spin" />
+                <span>Optimisation...</span>
+              </> : <>
+                <Sparkles size={16} />
+                <span>Optimiser avec l'IA</span>
+              </>}
+          </Button>
         </div>
       </div>
       
@@ -376,6 +332,7 @@ const DescriptionField = ({
           </PopoverContent>
         </Popover>
         
+        {/* Voice dictation button */}
         {isSupported && (
           <TooltipProvider>
             <Tooltip>
@@ -399,17 +356,14 @@ const DescriptionField = ({
       </div>
       
       {isRecording && (
-        <div className="flex items-center gap-2 text-sm bg-red-50 dark:bg-red-950/20 p-2 rounded border border-red-200 dark:border-red-800">
-          {isProcessing ? (
-            <>
-              <LoadingIndicator size={16} variant="dots" color="#dc2626" />
-              <span className="text-red-600 dark:text-red-400 font-medium">Transcription en cours...</span>
-            </>
-          ) : (
-            <span className="text-red-600 dark:text-red-400 font-medium">
-              {isListening ? "Dictée active - parlez maintenant" : "Initialisation de la dictée..."}
-            </span>
-          )}
+        <div className="mb-2 text-sm bg-muted p-2 rounded border border-border">
+          <p className="font-medium mb-1">Mode dictée active {isListening ? "- écoute..." : ""}</p>
+          <p>Commandes de ponctuation:</p>
+          <ul className="text-xs text-muted-foreground pl-4 mt-1">
+            <li>"Point un" → .</li>
+            <li>"Point virgule un" → ;</li>
+            <li>"À la ligne" → ↵ (nouvelle ligne)</li>
+          </ul>
         </div>
       )}
       

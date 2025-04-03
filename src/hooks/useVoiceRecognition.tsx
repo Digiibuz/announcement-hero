@@ -1,546 +1,297 @@
+
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { UseFormReturn } from "react-hook-form";
 
-interface VoiceRecognitionOptions {
+// Define the SpeechRecognition types to fix TypeScript errors
+interface SpeechRecognition extends EventTarget {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  start(): void;
+  stop(): void;
+  onresult: (event: any) => void;
+  onerror: (event: any) => void;
+  onend: (event: any) => void;
+  onnomatch: (event: any) => void;
+  onaudiostart: (event: any) => void;
+  onaudioend: (event: any) => void;
+  onspeechstart: (event: any) => void;
+  onspeechend: (event: any) => void;
+}
+
+interface SpeechRecognitionConstructor {
+  new(): SpeechRecognition;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  }
+}
+
+interface UseVoiceRecognitionProps {
   fieldName: string;
   form: UseFormReturn<any>;
 }
 
-// Define types for the Web Speech API
-// This is necessary because TypeScript doesn't include these types by default
-interface SpeechRecognitionErrorEvent extends Event {
-  error: string;
-  message: string;
-}
-
-interface SpeechRecognitionEvent extends Event {
-  results: SpeechRecognitionResultList;
-  resultIndex: number;
-}
-
-interface SpeechRecognitionResultList {
-  readonly length: number;
-  item(index: number): SpeechRecognitionResult;
-  [index: number]: SpeechRecognitionResult;
-}
-
-interface SpeechRecognitionResult {
-  readonly length: number;
-  item(index: number): SpeechRecognitionAlternative;
-  [index: number]: SpeechRecognitionAlternative;
-  isFinal: boolean;
-}
-
-interface SpeechRecognitionAlternative {
-  transcript: string;
-  confidence: number;
-}
-
-interface SpeechRecognitionEventMap {
-  audiostart: Event;
-  audioend: Event;
-  start: Event;
-  end: Event;
-  error: SpeechRecognitionErrorEvent;
-  nomatch: SpeechRecognitionEvent;
-  result: SpeechRecognitionEvent;
-  soundstart: Event;
-  soundend: Event;
-  speechstart: Event;
-  speechend: Event;
-}
-
-interface SpeechRecognition extends EventTarget {
-  grammars: any;
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  maxAlternatives: number;
-  start(): void;
-  stop(): void;
-  abort(): void;
-  addEventListener<K extends keyof SpeechRecognitionEventMap>(
-    type: K,
-    listener: (this: SpeechRecognition, ev: SpeechRecognitionEventMap[K]) => any,
-    options?: boolean | AddEventListenerOptions
-  ): void;
-  removeEventListener<K extends keyof SpeechRecognitionEventMap>(
-    type: K,
-    listener: (this: SpeechRecognition, ev: SpeechRecognitionEventMap[K]) => any,
-    options?: boolean | EventListenerOptions
-  ): void;
-}
-
-const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
+const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isSupported, setIsSupported] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const lastTextRef = useRef<string>("");
-  const shouldCapitalizeNextRef = useRef<boolean>(true);
-  const isFirstWordRef = useRef<boolean>(true);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Process speech commands to handle punctuation
   const processCommand = (transcript: string, element: HTMLElement | null): string => {
-    const lowerTranscript = transcript.toLowerCase().trim();
-    
     // Define command mappings for punctuation and formatting
-    const commands: Record<string, (el: HTMLElement | null) => string> = {
-      // Points
-      "point": (el) => {
-        shouldCapitalizeNextRef.current = true;
-        return el ? (document.execCommand('insertText', false, '. '), '') : '. ';
-      },
+    const commands: Record<string, (el: HTMLElement | null) => void> = {
       "point un": (el) => {
-        shouldCapitalizeNextRef.current = true;
-        return el ? (document.execCommand('insertText', false, '. '), '') : '. ';
+        if (el) {
+          document.execCommand('insertText', false, '.');
+        } else {
+          return '.';
+        }
       },
-      
-      // Virgules
-      "virgule": (el) => el ? (document.execCommand('insertText', false, ', '), '') : ', ',
-      "virgule un": (el) => el ? (document.execCommand('insertText', false, ', '), '') : ', ',
-      
-      // Point-virgule
-      "point virgule": (el) => el ? (document.execCommand('insertText', false, '; '), '') : '; ',
-      "point virgule un": (el) => el ? (document.execCommand('insertText', false, '; '), '') : '; ',
-      
-      // Deux-points
-      "deux points": (el) => el ? (document.execCommand('insertText', false, ': '), '') : ': ',
-      
-      // Points d'interrogation
-      "point d'interrogation": (el) => {
-        shouldCapitalizeNextRef.current = true;
-        return el ? (document.execCommand('insertText', false, '? '), '') : '? ';
+      "point virgule un": (el) => {
+        if (el) {
+          document.execCommand('insertText', false, ';');
+        } else {
+          return ';';
+        }
       },
-      "point interrogation": (el) => {
-        shouldCapitalizeNextRef.current = true;
-        return el ? (document.execCommand('insertText', false, '? '), '') : '? ';
-      },
-      
-      // Points d'exclamation
-      "point d'exclamation": (el) => {
-        shouldCapitalizeNextRef.current = true;
-        return el ? (document.execCommand('insertText', false, '! '), '') : '! ';
-      },
-      "point exclamation": (el) => {
-        shouldCapitalizeNextRef.current = true;
-        return el ? (document.execCommand('insertText', false, '! '), '') : '! ';
-      },
-      
-      // Parenthèses
-      "ouvrir parenthèse": (el) => el ? (document.execCommand('insertText', false, '('), '') : '(',
-      "fermer parenthèse": (el) => el ? (document.execCommand('insertText', false, ') '), '') : ') ',
-      "parenthèse ouvrante": (el) => el ? (document.execCommand('insertText', false, '('), '') : '(',
-      "parenthèse fermante": (el) => el ? (document.execCommand('insertText', false, ') '), '') : ') ',
-      
-      // Guillemets
-      "ouvrir guillemets": (el) => el ? (document.execCommand('insertText', false, '« '), '') : '« ',
-      "fermer guillemets": (el) => el ? (document.execCommand('insertText', false, ' »'), '') : ' »',
-      "guillemets ouvrants": (el) => el ? (document.execCommand('insertText', false, '« '), '') : '« ',
-      "guillemets fermants": (el) => el ? (document.execCommand('insertText', false, ' »'), '') : ' »',
-      
-      // Tirets et traits d'union
-      "tiret": (el) => el ? (document.execCommand('insertText', false, '-'), '') : '-',
-      "tiret cadratin": (el) => el ? (document.execCommand('insertText', false, '—'), '') : '—',
-      "tiret demi cadratin": (el) => el ? (document.execCommand('insertText', false, '–'), '') : '–',
-      
-      // Apostrophe
-      "apostrophe": (el) => el ? (document.execCommand('insertText', false, "'"), '') : "'",
-      
-      // Accolades
-      "ouvrir accolade": (el) => el ? (document.execCommand('insertText', false, '{'), '') : '{',
-      "fermer accolade": (el) => el ? (document.execCommand('insertText', false, '}'), '') : '}',
-      
-      // Crochets
-      "ouvrir crochet": (el) => el ? (document.execCommand('insertText', false, '['), '') : '[',
-      "fermer crochet": (el) => el ? (document.execCommand('insertText', false, ']'), '') : ']',
-      
-      // Pourcentage
-      "pourcent": (el) => el ? (document.execCommand('insertText', false, '%'), '') : '%',
-      
-      // Symbole euro
-      "euro": (el) => el ? (document.execCommand('insertText', false, '€'), '') : '€',
-      
-      // Symbole dollar
-      "dollar": (el) => el ? (document.execCommand('insertText', false, '$'), '') : '$',
-      
-      // Et commercial
-      "et commercial": (el) => el ? (document.execCommand('insertText', false, '&'), '') : '&',
-      "esperluette": (el) => el ? (document.execCommand('insertText', false, '&'), '') : '&',
-      
-      // Saut de ligne - Use insertHTML for proper line breaks
       "à la ligne": (el) => {
         if (el) {
-          document.execCommand('insertHTML', false, '<br>');
-          setTimeout(() => {
-            if (el) el.dispatchEvent(new Event('input', { bubbles: true }));
-          }, 0);
-          return '';
+          document.execCommand('insertText', false, '\n');
         } else {
           return '\n';
         }
-      },
-      "nouvelle ligne": (el) => {
-        if (el) {
-          document.execCommand('insertHTML', false, '<br>');
-          setTimeout(() => {
-            if (el) el.dispatchEvent(new Event('input', { bubbles: true }));
-          }, 0);
-          return '';
-        } else {
-          return '\n';
-        }
-      },
-      "saut de ligne": (el) => {
-        if (el) {
-          document.execCommand('insertHTML', false, '<br>');
-          setTimeout(() => {
-            if (el) el.dispatchEvent(new Event('input', { bubbles: true }));
-          }, 0);
-          return '';
-        } else {
-          return '\n';
-        }
-      },
-      
-      // Paragraphe 
-      "nouveau paragraphe": (el) => {
-        if (el) {
-          document.execCommand('insertHTML', false, '<br><br>');
-          return '';
-        } else {
-          return '\n\n';
-        }
-      },
-      
-      // Tabulation
-      "tabulation": (el) => el ? (document.execCommand('insertText', false, '\t'), '') : '\t',
-      "tab": (el) => el ? (document.execCommand('insertText', false, '\t'), '') : '\t',
-      
-      // Majuscules sur les prochains mots
-      "majuscule": (el) => {
-        // Marquer pour le prochain mot
-        shouldCapitalizeNextRef.current = true;
-        return "";
       }
     };
+
+    // Convert transcript to lowercase for case-insensitive matching
+    const lowerTranscript = transcript.toLowerCase().trim();
     
-    // Check for special command pattern that might be followed by text
+    // Check for commands
     for (const [command, action] of Object.entries(commands)) {
-      // Use regex for prefix matching, to handle cases like "point suivi de texte..."
-      const commandRegex = new RegExp(`^${command}\\s`, 'i');
-      if (commandRegex.test(lowerTranscript)) {
-        const remainingText = transcript.substring(command.length).trim();
-        const punctuation = action(element);
-        
-        // If there's remaining text, append it after the punctuation
-        // Apply capitalization if needed
-        if (remainingText && shouldCapitalizeNextRef.current) {
-          const capitalized = remainingText.charAt(0).toUpperCase() + remainingText.slice(1);
-          shouldCapitalizeNextRef.current = false;
-          isFirstWordRef.current = false;
-          return punctuation + (capitalized ? " " + capitalized : "");
+      if (lowerTranscript === command) {
+        if (element) {
+          action(element);
+          return ''; // Command processed, don't insert the command text
         } else {
-          return punctuation + (remainingText ? " " + remainingText : "");
+          const result = action(null);
+          return result || '';
         }
       }
     }
     
-    // Check for exact command match
-    for (const [command, action] of Object.entries(commands)) {
-      if (lowerTranscript === command) {
-        return action(element);
-      }
-    }
-    
-    // Capitalize first word in the transcription if needed
-    if (isFirstWordRef.current || shouldCapitalizeNextRef.current) {
-      isFirstWordRef.current = false;
-      shouldCapitalizeNextRef.current = false;
-      return transcript.charAt(0).toUpperCase() + transcript.slice(1);
-    }
-    
-    // No command found, return the original transcript
+    // No command found, return original transcript
     return transcript;
   };
 
-  // Helper function to detect ending punctuation
-  const hasEndingPunctuation = (text: string): boolean => {
-    const trimmedText = text.trim();
-    if (!trimmedText) return false;
-    
-    const lastChar = trimmedText.charAt(trimmedText.length - 1);
-    return ['.', '!', '?'].includes(lastChar);
-  };
-
-  // Function to focus and place cursor at the end of the content
-  const placeCursorAtEnd = (element: HTMLElement | null) => {
-    if (!element) return;
-    
-    // Focus the element
-    element.focus();
-    
-    // Place cursor at the end
-    const range = document.createRange();
-    const selection = window.getSelection();
-    
-    // Check if element has child nodes
-    if (element.childNodes.length > 0) {
-      const lastChild = element.childNodes[element.childNodes.length - 1];
-      const offset = lastChild.nodeType === Node.TEXT_NODE ? lastChild.textContent?.length || 0 : 0;
-      range.setStart(lastChild, offset);
-    } else {
-      // If element is empty, just place cursor inside it
-      range.setStart(element, 0);
-    }
-    
-    range.collapse(true);
-    
-    if (selection) {
-      selection.removeAllRanges();
-      selection.addRange(range);
-    }
-  };
-
-  // Initialize SpeechRecognition
-  const initializeRecognition = () => {
-    // Check if browser supports the Web Speech API
-    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognitionAPI) {
-      console.log("Speech recognition not supported in this browser");
-      setIsSupported(false);
-      return false;
-    }
-    
-    setIsSupported(true);
-    
-    if (!recognitionRef.current) {
-      // Initialize recognition with French language
-      recognitionRef.current = new SpeechRecognitionAPI();
-      if (recognitionRef.current) {
-        recognitionRef.current.lang = 'fr-FR';
-        recognitionRef.current.continuous = true;
-        recognitionRef.current.interimResults = true;
-        
-        // Set up event handlers
-        recognitionRef.current.addEventListener('result', handleRecognitionResult);
-        recognitionRef.current.addEventListener('start', () => setIsListening(true));
-        recognitionRef.current.addEventListener('end', () => {
-          setIsListening(false);
-          // Restart recognition if we're still in recording mode
-          if (isRecording && recognitionRef.current) {
-            try {
-              recognitionRef.current.start();
-            } catch (error) {
-              console.error("Error restarting speech recognition:", error);
-            }
-          }
-        });
-        recognitionRef.current.addEventListener('soundstart', () => {
-          // User started speaking
-          setIsProcessing(false);
-        });
-        recognitionRef.current.addEventListener('soundend', () => {
-          // User stopped speaking, now processing the speech
-          setIsProcessing(true);
-        });
-        recognitionRef.current.addEventListener('error', (e) => {
-          console.error('Speech recognition error', e);
-          setIsListening(false);
-          setIsProcessing(false);
-          
-          // If we're still in recording mode, try to restart
-          if (isRecording && recognitionRef.current) {
-            try {
-              setTimeout(() => {
-                if (isRecording && recognitionRef.current) {
-                  recognitionRef.current.start();
-                }
-              }, 500);
-            } catch (error) {
-              console.error("Error restarting speech recognition after error:", error);
-            }
-          }
-        });
-      }
-      return true;
-    }
-    return true;
-  };
-
-  // Effect to set up recognition
   useEffect(() => {
-    const isInitialized = initializeRecognition();
+    // Check if browser supports speech recognition
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (SpeechRecognitionAPI) {
+      recognitionRef.current = new SpeechRecognitionAPI();
+      recognitionRef.current.lang = 'fr-FR';
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+      
+      recognitionRef.current.onresult = (event: any) => {
+        const currentValue = form.getValues(fieldName) || '';
+        const resultIndex = event.resultIndex;
+        let transcript = event.results[resultIndex][0].transcript;
+        
+        setIsListening(true);
+        
+        // If we get a result, clear the timeout
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+        
+        if (event.results[resultIndex].isFinal) {
+          console.log("Final transcript received:", transcript);
+          
+          // For contentEditable elements, handle differently
+          if (fieldName === 'description') {
+            const element = document.getElementById('description');
+            if (element) {
+              const processedText = processCommand(transcript, element);
+              
+              // If command returned empty, it was processed as a command
+              if (processedText === '') {
+                return;
+              }
+              
+              let content = element.innerHTML;
+              
+              // Add space if there's already content
+              if (content && !content.endsWith(' ') && !content.endsWith('>')) {
+                content += ' ';
+              }
+              
+              // Append the transcript
+              element.innerHTML = content + processedText;
+              
+              // Manually trigger the form update
+              const event = new Event('input', { bubbles: true });
+              element.dispatchEvent(event);
+              
+              console.log("Updated editor content with speech:", element.innerHTML);
+            } else {
+              console.error("Description element not found");
+            }
+          } else {
+            // For regular form fields
+            const processedText = processCommand(transcript, null);
+            form.setValue(
+              fieldName, 
+              currentValue ? `${currentValue} ${processedText}` : processedText,
+              { shouldValidate: true, shouldDirty: true }
+            );
+            console.log("Updated form value:", form.getValues(fieldName));
+          }
+        }
+      };
+      
+      recognitionRef.current.onaudiostart = () => {
+        console.log("Audio capturing started");
+      };
+      
+      recognitionRef.current.onspeechstart = () => {
+        console.log("Speech detection started");
+        setIsListening(true);
+      };
+      
+      recognitionRef.current.onspeechend = () => {
+        console.log("Speech detection ended");
+        // Set a timeout to show a notification if no speech is detected for a while
+        if (isRecording) {
+          timeoutRef.current = setTimeout(() => {
+            toast.info("Aucune parole détectée. Continuez à parler ou arrêtez l'enregistrement.");
+            setIsListening(false);
+          }, 3000);
+        }
+      };
+      
+      recognitionRef.current.onend = () => {
+        // If recording is still enabled, restart the recognition
+        // This helps with continuous recording
+        if (isRecording) {
+          console.log("Recognition ended but still recording, restarting...");
+          try {
+            recognitionRef.current?.start();
+          } catch (error) {
+            console.error("Error restarting speech recognition:", error);
+          }
+        }
+      };
+      
+      recognitionRef.current.onerror = (event: any) => {
+        console.error('Speech recognition error', event.error);
+        
+        // Clear any pending timeouts
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+        
+        // Only show error toast if we're actually recording (avoid showing errors when stopping)
+        if (isRecording) {
+          switch (event.error) {
+            case 'no-speech':
+              toast.info("Aucune parole détectée. Veuillez parler plus fort ou vérifier votre microphone.");
+              break;
+            case 'audio-capture':
+              toast.error("Impossible d'accéder au microphone. Vérifiez que votre appareil a un microphone et que vous avez accordé les permissions.");
+              setIsRecording(false);
+              break;
+            case 'not-allowed':
+              toast.error("Permission de microphone refusée. Veuillez autoriser l'accès au microphone dans les paramètres de votre navigateur.");
+              setIsRecording(false);
+              break;
+            case 'network':
+              toast.error("Problème de réseau. Vérifiez votre connexion internet.");
+              break;
+            default:
+              toast.error("Erreur de reconnaissance vocale: " + event.error);
+          }
+        }
+      };
+    }
     
     return () => {
-      if (recognitionRef.current) {
-        // Clean up event listeners
-        recognitionRef.current.removeEventListener('result', handleRecognitionResult);
-        recognitionRef.current.abort();
+      // Clean up on unmount
+      if (recognitionRef.current && isRecording) {
+        try {
+          recognitionRef.current.stop();
+        } catch (error) {
+          console.error("Error stopping speech recognition on unmount:", error);
+        }
+      }
+      
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
       }
     };
-  }, [fieldName, form]);
+  }, [fieldName, form, isRecording]);
 
-  // Handle recognition results
-  const handleRecognitionResult = (event: SpeechRecognitionEvent) => {
-    const results = event.results;
-    if (!results.length) return;
-    
-    const current = results[results.length - 1];
-    
-    if (current.isFinal) {
-      const transcript = current[0].transcript.trim();
-      
-      if (transcript) {
-        const elementId = fieldName;
-        const element = document.getElementById(elementId);
-        
-        // Check if previous text has ending punctuation to determine if we need to capitalize
-        const currentValue = element?.isContentEditable 
-          ? element.innerHTML 
-          : (form.getValues(fieldName) || '');
-          
-        if (currentValue) {
-          shouldCapitalizeNextRef.current = hasEndingPunctuation(currentValue);
-          isFirstWordRef.current = false;
-        } else {
-          // If there's no content yet, first word should be capitalized
-          isFirstWordRef.current = true;
-        }
-        
-        if (element && element.isContentEditable) {
-          // For contentEditable elements
-          const processedText = processCommand(transcript, element);
-          if (processedText) {
-            document.execCommand('insertText', false, processedText);
-            // Force an update event after inserting line breaks to ensure they're rendered
-            element.dispatchEvent(new Event('input', { bubbles: true }));
-            // Place cursor at the end after inserting text
-            placeCursorAtEnd(element);
-          }
-        } else {
-          // For regular form inputs
-          const formValue = form.getValues(fieldName) || '';
-          // Add a space before the new text if there's already text and it doesn't end with a space
-          const spacer = formValue && !formValue.endsWith(' ') ? ' ' : '';
-          const processedText = processCommand(transcript, null);
-          
-          // Update the form value
-          form.setValue(fieldName, formValue + spacer + processedText, { 
-            shouldValidate: true,
-            shouldDirty: true,
-            shouldTouch: true
-          });
-          
-          // Update our reference to the last text
-          lastTextRef.current = formValue + spacer + processedText;
-          
-          // For regular inputs, focus the element after form value update
-          setTimeout(() => {
-            if (element) {
-              element.focus();
-              if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
-                element.selectionStart = element.value.length;
-                element.selectionEnd = element.value.length;
-              }
-            }
-          }, 0);
-        }
-      }
-      
-      // Set processing to false after final result is processed
-      setIsProcessing(false);
-    }
-  };
-
-  // Start recording
-  const startRecording = () => {
-    if (!isSupported) {
-      toast.error("La dictée vocale n'est pas prise en charge par votre navigateur");
+  const toggleVoiceRecording = () => {
+    if (!recognitionRef.current) {
+      toast.error("La reconnaissance vocale n'est pas supportée par ce navigateur");
       return;
     }
-
-    // Make sure recognition is initialized
-    if (!recognitionRef.current) {
-      const isInitialized = initializeRecognition();
-      if (!isInitialized) {
-        toast.error("Impossible d'initialiser la dictée vocale");
-        return;
-      }
-    }
-
-    if (recognitionRef.current && !isRecording) {
-      try {
-        // Focus the element when starting recording
-        const element = document.getElementById(fieldName);
-        if (element) {
-          element.focus();
-          
-          // Check if we need to capitalize the next word based on current content
-          const currentValue = element.isContentEditable 
-            ? element.innerHTML 
-            : (form.getValues(fieldName) || '');
-            
-          if (!currentValue || currentValue.trim() === '') {
-            // If there's no content, first word should be capitalized
-            isFirstWordRef.current = true;
-            shouldCapitalizeNextRef.current = true;
-          } else {
-            isFirstWordRef.current = false;
-            shouldCapitalizeNextRef.current = hasEndingPunctuation(currentValue);
-          }
-          
-          if (element.isContentEditable) {
-            placeCursorAtEnd(element);
-          } else if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
-            element.selectionStart = element.value.length;
-            element.selectionEnd = element.value.length;
-          }
-        }
-        
-        recognitionRef.current.start();
-        setIsRecording(true);
-        toast.success("Dictée vocale activée");
-      } catch (error) {
-        console.error("Error starting speech recognition:", error);
-        toast.error("Erreur lors de l'activation de la dictée vocale");
-      }
-    }
-  };
-
-  // Stop recording
-  const stopRecording = () => {
-    if (recognitionRef.current && isRecording) {
+    
+    if (isRecording) {
       try {
         recognitionRef.current.stop();
         setIsRecording(false);
-        setIsProcessing(false);
-        toast.info("Dictée vocale désactivée");
+        setIsListening(false);
+        toast.success("Enregistrement vocal terminé");
+        
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
       } catch (error) {
         console.error("Error stopping speech recognition:", error);
       }
-    }
-  };
-
-  // Toggle voice recording on/off
-  const toggleVoiceRecording = () => {
-    if (isRecording) {
-      stopRecording();
     } else {
-      startRecording();
+      try {
+        // Request microphone permission explicitly first
+        navigator.mediaDevices.getUserMedia({ audio: true })
+          .then(() => {
+            recognitionRef.current?.start();
+            setIsRecording(true);
+            toast.info("Enregistrement vocal démarré... Parlez clairement dans votre microphone.");
+            toast.info("Commandes disponibles: 'point un' → ., 'point virgule un' → ;, 'à la ligne' → saut de ligne");
+            
+            // Set a timeout to check if speech is detected
+            timeoutRef.current = setTimeout(() => {
+              if (isRecording && !isListening) {
+                toast.info("Aucune parole détectée. Assurez-vous que votre microphone fonctionne et parlez clairement.");
+              }
+            }, 3000);
+          })
+          .catch((error) => {
+            console.error("Error getting microphone permission:", error);
+            toast.error("Impossible d'accéder au microphone. Vérifiez vos paramètres de confidentialité.");
+          });
+      } catch (error) {
+        console.error("Error starting speech recognition:", error);
+        toast.error("Erreur lors du démarrage de la reconnaissance vocale.");
+      }
     }
   };
 
   return {
     isRecording,
     isListening,
-    isProcessing,
     toggleVoiceRecording,
-    startRecording,
-    stopRecording,
-    isSupported
+    isSupported: !!window.SpeechRecognition || !!window.webkitSpeechRecognition
   };
 };
 
