@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect } from "react";
@@ -14,7 +13,7 @@ import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
 import { ArrowLeft, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import PublishingLoadingOverlay, { PublishingStep } from "@/components/announcements/PublishingLoadingOverlay";
+import PublishingLoadingOverlay, { PublishingStep as PublishingStepType } from "@/components/announcements/PublishingLoadingOverlay";
 import StepIndicator from "@/components/announcements/steps/StepIndicator";
 import CategoryStep from "@/components/announcements/steps/CategoryStep";
 import DescriptionStep from "@/components/announcements/steps/DescriptionStep";
@@ -63,7 +62,7 @@ const CreateAnnouncement = () => {
   });
 
   // Define the publishing steps
-  const publishingSteps: PublishingStep[] = [
+  const publishingSteps: PublishingStepType[] = [
     {
       id: "prepare",
       label: "Préparation de la publication",
