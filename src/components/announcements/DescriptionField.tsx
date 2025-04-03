@@ -3,7 +3,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Loader2, Sparkles, Wand2, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Link } from "lucide-react";
+import { Loader2, Sparkles, Wand2, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Link, Mic, MicOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
@@ -15,7 +15,6 @@ import useVoiceRecognition from "@/hooks/useVoiceRecognition";
 import "@/styles/editor.css";
 import { useIsMobile } from "@/hooks/use-media-query";
 import { LoadingIndicator } from "@/components/ui/loading-indicator";
-import DictationButton from "@/components/ui/DictationButton";
 
 interface DescriptionFieldProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -33,15 +32,8 @@ const DescriptionField = ({
   const isMobile = useIsMobile();
   
   // Voice recognition integration
-  const { 
-    isRecording, 
-    isListening, 
-    isProcessing, 
-    toggleVoiceRecording, 
-    startRecording,
-    stopRecording,
-    isSupported 
-  } = useVoiceRecognition({ fieldName: 'description', form });
+  const { isRecording, isListening, isProcessing, toggleVoiceRecording, isSupported } = 
+    useVoiceRecognition({ fieldName: 'description', form });
 
   const updateFormValue = () => {
     if (editorRef.current) {
@@ -387,13 +379,24 @@ const DescriptionField = ({
         </Popover>
         
         {isSupported && (
-          <DictationButton 
-            isRecording={isRecording}
-            onToggle={toggleVoiceRecording}
-            onLongPress={startRecording}
-            onLongPressEnd={stopRecording}
-            className="h-8 w-8"
-          />
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  type="button" 
+                  variant={isRecording ? "default" : "outline"} 
+                  size="icon" 
+                  className={`h-8 w-8 ${isRecording ? "bg-red-500 hover:bg-red-600" : ""}`} 
+                  onClick={toggleVoiceRecording}
+                >
+                  {isRecording ? <MicOff size={16} /> : <Mic size={16} />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{isRecording ? "Arrêter la dictée" : "Dicter du texte"}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
       </div>
       
