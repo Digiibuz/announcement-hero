@@ -7,6 +7,9 @@ import { Toaster as UIToaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
 import { Suspense, lazy, useEffect } from 'react';
+import { LoadingProvider } from "@/context/LoadingContext";
+import { RouteTransition } from "@/components/ui/layout/RouteTransition";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
 
 // Lazy loading des pages pour améliorer les performances
 const Login = lazy(() => import("./pages/Login"));
@@ -20,10 +23,10 @@ const UserProfile = lazy(() => import("./pages/UserProfile"));
 const Support = lazy(() => import("./pages/Support"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-// Composant de chargement
+// Composant de chargement amélioré
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center">
-    Chargement...
+    <LoadingIndicator variant="dots" size="lg" text="Chargement..." />
   </div>
 );
 
@@ -99,88 +102,92 @@ function App() {
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <TooltipProvider>
-              <Suspense fallback={<LoadingFallback />}>
-                <Routes>
-                  {/* Redirect root to login */}
-                  <Route path="/" element={<Navigate to="/login" replace />} />
-                  <Route path="/login" element={<Login />} />
-                  
-                  {/* Protected routes */}
-                  <Route 
-                    path="/dashboard" 
-                    element={
-                      <ProtectedRoute>
-                        <Dashboard />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/announcements" 
-                    element={
-                      <ProtectedRoute>
-                        <Announcements />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/announcements/:id" 
-                    element={
-                      <ProtectedRoute>
-                        <AnnouncementDetail />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/create" 
-                    element={
-                      <ProtectedRoute>
-                        <CreateAnnouncement />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/profile" 
-                    element={
-                      <ProtectedRoute>
-                        <UserProfile />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/support" 
-                    element={
-                      <ProtectedRoute>
-                        <Support />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  
-                  {/* Admin/Client only routes */}
-                  <Route 
-                    path="/users" 
-                    element={
-                      <AdminRoute>
-                        <UserManagement />
-                      </AdminRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/wordpress" 
-                    element={
-                      <AdminRoute>
-                        <WordPressManagement />
-                      </AdminRoute>
-                    } 
-                  />
-                  
-                  {/* Fallback route */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                <SonnerToaster />
-                <UIToaster />
-              </Suspense>
-            </TooltipProvider>
+            <LoadingProvider>
+              <TooltipProvider>
+                <RouteTransition>
+                  <Suspense fallback={<LoadingFallback />}>
+                    <Routes>
+                      {/* Redirect root to login */}
+                      <Route path="/" element={<Navigate to="/login" replace />} />
+                      <Route path="/login" element={<Login />} />
+                      
+                      {/* Protected routes */}
+                      <Route 
+                        path="/dashboard" 
+                        element={
+                          <ProtectedRoute>
+                            <Dashboard />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/announcements" 
+                        element={
+                          <ProtectedRoute>
+                            <Announcements />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/announcements/:id" 
+                        element={
+                          <ProtectedRoute>
+                            <AnnouncementDetail />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/create" 
+                        element={
+                          <ProtectedRoute>
+                            <CreateAnnouncement />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/profile" 
+                        element={
+                          <ProtectedRoute>
+                            <UserProfile />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/support" 
+                        element={
+                          <ProtectedRoute>
+                            <Support />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      
+                      {/* Admin/Client only routes */}
+                      <Route 
+                        path="/users" 
+                        element={
+                          <AdminRoute>
+                            <UserManagement />
+                          </AdminRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/wordpress" 
+                        element={
+                          <AdminRoute>
+                            <WordPressManagement />
+                          </AdminRoute>
+                        } 
+                      />
+                      
+                      {/* Fallback route */}
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                    <SonnerToaster />
+                    <UIToaster />
+                  </Suspense>
+                </RouteTransition>
+              </TooltipProvider>
+            </LoadingProvider>
           </AuthProvider>
         </QueryClientProvider>
       </ThemeProvider>
