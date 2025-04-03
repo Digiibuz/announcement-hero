@@ -79,6 +79,8 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const lastTextRef = useRef<string>("");
+  const shouldCapitalizeNextRef = useRef<boolean>(true);
 
   // Process speech commands to handle punctuation
   const processCommand = (transcript: string, element: HTMLElement | null): string => {
@@ -87,33 +89,51 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
     // Define command mappings for punctuation and formatting
     const commands: Record<string, (el: HTMLElement | null) => string> = {
       // Points
-      "point": (el) => el ? (document.execCommand('insertText', false, '.'), '') : '.',
-      "point un": (el) => el ? (document.execCommand('insertText', false, '.'), '') : '.',
+      "point": (el) => {
+        shouldCapitalizeNextRef.current = true;
+        return el ? (document.execCommand('insertText', false, '. '), '') : '. ';
+      },
+      "point un": (el) => {
+        shouldCapitalizeNextRef.current = true;
+        return el ? (document.execCommand('insertText', false, '. '), '') : '. ';
+      },
       
       // Virgules
-      "virgule": (el) => el ? (document.execCommand('insertText', false, ','), '') : ',',
-      "virgule un": (el) => el ? (document.execCommand('insertText', false, ','), '') : ',',
+      "virgule": (el) => el ? (document.execCommand('insertText', false, ', '), '') : ', ',
+      "virgule un": (el) => el ? (document.execCommand('insertText', false, ', '), '') : ', ',
       
       // Point-virgule
-      "point virgule": (el) => el ? (document.execCommand('insertText', false, ';'), '') : ';',
-      "point virgule un": (el) => el ? (document.execCommand('insertText', false, ';'), '') : ';',
+      "point virgule": (el) => el ? (document.execCommand('insertText', false, '; '), '') : '; ',
+      "point virgule un": (el) => el ? (document.execCommand('insertText', false, '; '), '') : '; ',
       
       // Deux-points
-      "deux points": (el) => el ? (document.execCommand('insertText', false, ':'), '') : ':',
+      "deux points": (el) => el ? (document.execCommand('insertText', false, ': '), '') : ': ',
       
       // Points d'interrogation
-      "point d'interrogation": (el) => el ? (document.execCommand('insertText', false, '?'), '') : '?',
-      "point interrogation": (el) => el ? (document.execCommand('insertText', false, '?'), '') : '?',
+      "point d'interrogation": (el) => {
+        shouldCapitalizeNextRef.current = true;
+        return el ? (document.execCommand('insertText', false, '? '), '') : '? ';
+      },
+      "point interrogation": (el) => {
+        shouldCapitalizeNextRef.current = true;
+        return el ? (document.execCommand('insertText', false, '? '), '') : '? ';
+      },
       
       // Points d'exclamation
-      "point d'exclamation": (el) => el ? (document.execCommand('insertText', false, '!'), '') : '!',
-      "point exclamation": (el) => el ? (document.execCommand('insertText', false, '!'), '') : '!',
+      "point d'exclamation": (el) => {
+        shouldCapitalizeNextRef.current = true;
+        return el ? (document.execCommand('insertText', false, '! '), '') : '! ';
+      },
+      "point exclamation": (el) => {
+        shouldCapitalizeNextRef.current = true;
+        return el ? (document.execCommand('insertText', false, '! '), '') : '! ';
+      },
       
       // Parenthèses
       "ouvrir parenthèse": (el) => el ? (document.execCommand('insertText', false, '('), '') : '(',
-      "fermer parenthèse": (el) => el ? (document.execCommand('insertText', false, ')'), '') : ')',
+      "fermer parenthèse": (el) => el ? (document.execCommand('insertText', false, ') '), '') : ') ',
       "parenthèse ouvrante": (el) => el ? (document.execCommand('insertText', false, '('), '') : '(',
-      "parenthèse fermante": (el) => el ? (document.execCommand('insertText', false, ')'), '') : ')',
+      "parenthèse fermante": (el) => el ? (document.execCommand('insertText', false, ') '), '') : ') ',
       
       // Guillemets
       "ouvrir guillemets": (el) => el ? (document.execCommand('insertText', false, '« '), '') : '« ',
@@ -150,13 +170,41 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
       "et commercial": (el) => el ? (document.execCommand('insertText', false, '&'), '') : '&',
       "esperluette": (el) => el ? (document.execCommand('insertText', false, '&'), '') : '&',
       
-      // Saut de ligne
-      "à la ligne": (el) => el ? (document.execCommand('insertText', false, '\n'), '') : '\n',
-      "nouvelle ligne": (el) => el ? (document.execCommand('insertText', false, '\n'), '') : '\n',
-      "saut de ligne": (el) => el ? (document.execCommand('insertText', false, '\n'), '') : '\n',
+      // Saut de ligne - Fixed to properly implement line breaks
+      "à la ligne": (el) => {
+        if (el) {
+          document.execCommand('insertHTML', false, '<br>');
+          return '';
+        } else {
+          return '\n';
+        }
+      },
+      "nouvelle ligne": (el) => {
+        if (el) {
+          document.execCommand('insertHTML', false, '<br>');
+          return '';
+        } else {
+          return '\n';
+        }
+      },
+      "saut de ligne": (el) => {
+        if (el) {
+          document.execCommand('insertHTML', false, '<br>');
+          return '';
+        } else {
+          return '\n';
+        }
+      },
       
       // Paragraphe 
-      "nouveau paragraphe": (el) => el ? (document.execCommand('insertText', false, '\n\n'), '') : '\n\n',
+      "nouveau paragraphe": (el) => {
+        if (el) {
+          document.execCommand('insertHTML', false, '<br><br>');
+          return '';
+        } else {
+          return '\n\n';
+        }
+      },
       
       // Tabulation
       "tabulation": (el) => el ? (document.execCommand('insertText', false, '\t'), '') : '\t',
@@ -179,7 +227,14 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
         const punctuation = action(element);
         
         // If there's remaining text, append it after the punctuation
-        return punctuation + (remainingText ? " " + remainingText : "");
+        // Apply capitalization if needed
+        if (remainingText && shouldCapitalizeNextRef.current) {
+          const capitalized = remainingText.charAt(0).toUpperCase() + remainingText.slice(1);
+          shouldCapitalizeNextRef.current = false;
+          return punctuation + (capitalized ? " " + capitalized : "");
+        } else {
+          return punctuation + (remainingText ? " " + remainingText : "");
+        }
       }
     }
     
@@ -190,8 +245,23 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
       }
     }
     
+    // No command found, apply capitalization to normal text if needed
+    if (shouldCapitalizeNextRef.current) {
+      shouldCapitalizeNextRef.current = false;
+      return transcript.charAt(0).toUpperCase() + transcript.slice(1);
+    }
+    
     // No command found, return the original transcript
     return transcript;
+  };
+
+  // Helper function to detect ending punctuation
+  const hasEndingPunctuation = (text: string): boolean => {
+    const trimmedText = text.trim();
+    if (!trimmedText) return false;
+    
+    const lastChar = trimmedText.charAt(trimmedText.length - 1);
+    return ['.', '!', '?'].includes(lastChar);
   };
 
   // Function to focus and place cursor at the end of the content
@@ -316,6 +386,15 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
         const elementId = fieldName;
         const element = document.getElementById(elementId);
         
+        // Check if previous text has ending punctuation to determine if we need to capitalize
+        const currentValue = element?.isContentEditable 
+          ? element.innerHTML 
+          : (form.getValues(fieldName) || '');
+          
+        if (currentValue) {
+          shouldCapitalizeNextRef.current = hasEndingPunctuation(currentValue);
+        }
+        
         if (element && element.isContentEditable) {
           // For contentEditable elements
           const processedText = processCommand(transcript, element);
@@ -327,12 +406,19 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
         } else {
           // For regular form inputs
           const formValue = form.getValues(fieldName) || '';
+          // Add a space before the new text if there's already text and it doesn't end with a space
+          const spacer = formValue && !formValue.endsWith(' ') ? ' ' : '';
           const processedText = processCommand(transcript, null);
-          form.setValue(fieldName, formValue + ' ' + processedText, { 
+          
+          // Update the form value
+          form.setValue(fieldName, formValue + spacer + processedText, { 
             shouldValidate: true,
             shouldDirty: true,
             shouldTouch: true
           });
+          
+          // Update our reference to the last text
+          lastTextRef.current = formValue + spacer + processedText;
           
           // For regular inputs, focus the element after form value update
           setTimeout(() => {
@@ -374,6 +460,14 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
         const element = document.getElementById(fieldName);
         if (element) {
           element.focus();
+          
+          // Check if we need to capitalize the next word based on current content
+          const currentValue = element.isContentEditable 
+            ? element.innerHTML 
+            : (form.getValues(fieldName) || '');
+            
+          shouldCapitalizeNextRef.current = !currentValue || hasEndingPunctuation(currentValue);
+          
           if (element.isContentEditable) {
             placeCursorAtEnd(element);
           } else if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
