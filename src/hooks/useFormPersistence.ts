@@ -9,23 +9,42 @@ import { UseFormReturn } from 'react-hook-form';
  * @param initialValues - Valeurs initiales (optionnelles) pour le formulaire
  * @param autosaveInterval - Intervalle en millisecondes pour la sauvegarde automatique (par défaut: null = sauvegarde à chaque changement)
  * @param debug - Afficher les logs de debug (par défaut: false)
+ * @param fields - Liste des champs spécifiques à surveiller (par défaut: tous les champs)
  */
 export function useFormPersistence<TFormValues extends Record<string, any>>(
   form: UseFormReturn<TFormValues>,
   storageKey: string,
   initialValues?: Partial<TFormValues>,
   autosaveInterval: number | null = null,
-  debug: boolean = false
+  debug: boolean = false,
+  fields?: string[]
 ) {
   const { watch, reset, getValues } = form;
   const initialLoadDone = useRef(false);
+  const allFields = fields || Object.keys(getValues() || {});
   
   // Fonction pour sauvegarder les données
   const saveData = () => {
     const currentValues = getValues();
+    
     if (currentValues && Object.keys(currentValues).length > 0) {
-      localStorage.setItem(storageKey, JSON.stringify(currentValues));
-      if (debug) console.log('Données du formulaire sauvegardées:', storageKey);
+      // Vérifier que les données ne sont pas vides avant de sauvegarder
+      let hasNonEmptyValues = false;
+      
+      for (const key of Object.keys(currentValues)) {
+        const value = currentValues[key];
+        if (value !== undefined && value !== null && value !== '') {
+          if (Array.isArray(value) ? value.length > 0 : true) {
+            hasNonEmptyValues = true;
+            break;
+          }
+        }
+      }
+      
+      if (hasNonEmptyValues) {
+        localStorage.setItem(storageKey, JSON.stringify(currentValues));
+        if (debug) console.log('Données du formulaire sauvegardées:', storageKey, currentValues);
+      }
     }
   };
 
@@ -35,13 +54,26 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
     if (autosaveInterval) {
       // Sauvegarde à intervalle régulier
       const intervalId = setInterval(saveData, autosaveInterval);
-      return () => clearInterval(intervalId);
+      
+      // Aussi sauvegarder sur les changements importants
+      const subscription = watch((formValues, { name }) => {
+        // Si un champ important a changé, sauvegarder immédiatement
+        if (name && allFields.includes(name)) {
+          if (debug) console.log('Changement détecté dans le champ:', name);
+          saveData();
+        }
+      });
+      
+      return () => {
+        clearInterval(intervalId);
+        subscription.unsubscribe();
+      };
     } else {
       // Sauvegarde à chaque changement
-      const subscription = watch((formValues) => {
+      const subscription = watch((formValues, { name, type }) => {
         if (formValues && Object.keys(formValues).length > 0) {
+          if (debug) console.log('Mise à jour des données du formulaire:', name, type);
           localStorage.setItem(storageKey, JSON.stringify(formValues));
-          if (debug) console.log('Données du formulaire mises à jour:', storageKey);
         }
       });
       
@@ -57,7 +89,14 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
         window.removeEventListener('beforeunload', handleBeforeUnload);
       };
     }
-  }, [watch, storageKey, autosaveInterval, debug]);
+  }, [watch, storageKey, autosaveInterval, debug, saveData, allFields]);
+
+  // Sauvegarder aussi lorsque le composant se démonte
+  useEffect(() => {
+    return () => {
+      saveData();
+    };
+  }, []);
 
   // Charger les données depuis le localStorage ou utiliser les valeurs initiales
   useEffect(() => {
@@ -70,8 +109,8 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
       try {
         const parsedData = JSON.parse(savedData);
         if (parsedData && Object.keys(parsedData).length > 0) {
+          if (debug) console.log('Données du formulaire restaurées:', storageKey, parsedData);
           reset(parsedData);
-          if (debug) console.log('Données du formulaire restaurées:', storageKey);
           initialLoadDone.current = true;
           return;
         }
@@ -83,9 +122,11 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
     
     // Si pas de données sauvegardées valides, utiliser les valeurs initiales
     if (initialValues && Object.keys(initialValues).length > 0) {
+      if (debug) console.log('Utilisation des valeurs initiales');
       reset(initialValues);
-      initialLoadDone.current = true;
     }
+    
+    initialLoadDone.current = true;
   }, [reset, storageKey, initialValues, debug]);
 
   // Fonction pour effacer les données sauvegardées

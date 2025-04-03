@@ -63,7 +63,15 @@ const AnnouncementForm = ({
     defaultValues: initialValues || defaultValues
   });
 
-  const { clearSavedData, hasSavedData } = useFormPersistence(form, storageKey, initialValues);
+  // Activer la persistance du formulaire avec debug pour faciliter les tests
+  const { clearSavedData, hasSavedData, saveData } = useFormPersistence(
+    form, 
+    storageKey, 
+    initialValues,
+    5000, // Sauvegarde toutes les 5 secondes en plus des changements
+    true  // Activer le debug pour voir ce qui se passe
+  );
+  
   const [showDraftNotice, setShowDraftNotice] = useState(false);
 
   useEffect(() => {
@@ -71,11 +79,16 @@ const AnnouncementForm = ({
     const checkForDraft = () => {
       const hasDraft = hasSavedData();
       setShowDraftNotice(hasDraft);
+      
+      // Force une sauvegarde après le chargement pour s'assurer que tout est persisté
+      if (form.getValues().title || form.getValues().description) {
+        saveData();
+      }
     };
     
     // Attendre que le DOM soit complètement chargé
     setTimeout(checkForDraft, 500);
-  }, [hasSavedData]);
+  }, [hasSavedData, saveData, form]);
 
   useEffect(() => {
     if (initialValues) {
@@ -85,6 +98,18 @@ const AnnouncementForm = ({
       });
     }
   }, [initialValues, form]);
+
+  // Forcer une sauvegarde lorsque certains champs complexes changent
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'description' || name === 'images' || name === 'wordpressCategory') {
+        // Force une sauvegarde après un court délai pour s'assurer que tout est à jour
+        setTimeout(saveData, 100);
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [form, saveData]);
 
   const navigate = useNavigate();
   const {

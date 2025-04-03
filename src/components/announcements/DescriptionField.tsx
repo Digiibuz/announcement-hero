@@ -1,5 +1,4 @@
-
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -25,12 +24,21 @@ const DescriptionField = ({
   const [linkText, setLinkText] = useState("");
   const editorRef = useRef<HTMLDivElement>(null);
   const { optimizeContent, isOptimizing } = useContentOptimization();
+  const initialRenderRef = useRef(true);
 
   const updateFormValue = () => {
     if (editorRef.current) {
       let htmlContent = editorRef.current.innerHTML;
-      form.setValue('description', htmlContent);
+      form.setValue('description', htmlContent, { shouldDirty: true, shouldTouch: true });
       console.log("Form value updated from editor:", htmlContent);
+    }
+  };
+
+  const debouncedUpdateFormValue = () => {
+    if (editorRef.current) {
+      setTimeout(() => {
+        updateFormValue();
+      }, 100);
     }
   };
 
@@ -119,25 +127,55 @@ const DescriptionField = ({
     updateFormValue();
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     const description = form.getValues('description') || '';
-    if (editorRef.current && description) {
+    if (editorRef.current && description && initialRenderRef.current) {
       editorRef.current.innerHTML = description;
+      initialRenderRef.current = false;
     }
-  }, []);
+  }, [form]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const editorElement = editorRef.current;
     if (editorElement) {
       const handleInput = () => {
-        updateFormValue();
+        debouncedUpdateFormValue();
       };
+      
       editorElement.addEventListener('input', handleInput);
+      editorElement.addEventListener('blur', updateFormValue);
+      
+      const observer = new MutationObserver(() => {
+        debouncedUpdateFormValue();
+      });
+      
+      observer.observe(editorElement, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+        characterData: true
+      });
+      
       return () => {
         editorElement.removeEventListener('input', handleInput);
+        editorElement.removeEventListener('blur', updateFormValue);
+        observer.disconnect();
       };
     }
   }, []);
+
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'description' && editorRef.current) {
+        const currentDescription = form.getValues('description');
+        if (currentDescription && editorRef.current.innerHTML !== currentDescription) {
+          editorRef.current.innerHTML = currentDescription;
+        }
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   return <div className="space-y-2">
       <div className="flex justify-between items-center">
