@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import { Loader2, ArrowLeft, Save, ExternalLink, Sparkles, PencilLine, Search } from "lucide-react";
+import { Loader2, Save, Sparkles, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ImageUploader from "./ImageUploader";
 import DescriptionField from "./DescriptionField";
@@ -15,8 +15,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { toast } from "sonner";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
 import { useFormPersistence } from "@/hooks/useFormPersistence";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { InfoIcon } from "lucide-react";
 
 export interface AnnouncementFormProps {
   onSubmit?: (data: AnnouncementFormData) => void;
@@ -71,14 +69,14 @@ const AnnouncementForm = ({
     }
   }, [form, initialValues, storageKey]);
 
-  // Activer la persistance du formulaire avec debug pour faciliter les tests
+  // Activer la persistance du formulaire
   const {
     clearSavedData,
     hasSavedData,
     saveData
   } = useFormPersistence(form, storageKey, initialValues, 5000,
-  // Sauvegarde toutes les 5 secondes en plus des changements
-  true // Activer le debug pour voir ce qui se passe
+    // Sauvegarde toutes les 5 secondes en plus des changements
+    true // Activer le debug pour voir ce qui se passe
   );
   
   const [showDraftNotice, setShowDraftNotice] = useState(false);
@@ -353,7 +351,7 @@ const AnnouncementForm = ({
                   Enregistrement...
                 </> : <>
                   <Save className="mr-2 h-4 w-4" />
-                  Publier
+                  Publier l'annonce
                 </>}
             </Button>
           </div>

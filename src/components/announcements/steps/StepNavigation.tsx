@@ -51,7 +51,7 @@ const StepNavigation = ({
             disabled={isSubmitting}
             className="w-[130px] mobile-nav-button bg-brand-orange hover:bg-brand-orange/90 text-black"
           >
-            {isSubmitting ? "Envoi..." : "Finaliser l'annonce"}
+            {isSubmitting ? "Envoi..." : "Publier l'annonce"}
           </Button>
         ) : (
           <Button 
@@ -114,7 +114,7 @@ const StepNavigation = ({
             ) : (
               <>
                 <BookCheck className="mr-2 h-4 w-4" />
-                Finaliser l'annonce
+                Publier l'annonce
               </>
             )}
           </Button>
