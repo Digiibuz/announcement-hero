@@ -1,17 +1,14 @@
-
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AnnouncementFormData } from "../AnnouncementForm";
 import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, FileImage, FileText, Search, Tag } from "lucide-react";
 import { format } from "date-fns";
-
 interface AnnouncementSummaryProps {
   data: AnnouncementFormData;
   isMobile?: boolean;
   categoryName?: string;
 }
-
 const AnnouncementSummary = ({
   data,
   isMobile,
@@ -23,14 +20,13 @@ const AnnouncementSummary = ({
     }
     return "border shadow-sm";
   };
-
   const truncateText = (text: string, length: number) => {
     if (!text) return "";
     return text.length > length ? text.substring(0, length) + "..." : text;
   };
-
-  return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+  return <div className="space-y-6">
+      
+      
       <div className="space-y-4">
         <Card className={getCardStyles()}>
           <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"}`}>
@@ -74,17 +70,11 @@ const AnnouncementSummary = ({
             </CardTitle>
           </CardHeader>
           <CardContent className={`${isMobile ? "px-0 py-3" : ""}`}>
-            {data.images && data.images.length > 0 ? 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {data.images.map((image, index) => 
-                  <div key={index} className="aspect-square rounded-md border overflow-hidden bg-muted">
+            {data.images && data.images.length > 0 ? <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {data.images.map((image, index) => <div key={index} className="aspect-square rounded-md border overflow-hidden bg-muted">
                     <img src={image} alt={`Image ${index + 1}`} className="w-full h-full object-cover" />
-                  </div>
-                )}
-              </div> 
-              : 
-              <div className="text-muted-foreground">Aucune image ajoutée</div>
-            }
+                  </div>)}
+              </div> : <div className="text-muted-foreground">Aucune image ajoutée</div>}
           </CardContent>
         </Card>
         
@@ -133,18 +123,14 @@ const AnnouncementSummary = ({
                 </div>
               </div>
               
-              {data.status === 'scheduled' && data.publishDate && 
-                <div>
+              {data.status === 'scheduled' && data.publishDate && <div>
                   <div className="text-sm font-medium text-muted-foreground mb-1">Date de publication</div>
                   <div className="text-foreground">{format(data.publishDate, "PPP")}</div>
-                </div>
-              }
+                </div>}
             </div>
           </CardContent>
         </Card>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default AnnouncementSummary;
