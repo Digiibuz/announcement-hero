@@ -1,50 +1,60 @@
+
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { UseFormReturn } from "react-hook-form";
 
-// Define the SpeechRecognition types to fix TypeScript errors
-interface SpeechRecognition extends EventTarget {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  start(): void;
-  stop(): void;
-  onresult: (event: any) => void;
-  onerror: (event: any) => void;
-  onend: (event: any) => void;
-  onnomatch: (event: any) => void;
-  onaudiostart: (event: any) => void;
-  onaudioend: (event: any) => void;
-  onspeechstart: (event: any) => void;
-  onspeechend: (event: any) => void;
-}
-
-interface SpeechRecognitionConstructor {
-  new(): SpeechRecognition;
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition?: SpeechRecognitionConstructor;
-    webkitSpeechRecognition?: SpeechRecognitionConstructor;
-  }
-}
-
-interface UseVoiceRecognitionProps {
+interface VoiceRecognitionOptions {
   fieldName: string;
   form: UseFormReturn<any>;
 }
 
-const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
+interface SpeechRecognitionEventMap {
+  audiostart: Event;
+  audioend: Event;
+  start: Event;
+  end: Event;
+  error: SpeechRecognitionErrorEvent;
+  nomatch: SpeechRecognitionEvent;
+  result: SpeechRecognitionEvent;
+  soundstart: Event;
+  soundend: Event;
+  speechstart: Event;
+  speechend: Event;
+}
+
+// Define types for the Web Speech API
+// This is necessary because TypeScript doesn't include these types by default
+interface SpeechRecognition extends EventTarget {
+  grammars: any;
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  maxAlternatives: number;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  addEventListener<K extends keyof SpeechRecognitionEventMap>(
+    type: K,
+    listener: (this: SpeechRecognition, ev: SpeechRecognitionEventMap[K]) => any,
+    options?: boolean | AddEventListenerOptions
+  ): void;
+  removeEventListener<K extends keyof SpeechRecognitionEventMap>(
+    type: K,
+    listener: (this: SpeechRecognition, ev: SpeechRecognitionEventMap[K]) => any,
+    options?: boolean | EventListenerOptions
+  ): void;
+}
+
+const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isSupported, setIsSupported] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Process speech commands to handle punctuation
   const processCommand = (transcript: string, element: HTMLElement | null): string => {
     // Define command mappings for punctuation and formatting
-    const commands: Record<string, (el: HTMLElement | null) => string | void> = {
+    const commands: Record<string, (el: HTMLElement | null) => string> = {
       "point un": (el) => {
         if (el) {
           document.execCommand('insertText', false, '.');
@@ -71,219 +81,122 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
       }
     };
 
-    // Convert transcript to lowercase for case-insensitive matching
     const lowerTranscript = transcript.toLowerCase().trim();
     
     // Check for commands
     for (const [command, action] of Object.entries(commands)) {
       if (lowerTranscript === command) {
-        const result = action(element);
-        // We need to explicitly check if result is defined (not undefined)
-        if (result !== undefined) {
-          return result;
-        }
-        return ''; // Command processed, don't insert the command text
+        return action(element);
       }
     }
     
-    // No command found, return original transcript
+    // No command found, return the original transcript
     return transcript;
   };
 
+  // Effect to set up recognition
   useEffect(() => {
-    // Check if browser supports speech recognition
-    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    // Check if browser supports the Web Speech API
+    const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      console.log("Speech recognition not supported in this browser");
+      setIsSupported(false);
+      return;
+    }
     
-    if (SpeechRecognitionAPI) {
-      recognitionRef.current = new SpeechRecognitionAPI();
+    setIsSupported(true);
+    
+    // Initialize recognition with French language
+    recognitionRef.current = new SpeechRecognition();
+    if (recognitionRef.current) {
       recognitionRef.current.lang = 'fr-FR';
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
       
-      recognitionRef.current.onresult = (event: any) => {
-        const currentValue = form.getValues(fieldName) || '';
-        const resultIndex = event.resultIndex;
-        let transcript = event.results[resultIndex][0].transcript;
-        
-        setIsListening(true);
-        
-        // If we get a result, clear the timeout
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-          timeoutRef.current = null;
+      // Set up event handlers
+      recognitionRef.current.addEventListener('result', handleRecognitionResult);
+      recognitionRef.current.addEventListener('start', () => setIsListening(true));
+      recognitionRef.current.addEventListener('end', () => {
+        setIsListening(false);
+        // Restart recognition if we're still in recording mode
+        if (isRecording && recognitionRef.current) {
+          recognitionRef.current.start();
         }
-        
-        if (event.results[resultIndex].isFinal) {
-          console.log("Final transcript received:", transcript);
-          
-          // For contentEditable elements, handle differently
-          if (fieldName === 'description') {
-            const element = document.getElementById('description');
-            if (element) {
-              const processedText = processCommand(transcript, element);
-              
-              // If command returned empty, it was processed as a command
-              if (processedText === '') {
-                return;
-              }
-              
-              let content = element.innerHTML;
-              
-              // Add space if there's already content
-              if (content && !content.endsWith(' ') && !content.endsWith('>')) {
-                content += ' ';
-              }
-              
-              // Append the transcript
-              element.innerHTML = content + processedText;
-              
-              // Manually trigger the form update
-              const event = new Event('input', { bubbles: true });
-              element.dispatchEvent(event);
-              
-              console.log("Updated editor content with speech:", element.innerHTML);
-            } else {
-              console.error("Description element not found");
-            }
-          } else {
-            // For regular form fields
-            const processedText = processCommand(transcript, null);
-            form.setValue(
-              fieldName, 
-              currentValue ? `${currentValue} ${processedText}` : processedText,
-              { shouldValidate: true, shouldDirty: true }
-            );
-            console.log("Updated form value:", form.getValues(fieldName));
-          }
-        }
-      };
-      
-      recognitionRef.current.onaudiostart = () => {
-        console.log("Audio capturing started");
-      };
-      
-      recognitionRef.current.onspeechstart = () => {
-        console.log("Speech detection started");
-        setIsListening(true);
-      };
-      
-      recognitionRef.current.onspeechend = () => {
-        console.log("Speech detection ended");
-        // Set a timeout to show a notification if no speech is detected for a while
-        if (isRecording) {
-          timeoutRef.current = setTimeout(() => {
-            toast.info("Aucune parole détectée. Continuez à parler ou arrêtez l'enregistrement.");
-            setIsListening(false);
-          }, 3000);
-        }
-      };
-      
-      recognitionRef.current.onend = () => {
-        // If recording is still enabled, restart the recognition
-        // This helps with continuous recording
-        if (isRecording) {
-          console.log("Recognition ended but still recording, restarting...");
-          try {
-            recognitionRef.current?.start();
-          } catch (error) {
-            console.error("Error restarting speech recognition:", error);
-          }
-        }
-      };
-      
-      recognitionRef.current.onerror = (event: any) => {
-        console.error('Speech recognition error', event.error);
-        
-        // Clear any pending timeouts
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-          timeoutRef.current = null;
-        }
-        
-        // Only show error toast if we're actually recording (avoid showing errors when stopping)
-        if (isRecording) {
-          switch (event.error) {
-            case 'no-speech':
-              toast.info("Aucune parole détectée. Veuillez parler plus fort ou vérifier votre microphone.");
-              break;
-            case 'audio-capture':
-              toast.error("Impossible d'accéder au microphone. Vérifiez que votre appareil a un microphone et que vous avez accordé les permissions.");
-              setIsRecording(false);
-              break;
-            case 'not-allowed':
-              toast.error("Permission de microphone refusée. Veuillez autoriser l'accès au microphone dans les paramètres de votre navigateur.");
-              setIsRecording(false);
-              break;
-            case 'network':
-              toast.error("Problème de réseau. Vérifiez votre connexion internet.");
-              break;
-            default:
-              toast.error("Erreur de reconnaissance vocale: " + event.error);
-          }
-        }
-      };
+      });
+      recognitionRef.current.addEventListener('error', (e) => {
+        console.error('Speech recognition error', e);
+        setIsListening(false);
+      });
     }
     
     return () => {
-      // Clean up on unmount
-      if (recognitionRef.current && isRecording) {
-        try {
-          recognitionRef.current.stop();
-        } catch (error) {
-          console.error("Error stopping speech recognition on unmount:", error);
-        }
-      }
-      
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
+      if (recognitionRef.current) {
+        // Clean up event listeners
+        recognitionRef.current.removeEventListener('result', handleRecognitionResult);
+        recognitionRef.current.abort();
       }
     };
-  }, [fieldName, form, isRecording]);
+  }, [isRecording, fieldName, form]);
 
+  // Handle recognition results
+  const handleRecognitionResult = (event: SpeechRecognitionEvent) => {
+    const results = event.results;
+    if (!results.length) return;
+    
+    const current = results[results.length - 1];
+    
+    if (current.isFinal) {
+      const transcript = current[0].transcript.trim();
+      
+      if (transcript) {
+        const elementId = fieldName;
+        const element = document.getElementById(elementId);
+        
+        if (element && element.isContentEditable) {
+          // For contentEditable elements
+          const processedText = processCommand(transcript, element);
+          if (processedText) {
+            document.execCommand('insertText', false, processedText);
+          }
+        } else {
+          // For regular form inputs
+          const formValue = form.getValues(fieldName) || '';
+          const processedText = processCommand(transcript, null);
+          form.setValue(fieldName, formValue + ' ' + processedText, { 
+            shouldValidate: true,
+            shouldDirty: true,
+            shouldTouch: true
+          });
+        }
+      }
+    }
+  };
+
+  // Toggle voice recording on/off
   const toggleVoiceRecording = () => {
-    if (!recognitionRef.current) {
-      toast.error("La reconnaissance vocale n'est pas supportée par ce navigateur");
+    if (!isSupported) {
+      toast.error("La dictée vocale n'est pas prise en charge par votre navigateur");
       return;
     }
     
     if (isRecording) {
-      try {
+      // Stop recording
+      if (recognitionRef.current) {
         recognitionRef.current.stop();
-        setIsRecording(false);
-        setIsListening(false);
-        toast.success("Enregistrement vocal terminé");
-        
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-          timeoutRef.current = null;
-        }
-      } catch (error) {
-        console.error("Error stopping speech recognition:", error);
       }
+      setIsRecording(false);
+      toast.info("Dictée vocale désactivée");
     } else {
-      try {
-        // Request microphone permission explicitly first
-        navigator.mediaDevices.getUserMedia({ audio: true })
-          .then(() => {
-            recognitionRef.current?.start();
-            setIsRecording(true);
-            toast.info("Enregistrement vocal démarré... Parlez clairement dans votre microphone.");
-            toast.info("Commandes disponibles: 'point un' → ., 'point virgule un' → ;, 'à la ligne' → saut de ligne");
-            
-            // Set a timeout to check if speech is detected
-            timeoutRef.current = setTimeout(() => {
-              if (isRecording && !isListening) {
-                toast.info("Aucune parole détectée. Assurez-vous que votre microphone fonctionne et parlez clairement.");
-              }
-            }, 3000);
-          })
-          .catch((error) => {
-            console.error("Error getting microphone permission:", error);
-            toast.error("Impossible d'accéder au microphone. Vérifiez vos paramètres de confidentialité.");
-          });
-      } catch (error) {
-        console.error("Error starting speech recognition:", error);
-        toast.error("Erreur lors du démarrage de la reconnaissance vocale.");
+      // Start recording
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.start();
+          setIsRecording(true);
+          toast.success("Dictée vocale activée");
+        } catch (error) {
+          console.error("Error starting speech recognition:", error);
+          toast.error("Erreur lors de l'activation de la dictée vocale");
+        }
       }
     }
   };
@@ -292,7 +205,7 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
     isRecording,
     isListening,
     toggleVoiceRecording,
-    isSupported: !!window.SpeechRecognition || !!window.webkitSpeechRecognition
+    isSupported
   };
 };
 

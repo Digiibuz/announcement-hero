@@ -9,16 +9,22 @@ import { Loader2, Sparkles, Search } from "lucide-react";
 import { AnnouncementFormData } from "../AnnouncementForm";
 import { UseFormReturn } from "react-hook-form";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
+import { useIsMobile } from "@/hooks/use-media-query";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface SeoStepProps {
   form: UseFormReturn<AnnouncementFormData>;
   isMobile?: boolean;
 }
 
-const SeoStep = ({ form, isMobile }: SeoStepProps) => {
+const SeoStep = ({ form, isMobile: propIsMobile }: SeoStepProps) => {
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const [seoTitleLength, setSeoTitleLength] = useState(0);
   const [seoDescriptionLength, setSeoDescriptionLength] = useState(0);
+  // Use the hook for more reliable mobile detection
+  const isMobileFromHook = useIsMobile();
+  // Use either the prop or the hook value, with preference for the prop
+  const isMobile = propIsMobile !== undefined ? propIsMobile : isMobileFromHook;
   
   useEffect(() => {
     // Mettre à jour les compteurs de caractères lors de l'initialisation et des changements
@@ -72,8 +78,6 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Le titre et la description sont automatiquement ajoutés dans CreateAnnouncement.tsx */}
-      
       <Card className={getCardStyles()}>
         <CardContent className={`space-y-4 ${isMobile ? "px-0 py-4" : "p-6"}`}>
           <FormField 
@@ -83,26 +87,37 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
               <FormItem>
                 <div className="flex justify-between items-center">
                   <FormLabel>Titre SEO</FormLabel>
-                  <Button 
-                    type="button" 
-                    size="sm" 
-                    variant="outline" 
-                    className="flex items-center gap-1 h-8"
-                    onClick={() => optimizeSeoContent('seoTitle')} 
-                    disabled={isOptimizing.seoTitle}
-                  >
-                    {isOptimizing.seoTitle ? (
-                      <>
-                        <Loader2 size={14} className="animate-spin" />
-                        <span className="text-xs">Optimisation...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles size={14} />
-                        <span className="text-xs">Générer</span>
-                      </>
-                    )}
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          type="button" 
+                          size={isMobile ? "icon" : "sm"} 
+                          variant="outline" 
+                          className={`flex items-center gap-1 ${isMobile ? "h-8 w-8" : "h-8"}`}
+                          onClick={() => optimizeSeoContent('seoTitle')} 
+                          disabled={isOptimizing.seoTitle}
+                        >
+                          {isOptimizing.seoTitle ? (
+                            <>
+                              <Loader2 size={14} className="animate-spin" />
+                              {!isMobile && <span className="text-xs">Optimisation...</span>}
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles size={14} />
+                              {!isMobile && <span className="text-xs">Générer</span>}
+                            </>
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      {isMobile && (
+                        <TooltipContent>
+                          <p>Optimiser le titre SEO</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
                 <FormControl>
                   <div className="space-y-1">
@@ -136,26 +151,37 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
               <FormItem>
                 <div className="flex justify-between items-center">
                   <FormLabel>Méta description</FormLabel>
-                  <Button 
-                    type="button" 
-                    size="sm" 
-                    variant="outline" 
-                    className="flex items-center gap-1 h-8"
-                    onClick={() => optimizeSeoContent('seoDescription')} 
-                    disabled={isOptimizing.seoDescription}
-                  >
-                    {isOptimizing.seoDescription ? (
-                      <>
-                        <Loader2 size={14} className="animate-spin" />
-                        <span className="text-xs">Optimisation...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles size={14} />
-                        <span className="text-xs">Générer</span>
-                      </>
-                    )}
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          type="button" 
+                          size={isMobile ? "icon" : "sm"} 
+                          variant="outline" 
+                          className={`flex items-center gap-1 ${isMobile ? "h-8 w-8" : "h-8"}`}
+                          onClick={() => optimizeSeoContent('seoDescription')} 
+                          disabled={isOptimizing.seoDescription}
+                        >
+                          {isOptimizing.seoDescription ? (
+                            <>
+                              <Loader2 size={14} className="animate-spin" />
+                              {!isMobile && <span className="text-xs">Optimisation...</span>}
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles size={14} />
+                              {!isMobile && <span className="text-xs">Générer</span>}
+                            </>
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      {isMobile && (
+                        <TooltipContent>
+                          <p>Optimiser la description SEO</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
                 <FormControl>
                   <div className="space-y-1">

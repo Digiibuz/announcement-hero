@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useContentOptimization } from "@/hooks/useContentOptimization";
 import useVoiceRecognition from "@/hooks/useVoiceRecognition";
 import "@/styles/editor.css";
+import { useIsMobile } from "@/hooks/use-media-query";
 
 interface DescriptionFieldProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -27,6 +28,7 @@ const DescriptionField = ({
   const editorRef = useRef<HTMLDivElement>(null);
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const initialRenderRef = useRef(true);
+  const isMobile = useIsMobile();
   
   // Voice recognition integration
   const { isRecording, isListening, toggleVoiceRecording, isSupported } = 
@@ -188,24 +190,67 @@ const DescriptionField = ({
         <Label>Description</Label>
         
         <div className="flex gap-2">
-          <Button type="button" size="sm" variant="outline" className="flex items-center gap-1" onClick={generateNewContent} disabled={isOptimizing.generateDescription}>
-            {isOptimizing.generateDescription ? <>
-                <Loader2 size={16} className="animate-spin" />
-                <span>Génération...</span>
-              </> : <>
-                <Wand2 size={16} />
-                <span>Générer avec l'IA</span>
-              </>}
-          </Button>
-          <Button type="button" size="sm" variant="secondary" className="flex items-center gap-1" onClick={generateImprovedContent} disabled={isOptimizing.description}>
-            {isOptimizing.description ? <>
-                <Loader2 size={16} className="animate-spin" />
-                <span>Optimisation...</span>
-              </> : <>
-                <Sparkles size={16} />
-                <span>Optimiser avec l'IA</span>
-              </>}
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  type="button" 
+                  size={isMobile ? "icon" : "sm"} 
+                  variant="outline" 
+                  className={`flex items-center gap-1 ${isMobile ? "h-9 w-9" : ""}`} 
+                  onClick={generateNewContent} 
+                  disabled={isOptimizing.generateDescription}
+                >
+                  {isOptimizing.generateDescription ? 
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      {!isMobile && <span>Génération...</span>}
+                    </> : 
+                    <>
+                      <Wand2 size={16} />
+                      {!isMobile && <span>Générer avec l'IA</span>}
+                    </>
+                  }
+                </Button>
+              </TooltipTrigger>
+              {isMobile && (
+                <TooltipContent>
+                  <p>Générer avec l'IA</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  type="button" 
+                  size={isMobile ? "icon" : "sm"} 
+                  variant="secondary" 
+                  className={`flex items-center gap-1 ${isMobile ? "h-9 w-9" : ""}`} 
+                  onClick={generateImprovedContent} 
+                  disabled={isOptimizing.description}
+                >
+                  {isOptimizing.description ? 
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      {!isMobile && <span>Optimisation...</span>}
+                    </> : 
+                    <>
+                      <Sparkles size={16} />
+                      {!isMobile && <span>Optimiser avec l'IA</span>}
+                    </>
+                  }
+                </Button>
+              </TooltipTrigger>
+              {isMobile && (
+                <TooltipContent>
+                  <p>Optimiser avec l'IA</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
       
