@@ -24,6 +24,7 @@ import StepNavigation from "@/components/announcements/steps/StepNavigation";
 import AnnouncementSummary from "@/components/announcements/steps/AnnouncementSummary";
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
 import { AnnouncementFormData } from "@/components/announcements/AnnouncementForm";
+import { Form } from "@/components/ui/form";
 
 const FORM_STORAGE_KEY = "announcement-form-draft";
 
@@ -344,49 +345,51 @@ const CreateAnnouncement = () => {
             isMobile={isMobile} 
           />
           
-          <form>
-            <div className={isMobile ? "px-4" : ""}>
-              {currentStep === 0 && (
-                <CategoryStep form={form} isMobile={isMobile} />
-              )}
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)}>
+              <div className={isMobile ? "px-4" : ""}>
+                {currentStep === 0 && (
+                  <CategoryStep form={form} isMobile={isMobile} />
+                )}
+                
+                {currentStep === 1 && (
+                  <DescriptionStep form={form} isMobile={isMobile} />
+                )}
+                
+                {currentStep === 2 && (
+                  <ImagesStep form={form} isMobile={isMobile} />
+                )}
+                
+                {currentStep === 3 && (
+                  <SeoStep form={form} isMobile={isMobile} />
+                )}
+                
+                {currentStep === 4 && (
+                  <PublishingStep form={form} isMobile={isMobile} />
+                )}
+                
+                {currentStep === 5 && (
+                  <AnnouncementSummary 
+                    data={form.getValues()} 
+                    isMobile={isMobile}
+                    categoryName={getCategoryName()}
+                  />
+                )}
+              </div>
               
-              {currentStep === 1 && (
-                <DescriptionStep form={form} isMobile={isMobile} />
-              )}
-              
-              {currentStep === 2 && (
-                <ImagesStep form={form} isMobile={isMobile} />
-              )}
-              
-              {currentStep === 3 && (
-                <SeoStep form={form} isMobile={isMobile} />
-              )}
-              
-              {currentStep === 4 && (
-                <PublishingStep form={form} isMobile={isMobile} />
-              )}
-              
-              {currentStep === 5 && (
-                <AnnouncementSummary 
-                  data={form.getValues()} 
-                  isMobile={isMobile}
-                  categoryName={getCategoryName()}
-                />
-              )}
-            </div>
-            
-            <StepNavigation 
-              currentStep={currentStep}
-              totalSteps={steps.length}
-              onPrevious={handlePrevious}
-              onNext={handleNext}
-              onSubmit={handleSubmit}
-              isLastStep={currentStep === steps.length - 1}
-              isFirstStep={currentStep === 0}
-              isSubmitting={isSubmitting || isPublishing}
-              isMobile={isMobile}
-            />
-          </form>
+              <StepNavigation 
+                currentStep={currentStep}
+                totalSteps={steps.length}
+                onPrevious={handlePrevious}
+                onNext={handleNext}
+                onSubmit={handleSubmit}
+                isLastStep={currentStep === steps.length - 1}
+                isFirstStep={currentStep === 0}
+                isSubmitting={isSubmitting || isPublishing}
+                isMobile={isMobile}
+              />
+            </form>
+          </Form>
         </div>
       </AnimatedContainer>
       
