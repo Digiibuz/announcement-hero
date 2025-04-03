@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { UseFormReturn } from "react-hook-form";
@@ -254,53 +255,45 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
     }
   };
 
-  // Start voice recording
-  const startRecording = () => {
+  // Toggle voice recording on/off
+  const toggleVoiceRecording = () => {
     if (!isSupported) {
       toast.error("La dictée vocale n'est pas prise en charge par votre navigateur");
       return;
     }
     
-    if (recognitionRef.current) {
-      try {
-        // Focus the element when starting recording
-        const element = document.getElementById(fieldName);
-        if (element) {
-          element.focus();
-          if (element.isContentEditable) {
-            placeCursorAtEnd(element);
-          } else if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
-            element.selectionStart = element.value.length;
-            element.selectionEnd = element.value.length;
-          }
-        }
-        
-        recognitionRef.current.start();
-        setIsRecording(true);
-      } catch (error) {
-        console.error("Error starting speech recognition:", error);
-        toast.error("Erreur lors de l'activation de la dictée vocale");
-      }
-    }
-  };
-
-  // Stop voice recording
-  const stopRecording = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
-    setIsRecording(false);
-    setIsProcessing(false);
-  };
-
-  // Toggle voice recording on/off
-  const toggleVoiceRecording = () => {
     if (isRecording) {
-      stopRecording();
+      // Stop recording
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsRecording(false);
+      setIsProcessing(false);
       toast.info("Dictée vocale désactivée");
     } else {
-      startRecording();
-      toast.success("Dictée vocale activée");
+      // Start recording
+      if (recognitionRef.current) {
+        try {
+          // Focus the element when starting recording
+          const element = document.getElementById(fieldName);
+          if (element) {
+            element.focus();
+            if (element.isContentEditable) {
+              placeCursorAtEnd(element);
+            } else if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+              element.selectionStart = element.value.length;
+              element.selectionEnd = element.value.length;
+            }
+          }
+          
+          recognitionRef.current.start();
+          setIsRecording(true);
+          toast.success("Dictée vocale activée");
+        } catch (error) {
+          console.error("Error starting speech recognition:", error);
+          toast.error("Erreur lors de l'activation de la dictée vocale");
+        }
+      }
     }
   };
 
@@ -309,8 +302,6 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
     isListening,
     isProcessing,
     toggleVoiceRecording,
-    startRecording,
-    stopRecording,
     isSupported
   };
 };

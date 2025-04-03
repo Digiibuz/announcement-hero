@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
@@ -14,7 +15,6 @@ import useVoiceRecognition from "@/hooks/useVoiceRecognition";
 import "@/styles/editor.css";
 import { useIsMobile } from "@/hooks/use-media-query";
 import { LoadingIndicator } from "@/components/ui/loading-indicator";
-import DictationButton from "@/components/ui/DictationButton";
 
 interface DescriptionFieldProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -31,7 +31,8 @@ const DescriptionField = ({
   const initialRenderRef = useRef(true);
   const isMobile = useIsMobile();
   
-  const { isRecording, isListening, isProcessing, toggleVoiceRecording, startRecording, stopRecording, isSupported } = 
+  // Voice recognition integration
+  const { isRecording, isListening, isProcessing, toggleVoiceRecording, isSupported } = 
     useVoiceRecognition({ fieldName: 'description', form });
 
   const updateFormValue = () => {
@@ -381,13 +382,15 @@ const DescriptionField = ({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <DictationButton 
-                  isRecording={isRecording}
-                  isSupported={isSupported}
-                  toggle={toggleVoiceRecording}
-                  startRecording={startRecording}
-                  stopRecording={stopRecording}
-                />
+                <Button 
+                  type="button" 
+                  variant={isRecording ? "default" : "outline"} 
+                  size="icon" 
+                  className={`h-8 w-8 ${isRecording ? "bg-red-500 hover:bg-red-600" : ""}`} 
+                  onClick={toggleVoiceRecording}
+                >
+                  {isRecording ? <MicOff size={16} /> : <Mic size={16} />}
+                </Button>
               </TooltipTrigger>
               <TooltipContent>
                 <p>{isRecording ? "Arrêter la dictée" : "Dicter du texte"}</p>
