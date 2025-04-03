@@ -53,6 +53,11 @@ const PageLayout = ({
   // Calculer le padding-top supplémentaire si la bannière d'impersonation est visible
   const bannerPadding = isImpersonating ? "pt-12" : "";
 
+  // Définir la classe de largeur pour le conteneur
+  const containerWidthClass = containerClassName?.includes('max-w-') 
+    ? containerClassName 
+    : `${containerClassName || ''} max-w-5xl mx-auto`;
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -68,9 +73,9 @@ const PageLayout = ({
       <Sidebar />
 
       <main className={`pt-16 md:pl-64 ${bannerPadding}`}>
-        <div className={`container ${fullWidthMobile && isMobile ? 'px-0 sm:px-4' : 'px-4'} py-0 ${containerClassName || ''}`}>
+        <div className={`container ${fullWidthMobile && isMobile ? 'px-0 sm:px-4' : 'px-4'} py-0 ${containerWidthClass}`}>
           {(title || titleAction || showRefreshButton) && (
-            <AnimatedContainer delay={100} className={containerClassName?.includes('max-w-full') ? 'w-full' : ''}>
+            <AnimatedContainer delay={100} className={containerClassName?.includes('max-w-') ? containerClassName : ''}>
               <div className={`flex flex-col ${!isMobile ? "sm:flex-row sm:items-center sm:justify-between" : ""} mb-4 ${isMobile ? "pt-0 px-4" : "pt-2"} gap-3`}>
                 <div className="flex flex-row items-center gap-4">
                   {title && <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>}

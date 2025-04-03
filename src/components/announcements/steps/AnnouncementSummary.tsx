@@ -30,7 +30,7 @@ const AnnouncementSummary = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-3xl mx-auto">
       <div className="space-y-4">
         <Card className={getCardStyles()}>
           <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"}`}>
