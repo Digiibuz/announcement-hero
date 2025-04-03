@@ -8,6 +8,36 @@ interface VoiceRecognitionOptions {
   form: UseFormReturn<any>;
 }
 
+// Define types for the Web Speech API
+// This is necessary because TypeScript doesn't include these types by default
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message: string;
+}
+
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionResultList {
+  readonly length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  readonly length: number;
+  item(index: number): SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionAlternative;
+  isFinal: boolean;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
 interface SpeechRecognitionEventMap {
   audiostart: Event;
   audioend: Event;
@@ -22,8 +52,6 @@ interface SpeechRecognitionEventMap {
   speechend: Event;
 }
 
-// Define types for the Web Speech API
-// This is necessary because TypeScript doesn't include these types by default
 interface SpeechRecognition extends EventTarget {
   grammars: any;
   lang: string;
@@ -97,8 +125,8 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
   // Effect to set up recognition
   useEffect(() => {
     // Check if browser supports the Web Speech API
-    const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
+    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognitionAPI) {
       console.log("Speech recognition not supported in this browser");
       setIsSupported(false);
       return;
@@ -107,7 +135,7 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
     setIsSupported(true);
     
     // Initialize recognition with French language
-    recognitionRef.current = new SpeechRecognition();
+    recognitionRef.current = new SpeechRecognitionAPI();
     if (recognitionRef.current) {
       recognitionRef.current.lang = 'fr-FR';
       recognitionRef.current.continuous = true;

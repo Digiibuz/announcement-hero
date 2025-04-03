@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
@@ -14,6 +13,7 @@ import { useContentOptimization } from "@/hooks/useContentOptimization";
 import useVoiceRecognition from "@/hooks/useVoiceRecognition";
 import "@/styles/editor.css";
 import { useIsMobile } from "@/hooks/use-media-query";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
 
 interface DescriptionFieldProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -377,7 +377,6 @@ const DescriptionField = ({
           </PopoverContent>
         </Popover>
         
-        {/* Voice dictation button */}
         {isSupported && (
           <TooltipProvider>
             <Tooltip>
@@ -401,14 +400,9 @@ const DescriptionField = ({
       </div>
       
       {isRecording && (
-        <div className="mb-2 text-sm bg-muted p-2 rounded border border-border">
-          <p className="font-medium mb-1">Mode dictée active {isListening ? "- écoute..." : ""}</p>
-          <p>Commandes de ponctuation:</p>
-          <ul className="text-xs text-muted-foreground pl-4 mt-1">
-            <li>"Point un" → .</li>
-            <li>"Point virgule un" → ;</li>
-            <li>"À la ligne" → ↵ (nouvelle ligne)</li>
-          </ul>
+        <div className="flex items-center gap-2 text-sm bg-red-50 dark:bg-red-950/20 p-2 rounded border border-red-200 dark:border-red-800">
+          <LoadingIndicator size={16} variant="dots" color="#dc2626" />
+          <span className="text-red-600 dark:text-red-400 font-medium">Dictée active {isListening ? "" : "..."}</span>
         </div>
       )}
       
