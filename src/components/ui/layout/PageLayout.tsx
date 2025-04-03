@@ -53,6 +53,9 @@ const PageLayout = ({
   // Calculer le padding-top supplémentaire si la bannière d'impersonation est visible
   const bannerPadding = isImpersonating ? "pt-12" : "";
 
+  // Determine if we're on the create announcement page
+  const isCreateAnnouncementPage = location.pathname === '/create-announcement';
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -68,7 +71,7 @@ const PageLayout = ({
       <Sidebar />
 
       <main className={`pt-16 md:pl-64 ${bannerPadding}`}>
-        <div className={`container ${fullWidthMobile && isMobile ? 'px-0 sm:px-4' : 'px-4'} py-0 ${containerClassName || ''}`}>
+        <div className={`container ${fullWidthMobile && isMobile ? 'px-0 sm:px-4' : 'px-4'} py-0 ${isCreateAnnouncementPage && !isMobile ? 'max-w-5xl mx-auto' : ''} ${containerClassName || ''}`}>
           {(title || titleAction || showRefreshButton) && (
             <AnimatedContainer delay={100} className={containerClassName?.includes('max-w-full') ? 'w-full' : ''}>
               <div className={`flex flex-col ${!isMobile ? "sm:flex-row sm:items-center sm:justify-between" : ""} mb-4 ${isMobile ? "pt-0 px-4" : "pt-2"} gap-3`}>

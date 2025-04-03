@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { AnnouncementFormData } from "../AnnouncementForm";
@@ -17,17 +18,16 @@ const ImagesStep = ({
     }
     return "border shadow-sm";
   };
-  return <div className="space-y-6">
-      <div className="mb-6">
-        
-        
-      </div>
+  return (
+    <div className="space-y-6 max-w-3xl mx-auto">
+      <div className="mb-6"></div>
       
       <Card className={getCardStyles()}>
         <CardContent className={`${isMobile ? "px-0 py-4" : "p-6"}`}>
           <ImageUploader form={form} />
         </CardContent>
       </Card>
-    </div>;
+    </div>
+  );
 };
 export default ImagesStep;

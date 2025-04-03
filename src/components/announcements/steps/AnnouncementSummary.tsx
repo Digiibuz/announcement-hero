@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AnnouncementFormData } from "../AnnouncementForm";
@@ -24,9 +25,8 @@ const AnnouncementSummary = ({
     if (!text) return "";
     return text.length > length ? text.substring(0, length) + "..." : text;
   };
-  return <div className="space-y-6">
-      
-      
+  return (
+    <div className="space-y-6 max-w-3xl mx-auto">
       <div className="space-y-4">
         <Card className={getCardStyles()}>
           <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"}`}>
@@ -131,6 +131,7 @@ const AnnouncementSummary = ({
           </CardContent>
         </Card>
       </div>
-    </div>;
+    </div>
+  );
 };
 export default AnnouncementSummary;
