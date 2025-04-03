@@ -1,8 +1,9 @@
+
 import React, { useRef, useState, useEffect } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Loader2, Sparkles, Wand2, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Link } from "lucide-react";
+import { Loader2, Sparkles, Wand2, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Link, Mic, MicOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
@@ -10,6 +11,7 @@ import { AnnouncementFormData } from "./AnnouncementForm";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
+import useVoiceRecognition from "@/hooks/useVoiceRecognition";
 import "@/styles/editor.css";
 
 interface DescriptionFieldProps {
@@ -25,6 +27,10 @@ const DescriptionField = ({
   const editorRef = useRef<HTMLDivElement>(null);
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const initialRenderRef = useRef(true);
+  
+  // Voice recognition integration
+  const { isRecording, isListening, toggleVoiceRecording, isSupported } = 
+    useVoiceRecognition({ fieldName: 'description', form });
 
   const updateFormValue = () => {
     if (editorRef.current) {
@@ -325,11 +331,45 @@ const DescriptionField = ({
             </div>
           </PopoverContent>
         </Popover>
+        
+        {/* Voice dictation button */}
+        {isSupported && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  type="button" 
+                  variant={isRecording ? "default" : "outline"} 
+                  size="icon" 
+                  className={`h-8 w-8 ${isRecording ? "bg-red-500 hover:bg-red-600" : ""}`} 
+                  onClick={toggleVoiceRecording}
+                >
+                  {isRecording ? <MicOff size={16} /> : <Mic size={16} />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{isRecording ? "Arrêter la dictée" : "Dicter du texte"}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </div>
       
+      {isRecording && (
+        <div className="mb-2 text-sm bg-muted p-2 rounded border border-border">
+          <p className="font-medium mb-1">Mode dictée active {isListening ? "- écoute..." : ""}</p>
+          <p>Commandes de ponctuation:</p>
+          <ul className="text-xs text-muted-foreground pl-4 mt-1">
+            <li>"Point un" → .</li>
+            <li>"Point virgule un" → ;</li>
+            <li>"À la ligne" → ↵ (nouvelle ligne)</li>
+          </ul>
+        </div>
+      )}
+      
       <FormField control={form.control} name="description" render={({
-      field
-    }) => <FormItem>
+        field
+      }) => <FormItem>
             <FormControl>
               <div 
                 ref={editorRef} 
@@ -346,4 +386,5 @@ const DescriptionField = ({
           </FormItem>} />
     </div>;
 };
+
 export default DescriptionField;
