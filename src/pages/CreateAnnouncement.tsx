@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect } from "react";
@@ -25,16 +26,42 @@ import AnnouncementSummary from "@/components/announcements/steps/AnnouncementSu
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
 import { AnnouncementFormData } from "@/components/announcements/AnnouncementForm";
 import { Form } from "@/components/ui/form";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
+import { StepConfig, AnnouncementFormStep } from "@/types/steps";
 
 const FORM_STORAGE_KEY = "announcement-form-draft";
 
-const steps = [
-  "Catégorie",
-  "Description",
-  "Images",
-  "SEO",
-  "Publication",
-  "Résumé"
+const stepConfigs: StepConfig[] = [
+  {
+    id: "category",
+    title: "Catégorie",
+    description: "Dans quelle page souhaitez-vous faire apparaître votre annonce ?"
+  },
+  {
+    id: "description",
+    title: "Description",
+    description: "Donnez un titre accrocheur et une description détaillée pour attirer l'attention des lecteurs."
+  },
+  {
+    id: "images",
+    title: "Images",
+    description: "Les annonces avec des images de qualité attirent davantage l'attention et génèrent plus d'intérêt."
+  },
+  {
+    id: "seo",
+    title: "SEO",
+    description: "Améliorez la visibilité de votre annonce dans les moteurs de recherche comme Google."
+  },
+  {
+    id: "publishing",
+    title: "Publication",
+    description: "Définissez quand et comment votre annonce sera publiée."
+  },
+  {
+    id: "summary",
+    title: "Résumé",
+    description: "Vérifiez les informations de votre annonce avant de la publier."
+  }
 ];
 
 const CreateAnnouncement = () => {
@@ -44,8 +71,11 @@ const CreateAnnouncement = () => {
   const { publishToWordPress, isPublishing, publishingState, resetPublishingState } = useWordPressPublishing();
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [showPublishingOverlay, setShowPublishingOverlay] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const { categories } = useWordPressCategories();
+  
+  // Get current step config
+  const currentStep = stepConfigs[currentStepIndex];
   
   // Initializing the form
   const form = useForm<AnnouncementFormData>({
@@ -61,6 +91,16 @@ const CreateAnnouncement = () => {
       seoSlug: ""
     }
   });
+
+  // Use the form persistence hook
+  const { clearSavedData, hasSavedData } = useFormPersistence(
+    form,
+    FORM_STORAGE_KEY,
+    undefined,  // no initial values, will load from storage
+    5000,       // autosave every 5 seconds
+    false,      // no debug
+    undefined   // watch all fields
+  );
 
   // Define the publishing steps
   const publishingSteps: PublishingStepType[] = [
@@ -109,40 +149,6 @@ const CreateAnnouncement = () => {
     };
   }, [form]);
 
-  // Load form data from localStorage on mount
-  useEffect(() => {
-    const savedData = localStorage.getItem(FORM_STORAGE_KEY);
-    if (savedData) {
-      try {
-        const parsedData = JSON.parse(savedData);
-        
-        // If we have publishDate as string, convert it to Date
-        if (parsedData.publishDate) {
-          parsedData.publishDate = new Date(parsedData.publishDate);
-        }
-        
-        Object.keys(parsedData).forEach(key => {
-          form.setValue(key as keyof AnnouncementFormData, parsedData[key]);
-        });
-        
-        console.log("Loaded saved form data:", parsedData);
-      } catch (e) {
-        console.error("Error parsing saved form data:", e);
-      }
-    }
-  }, [form]);
-
-  // Save form data to localStorage whenever it changes
-  useEffect(() => {
-    const subscription = form.watch((value) => {
-      if (Object.values(value).some(v => v !== undefined)) {
-        localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(value));
-      }
-    });
-    
-    return () => subscription.unsubscribe();
-  }, [form]);
-
   // Handle title changes to update SEO title and slug
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
@@ -177,7 +183,7 @@ const CreateAnnouncement = () => {
       setShowPublishingOverlay(true);
       
       // Clear saved form data from localStorage
-      localStorage.removeItem(FORM_STORAGE_KEY);
+      clearSavedData();
       
       // Show immediate feedback on mobile
       if (isMobile) {
@@ -279,14 +285,14 @@ const CreateAnnouncement = () => {
   };
 
   const handlePrevious = () => {
-    if (currentStep > 0) {
-      setCurrentStep(current => current - 1);
+    if (currentStepIndex > 0) {
+      setCurrentStepIndex(current => current - 1);
     }
   };
 
   const handleNext = () => {
     // Basic validation before proceeding
-    if (currentStep === 0 && !form.getValues().wordpressCategory) {
+    if (currentStepIndex === 0 && !form.getValues().wordpressCategory) {
       toast({
         title: "Champ requis",
         description: "Veuillez sélectionner une catégorie avant de continuer.",
@@ -295,7 +301,7 @@ const CreateAnnouncement = () => {
       return;
     }
 
-    if (currentStep === 1 && !form.getValues().title) {
+    if (currentStepIndex === 1 && !form.getValues().title) {
       toast({
         title: "Champ requis",
         description: "Veuillez saisir un titre avant de continuer.",
@@ -304,8 +310,8 @@ const CreateAnnouncement = () => {
       return;
     }
 
-    if (currentStep < steps.length - 1) {
-      setCurrentStep(current => current + 1);
+    if (currentStepIndex < stepConfigs.length - 1) {
+      setCurrentStepIndex(current => current + 1);
     }
   };
 
@@ -340,35 +346,35 @@ const CreateAnnouncement = () => {
           )}
           
           <StepIndicator 
-            steps={steps} 
-            currentStep={currentStep} 
+            steps={stepConfigs.map(step => step.title)} 
+            currentStep={currentStepIndex} 
             isMobile={isMobile} 
           />
           
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)}>
               <div className={isMobile ? "px-4" : ""}>
-                {currentStep === 0 && (
+                {currentStep.id === "category" && (
                   <CategoryStep form={form} isMobile={isMobile} />
                 )}
                 
-                {currentStep === 1 && (
+                {currentStep.id === "description" && (
                   <DescriptionStep form={form} isMobile={isMobile} />
                 )}
                 
-                {currentStep === 2 && (
+                {currentStep.id === "images" && (
                   <ImagesStep form={form} isMobile={isMobile} />
                 )}
                 
-                {currentStep === 3 && (
+                {currentStep.id === "seo" && (
                   <SeoStep form={form} isMobile={isMobile} />
                 )}
                 
-                {currentStep === 4 && (
+                {currentStep.id === "publishing" && (
                   <PublishingStep form={form} isMobile={isMobile} />
                 )}
                 
-                {currentStep === 5 && (
+                {currentStep.id === "summary" && (
                   <AnnouncementSummary 
                     data={form.getValues()} 
                     isMobile={isMobile}
@@ -378,13 +384,13 @@ const CreateAnnouncement = () => {
               </div>
               
               <StepNavigation 
-                currentStep={currentStep}
-                totalSteps={steps.length}
+                currentStep={currentStepIndex}
+                totalSteps={stepConfigs.length}
                 onPrevious={handlePrevious}
                 onNext={handleNext}
                 onSubmit={handleSubmit}
-                isLastStep={currentStep === steps.length - 1}
-                isFirstStep={currentStep === 0}
+                isLastStep={currentStepIndex === stepConfigs.length - 1}
+                isFirstStep={currentStepIndex === 0}
                 isSubmitting={isSubmitting || isPublishing}
                 isMobile={isMobile}
               />
