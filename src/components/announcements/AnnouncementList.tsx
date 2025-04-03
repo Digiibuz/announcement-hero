@@ -16,6 +16,7 @@ import {
   Trash2, 
   ImageIcon,
   Eye,
+  FileEdit,
   Calendar,
   CalendarClock,
   Tag,
@@ -195,8 +196,14 @@ const AnnouncementList = ({
                   <div className="flex justify-end gap-2">
                     <Button variant="ghost" size="icon" asChild>
                       <Link to={`/announcements/${announcement.id}`}>
-                        <Eye className="h-4 w-4" />
-                        <span className="sr-only">Voir</span>
+                        {announcement.status === "draft" ? (
+                          <FileEdit className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                        <span className="sr-only">
+                          {announcement.status === "draft" ? "Finaliser" : "Voir"}
+                        </span>
                       </Link>
                     </Button>
                     <AlertDialog>
@@ -301,8 +308,17 @@ const AnnouncementList = ({
           <CardFooter className="flex justify-end gap-2 pt-4">
             <Button variant="ghost" size="sm" asChild>
               <Link to={`/announcements/${announcement.id}`}>
-                <Eye className="h-4 w-4 mr-1" />
-                Voir
+                {announcement.status === "draft" ? (
+                  <>
+                    <FileEdit className="h-4 w-4 mr-1" />
+                    Finaliser
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4 mr-1" />
+                    Voir
+                  </>
+                )}
               </Link>
             </Button>
             <AlertDialog>
