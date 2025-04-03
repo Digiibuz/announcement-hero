@@ -81,6 +81,7 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const lastTextRef = useRef<string>("");
   const shouldCapitalizeNextRef = useRef<boolean>(true);
+  const isFirstWordRef = useRef<boolean>(true);
 
   // Process speech commands to handle punctuation
   const processCommand = (transcript: string, element: HTMLElement | null): string => {
@@ -170,10 +171,10 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
       "et commercial": (el) => el ? (document.execCommand('insertText', false, '&'), '') : '&',
       "esperluette": (el) => el ? (document.execCommand('insertText', false, '&'), '') : '&',
       
-      // Saut de ligne - Fixed to properly implement line breaks
+      // Saut de ligne - Fixed implementation to properly handle line breaks
       "à la ligne": (el) => {
         if (el) {
-          document.execCommand('insertHTML', false, '<br>');
+          document.execCommand('insertLineBreak', false);
           return '';
         } else {
           return '\n';
@@ -181,7 +182,7 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
       },
       "nouvelle ligne": (el) => {
         if (el) {
-          document.execCommand('insertHTML', false, '<br>');
+          document.execCommand('insertLineBreak', false);
           return '';
         } else {
           return '\n';
@@ -189,7 +190,7 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
       },
       "saut de ligne": (el) => {
         if (el) {
-          document.execCommand('insertHTML', false, '<br>');
+          document.execCommand('insertLineBreak', false);
           return '';
         } else {
           return '\n';
@@ -214,7 +215,8 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
       "majuscule": (el) => {
         // Marquer pour le prochain mot
         // Cette commande est spéciale, on retourne un flag pour traiter le prochain mot
-        return "<CAPITALIZE_NEXT>";
+        shouldCapitalizeNextRef.current = true;
+        return "";
       }
     };
     
@@ -231,6 +233,7 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
         if (remainingText && shouldCapitalizeNextRef.current) {
           const capitalized = remainingText.charAt(0).toUpperCase() + remainingText.slice(1);
           shouldCapitalizeNextRef.current = false;
+          isFirstWordRef.current = false;
           return punctuation + (capitalized ? " " + capitalized : "");
         } else {
           return punctuation + (remainingText ? " " + remainingText : "");
@@ -245,8 +248,9 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
       }
     }
     
-    // No command found, apply capitalization to normal text if needed
-    if (shouldCapitalizeNextRef.current) {
+    // Capitalize first word in the transcription if needed
+    if (isFirstWordRef.current || shouldCapitalizeNextRef.current) {
+      isFirstWordRef.current = false;
       shouldCapitalizeNextRef.current = false;
       return transcript.charAt(0).toUpperCase() + transcript.slice(1);
     }
@@ -393,6 +397,10 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
           
         if (currentValue) {
           shouldCapitalizeNextRef.current = hasEndingPunctuation(currentValue);
+          isFirstWordRef.current = false;
+        } else {
+          // If there's no content yet, first word should be capitalized
+          isFirstWordRef.current = true;
         }
         
         if (element && element.isContentEditable) {
@@ -466,7 +474,14 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
             ? element.innerHTML 
             : (form.getValues(fieldName) || '');
             
-          shouldCapitalizeNextRef.current = !currentValue || hasEndingPunctuation(currentValue);
+          if (!currentValue || currentValue.trim() === '') {
+            // If there's no content, first word should be capitalized
+            isFirstWordRef.current = true;
+            shouldCapitalizeNextRef.current = true;
+          } else {
+            isFirstWordRef.current = false;
+            shouldCapitalizeNextRef.current = hasEndingPunctuation(currentValue);
+          }
           
           if (element.isContentEditable) {
             placeCursorAtEnd(element);
