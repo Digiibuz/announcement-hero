@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { UseFormReturn } from "react-hook-form";
@@ -49,6 +50,7 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
   const lastTranscriptRef = useRef<string>("");
   const capitalizeNextRef = useRef<boolean>(true);
   const audioStreamRef = useRef<MediaStream | null>(null); // Track the audio stream
+  const isSpeechRecognitionInitialized = useRef<boolean>(false); // Track if speech recognition is initialized
 
   // Define punctuation and formatting commands
   const punctuationCommands: CommandMapping = {
@@ -197,46 +199,9 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
     return processedText;
   };
 
-  // Clean up function to stop recognition and clear resources
-  const cleanupRecognition = () => {
-    console.log("Cleaning up recognition resources");
-    
-    // Stop the recognition if it exists
-    if (recognitionRef.current) {
-      try {
-        // First abort to force immediate stop
-        recognitionRef.current.abort();
-        // Then call stop for cleanup
-        recognitionRef.current.stop();
-        console.log("Recognition stopped successfully");
-      } catch (error) {
-        console.error("Error stopping recognition:", error);
-      }
-    }
-    
-    // Stop the microphone stream if it exists
-    if (audioStreamRef.current) {
-      const tracks = audioStreamRef.current.getTracks();
-      tracks.forEach(track => {
-        track.stop();
-        console.log("Audio track stopped:", track.label);
-      });
-      audioStreamRef.current = null;
-    }
-    
-    // Clear any pending timeouts
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-    
-    // Reset states
-    setIsRecording(false);
-    setIsListening(false);
-  };
-
-  useEffect(() => {
-    // Check if browser supports speech recognition
+  // Initialize the speech recognition
+  const initSpeechRecognition = () => {
+    console.log("Initializing speech recognition");
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
     
     if (SpeechRecognitionAPI) {
@@ -400,15 +365,70 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
           }
         }
       };
+
+      isSpeechRecognitionInitialized.current = true;
+      console.log("Speech recognition initialized successfully");
+    } else {
+      console.error("SpeechRecognition API not supported in this browser");
+    }
+  };
+
+  // Clean up function to stop recognition and clear resources
+  const cleanupRecognition = () => {
+    console.log("Cleaning up recognition resources");
+    
+    // Stop the recognition if it exists
+    if (recognitionRef.current) {
+      try {
+        // First abort to force immediate stop
+        recognitionRef.current.abort();
+        // Then call stop for cleanup
+        recognitionRef.current.stop();
+        console.log("Recognition stopped successfully");
+      } catch (error) {
+        console.error("Error stopping recognition:", error);
+      }
+    }
+    
+    // Stop the microphone stream if it exists
+    if (audioStreamRef.current) {
+      const tracks = audioStreamRef.current.getTracks();
+      tracks.forEach(track => {
+        track.stop();
+        console.log("Audio track stopped:", track.label);
+      });
+      audioStreamRef.current = null;
+    }
+    
+    // Clear any pending timeouts
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    
+    // Reset states
+    setIsRecording(false);
+    setIsListening(false);
+  };
+
+  useEffect(() => {
+    // Initialize speech recognition on component mount
+    if (!isSpeechRecognitionInitialized.current) {
+      initSpeechRecognition();
     }
     
     return () => {
       // Clean up on unmount
       cleanupRecognition();
     };
-  }, [fieldName, form, isRecording]);
+  }, []);
 
   const toggleVoiceRecording = () => {
+    // Make sure speech recognition is initialized
+    if (!isSpeechRecognitionInitialized.current) {
+      initSpeechRecognition();
+    }
+    
     if (!recognitionRef.current) {
       toast.error("La reconnaissance vocale n'est pas supportée par ce navigateur");
       return;
@@ -433,17 +453,6 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
             
             // Reset capitalization for new recording session
             capitalizeNextRef.current = true;
-            
-            // Make sure recognition is initialized
-            if (!recognitionRef.current) {
-              const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-              if (SpeechRecognitionAPI) {
-                recognitionRef.current = new SpeechRecognitionAPI();
-                recognitionRef.current.lang = 'fr-FR';
-                recognitionRef.current.continuous = true;
-                recognitionRef.current.interimResults = true;
-              }
-            }
             
             try {
               recognitionRef.current?.start();
