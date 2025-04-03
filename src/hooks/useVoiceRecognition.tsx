@@ -42,53 +42,6 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Process speech commands to handle punctuation
-  const processCommand = (transcript: string, element: HTMLElement | null): string => {
-    // Define command mappings for punctuation and formatting
-    const commands: Record<string, (el: HTMLElement | null) => void> = {
-      "point un": (el) => {
-        if (el) {
-          document.execCommand('insertText', false, '.');
-        } else {
-          return '.';
-        }
-      },
-      "point virgule un": (el) => {
-        if (el) {
-          document.execCommand('insertText', false, ';');
-        } else {
-          return ';';
-        }
-      },
-      "à la ligne": (el) => {
-        if (el) {
-          document.execCommand('insertText', false, '\n');
-        } else {
-          return '\n';
-        }
-      }
-    };
-
-    // Convert transcript to lowercase for case-insensitive matching
-    const lowerTranscript = transcript.toLowerCase().trim();
-    
-    // Check for commands
-    for (const [command, action] of Object.entries(commands)) {
-      if (lowerTranscript === command) {
-        if (element) {
-          action(element);
-          return ''; // Command processed, don't insert the command text
-        } else {
-          const result = action(null);
-          return result || '';
-        }
-      }
-    }
-    
-    // No command found, return original transcript
-    return transcript;
-  };
-
   useEffect(() => {
     // Check if browser supports speech recognition
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -102,7 +55,7 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
       recognitionRef.current.onresult = (event: any) => {
         const currentValue = form.getValues(fieldName) || '';
         const resultIndex = event.resultIndex;
-        let transcript = event.results[resultIndex][0].transcript;
+        const transcript = event.results[resultIndex][0].transcript;
         
         setIsListening(true);
         
@@ -119,22 +72,15 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
           if (fieldName === 'description') {
             const element = document.getElementById('description');
             if (element) {
-              const processedText = processCommand(transcript, element);
-              
-              // If command returned empty, it was processed as a command
-              if (processedText === '') {
-                return;
-              }
-              
               let content = element.innerHTML;
               
               // Add space if there's already content
-              if (content && !content.endsWith(' ') && !content.endsWith('>')) {
+              if (content && !content.endsWith(' ')) {
                 content += ' ';
               }
               
               // Append the transcript
-              element.innerHTML = content + processedText;
+              element.innerHTML = content + transcript;
               
               // Manually trigger the form update
               const event = new Event('input', { bubbles: true });
@@ -146,10 +92,9 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
             }
           } else {
             // For regular form fields
-            const processedText = processCommand(transcript, null);
             form.setValue(
               fieldName, 
-              currentValue ? `${currentValue} ${processedText}` : processedText,
+              currentValue ? `${currentValue} ${transcript}` : transcript,
               { shouldValidate: true, shouldDirty: true }
             );
             console.log("Updated form value:", form.getValues(fieldName));
@@ -267,7 +212,6 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
             recognitionRef.current?.start();
             setIsRecording(true);
             toast.info("Enregistrement vocal démarré... Parlez clairement dans votre microphone.");
-            toast.info("Commandes disponibles: 'point un' → ., 'point virgule un' → ;, 'à la ligne' → saut de ligne");
             
             // Set a timeout to check if speech is detected
             timeoutRef.current = setTimeout(() => {
