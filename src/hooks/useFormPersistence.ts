@@ -1,6 +1,6 @@
 
 import { useEffect, useRef } from 'react';
-import { UseFormReturn, DefaultValues, ResetOptions } from 'react-hook-form';
+import { UseFormReturn, DefaultValues } from 'react-hook-form';
 
 /**
  * Hook pour persister les données du formulaire dans le localStorage
@@ -111,9 +111,8 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
         if (parsedData && Object.keys(parsedData).length > 0) {
           if (debug) console.log('Données du formulaire restaurées:', storageKey, parsedData);
           
-          // Utiliser la réinitialisation avec des options pour éviter l'erreur de type
-          const resetOptions: ResetOptions = { keepDefaultValues: true };
-          reset(parsedData as DefaultValues<TFormValues>, resetOptions);
+          // Utiliser la réinitialisation avec le second paramètre pour indiquer de préserver les valeurs par défaut
+          reset(parsedData as DefaultValues<TFormValues>, { keepDefaultValues: true });
           
           initialLoadDone.current = true;
           return;
