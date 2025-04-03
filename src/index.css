@@ -194,3 +194,13 @@
   color: rgba(214, 219, 230, 0.8); /* Plus clair que la valeur HSL d'origine */
 }
 
+/* Amélioration de la lisibilité des icônes en mode sombre */
+.dark svg:not(.text-white):not(.text-destructive):not(.text-accent):not(.text-primary):not(.text-secondary) {
+  color: rgba(214, 219, 230, 0.85);
+}
+
+/* Spécifiquement pour les icônes dans les textes muted */
+.dark .text-muted-foreground svg {
+  color: rgba(214, 219, 230, 0.85);
+}
+

@@ -274,7 +274,7 @@ const Dashboard = () => {
             <>
               <DashboardCard
                 title="Utilisateurs"
-                icon={<Users size={20} />}
+                icon={<Users size={20} className="dark:text-gray-200" />}
                 value={isLoadingUsersCount ? "..." : usersCount || 0}
                 description="Comptes utilisateurs"
                 to="/users"
@@ -282,7 +282,7 @@ const Dashboard = () => {
               />
               <DashboardCard
                 title="WordPress"
-                icon={<Server size={20} />}
+                icon={<Server size={20} className="dark:text-gray-200" />}
                 value={isLoadingWordpressCount ? "..." : wordpressCount || 0}
                 description="Configurations WordPress"
                 to="/wordpress"
@@ -290,7 +290,7 @@ const Dashboard = () => {
               />
               <DashboardCard
                 title="Tickets Support"
-                icon={<TicketCheck size={20} />}
+                icon={<TicketCheck size={20} className="dark:text-gray-200" />}
                 value={isLoadingRecentTickets ? "..." : ticketStats.total}
                 description={`${ticketStats.open} ouvert${ticketStats.open > 1 ? 's' : ''}`}
                 to="/support"
@@ -298,7 +298,7 @@ const Dashboard = () => {
               />
               <DashboardCard
                 title="Annonces"
-                icon={<FileText size={20} />}
+                icon={<FileText size={20} className="dark:text-gray-200" />}
                 value={isLoadingAnnouncementStats ? "..." : announcementStats?.total || 0}
                 description="Toutes plateformes"
                 to="/announcements"
@@ -310,7 +310,7 @@ const Dashboard = () => {
             <>
               <DashboardCard
                 title="Publiées"
-                icon={<FileText size={20} />}
+                icon={<FileText size={20} className="dark:text-gray-200" />}
                 value={isLoadingAnnouncementStats ? "..." : announcementStats?.published || 0}
                 description="Annonces actives"
                 to="/announcements?status=published"
@@ -318,7 +318,7 @@ const Dashboard = () => {
               />
               <DashboardCard
                 title="Programmées"
-                icon={<Clock size={20} />}
+                icon={<Clock size={20} className="dark:text-gray-200" />}
                 value={isLoadingAnnouncementStats ? "..." : announcementStats?.scheduled || 0}
                 description="Publications à venir"
                 to="/announcements?status=scheduled"
@@ -326,7 +326,7 @@ const Dashboard = () => {
               />
               <DashboardCard
                 title="Brouillons"
-                icon={<FileText size={20} />}
+                icon={<FileText size={20} className="dark:text-gray-200" />}
                 value={isLoadingAnnouncementStats ? "..." : announcementStats?.draft || 0}
                 description="En cours de rédaction"
                 to="/announcements?status=draft"
@@ -334,7 +334,7 @@ const Dashboard = () => {
               />
               <DashboardCard
                 title="Total"
-                icon={<FileText size={20} />}
+                icon={<FileText size={20} className="dark:text-gray-200" />}
                 value={isLoadingAnnouncementStats ? "..." : announcementStats?.total || 0}
                 description="Toutes les annonces"
                 to="/announcements"
@@ -354,7 +354,7 @@ const Dashboard = () => {
               </CardTitle>
               <Link 
                 to="/announcements" 
-                className="text-sm text-primary hover:underline flex items-center"
+                className="text-sm text-primary dark:text-blue-300 hover:underline flex items-center"
               >
                 Voir toutes
                 <ChevronRight size={16} />
@@ -387,7 +387,7 @@ const Dashboard = () => {
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="flex-shrink-0">
-                            <FileText size={18} className="text-muted-foreground" />
+                            <FileText size={18} className="text-muted-foreground dark:text-gray-300" />
                           </div>
                           <div className="min-w-0">
                             <div className="font-medium truncate">{announcement.title}</div>
@@ -425,7 +425,7 @@ const Dashboard = () => {
             <Card className="h-full card-shadow">
               <CardHeader>
                 <CardTitle className="text-lg font-medium flex items-center">
-                  <TicketCheck size={18} className="mr-2" />
+                  <TicketCheck size={18} className="mr-2 dark:text-gray-200" />
                   Derniers Tickets Support
                 </CardTitle>
               </CardHeader>
@@ -478,7 +478,7 @@ const Dashboard = () => {
             <Card className="h-full card-shadow">
               <CardHeader>
                 <CardTitle className="text-lg font-medium flex items-center">
-                  <Calendar size={18} className="mr-2" />
+                  <Calendar size={18} className="mr-2 dark:text-gray-200" />
                   Prochaines Publications
                 </CardTitle>
               </CardHeader>
@@ -504,7 +504,7 @@ const Dashboard = () => {
                           <div className="font-medium">{announcement.title}</div>
                           <div className="flex justify-between items-center mt-1">
                             <div className="text-sm text-muted-foreground dark:text-gray-300 flex items-center">
-                              <Clock size={14} className="mr-1" />
+                              <Clock size={14} className="mr-1 dark:text-gray-300" />
                               {announcement.publish_date ? formatDate(announcement.publish_date) : "Date non définie"}
                             </div>
                           </div>

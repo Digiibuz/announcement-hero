@@ -93,19 +93,19 @@ const Sidebar = () => {
     {
       name: "Mon Tableau de bord",
       href: "/dashboard",
-      icon: <LayoutDashboard className="h-5 w-5" />,
+      icon: <LayoutDashboard className="h-5 w-5 dark:text-gray-200" />,
       isActive: pathname === "/dashboard",
     },
     {
       name: "Annonces",
       href: "/announcements",
-      icon: <FileText className="h-5 w-5" />,
+      icon: <FileText className="h-5 w-5 dark:text-gray-200" />,
       isActive: pathname === "/announcements",
     },
     {
       name: "Créer une annonce",
       href: "/create",
-      icon: <Newspaper className="h-5 w-5" />,
+      icon: <Newspaper className="h-5 w-5 dark:text-gray-200" />,
       isActive: pathname === "/create",
     },
   ];
@@ -114,14 +114,14 @@ const Sidebar = () => {
     {
       name: "Gestion utilisateurs",
       href: "/users",
-      icon: <UserCog className="h-5 w-5" />,
+      icon: <UserCog className="h-5 w-5 dark:text-gray-200" />,
       isActive: pathname === "/users",
       adminOnly: true,
     },
     {
       name: isClient ? "Mon site" : "Gestion WordPress",
       href: "/wordpress",
-      icon: <Globe className="h-5 w-5" />,
+      icon: <Globe className="h-5 w-5 dark:text-gray-200" />,
       isActive: pathname === "/wordpress",
       adminOnly: false,
     },
@@ -131,13 +131,13 @@ const Sidebar = () => {
     {
       name: "Mon Profil",
       href: "/profile",
-      icon: <UserCircle className="h-5 w-5" />,
+      icon: <UserCircle className="h-5 w-5 dark:text-gray-200" />,
       isActive: pathname === "/profile",
     },
     {
       name: "Support & Assistance",
       href: "/support",
-      icon: <Ticket className="h-5 w-5" />,
+      icon: <Ticket className="h-5 w-5 dark:text-gray-200" />,
       isActive: pathname === "/support",
       badge: localUnreadCount > 0 ? (
         <Badge 
