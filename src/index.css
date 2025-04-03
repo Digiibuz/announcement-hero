@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -46,8 +47,6 @@
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 230 30% 24%;
     --sidebar-ring: 48 100% 50%;
-    
-    --brand-orange: 45 98% 51%;
   }
 
   .dark {
@@ -87,8 +86,6 @@
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 230 30% 18%;
     --sidebar-ring: 48 100% 50%;
-    
-    --brand-orange: 45 98% 51%;
   }
 
   * {
@@ -178,7 +175,13 @@
   }
   
   .next-button {
-    @apply bg-brand-orange hover:bg-brand-orange/90 text-black;
+    /* Changed from using bg-brand-orange to the direct color values */
+    @apply text-black;
+    background-color: #fdc407;
+  }
+  
+  .next-button:hover {
+    background-color: rgba(253, 196, 7, 0.9);
   }
 
   .character-counter {

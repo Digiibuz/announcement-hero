@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -75,7 +76,11 @@ export default {
 					warning: '#ED8936', // Orange d'avertissement
 					error: '#E53E3E', // Rouge d'erreur
 					info: '#4299E1' // Bleu d'information
-				}
+				},
+				'brand-orange': '#fdc407', // Adding the direct brand-orange color
+			},
+			backgroundColor: {
+				'brand-orange': '#fdc407', // Making it available as bg-brand-orange
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

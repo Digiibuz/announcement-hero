@@ -47,7 +47,7 @@ const StepNavigation = ({
             type="button" 
             onClick={onSubmit}
             disabled={isSubmitting}
-            className="w-[130px] mobile-nav-button next-button"
+            className="w-[130px] mobile-nav-button bg-brand-orange hover:bg-brand-orange/90 text-black"
           >
             {isSubmitting ? "Envoi..." : "Continuer"}
           </Button>
@@ -56,7 +56,7 @@ const StepNavigation = ({
             type="button" 
             onClick={onNext}
             disabled={isSubmitting}
-            className="w-[130px] mobile-nav-button next-button"
+            className="w-[130px] mobile-nav-button bg-brand-orange hover:bg-brand-orange/90 text-black"
           >
             Continuer
           </Button>
