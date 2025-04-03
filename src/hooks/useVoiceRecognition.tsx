@@ -171,10 +171,10 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
       "et commercial": (el) => el ? (document.execCommand('insertText', false, '&'), '') : '&',
       "esperluette": (el) => el ? (document.execCommand('insertText', false, '&'), '') : '&',
       
-      // Saut de ligne - Fixed implementation to properly handle line breaks
+      // Saut de ligne - Use insertHTML for proper line breaks
       "à la ligne": (el) => {
         if (el) {
-          document.execCommand('insertLineBreak', false);
+          document.execCommand('insertHTML', false, '<br>');
           return '';
         } else {
           return '\n';
@@ -182,7 +182,7 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
       },
       "nouvelle ligne": (el) => {
         if (el) {
-          document.execCommand('insertLineBreak', false);
+          document.execCommand('insertHTML', false, '<br>');
           return '';
         } else {
           return '\n';
@@ -190,7 +190,7 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
       },
       "saut de ligne": (el) => {
         if (el) {
-          document.execCommand('insertLineBreak', false);
+          document.execCommand('insertHTML', false, '<br>');
           return '';
         } else {
           return '\n';
@@ -214,7 +214,6 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
       // Majuscules sur les prochains mots
       "majuscule": (el) => {
         // Marquer pour le prochain mot
-        // Cette commande est spéciale, on retourne un flag pour traiter le prochain mot
         shouldCapitalizeNextRef.current = true;
         return "";
       }
