@@ -1,12 +1,12 @@
 
 import React from "react";
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Save } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { AnnouncementFormData } from "../AnnouncementForm";
@@ -57,6 +57,10 @@ const PublishingStep = ({ form, isMobile }: PublishingStepProps) => {
                     <SelectItem value="scheduled">Planifier</SelectItem>
                   </SelectContent>
                 </Select>
+                <FormDescription>
+                  Les brouillons peuvent être enregistrés maintenant et finalisés plus tard. 
+                  Utilisez le bouton "Enregistrer brouillon" en bas de page.
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}

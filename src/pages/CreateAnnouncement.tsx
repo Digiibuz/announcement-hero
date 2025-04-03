@@ -64,6 +64,7 @@ const CreateAnnouncement = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const {
     publishToWordPress,
     isPublishing,
@@ -96,7 +97,8 @@ const CreateAnnouncement = () => {
   // Use the form persistence hook
   const {
     clearSavedData,
-    hasSavedData
+    hasSavedData,
+    saveData
   } = useFormPersistence(form, FORM_STORAGE_KEY, undefined,
     5000, // autosave every 5 seconds
     false, // no debug
@@ -166,6 +168,65 @@ const CreateAnnouncement = () => {
     });
     return () => subscription.unsubscribe();
   }, [form]);
+
+  const saveAnnouncementDraft = async () => {
+    try {
+      setIsSavingDraft(true);
+      
+      if (!user?.id) {
+        toast({
+          title: "Erreur",
+          description: "Vous devez être connecté pour enregistrer un brouillon",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const formData = form.getValues();
+
+      // Ensure draft status for this save operation
+      const announcementData = {
+        user_id: user.id,
+        title: formData.title || "Brouillon sans titre",
+        description: formData.description,
+        status: "draft" as "draft",
+        images: formData.images || [],
+        wordpress_category_id: formData.wordpressCategory,
+        publish_date: formData.publishDate ? new Date(formData.publishDate).toISOString() : null,
+        seo_title: formData.seoTitle || null,
+        seo_description: formData.seoDescription || null,
+        seo_slug: formData.seoSlug || null
+      };
+
+      const { data: newAnnouncement, error } = await supabase
+        .from("announcements")
+        .insert(announcementData)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: "Succès",
+        description: "Brouillon enregistré avec succès"
+      });
+
+      // Clear the form data from localStorage since it's now saved in the database
+      clearSavedData();
+      
+      // Navigate to announcements page to see the draft
+      navigate("/announcements");
+    } catch (error: any) {
+      console.error("Error saving draft:", error);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de l'enregistrement du brouillon: " + error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
 
   const handleSubmit = async () => {
     try {
@@ -322,10 +383,11 @@ const CreateAnnouncement = () => {
                 totalSteps={stepConfigs.length} 
                 onPrevious={handlePrevious} 
                 onNext={handleNext} 
-                onSubmit={handleSubmit} 
+                onSubmit={handleSubmit}
+                onSaveDraft={saveAnnouncementDraft}
                 isLastStep={currentStepIndex === stepConfigs.length - 1} 
                 isFirstStep={currentStepIndex === 0} 
-                isSubmitting={isSubmitting || isPublishing} 
+                isSubmitting={isSubmitting || isPublishing || isSavingDraft} 
                 isMobile={isMobile} 
                 className="bg-transparent border-none" 
               />

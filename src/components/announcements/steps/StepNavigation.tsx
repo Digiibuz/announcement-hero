@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Save } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, BookCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface StepNavigationProps {
@@ -10,6 +10,7 @@ interface StepNavigationProps {
   onPrevious: () => void;
   onNext: () => void;
   onSubmit?: () => void;
+  onSaveDraft?: () => void;
   isLastStep: boolean;
   isFirstStep: boolean;
   isSubmitting: boolean;
@@ -23,6 +24,7 @@ const StepNavigation = ({
   onPrevious,
   onNext,
   onSubmit,
+  onSaveDraft,
   isLastStep,
   isFirstStep,
   isSubmitting,
@@ -49,7 +51,7 @@ const StepNavigation = ({
             disabled={isSubmitting}
             className="w-[130px] mobile-nav-button bg-brand-orange hover:bg-brand-orange/90 text-black"
           >
-            {isSubmitting ? "Envoi..." : "Continuer"}
+            {isSubmitting ? "Envoi..." : "Finaliser l'annonce"}
           </Button>
         ) : (
           <Button 
@@ -68,16 +70,29 @@ const StepNavigation = ({
   // Interface de navigation standard pour desktop
   return (
     <div className={cn("flex justify-between mt-6", className)}>
-      <div>
+      <div className="flex items-center">
         {!isFirstStep && (
           <Button 
             type="button" 
             variant="outline" 
             onClick={onPrevious}
             disabled={isSubmitting}
+            className="mr-2"
           >
             <ChevronLeft className="mr-2 h-4 w-4" />
             Précédent
+          </Button>
+        )}
+        
+        {onSaveDraft && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onSaveDraft}
+            disabled={isSubmitting}
+          >
+            <Save className="mr-2 h-4 w-4" />
+            Enregistrer brouillon
           </Button>
         )}
       </div>
@@ -98,8 +113,8 @@ const StepNavigation = ({
               <>Enregistrement...</>
             ) : (
               <>
-                <Save className="mr-2 h-4 w-4" />
-                Publier
+                <BookCheck className="mr-2 h-4 w-4" />
+                Finaliser l'annonce
               </>
             )}
           </Button>
