@@ -82,6 +82,8 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
 
   // Process speech commands to handle punctuation
   const processCommand = (transcript: string, element: HTMLElement | null): string => {
+    const lowerTranscript = transcript.toLowerCase().trim();
+    
     // Define command mappings for punctuation and formatting
     const commands: Record<string, (el: HTMLElement | null) => string> = {
       // Points
@@ -180,8 +182,6 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
         return punctuation + (remainingText ? " " + remainingText : "");
       }
     }
-
-    const lowerTranscript = transcript.toLowerCase().trim();
     
     // Check for exact command match
     for (const [command, action] of Object.entries(commands)) {
