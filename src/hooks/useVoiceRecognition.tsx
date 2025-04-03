@@ -123,6 +123,35 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
     return transcript;
   };
 
+  // Function to focus and place cursor at the end of the content
+  const placeCursorAtEnd = (element: HTMLElement | null) => {
+    if (!element) return;
+    
+    // Focus the element
+    element.focus();
+    
+    // Place cursor at the end
+    const range = document.createRange();
+    const selection = window.getSelection();
+    
+    // Check if element has child nodes
+    if (element.childNodes.length > 0) {
+      const lastChild = element.childNodes[element.childNodes.length - 1];
+      const offset = lastChild.nodeType === Node.TEXT_NODE ? lastChild.textContent?.length || 0 : 0;
+      range.setStart(lastChild, offset);
+    } else {
+      // If element is empty, just place cursor inside it
+      range.setStart(element, 0);
+    }
+    
+    range.collapse(true);
+    
+    if (selection) {
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+  };
+
   // Effect to set up recognition
   useEffect(() => {
     // Check if browser supports the Web Speech API
@@ -195,6 +224,8 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
           const processedText = processCommand(transcript, element);
           if (processedText) {
             document.execCommand('insertText', false, processedText);
+            // Place cursor at the end after inserting text
+            placeCursorAtEnd(element);
           }
         } else {
           // For regular form inputs
@@ -205,6 +236,17 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
             shouldDirty: true,
             shouldTouch: true
           });
+          
+          // For regular inputs, focus the element after form value update
+          setTimeout(() => {
+            if (element) {
+              element.focus();
+              if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+                element.selectionStart = element.value.length;
+                element.selectionEnd = element.value.length;
+              }
+            }
+          }, 0);
         }
       }
       
@@ -232,6 +274,18 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
       // Start recording
       if (recognitionRef.current) {
         try {
+          // Focus the element when starting recording
+          const element = document.getElementById(fieldName);
+          if (element) {
+            element.focus();
+            if (element.isContentEditable) {
+              placeCursorAtEnd(element);
+            } else if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+              element.selectionStart = element.value.length;
+              element.selectionEnd = element.value.length;
+            }
+          }
+          
           recognitionRef.current.start();
           setIsRecording(true);
           toast.success("Dictée vocale activée");
