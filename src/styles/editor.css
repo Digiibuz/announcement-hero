@@ -87,7 +87,9 @@
 
 /* Important: Make sure line breaks display correctly */
 .rich-text-editor br {
-  display: block;
-  content: "";
-  margin-top: 0.5rem;
+  display: block !important;
+  content: "" !important;
+  margin-top: 0.5rem !important;
+  height: 1.2em !important;
+  line-height: 1.2em !important;
 }

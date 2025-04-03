@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { UseFormReturn } from "react-hook-form";
@@ -120,12 +121,17 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
 
           // Set a timeout to update the form value after DOM updates
           setTimeout(() => {
+            // Get the current innerHTML with line breaks
+            const updatedContent = element.innerHTML;
+            console.log("Current element HTML before form update:", updatedContent);
+            
+            // Explicitly set the form value with the updated HTML content
             form.setValue(
               fieldName, 
-              element.innerHTML,
+              updatedContent,
               { shouldValidate: true, shouldDirty: true }
             );
-            console.log("Form updated with line break, new content:", element.innerHTML);
+            console.log("Form updated with line break, new content:", updatedContent);
           }, 50);
 
           // Next word should be capitalized after a line break
@@ -134,7 +140,10 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
           console.log("Line break inserted, editor content:", element.innerHTML);
         } catch (error) {
           console.error("Error inserting line break:", error);
+          toast.error("Erreur lors de l'insertion d'un saut de ligne");
         }
+      } else {
+        console.error("Description element not found");
       }
     } else {
       // For regular form fields, just add a newline character
