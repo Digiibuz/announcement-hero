@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { UseFormReturn } from "react-hook-form";
@@ -45,10 +44,11 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
   // Process speech commands to handle punctuation
   const processCommand = (transcript: string, element: HTMLElement | null): string => {
     // Define command mappings for punctuation and formatting
-    const commands: Record<string, (el: HTMLElement | null) => void> = {
+    const commands: Record<string, (el: HTMLElement | null) => string | void> = {
       "point un": (el) => {
         if (el) {
           document.execCommand('insertText', false, '.');
+          return '';
         } else {
           return '.';
         }
@@ -56,6 +56,7 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
       "point virgule un": (el) => {
         if (el) {
           document.execCommand('insertText', false, ';');
+          return '';
         } else {
           return ';';
         }
@@ -63,6 +64,7 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
       "à la ligne": (el) => {
         if (el) {
           document.execCommand('insertText', false, '\n');
+          return '';
         } else {
           return '\n';
         }
@@ -75,13 +77,12 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
     // Check for commands
     for (const [command, action] of Object.entries(commands)) {
       if (lowerTranscript === command) {
-        if (element) {
-          action(element);
-          return ''; // Command processed, don't insert the command text
-        } else {
-          const result = action(null);
-          return result || '';
+        const result = action(element);
+        // We need to explicitly check if result is defined (not undefined)
+        if (result !== undefined) {
+          return result;
         }
+        return ''; // Command processed, don't insert the command text
       }
     }
     
