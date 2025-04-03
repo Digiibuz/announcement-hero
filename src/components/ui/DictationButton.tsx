@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, forwardRef } from "react";
 import { Button, ButtonProps } from "@/components/ui/button";
 import { Mic, MicOff } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -13,7 +13,7 @@ interface DictationButtonProps extends Omit<ButtonProps, 'onClick'> {
   stopRecording: () => void;
 }
 
-const DictationButton = ({
+const DictationButton = forwardRef<HTMLButtonElement, DictationButtonProps>(({
   isRecording,
   isSupported,
   toggle,
@@ -21,11 +21,10 @@ const DictationButton = ({
   stopRecording,
   className,
   ...props
-}: DictationButtonProps) => {
+}, ref) => {
   const [isPressing, setIsPressing] = useState(false);
   const pressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isMobile = useIsMobile();
-  const buttonRef = useRef<HTMLButtonElement>(null);
   
   // Cleanup timer on unmount
   useEffect(() => {
@@ -93,7 +92,7 @@ const DictationButton = ({
 
   return (
     <Button
-      ref={buttonRef}
+      ref={ref}
       type="button"
       variant={isRecording ? "default" : "outline"}
       size="icon"
@@ -116,6 +115,8 @@ const DictationButton = ({
       )}
     </Button>
   );
-};
+});
+
+DictationButton.displayName = "DictationButton";
 
 export default DictationButton;
