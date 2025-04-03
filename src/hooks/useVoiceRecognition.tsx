@@ -96,13 +96,17 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
           const html = doubleBreak ? '<br><br>' : '<br>';
           document.execCommand('insertHTML', false, html);
           
-          // Force a mutation event to make sure React notices the change
-          const mutation = new MutationEvent('DOMSubtreeModified', true, false, element, '', '', '', 0);
-          element.dispatchEvent(mutation);
-          
-          // Trigger input event to ensure React form integration works
-          const inputEvent = new InputEvent('input', { bubbles: true, cancelable: true });
-          element.dispatchEvent(inputEvent);
+          // Use a modern approach instead of MutationEvent (which is deprecated)
+          // Trigger change events to ensure React form integration works
+          setTimeout(() => {
+            // Trigger input event
+            const inputEvent = new InputEvent('input', { bubbles: true, cancelable: true });
+            element.dispatchEvent(inputEvent);
+            
+            // Trigger change event
+            const changeEvent = new Event('change', { bubbles: true });
+            element.dispatchEvent(changeEvent);
+          }, 10);
           
           // Ensure cursor is placed at the end
           const selection = window.getSelection();
