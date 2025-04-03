@@ -21,14 +21,19 @@ const DescriptionStep = ({ form, isMobile }: DescriptionStepProps) => {
     const title = form.getValues("title") || "";
     const description = form.getValues("description") || "";
     setTitleLength(title.length);
-    setDescriptionLength(description.length);
+    
+    // For description, strip HTML tags to get more accurate character count
+    const strippedDescription = description.replace(/<[^>]*>/g, '');
+    setDescriptionLength(strippedDescription.length);
     
     const subscription = form.watch((value) => {
       if (value.title !== undefined) {
         setTitleLength(value.title.length);
       }
       if (value.description !== undefined) {
-        setDescriptionLength(value.description.length);
+        // Strip HTML tags for character count
+        const strippedDesc = value.description.replace(/<[^>]*>/g, '');
+        setDescriptionLength(strippedDesc.length);
       }
     });
     

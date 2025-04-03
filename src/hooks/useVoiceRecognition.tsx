@@ -36,11 +36,136 @@ interface UseVoiceRecognitionProps {
   form: UseFormReturn<any>;
 }
 
+// Interface for punctuation and formatting commands
+interface CommandMapping {
+  [key: string]: string | (() => void);
+}
+
 const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTranscriptRef = useRef<string>("");
+  const capitalizeNextRef = useRef<boolean>(true);
+
+  // Define punctuation and formatting commands
+  const punctuationCommands: CommandMapping = {
+    // Punctuation
+    "virgule": ", ",
+    "point": ". ",
+    "point d'exclamation": "! ",
+    "exclamation": "! ",
+    "point d'interrogation": "? ",
+    "interrogation": "? ",
+    "point-virgule": "; ",
+    "point virgule": "; ",
+    "deux points": ": ",
+    "ouvrez les guillemets": " « ",
+    "fermez les guillemets": " » ",
+    "ouvrir parenthèse": " (",
+    "fermer parenthèse": ") ",
+    "ouvrir les parenthèses": " (",
+    "fermer les parenthèses": ") ",
+    "tiret": " - ",
+    "pourcentage": " % ",
+    "euro": " € ",
+    "dollar": " $ ",
+    
+    // Line breaks and formatting
+    "à la ligne": () => insertLineBreak(),
+    "nouvelle ligne": () => insertLineBreak(),
+    "nouveau paragraphe": () => insertLineBreak(true),
+    "aller à la ligne": () => insertLineBreak(),
+  };
+
+  // Function to insert a line break
+  const insertLineBreak = (doubleBreak = false) => {
+    console.log("Inserting line break, doubleBreak:", doubleBreak);
+    if (fieldName === 'description') {
+      const element = document.getElementById('description');
+      if (element) {
+        // Use execCommand to insert HTML content 
+        document.execCommand('insertHTML', false, doubleBreak ? '<br><br>' : '<br>');
+        
+        // Make sure changes propagate by triggering necessary events
+        const inputEvent = new Event('input', { bubbles: true });
+        element.dispatchEvent(inputEvent);
+        
+        // Ensure cursor is placed at the end
+        const selection = window.getSelection();
+        if (selection) {
+          const range = document.createRange();
+          range.selectNodeContents(element);
+          range.collapse(false); // Collapse to end
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+
+        // Set a timeout to update the form value
+        setTimeout(() => {
+          form.setValue(
+            fieldName, 
+            element.innerHTML,
+            { shouldValidate: true, shouldDirty: true }
+          );
+        }, 10);
+
+        // Next word should be capitalized after a line break
+        capitalizeNextRef.current = true;
+        
+        console.log("Line break inserted, editor content:", element.innerHTML);
+      }
+    } else {
+      // For regular form fields, just add a newline character
+      const currentValue = form.getValues(fieldName) || '';
+      form.setValue(
+        fieldName, 
+        currentValue + (doubleBreak ? '\n\n' : '\n'),
+        { shouldValidate: true, shouldDirty: true }
+      );
+      // Next word should be capitalized after a line break
+      capitalizeNextRef.current = true;
+    }
+  };
+
+  // Process the transcript for commands
+  const processTranscript = (transcript: string): string => {
+    // Clean and lowercase for processing
+    const cleanTranscript = transcript.trim().toLowerCase();
+    
+    // Check if this is a command
+    for (const [command, action] of Object.entries(punctuationCommands)) {
+      if (cleanTranscript === command) {
+        console.log(`Detected command: "${command}"`);
+        
+        // If action is a function, execute it and return empty string
+        if (typeof action === 'function') {
+          action();
+          return '';
+        }
+        
+        // For punctuation marks that end sentences, set capitalize flag
+        if (action === '. ' || action === '! ' || action === '? ') {
+          capitalizeNextRef.current = true;
+        }
+        
+        // Return the punctuation mark
+        return action as string;
+      }
+    }
+    
+    // No command found, process as regular text
+    let processedText = transcript;
+
+    // Capitalize first word if needed
+    if (capitalizeNextRef.current && processedText.length > 0) {
+      processedText = processedText.charAt(0).toUpperCase() + processedText.slice(1);
+      capitalizeNextRef.current = false;
+    }
+    
+    return processedText;
+  };
 
   useEffect(() => {
     // Check if browser supports speech recognition
@@ -53,7 +178,6 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
       recognitionRef.current.interimResults = true;
       
       recognitionRef.current.onresult = (event: any) => {
-        const currentValue = form.getValues(fieldName) || '';
         const resultIndex = event.resultIndex;
         const transcript = event.results[resultIndex][0].transcript;
         
@@ -68,37 +192,71 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
         if (event.results[resultIndex].isFinal) {
           console.log("Final transcript received:", transcript);
           
+          // Get only the new part of the transcript
+          const newWords = transcript.trim();
+          
+          // Process for commands and formatting
+          const processedText = processTranscript(newWords);
+          
+          // Skip if it's an empty string (happens when a function command is executed)
+          if (processedText === '') {
+            console.log("Empty processed text, skipping form update");
+            return;
+          }
+          
           // For contentEditable elements, handle differently
           if (fieldName === 'description') {
             const element = document.getElementById('description');
             if (element) {
-              let content = element.innerHTML;
+              // Add space before if not starting with punctuation and not at beginning
+              let textToInsert = processedText;
+              const processedIsJustPunctuation = /^\s*[,.!?:;"'\-\(\)]+\s*$/.test(processedText);
               
-              // Add space if there's already content
-              if (content && !content.endsWith(' ')) {
-                content += ' ';
+              if (!processedIsJustPunctuation && element.innerHTML && !element.innerHTML.endsWith(' ') && !element.innerHTML.endsWith('>')) {
+                textToInsert = ' ' + textToInsert;
               }
               
-              // Append the transcript
-              element.innerHTML = content + transcript;
+              // Use document.execCommand to insert text
+              document.execCommand('insertText', false, textToInsert);
               
               // Manually trigger the form update
-              const event = new Event('input', { bubbles: true });
-              element.dispatchEvent(event);
-              
-              console.log("Updated editor content with speech:", element.innerHTML);
+              setTimeout(() => {
+                const event = new Event('input', { bubbles: true });
+                element.dispatchEvent(event);
+                
+                form.setValue(
+                  fieldName,
+                  element.innerHTML,
+                  { shouldValidate: true, shouldDirty: true }
+                );
+                
+                console.log("Updated editor content with speech:", element.innerHTML);
+              }, 10);
             } else {
               console.error("Description element not found");
             }
           } else {
             // For regular form fields
+            const currentValue = form.getValues(fieldName) || '';
+            
+            // Add space if needed (don't add if it's just punctuation or at the beginning)
+            let textToAdd = processedText;
+            const isJustPunctuation = /^\s*[,.!?:;"'\-\(\)]+\s*$/.test(processedText);
+            
+            if (!isJustPunctuation && currentValue && !currentValue.endsWith(' ')) {
+              textToAdd = ' ' + textToAdd;
+            }
+            
             form.setValue(
               fieldName, 
-              currentValue ? `${currentValue} ${transcript}` : transcript,
+              currentValue + textToAdd,
               { shouldValidate: true, shouldDirty: true }
             );
             console.log("Updated form value:", form.getValues(fieldName));
           }
+          
+          // Save the last transcript
+          lastTranscriptRef.current = transcript;
         }
       };
       
@@ -209,9 +367,13 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
         // Request microphone permission explicitly first
         navigator.mediaDevices.getUserMedia({ audio: true })
           .then(() => {
+            // Reset capitalization for new recording session
+            capitalizeNextRef.current = true;
+            
             recognitionRef.current?.start();
             setIsRecording(true);
             toast.info("Enregistrement vocal démarré... Parlez clairement dans votre microphone.");
+            toast.info("Vous pouvez dicter la ponctuation en disant 'virgule', 'point', etc. ou dire 'à la ligne' pour un retour à la ligne.");
             
             // Set a timeout to check if speech is detected
             timeoutRef.current = setTimeout(() => {
