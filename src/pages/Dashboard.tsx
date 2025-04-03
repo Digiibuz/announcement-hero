@@ -255,7 +255,7 @@ const Dashboard = () => {
     <PageLayout title="Mon Tableau de bord">
       <AnimatedContainer delay={100} className="mt-0">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground dark:text-gray-300">
             Bienvenue, {user?.name}
           </p>
           <Button asChild className="mt-2 sm:mt-0 bg-digibuz-yellow text-digibuz-navy hover:bg-digibuz-yellow/90">
@@ -391,7 +391,7 @@ const Dashboard = () => {
                           </div>
                           <div className="min-w-0">
                             <div className="font-medium truncate">{announcement.title}</div>
-                            <div className="text-sm text-muted-foreground">
+                            <div className="text-sm text-muted-foreground dark:text-gray-300">
                               {formatDate(announcement.created_at)}
                             </div>
                           </div>
@@ -409,8 +409,8 @@ const Dashboard = () => {
                       </Link>
                     ))
                   ) : (
-                    <div className="text-center p-6 text-muted-foreground">
-                      Aucune annonce récente. <Link to="/create" className="text-primary">Créer une annonce</Link>
+                    <div className="text-center p-6 text-muted-foreground dark:text-gray-300">
+                      Aucune annonce récente. <Link to="/create" className="text-primary dark:text-blue-300">Créer une annonce</Link>
                     </div>
                   )}
                 </div>
@@ -450,7 +450,7 @@ const Dashboard = () => {
                         >
                           <div className="font-medium">{ticket.subject}</div>
                           <div className="flex justify-between items-center mt-1">
-                            <div className="text-sm text-muted-foreground">
+                            <div className="text-sm text-muted-foreground dark:text-gray-300">
                               {ticket.username}
                             </div>
                             <span 
@@ -465,7 +465,7 @@ const Dashboard = () => {
                         </Link>
                       ))
                     ) : (
-                      <div className="text-center p-6 text-muted-foreground">
+                      <div className="text-center p-6 text-muted-foreground dark:text-gray-300">
                         Aucun ticket récent
                       </div>
                     )}
@@ -503,7 +503,7 @@ const Dashboard = () => {
                         >
                           <div className="font-medium">{announcement.title}</div>
                           <div className="flex justify-between items-center mt-1">
-                            <div className="text-sm text-muted-foreground flex items-center">
+                            <div className="text-sm text-muted-foreground dark:text-gray-300 flex items-center">
                               <Clock size={14} className="mr-1" />
                               {announcement.publish_date ? formatDate(announcement.publish_date) : "Date non définie"}
                             </div>
@@ -511,7 +511,7 @@ const Dashboard = () => {
                         </Link>
                       ))
                     ) : (
-                      <div className="text-center p-6 text-muted-foreground">
+                      <div className="text-center p-6 text-muted-foreground dark:text-gray-300">
                         Aucune publication programmée
                       </div>
                     )}
