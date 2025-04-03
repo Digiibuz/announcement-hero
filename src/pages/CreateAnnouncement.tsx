@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import PublishingLoadingOverlay, { PublishingStep } from "@/components/announcements/PublishingLoadingOverlay";
 
+const FORM_STORAGE_KEY = "announcement-form-draft";
+
 const CreateAnnouncement = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -51,13 +53,31 @@ const CreateAnnouncement = () => {
     }
   ];
 
+  // Function to handle beforeunload event when leaving the page
+  React.useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      const savedData = localStorage.getItem(FORM_STORAGE_KEY);
+      if (savedData && Object.keys(JSON.parse(savedData)).length > 1) {
+        // Show confirmation only if there's meaningful saved data
+        const message = "Vous avez un brouillon non publié. Êtes-vous sûr de vouloir quitter ?";
+        e.returnValue = message;
+        return message;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
   const handleSubmit = async (data: any) => {
     try {
       setIsSubmitting(true);
       setShowPublishingOverlay(true);
       
       // Effacer les données sauvegardées du formulaire dans le localStorage
-      localStorage.removeItem("announcement-form-draft");
+      localStorage.removeItem(FORM_STORAGE_KEY);
       
       // Show immediate feedback on mobile
       if (isMobile) {
@@ -186,7 +206,8 @@ const CreateAnnouncement = () => {
           <AnnouncementForm 
             onSubmit={handleSubmit} 
             isSubmitting={isSubmitting || isPublishing} 
-            isMobile={isMobile} 
+            isMobile={isMobile}
+            storageKey={FORM_STORAGE_KEY}
           />
         </div>
       </AnimatedContainer>

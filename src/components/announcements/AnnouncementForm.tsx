@@ -21,6 +21,7 @@ export interface AnnouncementFormProps {
   onCancel?: () => void;
   isMobile?: boolean;
   initialValues?: AnnouncementFormData;
+  storageKey?: string;
 }
 
 export interface AnnouncementFormData {
@@ -40,14 +41,15 @@ const AnnouncementForm = ({
   isSubmitting = false,
   onCancel,
   isMobile = false,
-  initialValues
+  initialValues,
+  storageKey = "announcement-form-draft"
 }: AnnouncementFormProps) => {
   const defaultValues: AnnouncementFormData = {
     title: "",
     description: "",
     wordpressCategory: "",
     publishDate: undefined,
-    status: "published", // Fixed: Now explicitly using a literal type value
+    status: "published",
     images: [],
     seoTitle: "",
     seoDescription: "",
@@ -58,10 +60,8 @@ const AnnouncementForm = ({
     defaultValues: initialValues || defaultValues
   });
 
-  // Persistance du formulaire dans le localStorage
-  const { clearSavedData } = useFormPersistence(form, "announcement-form-draft", initialValues);
+  const { clearSavedData } = useFormPersistence(form, storageKey, initialValues);
 
-  // Update form values when initialValues changes
   useEffect(() => {
     if (initialValues) {
       Object.keys(initialValues).forEach((key) => {
@@ -84,11 +84,9 @@ const AnnouncementForm = ({
 
   useEffect(() => {
     if (title) {
-      // Generate slug from title
       const normalizedTitle = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
       setValue("seoSlug", normalizedTitle);
       
-      // Fix: Set the full title as seoTitle rather than just first letter
       if (!form.getValues("seoTitle") || form.getValues("seoTitle") === "") {
         setValue("seoTitle", title);
       }
@@ -113,16 +111,17 @@ const AnnouncementForm = ({
   };
 
   const handleCancel = () => {
-    if (onCancel) {
-      onCancel();
-    } else {
-      navigate('/announcements');
+    if (window.confirm("Êtes-vous sûr de vouloir quitter ? Votre brouillon sera conservé pour plus tard.")) {
+      if (onCancel) {
+        onCancel();
+      } else {
+        navigate('/announcements');
+      }
     }
   };
 
   const handleFormSubmit = (data: AnnouncementFormData) => {
     if (onSubmit) {
-      // Effacer les données sauvegardées après la soumission
       clearSavedData();
       onSubmit(data);
     }
@@ -135,7 +134,18 @@ const AnnouncementForm = ({
     return "border shadow-sm";
   };
 
-  return <div className="space-y-6">
+  return (
+    <div className="space-y-6">
+      {localStorage.getItem(storageKey) && (
+        <div className="bg-amber-50 border border-amber-200 p-3 rounded-md mb-4">
+          <p className="text-sm text-amber-800 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            Brouillon restauré automatiquement. Vos modifications sont sauvegardées automatiquement.
+          </p>
+        </div>
+      )}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
           <div className="space-y-6">
@@ -309,7 +319,8 @@ const AnnouncementForm = ({
           </div>
         </form>
       </Form>
-    </div>;
+    </div>
+  );
 };
 
 export default AnnouncementForm;
