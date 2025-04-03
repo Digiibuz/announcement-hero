@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { UseFormReturn } from "react-hook-form";
@@ -75,8 +74,8 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
     // Line breaks and formatting
     "à la ligne": () => insertLineBreak(),
     "nouvelle ligne": () => insertLineBreak(),
-    "nouveau paragraphe": () => insertLineBreak(true),
     "aller à la ligne": () => insertLineBreak(),
+    "nouveau paragraphe": () => insertLineBreak(true),
   };
 
   // Function to insert a line break
@@ -85,36 +84,53 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
     if (fieldName === 'description') {
       const element = document.getElementById('description');
       if (element) {
-        // Use execCommand to insert HTML content 
-        document.execCommand('insertHTML', false, doubleBreak ? '<br><br>' : '<br>');
-        
-        // Make sure changes propagate by triggering necessary events
-        const inputEvent = new Event('input', { bubbles: true });
-        element.dispatchEvent(inputEvent);
-        
-        // Ensure cursor is placed at the end
-        const selection = window.getSelection();
-        if (selection) {
-          const range = document.createRange();
-          range.selectNodeContents(element);
-          range.collapse(false); // Collapse to end
-          selection.removeAllRanges();
-          selection.addRange(range);
+        try {
+          // Focus the element to ensure it's active
+          element.focus();
+          
+          // Create and dispatch a custom event for the line break before inserting
+          const customEvent = new CustomEvent('linebreak', { bubbles: true, detail: { doubleBreak } });
+          element.dispatchEvent(customEvent);
+          
+          // Insert HTML content with proper BR tags
+          const html = doubleBreak ? '<br><br>' : '<br>';
+          document.execCommand('insertHTML', false, html);
+          
+          // Force a mutation event to make sure React notices the change
+          const mutation = new MutationEvent('DOMSubtreeModified', true, false, element, '', '', '', 0);
+          element.dispatchEvent(mutation);
+          
+          // Trigger input event to ensure React form integration works
+          const inputEvent = new InputEvent('input', { bubbles: true, cancelable: true });
+          element.dispatchEvent(inputEvent);
+          
+          // Ensure cursor is placed at the end
+          const selection = window.getSelection();
+          if (selection) {
+            const range = document.createRange();
+            range.selectNodeContents(element);
+            range.collapse(false); // Collapse to end
+            selection.removeAllRanges();
+            selection.addRange(range);
+          }
+
+          // Set a timeout to update the form value after DOM updates
+          setTimeout(() => {
+            form.setValue(
+              fieldName, 
+              element.innerHTML,
+              { shouldValidate: true, shouldDirty: true }
+            );
+            console.log("Form updated with line break, new content:", element.innerHTML);
+          }, 50);
+
+          // Next word should be capitalized after a line break
+          capitalizeNextRef.current = true;
+          
+          console.log("Line break inserted, editor content:", element.innerHTML);
+        } catch (error) {
+          console.error("Error inserting line break:", error);
         }
-
-        // Set a timeout to update the form value
-        setTimeout(() => {
-          form.setValue(
-            fieldName, 
-            element.innerHTML,
-            { shouldValidate: true, shouldDirty: true }
-          );
-        }, 10);
-
-        // Next word should be capitalized after a line break
-        capitalizeNextRef.current = true;
-        
-        console.log("Line break inserted, editor content:", element.innerHTML);
       }
     } else {
       // For regular form fields, just add a newline character
@@ -215,6 +231,9 @@ const useVoiceRecognition = ({ fieldName, form }: UseVoiceRecognitionProps) => {
               if (!processedIsJustPunctuation && element.innerHTML && !element.innerHTML.endsWith(' ') && !element.innerHTML.endsWith('>')) {
                 textToInsert = ' ' + textToInsert;
               }
+              
+              // Focus the element first
+              element.focus();
               
               // Use document.execCommand to insert text
               document.execCommand('insertText', false, textToInsert);

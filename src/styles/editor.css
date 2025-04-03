@@ -84,3 +84,10 @@
   display: inline;
   white-space: normal;
 }
+
+/* Important: Make sure line breaks display correctly */
+.rich-text-editor br {
+  display: block;
+  content: "";
+  margin-top: 0.5rem;
+}
