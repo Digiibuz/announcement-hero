@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { UseFormReturn } from "react-hook-form";
@@ -175,6 +174,9 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
       "à la ligne": (el) => {
         if (el) {
           document.execCommand('insertHTML', false, '<br>');
+          setTimeout(() => {
+            if (el) el.dispatchEvent(new Event('input', { bubbles: true }));
+          }, 0);
           return '';
         } else {
           return '\n';
@@ -183,6 +185,9 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
       "nouvelle ligne": (el) => {
         if (el) {
           document.execCommand('insertHTML', false, '<br>');
+          setTimeout(() => {
+            if (el) el.dispatchEvent(new Event('input', { bubbles: true }));
+          }, 0);
           return '';
         } else {
           return '\n';
@@ -191,6 +196,9 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
       "saut de ligne": (el) => {
         if (el) {
           document.execCommand('insertHTML', false, '<br>');
+          setTimeout(() => {
+            if (el) el.dispatchEvent(new Event('input', { bubbles: true }));
+          }, 0);
           return '';
         } else {
           return '\n';
@@ -407,6 +415,8 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
           const processedText = processCommand(transcript, element);
           if (processedText) {
             document.execCommand('insertText', false, processedText);
+            // Force an update event after inserting line breaks to ensure they're rendered
+            element.dispatchEvent(new Event('input', { bubbles: true }));
             // Place cursor at the end after inserting text
             placeCursorAtEnd(element);
           }
