@@ -30,7 +30,6 @@ const DescriptionField = ({
   const initialRenderRef = useRef(true);
   const isMobile = useIsMobile();
   
-  // Voice recognition integration
   const { isRecording, isListening, isProcessing, toggleVoiceRecording, isSupported } = 
     useVoiceRecognition({ fieldName: 'description', form });
 

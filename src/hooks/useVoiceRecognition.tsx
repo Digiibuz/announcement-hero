@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { UseFormReturn } from "react-hook-form";
@@ -151,49 +152,75 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
     }
   };
 
-  // Effect to set up recognition
-  useEffect(() => {
+  // Initialize SpeechRecognition
+  const initializeRecognition = () => {
     // Check if browser supports the Web Speech API
     const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognitionAPI) {
       console.log("Speech recognition not supported in this browser");
       setIsSupported(false);
-      return;
+      return false;
     }
     
     setIsSupported(true);
     
-    // Initialize recognition with French language
-    recognitionRef.current = new SpeechRecognitionAPI();
-    if (recognitionRef.current) {
-      recognitionRef.current.lang = 'fr-FR';
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
-      
-      // Set up event handlers
-      recognitionRef.current.addEventListener('result', handleRecognitionResult);
-      recognitionRef.current.addEventListener('start', () => setIsListening(true));
-      recognitionRef.current.addEventListener('end', () => {
-        setIsListening(false);
-        // Restart recognition if we're still in recording mode
-        if (isRecording && recognitionRef.current) {
-          recognitionRef.current.start();
-        }
-      });
-      recognitionRef.current.addEventListener('soundstart', () => {
-        // User started speaking
-        setIsProcessing(false);
-      });
-      recognitionRef.current.addEventListener('soundend', () => {
-        // User stopped speaking, now processing the speech
-        setIsProcessing(true);
-      });
-      recognitionRef.current.addEventListener('error', (e) => {
-        console.error('Speech recognition error', e);
-        setIsListening(false);
-        setIsProcessing(false);
-      });
+    if (!recognitionRef.current) {
+      // Initialize recognition with French language
+      recognitionRef.current = new SpeechRecognitionAPI();
+      if (recognitionRef.current) {
+        recognitionRef.current.lang = 'fr-FR';
+        recognitionRef.current.continuous = true;
+        recognitionRef.current.interimResults = true;
+        
+        // Set up event handlers
+        recognitionRef.current.addEventListener('result', handleRecognitionResult);
+        recognitionRef.current.addEventListener('start', () => setIsListening(true));
+        recognitionRef.current.addEventListener('end', () => {
+          setIsListening(false);
+          // Restart recognition if we're still in recording mode
+          if (isRecording && recognitionRef.current) {
+            try {
+              recognitionRef.current.start();
+            } catch (error) {
+              console.error("Error restarting speech recognition:", error);
+            }
+          }
+        });
+        recognitionRef.current.addEventListener('soundstart', () => {
+          // User started speaking
+          setIsProcessing(false);
+        });
+        recognitionRef.current.addEventListener('soundend', () => {
+          // User stopped speaking, now processing the speech
+          setIsProcessing(true);
+        });
+        recognitionRef.current.addEventListener('error', (e) => {
+          console.error('Speech recognition error', e);
+          setIsListening(false);
+          setIsProcessing(false);
+          
+          // If we're still in recording mode, try to restart
+          if (isRecording && recognitionRef.current) {
+            try {
+              setTimeout(() => {
+                if (isRecording && recognitionRef.current) {
+                  recognitionRef.current.start();
+                }
+              }, 500);
+            } catch (error) {
+              console.error("Error restarting speech recognition after error:", error);
+            }
+          }
+        });
+      }
+      return true;
     }
+    return true;
+  };
+
+  // Effect to set up recognition
+  useEffect(() => {
+    const isInitialized = initializeRecognition();
     
     return () => {
       if (recognitionRef.current) {
@@ -202,7 +229,7 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
         recognitionRef.current.abort();
       }
     };
-  }, [isRecording, fieldName, form]);
+  }, [fieldName, form]);
 
   // Handle recognition results
   const handleRecognitionResult = (event: SpeechRecognitionEvent) => {
@@ -261,6 +288,15 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
       return;
     }
 
+    // Make sure recognition is initialized
+    if (!recognitionRef.current) {
+      const isInitialized = initializeRecognition();
+      if (!isInitialized) {
+        toast.error("Impossible d'initialiser la dictée vocale");
+        return;
+      }
+    }
+
     if (recognitionRef.current && !isRecording) {
       try {
         // Focus the element when starting recording
@@ -288,10 +324,14 @@ const useVoiceRecognition = ({ fieldName, form }: VoiceRecognitionOptions) => {
   // Stop recording
   const stopRecording = () => {
     if (recognitionRef.current && isRecording) {
-      recognitionRef.current.stop();
-      setIsRecording(false);
-      setIsProcessing(false);
-      toast.info("Dictée vocale désactivée");
+      try {
+        recognitionRef.current.stop();
+        setIsRecording(false);
+        setIsProcessing(false);
+        toast.info("Dictée vocale désactivée");
+      } catch (error) {
+        console.error("Error stopping speech recognition:", error);
+      }
     }
   };
 
