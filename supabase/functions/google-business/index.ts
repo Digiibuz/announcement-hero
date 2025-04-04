@@ -1,6 +1,7 @@
+
 import { serve } from "std/http/server.ts";
 import * as log from "std/log/mod.ts";
-import { createClient } from "supabase";
+import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') as string;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') as string;
@@ -10,7 +11,7 @@ const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET') as string;
 const REDIRECT_URI = Deno.env.get('GMB_REDIRECT_URI') as string;
 const API_BASE_URL = 'https://mybusiness.googleapis.com/v4';
 
-// Configuration pour le logging
+// Configuration for logging
 try {
   await log.setup({
     handlers: {
@@ -24,18 +25,18 @@ try {
     },
   });
 } catch (error) {
-  console.error("Erreur lors de la configuration du logger:", error);
+  console.error("Error setting up logger:", error);
 }
 
 const logger = log.getLogger();
 
-// Configuration CORS
+// CORS configuration
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Client Supabase avec clé service pour accéder à la DB sans restrictions
+// Supabase client with service role key for unrestricted DB access
 let supabaseAdmin;
 try {
   supabaseAdmin = createClient(
@@ -43,10 +44,10 @@ try {
     SUPABASE_SERVICE_ROLE_KEY
   );
 } catch (error) {
-  console.error("Erreur lors de la création du client Supabase Admin:", error);
+  console.error("Error creating Supabase Admin client:", error);
 }
 
-// Client Supabase standard pour les appels authentifiés
+// Standard Supabase client for authenticated calls
 let supabaseClient;
 try {
   supabaseClient = createClient(
@@ -54,28 +55,28 @@ try {
     SUPABASE_ANON_KEY
   );
 } catch (error) {
-  console.error("Erreur lors de la création du client Supabase Client:", error);
+  console.error("Error creating Supabase Client:", error);
 }
 
-// Fonction utilitaire pour la gestion des erreurs
+// Error handling utility function
 function handleError(error: any) {
-  // Amélioration: Tracer toute la stack et les propriétés d'erreur
+  // Enhanced: Track full stack and error properties
   const errorDetails = {
-    message: error.message || "Erreur inconnue",
+    message: error.message || "Unknown error",
     stack: error.stack,
     name: error.name,
     code: error.code,
     statusCode: error.statusCode,
     toString: error.toString(),
-    // Inclure les détails supplémentaires si disponibles
+    // Include additional details if available
     details: error.details || error.error || error.data,
   };
   
-  console.error("Erreur détaillée:", JSON.stringify(errorDetails, null, 2));
+  console.error("Detailed error:", JSON.stringify(errorDetails, null, 2));
   
   return new Response(
     JSON.stringify({ 
-      error: error.message || "Une erreur s'est produite",
+      error: error.message || "An error occurred",
       details: errorDetails
     }),
     {
@@ -85,10 +86,10 @@ function handleError(error: any) {
   );
 }
 
-// Fonction pour récupérer le profil GMB d'un utilisateur
+// Function to retrieve a user's GMB profile
 async function getUserGoogleProfile(userId: string) {
   try {
-    logger.info(`Recherche du profil Google pour l'utilisateur: ${userId}`);
+    logger.info(`Looking for Google profile for user: ${userId}`);
     
     const { data, error } = await supabaseAdmin
       .from('user_google_business_profiles')
@@ -97,31 +98,31 @@ async function getUserGoogleProfile(userId: string) {
       .single();
     
     if (error) {
-      logger.error(`Erreur lors de la récupération du profil Google: ${JSON.stringify(error)}`);
+      logger.error(`Error retrieving Google profile: ${JSON.stringify(error)}`);
       return null;
     }
     
-    logger.info(`Profil Google trouvé: ${JSON.stringify(data)}`);
+    logger.info(`Google profile found: ${JSON.stringify(data)}`);
     return data;
   } catch (err) {
-    logger.error(`Exception lors de la récupération du profil Google: ${JSON.stringify(err)}`);
+    logger.error(`Exception retrieving Google profile: ${JSON.stringify(err)}`);
     return null;
   }
 }
 
-// Fonction pour générer l'URL d'autorisation OAuth
+// Function to generate OAuth authorization URL
 function getGoogleAuthUrl(state: string) {
-  logger.info(`Génération d'URL d'autorisation pour l'état: ${state}`);
+  logger.info(`Generating authorization URL for state: ${state}`);
   
-  // Vérifier que les variables d'environnement nécessaires sont définies
+  // Check if required environment variables are set
   if (!GOOGLE_CLIENT_ID) {
-    logger.error('GOOGLE_CLIENT_ID non défini dans les variables d\'environnement');
-    throw new Error('GOOGLE_CLIENT_ID non défini dans les variables d\'environnement');
+    logger.error('GOOGLE_CLIENT_ID not defined in environment variables');
+    throw new Error('GOOGLE_CLIENT_ID not defined. Please configure this variable in the Edge functions secrets.');
   }
   
   if (!REDIRECT_URI) {
-    logger.error('GMB_REDIRECT_URI non défini dans les variables d\'environnement');
-    throw new Error('GMB_REDIRECT_URI non défini dans les variables d\'environnement');
+    logger.error('GMB_REDIRECT_URI not defined in environment variables');
+    throw new Error('GMB_REDIRECT_URI not defined. Please configure this variable in the Edge functions secrets.');
   }
   
   const scopes = [
@@ -136,32 +137,32 @@ function getGoogleAuthUrl(state: string) {
     scope: scopes.join(' '),
     access_type: 'offline',
     state: state,
-    prompt: 'consent', // Forcer l'affichage du consentement pour obtenir un refresh token
+    prompt: 'consent', // Force consent display to get a refresh token
   });
   
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-  logger.info(`URL d'autorisation générée: ${authUrl}`);
+  logger.info(`Generated authorization URL: ${authUrl}`);
   return authUrl;
 }
 
-// Fonction pour échanger le code contre des tokens
+// Function to exchange code for tokens
 async function exchangeCodeForTokens(code: string) {
-  logger.info(`Échange du code d'autorisation contre des tokens. Code length: ${code.length}`);
+  logger.info(`Exchanging authorization code for tokens. Code length: ${code.length}`);
   
-  // Vérifier que les variables d'environnement nécessaires sont définies
+  // Check if required environment variables are set
   if (!GOOGLE_CLIENT_ID) {
-    logger.error('GOOGLE_CLIENT_ID non défini dans les variables d\'environnement');
-    throw new Error('GOOGLE_CLIENT_ID non défini dans les variables d\'environnement');
+    logger.error('GOOGLE_CLIENT_ID not defined in environment variables');
+    throw new Error('GOOGLE_CLIENT_ID not defined. Please configure this variable in the Edge functions secrets.');
   }
   
   if (!GOOGLE_CLIENT_SECRET) {
-    logger.error('GOOGLE_CLIENT_SECRET non défini dans les variables d\'environnement');
-    throw new Error('GOOGLE_CLIENT_SECRET non défini dans les variables d\'environnement');
+    logger.error('GOOGLE_CLIENT_SECRET not defined in environment variables');
+    throw new Error('GOOGLE_CLIENT_SECRET not defined. Please configure this variable in the Edge functions secrets.');
   }
   
   if (!REDIRECT_URI) {
-    logger.error('GMB_REDIRECT_URI non défini dans les variables d\'environnement');
-    throw new Error('GMB_REDIRECT_URI non défini dans les variables d\'environnement');
+    logger.error('GMB_REDIRECT_URI not defined in environment variables');
+    throw new Error('GMB_REDIRECT_URI not defined. Please configure this variable in the Edge functions secrets.');
   }
   
   const tokenEndpoint = 'https://oauth2.googleapis.com/token';
@@ -174,7 +175,7 @@ async function exchangeCodeForTokens(code: string) {
   });
   
   try {
-    logger.info(`Envoi de la requête à ${tokenEndpoint}`);
+    logger.info(`Sending request to ${tokenEndpoint}`);
     const response = await fetch(tokenEndpoint, {
       method: 'POST',
       headers: {
@@ -185,22 +186,22 @@ async function exchangeCodeForTokens(code: string) {
     
     if (!response.ok) {
       const errorData = await response.json();
-      logger.error(`Erreur lors de l'échange de code (${response.status}): ${JSON.stringify(errorData)}`);
-      throw new Error(`Erreur lors de l'échange de code: ${JSON.stringify(errorData)}`);
+      logger.error(`Error exchanging code (${response.status}): ${JSON.stringify(errorData)}`);
+      throw new Error(`Error exchanging code: ${JSON.stringify(errorData)}`);
     }
     
     const data = await response.json();
-    logger.info(`Tokens reçus avec succès. access_token length: ${data.access_token?.length}, refresh_token présent: ${!!data.refresh_token}`);
+    logger.info(`Tokens received successfully. access_token length: ${data.access_token?.length}, refresh_token present: ${!!data.refresh_token}`);
     return data;
   } catch (err) {
-    logger.error(`Exception lors de l'échange de code: ${JSON.stringify(err)}`);
+    logger.error(`Exception exchanging code: ${JSON.stringify(err)}`);
     throw err;
   }
 }
 
-// Fonction pour rafraîchir le token d'accès
+// Function to refresh access token
 async function refreshAccessToken(refreshToken: string) {
-  logger.info(`Rafraîchissement du token d'accès`);
+  logger.info(`Refreshing access token`);
   
   const tokenEndpoint = 'https://oauth2.googleapis.com/token';
   const params = new URLSearchParams({
@@ -211,7 +212,7 @@ async function refreshAccessToken(refreshToken: string) {
   });
   
   try {
-    logger.info(`Envoi de la requête de rafraîchissement à ${tokenEndpoint}`);
+    logger.info(`Sending refresh request to ${tokenEndpoint}`);
     const response = await fetch(tokenEndpoint, {
       method: 'POST',
       headers: {
@@ -222,26 +223,26 @@ async function refreshAccessToken(refreshToken: string) {
     
     if (!response.ok) {
       const errorData = await response.json();
-      logger.error(`Erreur lors du rafraîchissement du token (${response.status}): ${JSON.stringify(errorData)}`);
-      throw new Error(`Erreur lors du rafraîchissement du token: ${JSON.stringify(errorData)}`);
+      logger.error(`Error refreshing token (${response.status}): ${JSON.stringify(errorData)}`);
+      throw new Error(`Error refreshing token: ${JSON.stringify(errorData)}`);
     }
     
     const data = await response.json();
-    logger.info(`Token rafraîchi avec succès. Nouveau token length: ${data.access_token?.length}`);
+    logger.info(`Token refreshed successfully. New token length: ${data.access_token?.length}`);
     return data;
   } catch (err) {
-    logger.error(`Exception lors du rafraîchissement du token: ${JSON.stringify(err)}`);
+    logger.error(`Exception refreshing token: ${JSON.stringify(err)}`);
     throw err;
   }
 }
 
-// Fonction pour récupérer les informations de l'utilisateur Google
+// Function to get Google user information
 async function getGoogleUserInfo(accessToken: string) {
-  logger.info(`Récupération des informations utilisateur Google`);
+  logger.info(`Retrieving Google user information`);
   
   try {
     const userInfoEndpoint = 'https://www.googleapis.com/userinfo/v2/me';
-    logger.info(`Envoi de la requête à ${userInfoEndpoint}`);
+    logger.info(`Sending request to ${userInfoEndpoint}`);
     
     const response = await fetch(userInfoEndpoint, {
       headers: {
@@ -251,23 +252,23 @@ async function getGoogleUserInfo(accessToken: string) {
     
     if (!response.ok) {
       const errorData = await response.json();
-      logger.error(`Erreur lors de la récupération des informations utilisateur (${response.status}): ${JSON.stringify(errorData)}`);
-      throw new Error(`Erreur lors de la récupération des informations utilisateur: ${JSON.stringify(errorData)}`);
+      logger.error(`Error retrieving user information (${response.status}): ${JSON.stringify(errorData)}`);
+      throw new Error(`Error retrieving user information: ${JSON.stringify(errorData)}`);
     }
     
     const userInfo = await response.json();
-    logger.info(`Informations utilisateur récupérées: ${JSON.stringify(userInfo)}`);
+    logger.info(`User information retrieved: ${JSON.stringify(userInfo)}`);
     return userInfo;
   } catch (err) {
-    logger.error(`Exception lors de la récupération des informations utilisateur: ${JSON.stringify(err)}`);
+    logger.error(`Exception retrieving user information: ${JSON.stringify(err)}`);
     throw err;
   }
 }
 
-// Fonction pour appeler l'API Google My Business avec le token approprié
+// Function to call Google My Business API with appropriate token
 async function callGmbApi(endpoint: string, method = 'GET', accessToken: string, body?: any) {
   const url = `${API_BASE_URL}/${endpoint}`;
-  logger.info(`Appel à l'API GMB: ${method} ${url}`);
+  logger.info(`Calling GMB API: ${method} ${url}`);
   
   const options: RequestInit = {
     method,
@@ -279,146 +280,146 @@ async function callGmbApi(endpoint: string, method = 'GET', accessToken: string,
   
   if (body) {
     options.body = JSON.stringify(body);
-    logger.info(`Corps de la requête: ${options.body}`);
+    logger.info(`Request body: ${options.body}`);
   }
   
   try {
     const response = await fetch(url, options);
     
-    // Log de la réponse brute pour le débogage
+    // Log raw response for debugging
     const responseText = await response.text();
-    logger.info(`Réponse brute de l'API: ${responseText}`);
+    logger.info(`Raw API response: ${responseText}`);
     
-    // Analyser la réponse en JSON si possible
+    // Parse response as JSON if possible
     let responseData;
     try {
       responseData = JSON.parse(responseText);
     } catch (e) {
-      logger.error(`Erreur lors de l'analyse de la réponse JSON: ${e}`);
+      logger.error(`Error parsing JSON response: ${e}`);
       responseData = { text: responseText };
     }
     
     if (!response.ok) {
-      logger.error(`Erreur API GMB (${response.status}): ${JSON.stringify(responseData)}`);
-      throw new Error(`Erreur API GMB (${response.status}): ${JSON.stringify(responseData)}`);
+      logger.error(`GMB API error (${response.status}): ${JSON.stringify(responseData)}`);
+      throw new Error(`GMB API error (${response.status}): ${JSON.stringify(responseData)}`);
     }
     
     return responseData;
   } catch (err) {
-    logger.error(`Exception lors de l'appel à l'API GMB: ${JSON.stringify(err)}`);
+    logger.error(`Exception calling GMB API: ${JSON.stringify(err)}`);
     throw err;
   }
 }
 
-// Fonction pour lister les comptes GMB
+// Function to list GMB accounts
 async function listAccounts(accessToken: string) {
-  logger.info(`Listage des comptes GMB`);
+  logger.info(`Listing GMB accounts`);
   return await callGmbApi('accounts', 'GET', accessToken);
 }
 
-// Fonction pour lister les établissements d'un compte GMB
+// Function to list locations for a GMB account
 async function listLocations(accountId: string, accessToken: string) {
-  logger.info(`Listage des établissements pour le compte: ${accountId}`);
+  logger.info(`Listing locations for account: ${accountId}`);
   return await callGmbApi(`accounts/${accountId}/locations`, 'GET', accessToken);
 }
 
-// Point d'entrée principal de l'Edge Function
+// Main entry point for the Edge Function
 serve(async (req) => {
-  // Log détaillé de chaque requête
+  // Detailed log of each request
   const requestId = crypto.randomUUID();
-  console.log(`[${requestId}] Nouvelle requête: ${req.method} ${req.url}`);
+  console.log(`[${requestId}] New request: ${req.method} ${req.url}`);
   
   try {
-    // Gestion des requêtes préflight CORS
+    // Handle CORS preflight requests
     if (req.method === 'OPTIONS') {
-      console.log(`[${requestId}] Traitement de la requête préflight CORS`);
+      console.log(`[${requestId}] Processing CORS preflight request`);
       return new Response(null, { headers: corsHeaders });
     }
     
-    // Vérification des variables d'environnement
+    // Check environment variables
     const envVarStatus = {
-      SUPABASE_URL: !!SUPABASE_URL ? "défini" : "manquant",
-      SUPABASE_ANON_KEY: !!SUPABASE_ANON_KEY ? "défini" : "manquant",
-      SUPABASE_SERVICE_ROLE_KEY: !!SUPABASE_SERVICE_ROLE_KEY ? "défini" : "manquant",
-      GOOGLE_CLIENT_ID: !!GOOGLE_CLIENT_ID ? "défini" : "manquant",
-      GOOGLE_CLIENT_SECRET: !!GOOGLE_CLIENT_SECRET ? "défini" : "manquant",
-      REDIRECT_URI: !!REDIRECT_URI ? "défini" : "manquant"
+      SUPABASE_URL: !!SUPABASE_URL,
+      SUPABASE_ANON_KEY: !!SUPABASE_ANON_KEY,
+      SUPABASE_SERVICE_ROLE_KEY: !!SUPABASE_SERVICE_ROLE_KEY,
+      GOOGLE_CLIENT_ID: !!GOOGLE_CLIENT_ID,
+      GOOGLE_CLIENT_SECRET: !!GOOGLE_CLIENT_SECRET,
+      REDIRECT_URI: !!REDIRECT_URI
     };
     
-    console.log(`[${requestId}] Statut des variables d'environnement:`, JSON.stringify(envVarStatus));
+    console.log(`[${requestId}] Environment variables status:`, JSON.stringify(envVarStatus));
     
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
-      console.error(`[${requestId}] Variables d'environnement Supabase manquantes`);
-      throw new Error('Variables d\'environnement Supabase manquantes. Vérifiez la configuration des secrets.');
+      console.error(`[${requestId}] Missing Supabase environment variables`);
+      throw new Error('Missing Supabase environment variables. Check secret configuration.');
     }
     
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !REDIRECT_URI) {
-      console.error(`[${requestId}] Variables d'environnement Google manquantes`);
-      throw new Error('Variables d\'environnement Google manquantes. Vérifiez la configuration des secrets.');
+      console.error(`[${requestId}] Missing Google environment variables`);
+      throw new Error('Missing Google environment variables. Check secret configuration.');
     }
     
-    // Récupérer les données du corps de la requête
+    // Get request body data
     let requestData;
     try {
       requestData = await req.json();
-      console.log(`[${requestId}] Données de requête:`, JSON.stringify(requestData));
+      console.log(`[${requestId}] Request data:`, JSON.stringify(requestData));
     } catch (e) {
-      console.error(`[${requestId}] Erreur lors du parsing du JSON:`, e);
-      throw new Error(`Erreur lors du parsing du JSON: ${e.message || e}`);
+      console.error(`[${requestId}] Error parsing JSON:`, e);
+      throw new Error(`Error parsing JSON: ${e.message || e}`);
     }
     
     const action = requestData?.action;
-    console.log(`[${requestId}] Action requise: ${action}`);
+    console.log(`[${requestId}] Requested action: ${action}`);
     
     if (!action) {
-      throw new Error('Action non spécifiée dans la requête');
+      throw new Error('Action not specified in request');
     }
     
-    // Extraire le token JWT pour obtenir l'ID utilisateur
+    // Extract JWT token to get user ID
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      console.error(`[${requestId}] Token d'authentification manquant`);
-      throw new Error('Token d\'authentification manquant');
+      console.error(`[${requestId}] Missing authentication token`);
+      throw new Error('Missing authentication token');
     }
     
     const token = authHeader.replace('Bearer ', '');
-    console.log(`[${requestId}] Tentative d'authentification avec token JWT`);
+    console.log(`[${requestId}] Attempting authentication with JWT token`);
     
-    // Vérification du token et récupération des informations utilisateur
+    // Verify token and get user information
     let user;
     try {
       const { data, error } = await supabaseClient.auth.getUser(token);
       
       if (error) {
-        console.error(`[${requestId}] Erreur d'authentification:`, error);
-        throw new Error(`Erreur d'authentification: ${error.message}`);
+        console.error(`[${requestId}] Authentication error:`, error);
+        throw new Error(`Authentication error: ${error.message}`);
       }
       
       user = data?.user;
       
       if (!user) {
-        console.error(`[${requestId}] Utilisateur non trouvé avec le token fourni`);
-        throw new Error('Utilisateur non authentifié');
+        console.error(`[${requestId}] User not found with provided token`);
+        throw new Error('User not authenticated');
       }
       
-      console.log(`[${requestId}] Utilisateur authentifié: ${user.id}`);
+      console.log(`[${requestId}] User authenticated: ${user.id}`);
     } catch (authError) {
-      console.error(`[${requestId}] Erreur lors de l'authentification:`, authError);
-      throw new Error(`Erreur lors de l'authentification: ${authError.message || authError}`);
+      console.error(`[${requestId}] Error during authentication:`, authError);
+      throw new Error(`Error during authentication: ${authError.message || authError}`);
     }
     
     const userId = user.id;
     
-    // Traiter les différentes actions
+    // Process different actions
     if (action === 'get_auth_url') {
       try {
-        console.log(`[${requestId}] Traitement de l'action get_auth_url`);
+        console.log(`[${requestId}] Processing get_auth_url action`);
         
-        // Générer l'URL d'autorisation OAuth
-        const state = userId; // Utiliser l'ID utilisateur comme state
+        // Generate OAuth authorization URL
+        const state = userId; // Use user ID as state
         const authUrl = getGoogleAuthUrl(state);
         
-        console.log(`[${requestId}] URL d'autorisation générée: ${authUrl}`);
+        console.log(`[${requestId}] Generated authorization URL: ${authUrl}`);
         
         return new Response(
           JSON.stringify({ url: authUrl, success: true }),
@@ -428,43 +429,43 @@ serve(async (req) => {
           }
         );
       } catch (error) {
-        console.error(`[${requestId}] Erreur lors de la génération de l'URL d'autorisation:`, error);
+        console.error(`[${requestId}] Error generating authorization URL:`, error);
         return handleError(error);
       }
     } 
     else if (action === 'handle_callback') {
-      // Traiter le callback OAuth
-      logger.info(`[${requestId}] Traitement de l'action handle_callback`);
+      // Process OAuth callback
+      logger.info(`[${requestId}] Processing handle_callback action`);
       
       const code = requestData.code;
       const state = requestData.state;
       
       if (!code) {
-        logger.error(`[${requestId}] Code d'autorisation manquant`);
-        throw new Error('Code d\'autorisation manquant');
+        logger.error(`[${requestId}] Missing authorization code`);
+        throw new Error('Missing authorization code');
       }
       
-      logger.info(`[${requestId}] Vérification de l'état: reçu=${state}, attendu=${userId}`);
+      logger.info(`[${requestId}] Verifying state: received=${state}, expected=${userId}`);
       if (state !== userId) {
-        logger.error(`[${requestId}] État invalide: ${state} != ${userId}`);
-        throw new Error('État invalide');
+        logger.error(`[${requestId}] Invalid state: ${state} != ${userId}`);
+        throw new Error('Invalid state');
       }
       
-      // Échanger le code contre des tokens
-      logger.info(`[${requestId}] Échange du code contre des tokens`);
+      // Exchange code for tokens
+      logger.info(`[${requestId}] Exchanging code for tokens`);
       const tokenData = await exchangeCodeForTokens(code);
       const { access_token, refresh_token, expires_in } = tokenData;
       
-      // Récupérer les informations de l'utilisateur Google
-      logger.info(`[${requestId}] Récupération des informations utilisateur Google`);
+      // Get Google user information
+      logger.info(`[${requestId}] Getting Google user information`);
       const userInfo = await getGoogleUserInfo(access_token);
       
-      // Calculer l'expiration du token
+      // Calculate token expiration
       const tokenExpiresAt = new Date();
       tokenExpiresAt.setSeconds(tokenExpiresAt.getSeconds() + expires_in);
       
-      // Stocker les tokens dans la base de données
-      logger.info(`[${requestId}] Stockage des tokens pour l'utilisateur: ${userId}, email Google: ${userInfo.email}`);
+      // Store tokens in database
+      logger.info(`[${requestId}] Storing tokens for user: ${userId}, Google email: ${userInfo.email}`);
       const { error } = await supabaseAdmin
         .from('user_google_business_profiles')
         .upsert({
@@ -476,15 +477,15 @@ serve(async (req) => {
         });
       
       if (error) {
-        logger.error(`[${requestId}] Erreur lors du stockage des tokens: ${JSON.stringify(error)}`);
-        throw new Error(`Erreur lors du stockage des tokens: ${error.message}`);
+        logger.error(`[${requestId}] Error storing tokens: ${JSON.stringify(error)}`);
+        throw new Error(`Error storing tokens: ${error.message}`);
       }
       
-      logger.info(`[${requestId}] Callback traité avec succès`);
+      logger.info(`[${requestId}] Callback processed successfully`);
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: 'Compte Google lié avec succès',
+          message: 'Google account linked successfully',
           email: userInfo.email
         }),
         {
@@ -493,8 +494,8 @@ serve(async (req) => {
       );
     } 
     else if (action === 'get_profile') {
-      // Récupérer le profil Google de l'utilisateur
-      logger.info(`[${requestId}] Récupération du profil Google pour l'utilisateur: ${userId}`);
+      // Get user's Google profile
+      logger.info(`[${requestId}] Getting Google profile for user: ${userId}`);
       const profile = await getUserGoogleProfile(userId);
       
       return new Response(
@@ -505,31 +506,31 @@ serve(async (req) => {
       );
     } 
     else if (action === 'list_accounts') {
-      // Lister les comptes GMB
-      logger.info(`[${requestId}] Listage des comptes GMB pour l'utilisateur: ${userId}`);
+      // List GMB accounts
+      logger.info(`[${requestId}] Listing GMB accounts for user: ${userId}`);
       const profile = await getUserGoogleProfile(userId);
       
       if (!profile) {
-        logger.error(`[${requestId}] Aucun profil Google lié pour l'utilisateur: ${userId}`);
-        throw new Error('Aucun profil Google lié');
+        logger.error(`[${requestId}] No linked Google profile for user: ${userId}`);
+        throw new Error('No linked Google profile');
       }
       
-      // Vérifier si le token d'accès est expiré
+      // Check if access token is expired
       let accessToken = profile.access_token;
       const tokenExpiresAt = new Date(profile.token_expires_at);
       
-      logger.info(`[${requestId}] Vérification de l'expiration du token: expire le ${tokenExpiresAt.toISOString()}, maintenant: ${new Date().toISOString()}`);
+      logger.info(`[${requestId}] Checking token expiration: expires on ${tokenExpiresAt.toISOString()}, now: ${new Date().toISOString()}`);
       if (new Date() >= tokenExpiresAt) {
-        // Rafraîchir le token d'accès
-        logger.info(`[${requestId}] Token expiré, rafraîchissement...`);
+        // Refresh access token
+        logger.info(`[${requestId}] Token expired, refreshing...`);
         const tokenData = await refreshAccessToken(profile.refresh_token);
         accessToken = tokenData.access_token;
         
-        // Mettre à jour le token dans la base de données
+        // Update token in database
         const newExpiresAt = new Date();
         newExpiresAt.setSeconds(newExpiresAt.getSeconds() + tokenData.expires_in);
         
-        logger.info(`[${requestId}] Mise à jour du token dans la base de données, expire le: ${newExpiresAt.toISOString()}`);
+        logger.info(`[${requestId}] Updating token in database, expires on: ${newExpiresAt.toISOString()}`);
         await supabaseAdmin
           .from('user_google_business_profiles')
           .update({
@@ -539,8 +540,8 @@ serve(async (req) => {
           .eq('user_id', userId);
       }
       
-      // Appeler l'API GMB pour lister les comptes
-      logger.info(`[${requestId}] Appel de l'API GMB pour lister les comptes`);
+      // Call GMB API to list accounts
+      logger.info(`[${requestId}] Calling GMB API to list accounts`);
       const accounts = await listAccounts(accessToken);
       
       return new Response(
@@ -551,38 +552,38 @@ serve(async (req) => {
       );
     } 
     else if (action === 'list_locations') {
-      // Lister les établissements d'un compte GMB
+      // List locations for a GMB account
       const accountId = requestData.account_id;
-      logger.info(`[${requestId}] Listage des établissements pour le compte: ${accountId}`);
+      logger.info(`[${requestId}] Listing locations for account: ${accountId}`);
       
       if (!accountId) {
-        logger.error(`[${requestId}] ID de compte manquant`);
-        throw new Error('ID de compte manquant');
+        logger.error(`[${requestId}] Missing account ID`);
+        throw new Error('Missing account ID');
       }
       
       const profile = await getUserGoogleProfile(userId);
       
       if (!profile) {
-        logger.error(`[${requestId}] Aucun profil Google lié pour l'utilisateur: ${userId}`);
-        throw new Error('Aucun profil Google lié');
+        logger.error(`[${requestId}] No linked Google profile for user: ${userId}`);
+        throw new Error('No linked Google profile');
       }
       
-      // Vérifier si le token d'accès est expiré
+      // Check if access token is expired
       let accessToken = profile.access_token;
       const tokenExpiresAt = new Date(profile.token_expires_at);
       
-      logger.info(`[${requestId}] Vérification de l'expiration du token: expire le ${tokenExpiresAt.toISOString()}, maintenant: ${new Date().toISOString()}`);
+      logger.info(`[${requestId}] Checking token expiration: expires on ${tokenExpiresAt.toISOString()}, now: ${new Date().toISOString()}`);
       if (new Date() >= tokenExpiresAt) {
-        // Rafraîchir le token d'accès
-        logger.info(`[${requestId}] Token expiré, rafraîchissement...`);
+        // Refresh access token
+        logger.info(`[${requestId}] Token expired, refreshing...`);
         const tokenData = await refreshAccessToken(profile.refresh_token);
         accessToken = tokenData.access_token;
         
-        // Mettre à jour le token dans la base de données
+        // Update token in database
         const newExpiresAt = new Date();
         newExpiresAt.setSeconds(newExpiresAt.getSeconds() + tokenData.expires_in);
         
-        logger.info(`[${requestId}] Mise à jour du token dans la base de données, expire le: ${newExpiresAt.toISOString()}`);
+        logger.info(`[${requestId}] Updating token in database, expires on: ${newExpiresAt.toISOString()}`);
         await supabaseAdmin
           .from('user_google_business_profiles')
           .update({
@@ -592,8 +593,8 @@ serve(async (req) => {
           .eq('user_id', userId);
       }
       
-      // Appeler l'API GMB pour lister les établissements
-      logger.info(`[${requestId}] Appel de l'API GMB pour lister les établissements du compte: ${accountId}`);
+      // Call GMB API to list locations
+      logger.info(`[${requestId}] Calling GMB API to list locations for account: ${accountId}`);
       const locations = await listLocations(accountId, accessToken);
       
       return new Response(
@@ -604,18 +605,18 @@ serve(async (req) => {
       );
     } 
     else if (action === 'save_location') {
-      // Sauvegarder l'ID de l'établissement sélectionné
+      // Save selected location ID
       const accountId = requestData.account_id;
       const locationId = requestData.location_id;
-      logger.info(`[${requestId}] Sauvegarde de l'établissement: ${locationId} du compte: ${accountId}`);
+      logger.info(`[${requestId}] Saving location: ${locationId} for account: ${accountId}`);
       
       if (!accountId || !locationId) {
-        logger.error(`[${requestId}] ID de compte ou d'établissement manquant`);
-        throw new Error('ID de compte ou d\'établissement manquant');
+        logger.error(`[${requestId}] Missing account or location ID`);
+        throw new Error('Missing account or location ID');
       }
       
-      // Mettre à jour le profil avec les IDs sélectionnés
-      logger.info(`[${requestId}] Mise à jour des IDs dans la base de données pour l'utilisateur: ${userId}`);
+      // Update profile with selected IDs
+      logger.info(`[${requestId}] Updating IDs in database for user: ${userId}`);
       const { error } = await supabaseAdmin
         .from('user_google_business_profiles')
         .update({
@@ -625,15 +626,15 @@ serve(async (req) => {
         .eq('user_id', userId);
       
       if (error) {
-        logger.error(`[${requestId}] Erreur lors de la sauvegarde des IDs: ${JSON.stringify(error)}`);
-        throw new Error(`Erreur lors de la sauvegarde des IDs: ${error.message}`);
+        logger.error(`[${requestId}] Error saving IDs: ${JSON.stringify(error)}`);
+        throw new Error(`Error saving IDs: ${error.message}`);
       }
       
-      logger.info(`[${requestId}] Établissement sauvegardé avec succès`);
+      logger.info(`[${requestId}] Location saved successfully`);
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: 'Établissement sélectionné avec succès' 
+          message: 'Location selected successfully' 
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -641,23 +642,23 @@ serve(async (req) => {
       );
     } 
     else if (action === 'disconnect') {
-      // Déconnecter le compte Google
-      logger.info(`[${requestId}] Déconnexion du compte Google pour l'utilisateur: ${userId}`);
+      // Disconnect Google account
+      logger.info(`[${requestId}] Disconnecting Google account for user: ${userId}`);
       const { error } = await supabaseAdmin
         .from('user_google_business_profiles')
         .delete()
         .eq('user_id', userId);
       
       if (error) {
-        logger.error(`[${requestId}] Erreur lors de la déconnexion: ${JSON.stringify(error)}`);
-        throw new Error(`Erreur lors de la déconnexion: ${error.message}`);
+        logger.error(`[${requestId}] Error disconnecting: ${JSON.stringify(error)}`);
+        throw new Error(`Error disconnecting: ${error.message}`);
       }
       
-      logger.info(`[${requestId}] Compte Google déconnecté avec succès`);
+      logger.info(`[${requestId}] Google account disconnected successfully`);
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: 'Compte Google déconnecté avec succès' 
+          message: 'Google account disconnected successfully' 
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -665,10 +666,10 @@ serve(async (req) => {
       );
     }
     
-    console.error(`[${requestId}] Action non reconnue: ${action}`);
-    throw new Error(`Action non reconnue: ${action}`);
+    console.error(`[${requestId}] Unrecognized action: ${action}`);
+    throw new Error(`Unrecognized action: ${action}`);
   } catch (error) {
-    console.error(`[${requestId}] Erreur non gérée:`, error);
+    console.error(`[${requestId}] Unhandled error:`, error);
     console.error(`[${requestId}] Stack trace:`, error.stack);
     return handleError(error);
   }

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -20,23 +21,23 @@ const GoogleBusinessPage = () => {
   const [searchParams] = useSearchParams();
   const { isAuthenticated, user } = useAuth();
   const { 
-    isLoading, isConnected, profile, accounts, locations,
+    isLoading, isConnected, profile, accounts, locations, error,
     fetchProfile, getAuthUrl, handleCallback,
     listAccounts, listLocations, saveLocation, disconnect
   } = useGoogleBusiness();
   
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("profile");
-  const [error, setError] = useState<string | null>(null);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   
-  // Vérifier si l'utilisateur est connecté
+  // Check if user is logged in
   useEffect(() => {
     if (!isAuthenticated) {
       navigate("/login");
     }
   }, [isAuthenticated, navigate]);
   
-  // Initialiser le profil GMB
+  // Initialize GMB profile
   useEffect(() => {
     const initProfile = async () => {
       try {
@@ -45,15 +46,15 @@ const GoogleBusinessPage = () => {
           setSelectedAccountId(profile.gmb_account_id);
         }
       } catch (err: any) {
-        console.error("Erreur lors de l'initialisation du profil:", err);
-        setError("Erreur lors de l'initialisation du profil: " + err.message);
+        console.error("Error initializing profile:", err);
+        setConnectionError(`Error initializing profile: ${err.message}`);
       }
     };
     
     initProfile();
   }, [fetchProfile]);
   
-  // Traiter le callback OAuth
+  // Process OAuth callback
   useEffect(() => {
     const code = searchParams.get("code");
     const state = searchParams.get("state");
@@ -61,60 +62,87 @@ const GoogleBusinessPage = () => {
     if (code && state) {
       handleCallback(code, state).then((success) => {
         if (success) {
-          // Supprimer les paramètres de l'URL
+          // Remove URL parameters
           navigate("/google-business", { replace: true });
         }
       });
     }
   }, [searchParams, handleCallback, navigate]);
+
+  // Update local error state when the hook error changes
+  useEffect(() => {
+    if (error) {
+      setConnectionError(error);
+    }
+  }, [error]);
   
-  // Se connecter à Google
+  // Connect to Google
   const handleConnect = async () => {
-    setError(null);
+    setConnectionError(null);
     try {
       const authUrl = await getAuthUrl();
-      console.log("URL d'authentification obtenue:", authUrl);
+      console.log("Authentication URL obtained:", authUrl);
       
       if (authUrl) {
         window.location.href = authUrl;
       } else {
-        throw new Error("Impossible d'obtenir l'URL d'authentification");
+        throw new Error("Unable to get authentication URL");
       }
     } catch (err: any) {
-      console.error("Erreur lors de la connexion:", err);
-      setError("Erreur lors de la connexion à Google: " + err.message);
-      toast.error("Erreur lors de la connexion à Google");
+      console.error("Error connecting:", err);
+      setConnectionError(`Error connecting to Google: ${err.message}`);
+      toast.error("Error connecting to Google");
     }
   };
   
-  // Charger les comptes GMB
+  // Load GMB accounts
   const handleLoadAccounts = async () => {
-    await listAccounts();
-    setActiveTab("accounts");
+    setConnectionError(null);
+    try {
+      await listAccounts();
+      setActiveTab("accounts");
+    } catch (err: any) {
+      setConnectionError(`Failed to load accounts: ${err.message}`);
+    }
   };
   
-  // Charger les établissements d'un compte GMB
+  // Load locations for a GMB account
   const handleSelectAccount = async (accountId: string) => {
-    setSelectedAccountId(accountId);
-    await listLocations(accountId);
-    setActiveTab("locations");
+    setConnectionError(null);
+    try {
+      setSelectedAccountId(accountId);
+      await listLocations(accountId);
+      setActiveTab("locations");
+    } catch (err: any) {
+      setConnectionError(`Failed to load locations: ${err.message}`);
+    }
   };
   
-  // Sélectionner un établissement
+  // Select a location
   const handleSelectLocation = async (locationId: string) => {
     if (!selectedAccountId) return;
     
-    const success = await saveLocation(selectedAccountId, locationId);
-    if (success) {
-      setActiveTab("profile");
+    setConnectionError(null);
+    try {
+      const success = await saveLocation(selectedAccountId, locationId);
+      if (success) {
+        setActiveTab("profile");
+      }
+    } catch (err: any) {
+      setConnectionError(`Failed to select location: ${err.message}`);
     }
   };
   
-  // Se déconnecter de Google
+  // Disconnect from Google
   const handleDisconnect = async () => {
-    const success = await disconnect();
-    if (success) {
-      setActiveTab("profile");
+    setConnectionError(null);
+    try {
+      const success = await disconnect();
+      if (success) {
+        setActiveTab("profile");
+      }
+    } catch (err: any) {
+      setConnectionError(`Failed to disconnect: ${err.message}`);
     }
   };
   
@@ -125,20 +153,20 @@ const GoogleBusinessPage = () => {
       <div className="container max-w-6xl mx-auto py-6">
         <AnimatedContainer>
           <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Gestion Google My Business</h1>
+            <h1 className="text-3xl font-bold mb-2">Google My Business Management</h1>
             <p className="text-muted-foreground">
-              Connectez votre fiche d'établissement Google My Business pour la gérer directement depuis l'application.
+              Connect your Google My Business listing to manage it directly from the application.
             </p>
           </div>
           
-          {error && (
+          {connectionError && (
             <Card className="bg-red-50 border-red-200 mb-4">
               <CardContent className="pt-6">
                 <div className="flex items-start gap-2 text-red-600">
                   <AlertCircle className="h-5 w-5 mt-0.5" />
                   <div>
-                    <h3 className="font-medium">Erreur détectée</h3>
-                    <p>{error}</p>
+                    <h3 className="font-medium">Error Detected</h3>
+                    <p>{connectionError}</p>
                   </div>
                 </div>
               </CardContent>
@@ -154,21 +182,21 @@ const GoogleBusinessPage = () => {
           ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
               <TabsList className="grid grid-cols-3 w-full max-w-md">
-                <TabsTrigger value="profile">Profil</TabsTrigger>
-                <TabsTrigger value="accounts" disabled={!isConnected}>Comptes</TabsTrigger>
-                <TabsTrigger value="locations" disabled={!selectedAccountId}>Établissements</TabsTrigger>
+                <TabsTrigger value="profile">Profile</TabsTrigger>
+                <TabsTrigger value="accounts" disabled={!isConnected}>Accounts</TabsTrigger>
+                <TabsTrigger value="locations" disabled={!selectedAccountId}>Locations</TabsTrigger>
               </TabsList>
               
-              {/* Onglet Profil */}
+              {/* Profile Tab */}
               <TabsContent value="profile">
                 <Card className="shadow-md">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Store className="h-5 w-5" />
-                      Statut de connexion
+                      Connection Status
                     </CardTitle>
                     <CardDescription>
-                      Gérez la connexion avec votre compte Google My Business.
+                      Manage your connection with your Google My Business account.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -176,28 +204,28 @@ const GoogleBusinessPage = () => {
                       <div className="space-y-4">
                         <div className="flex items-center gap-2 text-green-600">
                           <CheckCircle className="h-5 w-5" />
-                          <span className="font-medium">Compte Google connecté</span>
+                          <span className="font-medium">Google account connected</span>
                         </div>
                         
                         <div className="bg-muted p-4 rounded-md">
-                          <p className="text-sm font-medium">Email Google</p>
-                          <p className="text-muted-foreground">{profile.googleEmail || 'Non spécifié'}</p>
+                          <p className="text-sm font-medium">Google Email</p>
+                          <p className="text-muted-foreground">{profile.googleEmail || 'Not specified'}</p>
                         </div>
                         
                         {profile.gmb_account_id && profile.gmb_location_id ? (
                           <div className="bg-muted p-4 rounded-md">
-                            <p className="text-sm font-medium">Établissement sélectionné</p>
+                            <p className="text-sm font-medium">Selected Location</p>
                             <p className="text-muted-foreground">
-                              ID du compte: {profile.gmb_account_id}
+                              Account ID: {profile.gmb_account_id}
                             </p>
                             <p className="text-muted-foreground">
-                              ID de l'établissement: {profile.gmb_location_id}
+                              Location ID: {profile.gmb_location_id}
                             </p>
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 text-amber-600">
                             <AlertCircle className="h-5 w-5" />
-                            <span className="font-medium">Aucun établissement sélectionné</span>
+                            <span className="font-medium">No location selected</span>
                           </div>
                         )}
                       </div>
@@ -205,12 +233,12 @@ const GoogleBusinessPage = () => {
                       <div className="space-y-4">
                         <div className="flex items-center gap-2 text-orange-600">
                           <AlertCircle className="h-5 w-5" />
-                          <span className="font-medium">Compte Google non connecté</span>
+                          <span className="font-medium">Google account not connected</span>
                         </div>
                         
                         <p className="text-muted-foreground">
-                          Connectez votre compte Google My Business pour gérer votre fiche d'établissement 
-                          directement depuis l'application.
+                          Connect your Google My Business account to manage your business listing 
+                          directly from the application.
                         </p>
                       </div>
                     )}
@@ -221,34 +249,34 @@ const GoogleBusinessPage = () => {
                         <Button onClick={handleLoadAccounts} className="flex items-center gap-2">
                           <Building2 className="h-4 w-4" />
                           {profile?.gmb_account_id 
-                            ? "Changer d'établissement" 
-                            : "Sélectionner un établissement"}
+                            ? "Change location" 
+                            : "Select a location"}
                         </Button>
                         <Button variant="outline" onClick={handleDisconnect} className="flex items-center gap-2">
                           <LogOut className="h-4 w-4" />
-                          Déconnecter
+                          Disconnect
                         </Button>
                       </div>
                     ) : (
                       <Button onClick={handleConnect} className="flex items-center gap-2">
                         <Store className="h-4 w-4" />
-                        Se connecter à Google My Business
+                        Connect to Google My Business
                       </Button>
                     )}
                   </CardFooter>
                 </Card>
               </TabsContent>
               
-              {/* Onglet Comptes */}
+              {/* Accounts Tab */}
               <TabsContent value="accounts">
                 <Card className="shadow-md">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Building2 className="h-5 w-5" />
-                      Comptes Google My Business
+                      Google My Business Accounts
                     </CardTitle>
                     <CardDescription>
-                      Sélectionnez un compte pour voir ses établissements.
+                      Select an account to view its locations.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -274,7 +302,7 @@ const GoogleBusinessPage = () => {
                                 size="sm"
                                 className="flex items-center gap-1"
                               >
-                                Voir les établissements
+                                View locations
                                 <ChevronRight className="h-4 w-4" />
                               </Button>
                             </div>
@@ -284,7 +312,7 @@ const GoogleBusinessPage = () => {
                     ) : (
                       <div className="text-center py-10">
                         <p className="text-muted-foreground">
-                          Aucun compte Google My Business trouvé.
+                          No Google My Business accounts found.
                         </p>
                         <Button 
                           variant="outline" 
@@ -292,7 +320,7 @@ const GoogleBusinessPage = () => {
                           onClick={() => listAccounts()}
                         >
                           <RefreshCw className="h-4 w-4" />
-                          Actualiser
+                          Refresh
                         </Button>
                       </div>
                     )}
@@ -303,22 +331,22 @@ const GoogleBusinessPage = () => {
                       onClick={() => setActiveTab("profile")}
                       className="mr-auto"
                     >
-                      Retour
+                      Back
                     </Button>
                   </CardFooter>
                 </Card>
               </TabsContent>
               
-              {/* Onglet Établissements */}
+              {/* Locations Tab */}
               <TabsContent value="locations">
                 <Card className="shadow-md">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <MapPin className="h-5 w-5" />
-                      Établissements
+                      Locations
                     </CardTitle>
                     <CardDescription>
-                      Sélectionnez l'établissement que vous souhaitez gérer.
+                      Select the location you want to manage.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -346,7 +374,7 @@ const GoogleBusinessPage = () => {
                                 size="sm"
                                 className="flex items-center gap-1"
                               >
-                                Sélectionner
+                                Select
                                 <CheckCircle className="h-4 w-4 ml-1" />
                               </Button>
                             </div>
@@ -356,7 +384,7 @@ const GoogleBusinessPage = () => {
                     ) : (
                       <div className="text-center py-10">
                         <p className="text-muted-foreground">
-                          Aucun établissement trouvé pour ce compte.
+                          No locations found for this account.
                         </p>
                         <Button 
                           variant="outline" 
@@ -364,7 +392,7 @@ const GoogleBusinessPage = () => {
                           onClick={() => selectedAccountId && listLocations(selectedAccountId)}
                         >
                           <RefreshCw className="h-4 w-4" />
-                          Actualiser
+                          Refresh
                         </Button>
                       </div>
                     )}
@@ -375,7 +403,7 @@ const GoogleBusinessPage = () => {
                       onClick={() => setActiveTab("accounts")}
                       className="mr-auto"
                     >
-                      Retour
+                      Back
                     </Button>
                   </CardFooter>
                 </Card>
@@ -385,14 +413,14 @@ const GoogleBusinessPage = () => {
           
           <div className="mt-6">
             <p className="text-sm text-muted-foreground">
-              Besoin d'aide pour configurer votre fiche Google My Business ? 
+              Need help setting up your Google My Business listing? 
               <a 
                 href="https://support.google.com/business/answer/9798848" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-primary ml-1 flex items-center gap-1 inline-flex"
               >
-                Voir la documentation Google
+                View Google documentation
                 <ExternalLink className="h-3 w-3" />
               </a>
             </p>

@@ -29,39 +29,41 @@ export const useGoogleBusiness = () => {
   const [profile, setProfile] = useState<GoogleBusinessProfile | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  // Vérifier la connexion au démarrage
+  // Check connection on startup
   useEffect(() => {
     fetchProfile().catch(error => {
-      console.error("Erreur lors de la vérification initiale du profil:", error);
+      console.error("Error during initial profile check:", error);
     });
   }, []);
 
-  // Récupérer le profil GMB de l'utilisateur
+  // Retrieve user's GMB profile
   const fetchProfile = useCallback(async () => {
     try {
       setIsLoading(true);
+      setError(null);
       
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        console.log("Utilisateur non connecté");
-        throw new Error("Utilisateur non connecté");
+        console.log("User not logged in");
+        throw new Error("User not logged in");
       }
       
-      // Log pour débogage
-      console.log("Envoi de la requête get_profile");
+      // Debug log
+      console.log("Sending get_profile request");
       
       const response = await supabase.functions.invoke('google-business', {
         body: { action: 'get_profile' },
       });
       
-      // Log pour débogage
-      console.log("Réponse reçue:", response);
+      // Debug log
+      console.log("Response received:", response);
       
       if (response.error) {
-        console.error("Erreur Edge Function:", response.error);
-        throw new Error(response.error.message || "Erreur lors de la récupération du profil GMB");
+        console.error("Edge Function Error:", response.error);
+        throw new Error(response.error.message || "Error retrieving GMB profile");
       }
       
       const { profile } = response.data || {};
@@ -71,152 +73,167 @@ export const useGoogleBusiness = () => {
       
       return profile;
     } catch (error: any) {
-      console.error("Erreur lors de la récupération du profil GMB:", error);
+      console.error("Error retrieving GMB profile:", error);
+      setError(`Failed to get profile: ${error.message || "Unknown error"}`);
       return null;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Générer l'URL d'autorisation OAuth
+  // Generate OAuth authorization URL
   const getAuthUrl = useCallback(async () => {
     try {
       setIsLoading(true);
+      setError(null);
       
-      // Log pour débogage
-      console.log("Envoi de la requête get_auth_url");
+      // Debug log
+      console.log("Sending get_auth_url request");
       
       const response = await supabase.functions.invoke('google-business', {
         body: { action: 'get_auth_url' },
       });
       
-      // Log détaillé pour débogage
-      console.log("Réponse complète de l'Edge Function:", response);
+      // Detailed debug log
+      console.log("Full Edge Function response:", response);
       
       if (response.error) {
-        console.error("Erreur de l'Edge Function:", response.error);
-        throw new Error(response.error.message || "Erreur lors de la génération de l'URL d'autorisation");
+        console.error("Edge Function Error:", response.error);
+        setError(`Authorization error: ${response.error.message || "Failed to generate authorization URL"}`);
+        throw new Error(response.error.message || "Error generating authorization URL");
       }
       
       if (!response.data || !response.data.url) {
-        console.error("Réponse invalide de l'Edge Function (pas d'URL):", response);
-        throw new Error("URL d'autorisation manquante dans la réponse");
+        console.error("Invalid Edge Function response (no URL):", response);
+        setError("Missing authorization URL in response");
+        throw new Error("Missing authorization URL in response");
       }
       
-      // Log pour débogage
-      console.log("URL d'authentification obtenue:", response.data.url);
+      // Debug log
+      console.log("Authentication URL obtained:", response.data.url);
       
       return response.data.url;
     } catch (error: any) {
-      console.error("Erreur lors de la génération de l'URL d'autorisation:", error);
-      toast.error("Erreur lors de la génération de l'URL d'autorisation");
+      console.error("Error generating authorization URL:", error);
+      setError(`Failed to get authentication URL: ${error.message || "Unknown error"}`);
+      toast.error("Error generating authorization URL");
       return null;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Traiter le callback OAuth
+  // Process OAuth callback
   const handleCallback = useCallback(async (code: string, state: string) => {
     try {
       setIsLoading(true);
+      setError(null);
       
-      console.log("Traitement du callback avec code et state:", { codeLength: code.length, state });
+      console.log("Processing callback with code and state:", { codeLength: code.length, state });
       
       const response = await supabase.functions.invoke('google-business', {
         body: { action: 'handle_callback', code, state },
       });
       
-      console.log("Réponse du callback:", response);
+      console.log("Callback response:", response);
       
       if (response.error) {
-        console.error("Erreur lors du traitement du callback:", response.error);
-        throw new Error(response.error.message || "Erreur lors de la connexion au compte Google");
+        console.error("Error processing callback:", response.error);
+        setError(`Authentication error: ${response.error.message || "Failed to connect to Google account"}`);
+        throw new Error(response.error.message || "Error connecting to Google account");
       }
       
-      toast.success("Compte Google connecté avec succès");
+      toast.success("Google account connected successfully");
       await fetchProfile();
       
       return true;
     } catch (error: any) {
-      console.error("Erreur lors du traitement du callback:", error);
-      toast.error("Erreur lors de la connexion au compte Google");
+      console.error("Error processing callback:", error);
+      setError(`Authentication failed: ${error.message || "Unknown error"}`);
+      toast.error("Error connecting to Google account");
       return false;
     } finally {
       setIsLoading(false);
     }
   }, [fetchProfile]);
 
-  // Lister les comptes GMB
+  // List GMB accounts
   const listAccounts = useCallback(async () => {
     try {
       setIsLoading(true);
+      setError(null);
       
-      console.log("Demande de liste des comptes");
+      console.log("Requesting accounts list");
       
       const response = await supabase.functions.invoke('google-business', {
         body: { action: 'list_accounts' },
       });
       
-      console.log("Réponse de liste des comptes:", response);
+      console.log("Accounts list response:", response);
       
       if (response.error) {
-        console.error("Erreur lors de la récupération des comptes:", response.error);
-        throw new Error(response.error.message || "Erreur lors de la récupération des comptes");
+        console.error("Error retrieving accounts:", response.error);
+        setError(`Failed to get accounts: ${response.error.message || "Unknown error"}`);
+        throw new Error(response.error.message || "Error retrieving accounts");
       }
       
       const accountsList = response.data?.accounts?.accounts || [];
-      console.log("Comptes récupérés:", accountsList);
+      console.log("Accounts retrieved:", accountsList);
       
       setAccounts(accountsList);
       return accountsList;
     } catch (error: any) {
-      console.error("Erreur lors de la récupération des comptes:", error);
-      toast.error("Erreur lors de la récupération des comptes");
+      console.error("Error retrieving accounts:", error);
+      setError(`Failed to get accounts: ${error.message || "Unknown error"}`);
+      toast.error("Error retrieving accounts");
       return [];
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Lister les établissements d'un compte GMB
+  // List locations for a GMB account
   const listLocations = useCallback(async (accountId: string) => {
     try {
       setIsLoading(true);
+      setError(null);
       
-      console.log("Demande de liste des établissements pour le compte:", accountId);
+      console.log("Requesting locations list for account:", accountId);
       
       const response = await supabase.functions.invoke('google-business', {
         body: { action: 'list_locations', account_id: accountId },
       });
       
-      console.log("Réponse de liste des établissements:", response);
+      console.log("Locations list response:", response);
       
       if (response.error) {
-        console.error("Erreur lors de la récupération des établissements:", response.error);
-        throw new Error(response.error.message || "Erreur lors de la récupération des établissements");
+        console.error("Error retrieving locations:", response.error);
+        setError(`Failed to get locations: ${response.error.message || "Unknown error"}`);
+        throw new Error(response.error.message || "Error retrieving locations");
       }
       
       const locationsList = response.data?.locations?.locations || [];
-      console.log("Établissements récupérés:", locationsList);
+      console.log("Locations retrieved:", locationsList);
       
       setLocations(locationsList);
       return locationsList;
     } catch (error: any) {
-      console.error("Erreur lors de la récupération des établissements:", error);
-      toast.error("Erreur lors de la récupération des établissements");
+      console.error("Error retrieving locations:", error);
+      setError(`Failed to get locations: ${error.message || "Unknown error"}`);
+      toast.error("Error retrieving locations");
       return [];
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Sauvegarder l'ID de l'établissement sélectionné
+  // Save selected location ID
   const saveLocation = useCallback(async (accountId: string, locationId: string) => {
     try {
       setIsLoading(true);
+      setError(null);
       
-      console.log("Sauvegarde de l'établissement:", { accountId, locationId });
+      console.log("Saving location:", { accountId, locationId });
       
       const response = await supabase.functions.invoke('google-business', {
         body: { 
@@ -226,42 +243,46 @@ export const useGoogleBusiness = () => {
         },
       });
       
-      console.log("Réponse de sauvegarde de l'établissement:", response);
+      console.log("Save location response:", response);
       
       if (response.error) {
-        console.error("Erreur lors de la sauvegarde de l'établissement:", response.error);
-        throw new Error(response.error.message || "Erreur lors de la sauvegarde de l'établissement");
+        console.error("Error saving location:", response.error);
+        setError(`Failed to save location: ${response.error.message || "Unknown error"}`);
+        throw new Error(response.error.message || "Error saving location");
       }
       
-      toast.success("Établissement sélectionné avec succès");
+      toast.success("Location selected successfully");
       await fetchProfile();
       
       return true;
     } catch (error: any) {
-      console.error("Erreur lors de la sauvegarde de l'établissement:", error);
-      toast.error("Erreur lors de la sauvegarde de l'établissement");
+      console.error("Error saving location:", error);
+      setError(`Failed to save location: ${error.message || "Unknown error"}`);
+      toast.error("Error saving location");
       return false;
     } finally {
       setIsLoading(false);
     }
   }, [fetchProfile]);
 
-  // Déconnecter le compte Google
+  // Disconnect Google account
   const disconnect = useCallback(async () => {
     try {
       setIsLoading(true);
+      setError(null);
       
-      console.log("Demande de déconnexion du compte Google");
+      console.log("Requesting Google account disconnection");
       
       const response = await supabase.functions.invoke('google-business', {
         body: { action: 'disconnect' },
       });
       
-      console.log("Réponse de déconnexion:", response);
+      console.log("Disconnection response:", response);
       
       if (response.error) {
-        console.error("Erreur lors de la déconnexion:", response.error);
-        throw new Error(response.error.message || "Erreur lors de la déconnexion du compte Google");
+        console.error("Error disconnecting:", response.error);
+        setError(`Failed to disconnect: ${response.error.message || "Unknown error"}`);
+        throw new Error(response.error.message || "Error disconnecting Google account");
       }
       
       setProfile(null);
@@ -269,12 +290,13 @@ export const useGoogleBusiness = () => {
       setAccounts([]);
       setLocations([]);
       
-      toast.success("Compte Google déconnecté avec succès");
+      toast.success("Google account disconnected successfully");
       
       return true;
     } catch (error: any) {
-      console.error("Erreur lors de la déconnexion:", error);
-      toast.error("Erreur lors de la déconnexion du compte Google");
+      console.error("Error disconnecting:", error);
+      setError(`Failed to disconnect: ${error.message || "Unknown error"}`);
+      toast.error("Error disconnecting Google account");
       return false;
     } finally {
       setIsLoading(false);
@@ -287,6 +309,7 @@ export const useGoogleBusiness = () => {
     profile,
     accounts,
     locations,
+    error,
     fetchProfile,
     getAuthUrl,
     handleCallback,
