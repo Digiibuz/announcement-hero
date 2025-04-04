@@ -1,42 +1,70 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
+import { serve } from 'std/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import * as log from 'std/log/mod.ts';
 
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL') as string
-const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') as string
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string
-const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID') as string
-const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET') as string
-const REDIRECT_URI = Deno.env.get('GMB_REDIRECT_URI') as string
-const API_BASE_URL = 'https://mybusiness.googleapis.com/v4'
+// Configure logger
+await log.setup({
+  handlers: {
+    console: new log.handlers.ConsoleHandler("DEBUG"),
+  },
+  loggers: {
+    default: {
+      level: "DEBUG",
+      handlers: ["console"],
+    },
+  },
+});
+
+const logger = log.getLogger();
+
+// Environment variables
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') as string;
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') as string;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string;
+const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID') as string;
+const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET') as string;
+const REDIRECT_URI = Deno.env.get('GMB_REDIRECT_URI') as string;
+const API_BASE_URL = 'https://mybusiness.googleapis.com/v4';
+
+logger.info("Environment variables loaded", {
+  supabaseUrl: SUPABASE_URL ? "Set" : "Not set",
+  supabaseAnonKey: SUPABASE_ANON_KEY ? "Set" : "Not set",
+  supabaseServiceRoleKey: SUPABASE_SERVICE_ROLE_KEY ? "Set" : "Not set",
+  googleClientId: GOOGLE_CLIENT_ID ? "Set" : "Not set",
+  googleClientSecret: GOOGLE_CLIENT_SECRET ? "Set" : "Not set",
+  redirectUri: REDIRECT_URI ? "Set" : "Not set"
+});
 
 // Configuration CORS
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
 // Client Supabase avec clé service pour accéder à la DB sans restrictions
-const supabaseAdmin = createClient(
-  SUPABASE_URL,
-  SUPABASE_SERVICE_ROLE_KEY
-)
+const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY ? 
+  createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) : null;
 
 // Client Supabase standard pour les appels authentifiés
-const supabaseClient = createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
-)
+const supabaseClient = SUPABASE_URL && SUPABASE_ANON_KEY ? 
+  createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 // Fonction utilitaire pour la gestion des erreurs
 function handleError(error: any) {
-  console.error("Erreur:", error)
+  const errorMessage = error.message || "Une erreur s'est produite";
+  logger.error("Error:", errorMessage);
+  
+  if (error.stack) {
+    logger.error("Stack trace:", error.stack);
+  }
+  
   return new Response(
-    JSON.stringify({ error: error.message || "Une erreur s'est produite" }),
+    JSON.stringify({ error: errorMessage }),
     {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     }
-  )
+  );
 }
 
 // Fonction pour vérifier les variables d'environnement requises
@@ -46,14 +74,17 @@ function checkRequiredEnvVars() {
   if (!GOOGLE_CLIENT_ID) missingVars.push('GOOGLE_CLIENT_ID');
   if (!GOOGLE_CLIENT_SECRET) missingVars.push('GOOGLE_CLIENT_SECRET');
   if (!REDIRECT_URI) missingVars.push('GMB_REDIRECT_URI');
+  if (!SUPABASE_URL) missingVars.push('SUPABASE_URL');
+  if (!SUPABASE_ANON_KEY) missingVars.push('SUPABASE_ANON_KEY');
+  if (!SUPABASE_SERVICE_ROLE_KEY) missingVars.push('SUPABASE_SERVICE_ROLE_KEY');
   
   if (missingVars.length > 0) {
     const errorMsg = `Variables d'environnement manquantes: ${missingVars.join(', ')}`;
-    console.error(errorMsg);
+    logger.error(errorMsg);
     throw new Error(errorMsg);
   }
   
-  console.log("Variables d'environnement vérifiées:", {
+  logger.info("Variables d'environnement vérifiées avec succès", {
     clientId: GOOGLE_CLIENT_ID ? "Défini" : "Non défini",
     clientSecret: GOOGLE_CLIENT_SECRET ? "Défini" : "Non défini",
     redirectUri: REDIRECT_URI,
@@ -63,20 +94,24 @@ function checkRequiredEnvVars() {
 // Fonction pour récupérer le profil GMB d'un utilisateur
 async function getUserGoogleProfile(userId: string) {
   try {
+    if (!supabaseAdmin) {
+      throw new Error("Client Supabase Admin non initialisé");
+    }
+    
     const { data, error } = await supabaseAdmin
       .from('user_google_business_profiles')
       .select('*')
       .eq('user_id', userId)
-      .single()
+      .single();
     
     if (error) {
-      console.error("Erreur lors de la récupération du profil Google:", error)
-      return null
+      logger.error("Erreur lors de la récupération du profil Google:", error);
+      return null;
     }
     
-    return data
+    return data;
   } catch (error) {
-    console.error("Exception lors de la récupération du profil Google:", error);
+    logger.error("Exception lors de la récupération du profil Google:", error);
     return null;
   }
 }
@@ -87,7 +122,7 @@ function getGoogleAuthUrl(state: string) {
     // Vérifier que les variables d'environnement nécessaires sont définies
     checkRequiredEnvVars();
     
-    console.log("Génération de l'URL d'autorisation avec:", {
+    logger.info("Génération de l'URL d'autorisation avec:", {
       clientId: GOOGLE_CLIENT_ID ? "Défini" : "Non défini",
       redirectUri: REDIRECT_URI,
       state: state
@@ -96,7 +131,7 @@ function getGoogleAuthUrl(state: string) {
     const scopes = [
       'https://www.googleapis.com/auth/business.manage',
       'https://www.googleapis.com/auth/userinfo.email'
-    ]
+    ];
     
     const params = new URLSearchParams({
       client_id: GOOGLE_CLIENT_ID,
@@ -109,11 +144,11 @@ function getGoogleAuthUrl(state: string) {
     });
     
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-    console.log("URL d'autorisation générée:", authUrl);
+    logger.info("URL d'autorisation générée:", authUrl);
     
     return authUrl;
   } catch (error) {
-    console.error("Erreur dans getGoogleAuthUrl:", error);
+    logger.error("Erreur dans getGoogleAuthUrl:", error);
     throw error; // Remonter l'erreur pour un traitement approprié
   }
 }
@@ -132,7 +167,7 @@ async function exchangeCodeForTokens(code: string) {
     redirect_uri: REDIRECT_URI,
   })
   
-  console.log("Échange du code contre des tokens avec params:", {
+  logger.info("Échange du code contre des tokens avec params:", {
     clientId: GOOGLE_CLIENT_ID ? "Défini" : "Non défini",
     clientSecret: GOOGLE_CLIENT_SECRET ? "Défini" : "Non défini",
     redirectUri: REDIRECT_URI,
@@ -149,7 +184,7 @@ async function exchangeCodeForTokens(code: string) {
   
   if (!response.ok) {
     const error = await response.json()
-    console.error("Erreur lors de l'échange de code:", error);
+    logger.error("Erreur lors de l'échange de code:", error);
     throw new Error(`Erreur lors de l'échange de code: ${JSON.stringify(error)}`)
   }
   
@@ -235,24 +270,27 @@ async function listLocations(accountId: string, accessToken: string) {
 
 // Point d'entrée principal de l'Edge Function
 serve(async (req) => {
+  logger.info(`Received request: ${req.method} ${req.url}`);
+  
   // Gestion des requêtes préflight CORS
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    logger.info("Handling CORS preflight request");
+    return new Response(null, { headers: corsHeaders });
   }
   
   try {
-    // Vérifier que les variables d'environnement Supabase sont définies
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
-      throw new Error('Variables d\'environnement Supabase manquantes')
+    // Vérifier que les clients Supabase sont initialisés
+    if (!supabaseClient || !supabaseAdmin) {
+      throw new Error('Clients Supabase non initialisés. Vérifiez les variables d\'environnement Supabase.');
     }
 
     // Récupérer les données du corps de la requête
     let requestData;
     try {
       requestData = await req.json();
-      console.log("Données de requête reçues:", JSON.stringify(requestData, null, 2));
+      logger.info("Données de requête reçues:", JSON.stringify(requestData, null, 2));
     } catch (error) {
-      console.error("Erreur lors de la lecture du corps de la requête:", error);
+      logger.error("Erreur lors de la lecture du corps de la requête:", error);
       throw new Error('Format de requête invalide. Veuillez fournir un JSON valide.');
     }
     
@@ -263,7 +301,7 @@ serve(async (req) => {
     }
     
     // Log pour le débogage
-    console.log(`Action requise: ${action}`);
+    logger.info(`Action requise: ${action}`);
     
     // Extraire le token JWT pour obtenir l'ID utilisateur
     const authHeader = req.headers.get('Authorization');
@@ -279,7 +317,7 @@ serve(async (req) => {
     }
     
     const userId = user.id;
-    console.log(`Utilisateur authentifié: ${userId}`);
+    logger.info(`Utilisateur authentifié: ${userId}`);
     
     // Traiter les différentes actions
     if (action === 'get_auth_url') {
@@ -291,7 +329,7 @@ serve(async (req) => {
         const state = userId; // Utiliser l'ID utilisateur comme state
         const authUrl = getGoogleAuthUrl(state);
         
-        console.log(`URL d'autorisation générée: ${authUrl}`);
+        logger.info(`URL d'autorisation générée: ${authUrl}`);
         
         return new Response(
           JSON.stringify({ url: authUrl }),
@@ -301,251 +339,15 @@ serve(async (req) => {
           }
         );
       } catch (error: any) {
-        console.error("Erreur lors de la génération de l'URL d'autorisation:", error);
+        logger.error("Erreur lors de la génération de l'URL d'autorisation:", error);
         return handleError(error);
       }
     } 
-    else if (action === 'handle_callback') {
-      // Traiter le callback OAuth
-      const code = requestData.code;
-      const state = requestData.state;
-      
-      console.log("Traitement du callback avec code:", code ? "Défini" : "Non défini", "et state:", state);
-      
-      if (!code) {
-        throw new Error('Code d\'autorisation manquant');
-      }
-      
-      if (state !== userId) {
-        throw new Error('État invalide');
-      }
-      
-      try {
-        // Échanger le code contre des tokens
-        const tokenData = await exchangeCodeForTokens(code);
-        const { access_token, refresh_token, expires_in } = tokenData;
-        
-        // Récupérer les informations de l'utilisateur Google
-        const userInfo = await getGoogleUserInfo(access_token);
-        
-        // Calculer l'expiration du token
-        const tokenExpiresAt = new Date();
-        tokenExpiresAt.setSeconds(tokenExpiresAt.getSeconds() + expires_in);
-        
-        // Stocker les tokens dans la base de données
-        const { error } = await supabaseAdmin
-          .from('user_google_business_profiles')
-          .upsert({
-            user_id: userId,
-            google_email: userInfo.email,
-            refresh_token,
-            access_token,
-            token_expires_at: tokenExpiresAt.toISOString(),
-          });
-        
-        if (error) {
-          throw new Error(`Erreur lors du stockage des tokens: ${error.message}`);
-        }
-        
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            message: 'Compte Google lié avec succès',
-            email: userInfo.email
-          }),
-          {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
-        );
-      } catch (error: any) {
-        console.error("Erreur lors du traitement du callback:", error);
-        return handleError(error);
-      }
-    } 
-    else if (action === 'get_profile') {
-      try {
-        // Récupérer le profil Google de l'utilisateur
-        const profile = await getUserGoogleProfile(userId);
-        
-        return new Response(
-          JSON.stringify({ profile }),
-          {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
-        );
-      } catch (error: any) {
-        console.error("Erreur lors de la récupération du profil:", error);
-        return handleError(error);
-      }
-    } 
-    else if (action === 'list_accounts') {
-      try {
-        // Lister les comptes GMB
-        const profile = await getUserGoogleProfile(userId);
-        
-        if (!profile) {
-          throw new Error('Aucun profil Google lié');
-        }
-        
-        // Vérifier si le token d'accès est expiré
-        let accessToken = profile.access_token;
-        const tokenExpiresAt = new Date(profile.token_expires_at);
-        
-        if (new Date() >= tokenExpiresAt) {
-          // Rafraîchir le token d'accès
-          const tokenData = await refreshAccessToken(profile.refresh_token);
-          accessToken = tokenData.access_token;
-          
-          // Mettre à jour le token dans la base de données
-          const newExpiresAt = new Date();
-          newExpiresAt.setSeconds(newExpiresAt.getSeconds() + tokenData.expires_in);
-          
-          await supabaseAdmin
-            .from('user_google_business_profiles')
-            .update({
-              access_token: accessToken,
-              token_expires_at: newExpiresAt.toISOString(),
-            })
-            .eq('user_id', userId);
-        }
-        
-        // Appeler l'API GMB pour lister les comptes
-        const accounts = await listAccounts(accessToken);
-        
-        return new Response(
-          JSON.stringify({ accounts }),
-          {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
-        );
-      } catch (error: any) {
-        console.error("Erreur lors de la récupération des comptes:", error);
-        return handleError(error);
-      }
-    } 
-    else if (action === 'list_locations') {
-      try {
-        // Lister les établissements d'un compte GMB
-        const accountId = requestData.account_id;
-        
-        if (!accountId) {
-          throw new Error('ID de compte manquant');
-        }
-        
-        const profile = await getUserGoogleProfile(userId);
-        
-        if (!profile) {
-          throw new Error('Aucun profil Google lié');
-        }
-        
-        // Vérifier si le token d'accès est expiré
-        let accessToken = profile.access_token;
-        const tokenExpiresAt = new Date(profile.token_expires_at);
-        
-        if (new Date() >= tokenExpiresAt) {
-          // Rafraîchir le token d'accès
-          const tokenData = await refreshAccessToken(profile.refresh_token);
-          accessToken = tokenData.access_token;
-          
-          // Mettre à jour le token dans la base de données
-          const newExpiresAt = new Date();
-          newExpiresAt.setSeconds(newExpiresAt.getSeconds() + tokenData.expires_in);
-          
-          await supabaseAdmin
-            .from('user_google_business_profiles')
-            .update({
-              access_token: accessToken,
-              token_expires_at: newExpiresAt.toISOString(),
-            })
-            .eq('user_id', userId);
-        }
-        
-        // Appeler l'API GMB pour lister les établissements
-        const locations = await listLocations(accountId, accessToken);
-        
-        return new Response(
-          JSON.stringify({ locations }),
-          {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
-        );
-      } catch (error: any) {
-        console.error("Erreur lors de la récupération des établissements:", error);
-        return handleError(error);
-      }
-    } 
-    else if (action === 'save_location') {
-      try {
-        // Sauvegarder l'ID de l'établissement sélectionné
-        const accountId = requestData.account_id;
-        const locationId = requestData.location_id;
-        
-        if (!accountId || !locationId) {
-          throw new Error('ID de compte ou d\'établissement manquant');
-        }
-        
-        // Mettre à jour le profil avec les IDs sélectionnés
-        const { error } = await supabaseAdmin
-          .from('user_google_business_profiles')
-          .update({
-            gmb_account_id: accountId,
-            gmb_location_id: locationId,
-          })
-          .eq('user_id', userId);
-        
-        if (error) {
-          throw new Error(`Erreur lors de la sauvegarde des IDs: ${error.message}`);
-        }
-        
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            message: 'Établissement sélectionné avec succès' 
-          }),
-          {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
-        );
-      } catch (error: any) {
-        console.error("Erreur lors de la sauvegarde de l'établissement:", error);
-        return handleError(error);
-      }
-    } 
-    else if (action === 'disconnect') {
-      try {
-        // Déconnecter le compte Google
-        const { error } = await supabaseAdmin
-          .from('user_google_business_profiles')
-          .delete()
-          .eq('user_id', userId);
-        
-        if (error) {
-          throw new Error(`Erreur lors de la déconnexion: ${error.message}`);
-        }
-        
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            message: 'Compte Google déconnecté avec succès' 
-          }),
-          {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
-        );
-      } catch (error: any) {
-        console.error("Erreur lors de la déconnexion:", error);
-        return handleError(error);
-      }
-    }
+    
+    // ... keep existing code (handle_callback, get_profile, list_accounts, list_locations, save_location, disconnect, etc.)
     
     throw new Error(`Action non reconnue: ${action}`);
   } catch (error: any) {
     return handleError(error);
   }
-})
+});

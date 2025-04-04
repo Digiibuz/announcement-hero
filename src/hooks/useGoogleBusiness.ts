@@ -54,10 +54,10 @@ export const useGoogleBusiness = () => {
       console.log("Réponse reçue:", response);
       
       if (response.error) {
-        throw new Error(response.error.message);
+        throw new Error(response.error.message || "Erreur de l'Edge Function");
       }
       
-      const { profile } = response.data;
+      const { profile } = response.data || {};
       
       setProfile(profile);
       setIsConnected(!!profile);
@@ -98,6 +98,7 @@ export const useGoogleBusiness = () => {
         throw new Error("L'URL d'authentification est vide ou non définie");
       }
       
+      console.log("URL d'authentification obtenue:", response.data.url);
       return response.data.url;
     } catch (error: any) {
       console.error("Erreur lors de la génération de l'URL d'autorisation:", error);
@@ -263,7 +264,39 @@ export const useGoogleBusiness = () => {
     errorMessage,
     fetchProfile,
     getAuthUrl,
-    handleCallback,
+    handleCallback: useCallback(async (code: string, state: string) => {
+      try {
+        setIsLoading(true);
+        setErrorMessage(null);
+        
+        console.log("Traitement du callback avec code et state:", { 
+          codeExists: !!code, 
+          stateExists: !!state 
+        });
+        
+        const response = await supabase.functions.invoke('google-business', {
+          body: { action: 'handle_callback', code, state },
+        });
+        
+        console.log("Réponse du callback:", response);
+        
+        if (response.error) {
+          throw new Error(response.error.message || "Erreur lors du traitement du callback");
+        }
+        
+        toast.success("Compte Google connecté avec succès");
+        await fetchProfile();
+        
+        return true;
+      } catch (error: any) {
+        console.error("Erreur lors du traitement du callback:", error);
+        setErrorMessage(`Erreur lors du traitement du callback: ${error.message}`);
+        toast.error("Erreur lors de la connexion au compte Google");
+        return false;
+      } finally {
+        setIsLoading(false);
+      }
+    }, [fetchProfile]),
     listAccounts,
     listLocations,
     saveLocation,
