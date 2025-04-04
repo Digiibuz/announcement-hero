@@ -10,11 +10,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { 
   Building2, LogOut, MapPin, Store, ChevronRight, 
-  RefreshCw, CheckCircle, ExternalLink, AlertCircle 
+  RefreshCw, CheckCircle, ExternalLink, AlertCircle, Bug 
 } from "lucide-react";
 import { toast } from "sonner";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const GoogleBusinessPage = () => {
   const navigate = useNavigate();
@@ -212,6 +218,57 @@ const GoogleBusinessPage = () => {
                 </div>
               </CardContent>
             </Card>
+          )}
+          
+          {/* Debugging information */}
+          {process.env.NODE_ENV !== 'production' && (
+            <Accordion type="single" collapsible className="mb-4">
+              <AccordionItem value="debug-info">
+                <AccordionTrigger className="flex items-center gap-2">
+                  <Bug className="h-4 w-4" />
+                  <span>Debug Information</span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="bg-slate-50 p-4 rounded-md text-xs font-mono overflow-auto max-h-80">
+                    <h3 className="text-sm font-semibold mb-2">Auth Status</h3>
+                    <p>User Authenticated: {isAuthenticated ? 'Yes' : 'No'}</p>
+                    <p>User ID: {user?.id || 'Not logged in'}</p>
+                    
+                    <h3 className="text-sm font-semibold mt-4 mb-2">Google Connection</h3>
+                    <p>Connected: {isConnected ? 'Yes' : 'No'}</p>
+                    <p>Has Profile: {profile ? 'Yes' : 'No'}</p>
+                    <p>Google Email: {profile?.googleEmail || 'None'}</p>
+                    
+                    <h3 className="text-sm font-semibold mt-4 mb-2">Callback Processing</h3>
+                    <p>State: {searchParams.get("state") || 'None'}</p>
+                    <p>Code Present: {searchParams.get("code") ? 'Yes' : 'No'}</p>
+                    <p>Currently Processing: {isCallbackProcessing ? 'Yes' : 'No'}</p>
+                    <p>Already Processed: {callbackProcessed ? 'Yes' : 'No'}</p>
+                    
+                    <h3 className="text-sm font-semibold mt-4 mb-2">API Calls</h3>
+                    <details open>
+                      <summary>Last API Call</summary>
+                      <pre className="bg-slate-100 p-2 rounded mt-2">
+                        {JSON.stringify(debugInfo, null, 2)}
+                      </pre>
+                    </details>
+                    
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="mt-4"
+                      onClick={() => {
+                        fetchProfile();
+                        toast.info("Profile refreshed");
+                      }}
+                    >
+                      <RefreshCw className="h-3 w-3 mr-2" />
+                      Refresh Profile
+                    </Button>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           )}
           
           {/* Show loading indicator if we're waiting for auth or profile, and not processing callback */}

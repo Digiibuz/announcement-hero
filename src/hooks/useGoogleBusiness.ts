@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -30,6 +31,10 @@ export const useGoogleBusiness = () => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [callbackProcessed, setCallbackProcessed] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<{
+    lastApiCall: string;
+    lastResponse: any;
+  }>({ lastApiCall: '', lastResponse: null });
 
   useEffect(() => {
     fetchProfile().catch(error => {
@@ -41,6 +46,7 @@ export const useGoogleBusiness = () => {
     try {
       setIsLoading(true);
       setError(null);
+      setDebugInfo(prev => ({ ...prev, lastApiCall: 'get_profile' }));
       
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -56,6 +62,7 @@ export const useGoogleBusiness = () => {
       });
       
       console.log("Response received:", response);
+      setDebugInfo(prev => ({ ...prev, lastResponse: response }));
       
       if (response.error) {
         console.error("Edge Function Error:", response.error);
@@ -64,13 +71,17 @@ export const useGoogleBusiness = () => {
       
       const { profile } = response.data || {};
       
+      // Ajoutons plus de logs pour comprendre ce qui se passe
+      console.log("Profile data returned:", profile);
+      
       if (profile) {
+        console.log("Google profile found, setting connected state");
         setProfile(profile);
         setIsConnected(true);
       } else {
+        console.log("No Google Business profile found for this user - this is normal if not yet connected");
         setProfile(null);
         setIsConnected(false);
-        console.log("No Google Business profile found for this user");
       }
       
       return profile;
@@ -88,6 +99,7 @@ export const useGoogleBusiness = () => {
     try {
       setIsLoading(true);
       setError(null);
+      setDebugInfo(prev => ({ ...prev, lastApiCall: 'get_auth_url' }));
       
       console.log("Sending get_auth_url request");
       
@@ -96,6 +108,7 @@ export const useGoogleBusiness = () => {
       });
       
       console.log("Full Edge Function response:", response);
+      setDebugInfo(prev => ({ ...prev, lastResponse: response }));
       
       if (response.error) {
         const errorMessage = response.error.message || "Failed to generate authorization URL";
@@ -140,6 +153,7 @@ export const useGoogleBusiness = () => {
       setIsLoading(true);
       setError(null);
       setCallbackProcessed(true);
+      setDebugInfo(prev => ({ ...prev, lastApiCall: 'handle_callback' }));
       
       console.log("Processing callback with code and state:", { codeLength: code.length, state });
       
@@ -155,6 +169,7 @@ export const useGoogleBusiness = () => {
       });
       
       console.log("Callback response:", response);
+      setDebugInfo(prev => ({ ...prev, lastResponse: response }));
       
       if (response.error) {
         console.error("Error processing callback:", response.error);
@@ -162,8 +177,18 @@ export const useGoogleBusiness = () => {
         throw new Error(response.error.message || "Error connecting to Google account");
       }
       
+      // Vérifier immédiatement si le profil a été créé
+      console.log("Callback successful, refreshing profile to verify creation");
+      const newProfile = await fetchProfile();
+      
+      if (!newProfile) {
+        console.warn("Profile not found after successful callback - this might indicate a database issue");
+        setError("Profile connection succeeded but profile was not found in database");
+      } else {
+        console.log("Profile successfully retrieved after callback:", newProfile);
+      }
+      
       toast.success("Google account connected successfully");
-      await fetchProfile();
       
       return true;
     } catch (error: any) {
@@ -325,6 +350,7 @@ export const useGoogleBusiness = () => {
     accounts,
     locations,
     error,
+    debugInfo, // Ajout des informations de débogage
     fetchProfile,
     getAuthUrl,
     handleCallback,

@@ -10,7 +10,6 @@ const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET') as string;
 const REDIRECT_URI = Deno.env.get('GMB_REDIRECT_URI') as string;
 const API_BASE_URL = 'https://mybusiness.googleapis.com/v4';
 
-// Configuration for logging
 try {
   await log.setup({
     handlers: {
@@ -29,13 +28,11 @@ try {
 
 const logger = log.getLogger();
 
-// CORS configuration
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Supabase client with service role key for unrestricted DB access
 let supabaseAdmin;
 try {
   supabaseAdmin = createClient(
@@ -46,7 +43,6 @@ try {
   console.error("Error creating Supabase Admin client:", error);
 }
 
-// Standard Supabase client for authenticated calls
 let supabaseClient;
 try {
   supabaseClient = createClient(
@@ -57,9 +53,7 @@ try {
   console.error("Error creating Supabase Client:", error);
 }
 
-// Error handling utility function
 function handleError(error: any) {
-  // Enhanced: Track full stack and error properties
   const errorDetails = {
     message: error.message || "Unknown error",
     stack: error.stack,
@@ -67,7 +61,6 @@ function handleError(error: any) {
     code: error.code,
     statusCode: error.statusCode,
     toString: error.toString(),
-    // Include additional details if available
     details: error.details || error.error || error.data,
   };
   
@@ -85,7 +78,6 @@ function handleError(error: any) {
   );
 }
 
-// Function to retrieve a user's GMB profile
 async function getUserGoogleProfile(userId: string) {
   try {
     logger.info(`Looking for Google profile for user: ${userId}`);
@@ -101,7 +93,26 @@ async function getUserGoogleProfile(userId: string) {
       return null;
     }
     
-    logger.info(`Google profile found: ${JSON.stringify(data)}`);
+    if (data) {
+      logger.info(`Google profile found with ID: ${data.id}, email: ${data.google_email}`);
+    } else {
+      logger.info(`No Google profile found for user ID: ${userId}. Table might be empty or the user has not connected yet.`);
+      
+      try {
+        const { count, error: countError } = await supabaseAdmin
+          .from('user_google_business_profiles')
+          .select('*', { count: 'exact', head: true });
+          
+        if (countError) {
+          logger.error(`Error checking table: ${JSON.stringify(countError)}`);
+        } else {
+          logger.info(`Table check: user_google_business_profiles has ${count} total records`);
+        }
+      } catch (e) {
+        logger.error(`Exception checking table: ${e.message}`);
+      }
+    }
+    
     return data;
   } catch (err) {
     logger.error(`Exception retrieving Google profile: ${JSON.stringify(err)}`);
@@ -109,11 +120,9 @@ async function getUserGoogleProfile(userId: string) {
   }
 }
 
-// Function to generate OAuth authorization URL
 function getGoogleAuthUrl(state: string) {
   logger.info(`Generating authorization URL for state: ${state}`);
   
-  // Check if required environment variables are set and not placeholder values
   if (!GOOGLE_CLIENT_ID) {
     logger.error('GOOGLE_CLIENT_ID not defined in environment variables');
     throw new Error('GOOGLE_CLIENT_ID not defined. Please configure this variable in the Edge Functions secrets.');
@@ -156,7 +165,7 @@ function getGoogleAuthUrl(state: string) {
     scope: scopes.join(' '),
     access_type: 'offline',
     state: state,
-    prompt: 'consent', // Force consent display to get a refresh token
+    prompt: 'consent',
   });
   
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
@@ -164,11 +173,9 @@ function getGoogleAuthUrl(state: string) {
   return authUrl;
 }
 
-// Function to exchange code for tokens
 async function exchangeCodeForTokens(code: string) {
   logger.info(`Exchanging authorization code for tokens. Code length: ${code.length}`);
   
-  // Check if required environment variables are set
   if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID === "Your Google OAuth client ID") {
     logger.error('GOOGLE_CLIENT_ID not properly defined in environment variables');
     throw new Error('GOOGLE_CLIENT_ID not properly defined. Please configure this variable with your actual Google client ID.');
@@ -211,6 +218,11 @@ async function exchangeCodeForTokens(code: string) {
     
     const data = await response.json();
     logger.info(`Tokens received successfully. access_token length: ${data.access_token?.length}, refresh_token present: ${!!data.refresh_token}`);
+    
+    if (!data.refresh_token) {
+      logger.error("WARNING: No refresh_token received! This will cause problems later.");
+    }
+    
     return data;
   } catch (err) {
     logger.error(`Exception exchanging code: ${JSON.stringify(err)}`);
@@ -218,7 +230,6 @@ async function exchangeCodeForTokens(code: string) {
   }
 }
 
-// Function to refresh access token
 async function refreshAccessToken(refreshToken: string) {
   logger.info(`Refreshing access token`);
   
@@ -255,7 +266,6 @@ async function refreshAccessToken(refreshToken: string) {
   }
 }
 
-// Function to get Google user information
 async function getGoogleUserInfo(accessToken: string) {
   logger.info(`Retrieving Google user information`);
   
@@ -284,7 +294,6 @@ async function getGoogleUserInfo(accessToken: string) {
   }
 }
 
-// Function to call Google My Business API with appropriate token
 async function callGmbApi(endpoint: string, method = 'GET', accessToken: string, body?: any) {
   const url = `${API_BASE_URL}/${endpoint}`;
   logger.info(`Calling GMB API: ${method} ${url}`);
@@ -305,11 +314,9 @@ async function callGmbApi(endpoint: string, method = 'GET', accessToken: string,
   try {
     const response = await fetch(url, options);
     
-    // Log raw response for debugging
     const responseText = await response.text();
     logger.info(`Raw API response: ${responseText}`);
     
-    // Parse response as JSON if possible
     let responseData;
     try {
       responseData = JSON.parse(responseText);
@@ -330,32 +337,26 @@ async function callGmbApi(endpoint: string, method = 'GET', accessToken: string,
   }
 }
 
-// Function to list GMB accounts
 async function listAccounts(accessToken: string) {
   logger.info(`Listing GMB accounts`);
   return await callGmbApi('accounts', 'GET', accessToken);
 }
 
-// Function to list locations for a GMB account
 async function listLocations(accountId: string, accessToken: string) {
   logger.info(`Listing locations for account: ${accountId}`);
   return await callGmbApi(`accounts/${accountId}/locations`, 'GET', accessToken);
 }
 
-// Main entry point for the Edge Function
 serve(async (req) => {
-  // Detailed log of each request
   const requestId = crypto.randomUUID();
   console.log(`[${requestId}] New request: ${req.method} ${req.url}`);
   
   try {
-    // Handle CORS preflight requests
     if (req.method === 'OPTIONS') {
       console.log(`[${requestId}] Processing CORS preflight request`);
       return new Response(null, { headers: corsHeaders });
     }
     
-    // Check environment variables
     const envVarStatus = {
       SUPABASE_URL: !!SUPABASE_URL,
       SUPABASE_ANON_KEY: !!SUPABASE_ANON_KEY,
@@ -387,7 +388,6 @@ serve(async (req) => {
       throw new Error('Google environment variables contain placeholder values. Please replace them with your actual values in the Edge Functions secrets.');
     }
     
-    // Get request body data
     let requestData;
     try {
       requestData = await req.json();
@@ -404,7 +404,6 @@ serve(async (req) => {
       throw new Error('Action not specified in request');
     }
     
-    // Extract JWT token to get user ID
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       console.error(`[${requestId}] Missing authentication token`);
@@ -414,7 +413,6 @@ serve(async (req) => {
     const token = authHeader.replace('Bearer ', '');
     console.log(`[${requestId}] Attempting authentication with JWT token`);
     
-    // Verify token and get user information
     let user;
     try {
       const { data, error } = await supabaseClient.auth.getUser(token);
@@ -439,13 +437,11 @@ serve(async (req) => {
     
     const userId = user.id;
     
-    // Process different actions
     if (action === 'get_auth_url') {
       try {
         console.log(`[${requestId}] Processing get_auth_url action`);
         
-        // Generate OAuth authorization URL
-        const state = userId; // Use user ID as state
+        const state = userId;
         const authUrl = getGoogleAuthUrl(state);
         
         console.log(`[${requestId}] Generated authorization URL: ${authUrl}`);
@@ -463,7 +459,6 @@ serve(async (req) => {
       }
     } 
     else if (action === 'handle_callback') {
-      // Process OAuth callback
       logger.info(`[${requestId}] Processing handle_callback action`);
       
       const code = requestData.code;
@@ -476,36 +471,29 @@ serve(async (req) => {
       
       logger.info(`[${requestId}] Verifying state: received=${state}, expected=${userId}`);
       
-      // Enhanced state validation to be more verbose in logs
       if (state !== userId) {
         logger.error(`[${requestId}] State mismatch: received=${state}, expected=${userId}`);
-        // Continue anyway - sometimes the state parameter gets corrupted in redirects
         logger.info(`[${requestId}] Proceeding despite state mismatch as we have a valid user token`);
       } else {
         logger.info(`[${requestId}] State verification successful`);
       }
       
-      // Exchange code for tokens
       logger.info(`[${requestId}] Exchanging code for tokens`);
       const tokenData = await exchangeCodeForTokens(code);
       const { access_token, refresh_token, expires_in } = tokenData;
       
-      // Get Google user information
       logger.info(`[${requestId}] Getting Google user information`);
       const userInfo = await getGoogleUserInfo(access_token);
       
-      // Calculate token expiration
       const tokenExpiresAt = new Date();
       tokenExpiresAt.setSeconds(tokenExpiresAt.getSeconds() + expires_in);
       
       try {
-        // First check if a profile already exists for this user
         const existingProfile = await getUserGoogleProfile(userId);
         logger.info(`[${requestId}] Profile exists check: ${existingProfile ? 'yes' : 'no'}`);
         
         let upsertResult;
         if (existingProfile) {
-          // Update existing profile
           logger.info(`[${requestId}] Updating existing profile for user: ${userId}`);
           upsertResult = await supabaseAdmin
             .from('user_google_business_profiles')
@@ -518,8 +506,9 @@ serve(async (req) => {
             })
             .eq('user_id', userId);
         } else {
-          // Create new profile
-          logger.info(`[${requestId}] Creating new profile for user: ${userId}`);
+          logger.info(`[${requestId}] Creating new profile for user: ${userId} with email: ${userInfo.email}`);
+          logger.info(`[${requestId}] Data being inserted: user_id=${userId}, google_email=${userInfo.email}, token_expires_at=${tokenExpiresAt.toISOString()}, refresh_token present=${!!refresh_token}, access_token present=${!!access_token}`);
+          
           upsertResult = await supabaseAdmin
             .from('user_google_business_profiles')
             .insert({
@@ -533,7 +522,23 @@ serve(async (req) => {
         
         if (upsertResult.error) {
           logger.error(`[${requestId}] Error upserting profile: ${JSON.stringify(upsertResult.error)}`);
+          
+          if (upsertResult.error.code === '23505') {
+            logger.error(`[${requestId}] Duplicate key violation - record already exists`);
+          } else if (upsertResult.error.code === '42P01') {
+            logger.error(`[${requestId}] Table does not exist - check your migrations`);
+          } else if (upsertResult.error.message?.includes('violates row-level security')) {
+            logger.error(`[${requestId}] RLS violation - check policies on user_google_business_profiles table`);
+          }
+          
           throw new Error(`Database error: ${upsertResult.error.message || "Unknown database error"}`);
+        }
+        
+        const verifyProfile = await getUserGoogleProfile(userId);
+        if (verifyProfile) {
+          logger.info(`[${requestId}] Profile verified after save: ID=${verifyProfile.id}, email=${verifyProfile.google_email}`);
+        } else {
+          logger.error(`[${requestId}] CRITICAL: Profile could not be verified after save attempt!`);
         }
         
         logger.info(`[${requestId}] Profile saved successfully: ${upsertResult.statusText}`);
@@ -555,7 +560,6 @@ serve(async (req) => {
       );
     } 
     else if (action === 'get_profile') {
-      // Get user's Google profile
       logger.info(`[${requestId}] Getting Google profile for user: ${userId}`);
       const profile = await getUserGoogleProfile(userId);
       
@@ -567,7 +571,6 @@ serve(async (req) => {
       );
     } 
     else if (action === 'list_accounts') {
-      // List GMB accounts
       logger.info(`[${requestId}] Listing GMB accounts for user: ${userId}`);
       const profile = await getUserGoogleProfile(userId);
       
@@ -576,18 +579,15 @@ serve(async (req) => {
         throw new Error('No linked Google profile');
       }
       
-      // Check if access token is expired
       let accessToken = profile.access_token;
       const tokenExpiresAt = new Date(profile.token_expires_at);
       
       logger.info(`[${requestId}] Checking token expiration: expires on ${tokenExpiresAt.toISOString()}, now: ${new Date().toISOString()}`);
       if (new Date() >= tokenExpiresAt) {
-        // Refresh access token
         logger.info(`[${requestId}] Token expired, refreshing...`);
         const tokenData = await refreshAccessToken(profile.refresh_token);
         accessToken = tokenData.access_token;
         
-        // Update token in database
         const newExpiresAt = new Date();
         newExpiresAt.setSeconds(newExpiresAt.getSeconds() + tokenData.expires_in);
         
@@ -601,8 +601,6 @@ serve(async (req) => {
           .eq('user_id', userId);
       }
       
-      // Call GMB API to list accounts
-      logger.info(`[${requestId}] Calling GMB API to list accounts`);
       const accounts = await listAccounts(accessToken);
       
       return new Response(
@@ -613,7 +611,6 @@ serve(async (req) => {
       );
     } 
     else if (action === 'list_locations') {
-      // List locations for a GMB account
       const accountId = requestData.account_id;
       logger.info(`[${requestId}] Listing locations for account: ${accountId}`);
       
@@ -629,18 +626,15 @@ serve(async (req) => {
         throw new Error('No linked Google profile');
       }
       
-      // Check if access token is expired
       let accessToken = profile.access_token;
       const tokenExpiresAt = new Date(profile.token_expires_at);
       
       logger.info(`[${requestId}] Checking token expiration: expires on ${tokenExpiresAt.toISOString()}, now: ${new Date().toISOString()}`);
       if (new Date() >= tokenExpiresAt) {
-        // Refresh access token
         logger.info(`[${requestId}] Token expired, refreshing...`);
         const tokenData = await refreshAccessToken(profile.refresh_token);
         accessToken = tokenData.access_token;
         
-        // Update token in database
         const newExpiresAt = new Date();
         newExpiresAt.setSeconds(newExpiresAt.getSeconds() + tokenData.expires_in);
         
@@ -654,8 +648,6 @@ serve(async (req) => {
           .eq('user_id', userId);
       }
       
-      // Call GMB API to list locations
-      logger.info(`[${requestId}] Calling GMB API to list locations for account: ${accountId}`);
       const locations = await listLocations(accountId, accessToken);
       
       return new Response(
@@ -666,7 +658,6 @@ serve(async (req) => {
       );
     } 
     else if (action === 'save_location') {
-      // Save selected location ID
       const accountId = requestData.account_id;
       const locationId = requestData.location_id;
       logger.info(`[${requestId}] Saving location: ${locationId} for account: ${accountId}`);
@@ -676,7 +667,6 @@ serve(async (req) => {
         throw new Error('Missing account or location ID');
       }
       
-      // Update profile with selected IDs
       logger.info(`[${requestId}] Updating IDs in database for user: ${userId}`);
       const { error } = await supabaseAdmin
         .from('user_google_business_profiles')
@@ -704,7 +694,6 @@ serve(async (req) => {
       );
     } 
     else if (action === 'disconnect') {
-      // Disconnect Google account
       logger.info(`[${requestId}] Disconnecting Google account for user: ${userId}`);
       const { error } = await supabaseAdmin
         .from('user_google_business_profiles')
