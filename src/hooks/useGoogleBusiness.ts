@@ -29,13 +29,11 @@ export const useGoogleBusiness = () => {
   const [profile, setProfile] = useState<GoogleBusinessProfile | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Récupérer le profil GMB de l'utilisateur
   const fetchProfile = useCallback(async () => {
     try {
       setIsLoading(true);
-      setErrorMessage(null);
       
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -54,10 +52,10 @@ export const useGoogleBusiness = () => {
       console.log("Réponse reçue:", response);
       
       if (response.error) {
-        throw new Error(response.error.message || "Erreur de l'Edge Function");
+        throw new Error(response.error.message);
       }
       
-      const { profile } = response.data || {};
+      const { profile } = response.data;
       
       setProfile(profile);
       setIsConnected(!!profile);
@@ -65,7 +63,6 @@ export const useGoogleBusiness = () => {
       return profile;
     } catch (error: any) {
       console.error("Erreur lors de la récupération du profil GMB:", error);
-      setErrorMessage(`Erreur lors de la récupération du profil GMB: ${error.message}`);
       return null;
     } finally {
       setIsLoading(false);
@@ -76,7 +73,6 @@ export const useGoogleBusiness = () => {
   const getAuthUrl = useCallback(async () => {
     try {
       setIsLoading(true);
-      setErrorMessage(null);
       
       // Log pour débogage
       console.log("Envoi de la requête get_auth_url");
@@ -85,25 +81,16 @@ export const useGoogleBusiness = () => {
         body: { action: 'get_auth_url' },
       });
       
-      // Log pour débogage en détail
-      console.log("Réponse complète de l'Edge Function:", JSON.stringify(response, null, 2));
+      // Log pour débogage
+      console.log("Réponse d'URL reçue:", response);
       
       if (response.error) {
-        console.error("Erreur de l'Edge Function:", response.error);
-        throw new Error(response.error.message || "Erreur lors de l'appel à l'Edge Function");
+        throw new Error(response.error.message);
       }
       
-      if (!response.data || !response.data.url) {
-        console.error("Réponse d'URL reçue, mais sans URL:", response.data);
-        throw new Error("L'URL d'authentification est vide ou non définie");
-      }
-      
-      console.log("URL d'authentification obtenue:", response.data.url);
       return response.data.url;
     } catch (error: any) {
       console.error("Erreur lors de la génération de l'URL d'autorisation:", error);
-      const message = error.message || "Erreur inconnue";
-      setErrorMessage(`Erreur lors de la génération de l'URL d'autorisation: ${message}`);
       toast.error("Erreur lors de la génération de l'URL d'autorisation");
       return null;
     } finally {
@@ -115,7 +102,6 @@ export const useGoogleBusiness = () => {
   const handleCallback = useCallback(async (code: string, state: string) => {
     try {
       setIsLoading(true);
-      setErrorMessage(null);
       
       const response = await supabase.functions.invoke('google-business', {
         body: { action: 'handle_callback', code, state },
@@ -131,7 +117,6 @@ export const useGoogleBusiness = () => {
       return true;
     } catch (error: any) {
       console.error("Erreur lors du traitement du callback:", error);
-      setErrorMessage(`Erreur lors du traitement du callback: ${error.message}`);
       toast.error("Erreur lors de la connexion au compte Google");
       return false;
     } finally {
@@ -143,7 +128,6 @@ export const useGoogleBusiness = () => {
   const listAccounts = useCallback(async () => {
     try {
       setIsLoading(true);
-      setErrorMessage(null);
       
       const response = await supabase.functions.invoke('google-business', {
         body: { action: 'list_accounts' },
@@ -157,7 +141,6 @@ export const useGoogleBusiness = () => {
       return response.data.accounts.accounts || [];
     } catch (error: any) {
       console.error("Erreur lors de la récupération des comptes:", error);
-      setErrorMessage(`Erreur lors de la récupération des comptes: ${error.message}`);
       toast.error("Erreur lors de la récupération des comptes");
       return [];
     } finally {
@@ -169,7 +152,6 @@ export const useGoogleBusiness = () => {
   const listLocations = useCallback(async (accountId: string) => {
     try {
       setIsLoading(true);
-      setErrorMessage(null);
       
       const response = await supabase.functions.invoke('google-business', {
         body: { action: 'list_locations', account_id: accountId },
@@ -183,7 +165,6 @@ export const useGoogleBusiness = () => {
       return response.data.locations.locations || [];
     } catch (error: any) {
       console.error("Erreur lors de la récupération des établissements:", error);
-      setErrorMessage(`Erreur lors de la récupération des établissements: ${error.message}`);
       toast.error("Erreur lors de la récupération des établissements");
       return [];
     } finally {
@@ -195,7 +176,6 @@ export const useGoogleBusiness = () => {
   const saveLocation = useCallback(async (accountId: string, locationId: string) => {
     try {
       setIsLoading(true);
-      setErrorMessage(null);
       
       const response = await supabase.functions.invoke('google-business', {
         body: { 
@@ -215,7 +195,6 @@ export const useGoogleBusiness = () => {
       return true;
     } catch (error: any) {
       console.error("Erreur lors de la sauvegarde de l'établissement:", error);
-      setErrorMessage(`Erreur lors de la sauvegarde de l'établissement: ${error.message}`);
       toast.error("Erreur lors de la sauvegarde de l'établissement");
       return false;
     } finally {
@@ -227,7 +206,6 @@ export const useGoogleBusiness = () => {
   const disconnect = useCallback(async () => {
     try {
       setIsLoading(true);
-      setErrorMessage(null);
       
       const response = await supabase.functions.invoke('google-business', {
         body: { action: 'disconnect' },
@@ -247,7 +225,6 @@ export const useGoogleBusiness = () => {
       return true;
     } catch (error: any) {
       console.error("Erreur lors de la déconnexion:", error);
-      setErrorMessage(`Erreur lors de la déconnexion: ${error.message}`);
       toast.error("Erreur lors de la déconnexion du compte Google");
       return false;
     } finally {
@@ -261,42 +238,9 @@ export const useGoogleBusiness = () => {
     profile,
     accounts,
     locations,
-    errorMessage,
     fetchProfile,
     getAuthUrl,
-    handleCallback: useCallback(async (code: string, state: string) => {
-      try {
-        setIsLoading(true);
-        setErrorMessage(null);
-        
-        console.log("Traitement du callback avec code et state:", { 
-          codeExists: !!code, 
-          stateExists: !!state 
-        });
-        
-        const response = await supabase.functions.invoke('google-business', {
-          body: { action: 'handle_callback', code, state },
-        });
-        
-        console.log("Réponse du callback:", response);
-        
-        if (response.error) {
-          throw new Error(response.error.message || "Erreur lors du traitement du callback");
-        }
-        
-        toast.success("Compte Google connecté avec succès");
-        await fetchProfile();
-        
-        return true;
-      } catch (error: any) {
-        console.error("Erreur lors du traitement du callback:", error);
-        setErrorMessage(`Erreur lors du traitement du callback: ${error.message}`);
-        toast.error("Erreur lors de la connexion au compte Google");
-        return false;
-      } finally {
-        setIsLoading(false);
-      }
-    }, [fetchProfile]),
+    handleCallback,
     listAccounts,
     listLocations,
     saveLocation,
