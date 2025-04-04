@@ -1,6 +1,6 @@
-import { serve } from "std/http/server.ts";
-import * as log from "std/log/mod.ts";
-import { createClient } from "@supabase/supabase-js";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import * as log from "https://deno.land/std@0.168.0/log/mod.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.1";
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') as string;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') as string;
