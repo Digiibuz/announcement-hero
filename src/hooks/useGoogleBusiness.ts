@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -97,9 +98,18 @@ export const useGoogleBusiness = () => {
       console.log("Full Edge Function response:", response);
       
       if (response.error) {
+        const errorMessage = response.error.message || "Failed to generate authorization URL";
         console.error("Edge Function Error:", response.error);
-        setError(`Authorization error: ${response.error.message || "Failed to generate authorization URL"}`);
-        throw new Error(response.error.message || "Error generating authorization URL");
+        
+        // Check for specific error patterns that indicate configuration issues
+        if (errorMessage.includes("placeholder value") || errorMessage.includes("not defined")) {
+          setError(`Configuration error: ${errorMessage}`);
+          toast.error("Google API configuration error. Please check Edge Function logs.");
+        } else {
+          setError(`Authorization error: ${errorMessage}`);
+        }
+        
+        throw new Error(errorMessage);
       }
       
       if (!response.data || !response.data.url) {
