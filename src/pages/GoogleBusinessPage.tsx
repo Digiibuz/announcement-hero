@@ -33,10 +33,10 @@ const GoogleBusinessPage = () => {
   
   // Check if user is logged in
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated && !searchParams.get("code")) {
       navigate("/login");
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, searchParams]);
   
   // Initialize GMB profile
   useEffect(() => {
@@ -52,8 +52,11 @@ const GoogleBusinessPage = () => {
       }
     };
     
-    initProfile();
-  }, [fetchProfile]);
+    // Only init profile if user is authenticated and not processing callback
+    if (isAuthenticated && !isCallbackProcessing) {
+      initProfile();
+    }
+  }, [fetchProfile, isAuthenticated, isCallbackProcessing]);
   
   // Process OAuth callback
   useEffect(() => {
@@ -64,27 +67,28 @@ const GoogleBusinessPage = () => {
       setIsCallbackProcessing(true);
       console.log("Processing OAuth callback with code and state:", { code_length: code.length, state });
       
-      // Add a slight delay to ensure page is fully loaded before processing
-      setTimeout(() => {
-        handleCallback(code, state).then((success) => {
-          if (success) {
-            // Remove URL parameters
-            navigate("/google-business", { replace: true });
-            
-            // Refresh the profile after a short delay
-            setTimeout(() => {
-              fetchProfile().catch(err => {
-                console.error("Error refreshing profile after callback:", err);
-              });
-            }, 1000);
-          }
-        }).catch(err => {
-          console.error("Error handling callback:", err);
-          toast.error("Error connecting to Google: " + (err.message || "Unknown error"));
-        }).finally(() => {
-          setIsCallbackProcessing(false);
-        });
-      }, 500);
+      // Process the callback without waiting for other effects
+      handleCallback(code, state).then((success) => {
+        if (success) {
+          // Remove URL parameters
+          navigate("/google-business", { replace: true });
+          toast.success("Google account connected successfully");
+          
+          // Refresh the profile after a short delay
+          setTimeout(() => {
+            fetchProfile().catch(err => {
+              console.error("Error refreshing profile after callback:", err);
+            });
+          }, 1000);
+        } else {
+          toast.error("Failed to connect Google account");
+        }
+      }).catch(err => {
+        console.error("Error handling callback:", err);
+        toast.error("Error connecting to Google: " + (err.message || "Unknown error"));
+      }).finally(() => {
+        setIsCallbackProcessing(false);
+      });
     }
   }, [searchParams, handleCallback, navigate, fetchProfile, isCallbackProcessing]);
 
@@ -165,7 +169,11 @@ const GoogleBusinessPage = () => {
     }
   };
   
-  if (!user) return null;
+  // Special case: If we're processing a callback, show a loading state
+  // even if the user isn't fully authenticated yet
+  const isProcessingCallback = searchParams.get("code") && searchParams.get("state");
+  
+  if (!user && !isProcessingCallback) return null;
   
   return (
     <PageLayout title="Google My Business">
@@ -206,6 +214,7 @@ const GoogleBusinessPage = () => {
             </Card>
           )}
           
+          {/* Show loading indicator if we're waiting for auth or profile, and not processing callback */}
           {isLoading && !profile && !isCallbackProcessing ? (
             <Card className="shadow-md">
               <CardContent className="pt-6 flex justify-center items-center h-40">

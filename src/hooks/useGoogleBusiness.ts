@@ -147,6 +147,14 @@ export const useGoogleBusiness = () => {
       
       console.log("Processing callback with code and state:", { codeLength: code.length, state });
       
+      // Make sure the user is authenticated before proceeding
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.log("User not logged in when processing callback");
+        setError("You must be logged in to connect your Google account");
+        throw new Error("User not logged in");
+      }
+      
       const response = await supabase.functions.invoke('google-business', {
         body: { action: 'handle_callback', code, state },
       });
