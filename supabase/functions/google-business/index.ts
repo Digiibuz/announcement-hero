@@ -1,7 +1,6 @@
-
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import * as log from "https://deno.land/std@0.168.0/log/mod.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { serve } from "std/http/server.ts";
+import * as log from "std/log/mod.ts";
+import { createClient } from "supabase";
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') as string;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') as string;
@@ -12,17 +11,21 @@ const REDIRECT_URI = Deno.env.get('GMB_REDIRECT_URI') as string;
 const API_BASE_URL = 'https://mybusiness.googleapis.com/v4';
 
 // Configuration pour le logging
-await log.setup({
-  handlers: {
-    console: new log.handlers.ConsoleHandler("DEBUG"),
-  },
-  loggers: {
-    default: {
-      level: "DEBUG",
-      handlers: ["console"],
+try {
+  await log.setup({
+    handlers: {
+      console: new log.handlers.ConsoleHandler("DEBUG"),
     },
-  },
-});
+    loggers: {
+      default: {
+        level: "DEBUG",
+        handlers: ["console"],
+      },
+    },
+  });
+} catch (error) {
+  console.error("Erreur lors de la configuration du logger:", error);
+}
 
 const logger = log.getLogger();
 
@@ -33,16 +36,26 @@ const corsHeaders = {
 };
 
 // Client Supabase avec clé service pour accéder à la DB sans restrictions
-const supabaseAdmin = createClient(
-  SUPABASE_URL,
-  SUPABASE_SERVICE_ROLE_KEY
-);
+let supabaseAdmin;
+try {
+  supabaseAdmin = createClient(
+    SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY
+  );
+} catch (error) {
+  console.error("Erreur lors de la création du client Supabase Admin:", error);
+}
 
 // Client Supabase standard pour les appels authentifiés
-const supabaseClient = createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
-);
+let supabaseClient;
+try {
+  supabaseClient = createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY
+  );
+} catch (error) {
+  console.error("Erreur lors de la création du client Supabase Client:", error);
+}
 
 // Fonction utilitaire pour la gestion des erreurs
 function handleError(error: any) {
@@ -58,7 +71,7 @@ function handleError(error: any) {
     details: error.details || error.error || error.data,
   };
   
-  logger.error("Erreur détaillée:", JSON.stringify(errorDetails, null, 2));
+  console.error("Erreur détaillée:", JSON.stringify(errorDetails, null, 2));
   
   return new Response(
     JSON.stringify({ 
@@ -272,7 +285,7 @@ async function callGmbApi(endpoint: string, method = 'GET', accessToken: string,
   try {
     const response = await fetch(url, options);
     
-    // Log de la réponse complète pour le débogage
+    // Log de la réponse brute pour le débogage
     const responseText = await response.text();
     logger.info(`Réponse brute de l'API: ${responseText}`);
     
@@ -313,105 +326,109 @@ async function listLocations(accountId: string, accessToken: string) {
 serve(async (req) => {
   // Log détaillé de chaque requête
   const requestId = crypto.randomUUID();
-  logger.info(`[${requestId}] Nouvelle requête: ${req.method} ${req.url}`);
+  console.log(`[${requestId}] Nouvelle requête: ${req.method} ${req.url}`);
   
   try {
-    // Extraire les en-têtes pour le débogage
-    const headers = {};
-    req.headers.forEach((value, key) => {
-      headers[key] = value;
-    });
-    logger.info(`[${requestId}] En-têtes: ${JSON.stringify(headers)}`);
-    
     // Gestion des requêtes préflight CORS
     if (req.method === 'OPTIONS') {
-      logger.info(`[${requestId}] Traitement de la requête préflight CORS`);
+      console.log(`[${requestId}] Traitement de la requête préflight CORS`);
       return new Response(null, { headers: corsHeaders });
     }
     
-    // Vérifier que les variables d'environnement sont définies
-    const envVars = {
-      SUPABASE_URL: !!SUPABASE_URL,
-      SUPABASE_ANON_KEY: !!SUPABASE_ANON_KEY,
-      SUPABASE_SERVICE_ROLE_KEY: !!SUPABASE_SERVICE_ROLE_KEY,
-      GOOGLE_CLIENT_ID: !!GOOGLE_CLIENT_ID,
-      GOOGLE_CLIENT_SECRET: !!GOOGLE_CLIENT_SECRET,
-      REDIRECT_URI: !!REDIRECT_URI
+    // Vérification des variables d'environnement
+    const envVarStatus = {
+      SUPABASE_URL: !!SUPABASE_URL ? "défini" : "manquant",
+      SUPABASE_ANON_KEY: !!SUPABASE_ANON_KEY ? "défini" : "manquant",
+      SUPABASE_SERVICE_ROLE_KEY: !!SUPABASE_SERVICE_ROLE_KEY ? "défini" : "manquant",
+      GOOGLE_CLIENT_ID: !!GOOGLE_CLIENT_ID ? "défini" : "manquant",
+      GOOGLE_CLIENT_SECRET: !!GOOGLE_CLIENT_SECRET ? "défini" : "manquant",
+      REDIRECT_URI: !!REDIRECT_URI ? "défini" : "manquant"
     };
     
-    logger.info(`[${requestId}] Variables d'environnement: ${JSON.stringify(envVars)}`);
+    console.log(`[${requestId}] Statut des variables d'environnement:`, JSON.stringify(envVarStatus));
     
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
-      logger.error(`[${requestId}] Variables d'environnement Supabase manquantes`);
-      throw new Error('Variables d\'environnement Supabase manquantes');
+      console.error(`[${requestId}] Variables d'environnement Supabase manquantes`);
+      throw new Error('Variables d\'environnement Supabase manquantes. Vérifiez la configuration des secrets.');
+    }
+    
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !REDIRECT_URI) {
+      console.error(`[${requestId}] Variables d'environnement Google manquantes`);
+      throw new Error('Variables d\'environnement Google manquantes. Vérifiez la configuration des secrets.');
     }
     
     // Récupérer les données du corps de la requête
     let requestData;
     try {
       requestData = await req.json();
-      logger.info(`[${requestId}] Données de requête: ${JSON.stringify(requestData)}`);
+      console.log(`[${requestId}] Données de requête:`, JSON.stringify(requestData));
     } catch (e) {
-      logger.error(`[${requestId}] Erreur lors du parsing du JSON: ${e}`);
-      throw new Error(`Erreur lors du parsing du JSON: ${e.message}`);
+      console.error(`[${requestId}] Erreur lors du parsing du JSON:`, e);
+      throw new Error(`Erreur lors du parsing du JSON: ${e.message || e}`);
     }
     
-    const action = requestData.action;
-    logger.info(`[${requestId}] Action requise: ${action}`);
+    const action = requestData?.action;
+    console.log(`[${requestId}] Action requise: ${action}`);
+    
+    if (!action) {
+      throw new Error('Action non spécifiée dans la requête');
+    }
     
     // Extraire le token JWT pour obtenir l'ID utilisateur
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      logger.error(`[${requestId}] Token d'authentification manquant`);
+      console.error(`[${requestId}] Token d'authentification manquant`);
       throw new Error('Token d\'authentification manquant');
     }
     
     const token = authHeader.replace('Bearer ', '');
-    logger.info(`[${requestId}] Tentative d'authentification avec token JWT`);
+    console.log(`[${requestId}] Tentative d'authentification avec token JWT`);
     
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
-    
-    if (authError) {
-      logger.error(`[${requestId}] Erreur d'authentification: ${JSON.stringify(authError)}`);
-      throw new Error(`Erreur d'authentification: ${authError.message}`);
-    }
-    
-    if (!user) {
-      logger.error(`[${requestId}] Utilisateur non trouvé avec le token fourni`);
-      throw new Error('Utilisateur non authentifié');
+    // Vérification du token et récupération des informations utilisateur
+    let user;
+    try {
+      const { data, error } = await supabaseClient.auth.getUser(token);
+      
+      if (error) {
+        console.error(`[${requestId}] Erreur d'authentification:`, error);
+        throw new Error(`Erreur d'authentification: ${error.message}`);
+      }
+      
+      user = data?.user;
+      
+      if (!user) {
+        console.error(`[${requestId}] Utilisateur non trouvé avec le token fourni`);
+        throw new Error('Utilisateur non authentifié');
+      }
+      
+      console.log(`[${requestId}] Utilisateur authentifié: ${user.id}`);
+    } catch (authError) {
+      console.error(`[${requestId}] Erreur lors de l'authentification:`, authError);
+      throw new Error(`Erreur lors de l'authentification: ${authError.message || authError}`);
     }
     
     const userId = user.id;
-    logger.info(`[${requestId}] Utilisateur authentifié: ${userId}`);
     
     // Traiter les différentes actions
     if (action === 'get_auth_url') {
       try {
-        logger.info(`[${requestId}] Traitement de l'action get_auth_url`);
-        
-        // Vérifier les variables d'environnement nécessaires
-        if (!GOOGLE_CLIENT_ID) {
-          throw new Error('GOOGLE_CLIENT_ID non défini. Veuillez configurer cette variable dans les secrets des fonctions Edge.');
-        }
-        
-        if (!REDIRECT_URI) {
-          throw new Error('GMB_REDIRECT_URI non défini. Veuillez configurer cette variable dans les secrets des fonctions Edge.');
-        }
+        console.log(`[${requestId}] Traitement de l'action get_auth_url`);
         
         // Générer l'URL d'autorisation OAuth
         const state = userId; // Utiliser l'ID utilisateur comme state
         const authUrl = getGoogleAuthUrl(state);
         
-        logger.info(`[${requestId}] URL d'autorisation générée: ${authUrl}`);
+        console.log(`[${requestId}] URL d'autorisation générée: ${authUrl}`);
         
         return new Response(
-          JSON.stringify({ url: authUrl }),
+          JSON.stringify({ url: authUrl, success: true }),
           {
+            status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           }
         );
       } catch (error) {
-        logger.error(`[${requestId}] Erreur lors de la génération de l'URL d'autorisation: ${error}`);
+        console.error(`[${requestId}] Erreur lors de la génération de l'URL d'autorisation:`, error);
         return handleError(error);
       }
     } 
@@ -648,10 +665,11 @@ serve(async (req) => {
       );
     }
     
-    logger.error(`[${requestId}] Action non reconnue: ${action}`);
+    console.error(`[${requestId}] Action non reconnue: ${action}`);
     throw new Error(`Action non reconnue: ${action}`);
   } catch (error) {
-    logger.error(`[${requestId}] Erreur non gérée: ${error.stack || error}`);
+    console.error(`[${requestId}] Erreur non gérée:`, error);
+    console.error(`[${requestId}] Stack trace:`, error.stack);
     return handleError(error);
   }
 });
