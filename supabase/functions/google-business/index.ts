@@ -188,8 +188,9 @@ serve(async (req) => {
   }
   
   try {
-    const url = new URL(req.url)
-    const action = url.searchParams.get('action')
+    // Récupérer les données du corps de la requête
+    const requestData = await req.json()
+    const action = requestData.action
     
     // Extraire le token JWT pour obtenir l'ID utilisateur
     const authHeader = req.headers.get('Authorization')
@@ -221,8 +222,8 @@ serve(async (req) => {
     } 
     else if (action === 'handle_callback') {
       // Traiter le callback OAuth
-      const code = url.searchParams.get('code')
-      const state = url.searchParams.get('state')
+      const code = requestData.code
+      const state = requestData.state
       
       if (!code) {
         throw new Error('Code d\'autorisation manquant')
@@ -322,7 +323,7 @@ serve(async (req) => {
     } 
     else if (action === 'list_locations') {
       // Lister les établissements d'un compte GMB
-      const accountId = url.searchParams.get('account_id')
+      const accountId = requestData.account_id
       
       if (!accountId) {
         throw new Error('ID de compte manquant')
@@ -368,8 +369,8 @@ serve(async (req) => {
     } 
     else if (action === 'save_location') {
       // Sauvegarder l'ID de l'établissement sélectionné
-      const accountId = url.searchParams.get('account_id')
-      const locationId = url.searchParams.get('location_id')
+      const accountId = requestData.account_id
+      const locationId = requestData.location_id
       
       if (!accountId || !locationId) {
         throw new Error('ID de compte ou d\'établissement manquant')
