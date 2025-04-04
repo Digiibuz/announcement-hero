@@ -13,15 +13,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const { userProfile, setUserProfile, fetchFullProfile } = useUserProfile();
   const { originalUser, isImpersonating, impersonateUser: startImpersonation, stopImpersonating: endImpersonation } = useImpersonation(userProfile);
-  // Nouvel état pour suivre si nous sommes sur une page de réinitialisation de mot de passe
+  // État pour suivre si nous sommes sur une page de réinitialisation de mot de passe
   const [isOnResetPasswordPage, setIsOnResetPasswordPage] = useState(false);
 
   // Vérifier si nous sommes sur la page de réinitialisation de mot de passe
   useEffect(() => {
+    // Vérifier si nous sommes sur la page de réinitialisation ET si nous avons des tokens dans l'URL
     const isResetPasswordPage = window.location.pathname === '/reset-password';
-    setIsOnResetPasswordPage(isResetPasswordPage);
-    console.log("Is on reset password page:", isResetPasswordPage);
-  }, [window.location.pathname]);
+    const hasRecoveryToken = window.location.hash.includes('type=recovery');
+    
+    setIsOnResetPasswordPage(isResetPasswordPage && (hasRecoveryToken || isResetPasswordPage));
+    console.log("Is on reset password page:", isResetPasswordPage, "Has recovery token:", hasRecoveryToken);
+  }, [window.location.pathname, window.location.hash]);
 
   // Initialize auth state and set up listeners with improved persistence
   useEffect(() => {
@@ -178,7 +181,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     stopImpersonating,
     originalUser,
     isImpersonating,
-    isOnResetPasswordPage, // Ajout de la nouvelle propriété
+    isOnResetPasswordPage,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -56,7 +56,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <LoadingFallback />;
   }
 
+  // Si on est sur la page de réinitialisation, on laisse passer même si non authentifié
   if (!isAuthenticated && !isOnResetPasswordPage) {
+    // Vérifier si hash contient un token de récupération
+    const hasRecoveryToken = window.location.hash.includes('type=recovery');
+    if (location.pathname === '/reset-password' && hasRecoveryToken) {
+      return <>{children}</>;
+    }
     return <Navigate to="/login" replace />;
   }
 
@@ -82,7 +88,13 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
     return <LoadingFallback />;
   }
 
+  // Si on est sur la page de réinitialisation, on laisse passer même si non authentifié
   if (!isAuthenticated && !isOnResetPasswordPage) {
+    // Vérifier si hash contient un token de récupération
+    const hasRecoveryToken = window.location.hash.includes('type=recovery');
+    if (location.pathname === '/reset-password' && hasRecoveryToken) {
+      return <>{children}</>;
+    }
     return <Navigate to="/login" replace />;
   }
 
@@ -111,6 +123,8 @@ function App() {
                   {/* Public routes - accessibles sans authentification */}
                   <Route path="/login" element={<Login />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />
+                  {/* Route spéciale pour la réinitialisation du mot de passe 
+                      Pas besoin de ProtectedRoute car elle gère directement l'authentification */}
                   <Route path="/reset-password" element={<ResetPassword />} />
                   
                   {/* Protected routes */}

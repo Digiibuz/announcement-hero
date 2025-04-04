@@ -21,6 +21,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { useAuth } from "@/context/AuthContext";
 
 // Schema de validation pour le formulaire
 const passwordSchema = z.object({
@@ -44,9 +45,11 @@ const ResetPassword = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isTokenValid, setIsTokenValid] = useState<boolean | null>(null);
   const [isChecking, setIsChecking] = useState(true);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
-
+  
   const form = useForm<PasswordForm>({
     resolver: zodResolver(passwordSchema),
     defaultValues: {
@@ -55,24 +58,35 @@ const ResetPassword = () => {
     }
   });
 
-  // Vérifier si le token est valide au chargement de la page
+  // Vérifier si le token est valide au chargement de la page et configuration immédiate de la session
   useEffect(() => {
     const checkSession = async () => {
       try {
-        // Obtenir le hash du token depuis l'URL
+        setIsChecking(true);
+        
+        // Obtenir tous les paramètres depuis le hash de l'URL
         const hashParams = new URLSearchParams(location.hash.substring(1));
-        const accessToken = hashParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token');
+        const token = hashParams.get('access_token');
+        const refresh = hashParams.get('refresh_token');
         const type = hashParams.get('type');
         
         // Log pour debug
-        console.log("URL hash params:", { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
+        console.log("URL hash params:", { 
+          accessToken: !!token, 
+          refreshToken: !!refresh, 
+          type,
+          fullHash: location.hash
+        });
         
-        if (accessToken && type === 'recovery') {
+        if (token && type === 'recovery') {
+          console.log("Token de récupération trouvé, configuration de la session...");
+          setAccessToken(token);
+          if (refresh) setRefreshToken(refresh);
+          
           // Si nous avons un token de récupération dans l'URL hash, nous le configurons dans la session
           const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken || '',
+            access_token: token,
+            refresh_token: refresh || '',
           });
           
           if (error) {
@@ -84,6 +98,7 @@ const ResetPassword = () => {
           }
         } else {
           // Sinon, nous vérifions si l'utilisateur a une session valide
+          console.log("Pas de token dans le hash, vérification d'une session existante...");
           const { data, error } = await supabase.auth.getSession();
           
           if (error) {
@@ -105,13 +120,28 @@ const ResetPassword = () => {
       }
     };
 
+    // Exécuter immédiatement pour éviter tout délai
     checkSession();
+    
+    // Ajout d'un nettoyage pour éviter les fuites de mémoire
+    return () => {
+      // Nettoyage si nécessaire
+    };
   }, [location]);
 
   const onSubmit = async (data: PasswordForm) => {
     setIsLoading(true);
     
     try {
+      // Si nous avons stocké les tokens directement, on peut les utiliser pour s'assurer que la session est correcte
+      if (accessToken && refreshToken) {
+        console.log("Utilisation des tokens stockés pour la session avant mise à jour du mot de passe");
+        await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+      }
+      
       // Mettre à jour le mot de passe
       const { error } = await supabase.auth.updateUser({ 
         password: data.password 
