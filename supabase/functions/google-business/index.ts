@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import * as log from "https://deno.land/std@0.168.0/log/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.1";
@@ -95,7 +94,7 @@ async function getUserGoogleProfile(userId: string) {
       .from('user_google_business_profiles')
       .select('*')
       .eq('user_id', userId)
-      .maybeSingle();  // Changed from .single() to .maybeSingle()
+      .maybeSingle();
     
     if (error) {
       logger.error(`Error retrieving Google profile: ${JSON.stringify(error)}`);
@@ -500,14 +499,15 @@ serve(async (req) => {
       tokenExpiresAt.setSeconds(tokenExpiresAt.getSeconds() + expires_in);
       
       try {
-        // Store tokens in database
-        logger.info(`[${requestId}] Storing tokens for user: ${userId}, Google email: ${userInfo.email}`);
-
-        // Check if profile already exists
+        // First check if a profile already exists for this user
         const existingProfile = await getUserGoogleProfile(userId);
+        logger.info(`[${requestId}] Profile exists check: ${existingProfile ? 'yes' : 'no'}`);
+        
+        let upsertResult;
         if (existingProfile) {
+          // Update existing profile
           logger.info(`[${requestId}] Updating existing profile for user: ${userId}`);
-          const { error } = await supabaseAdmin
+          upsertResult = await supabaseAdmin
             .from('user_google_business_profiles')
             .update({
               google_email: userInfo.email,
@@ -517,15 +517,10 @@ serve(async (req) => {
               updated_at: new Date().toISOString()
             })
             .eq('user_id', userId);
-          
-          if (error) {
-            logger.error(`[${requestId}] Error updating tokens: ${JSON.stringify(error)}`);
-            throw new Error(`Error updating tokens: ${error.message}`);
-          }
         } else {
           // Create new profile
           logger.info(`[${requestId}] Creating new profile for user: ${userId}`);
-          const { error } = await supabaseAdmin
+          upsertResult = await supabaseAdmin
             .from('user_google_business_profiles')
             .insert({
               user_id: userId,
@@ -534,12 +529,14 @@ serve(async (req) => {
               access_token,
               token_expires_at: tokenExpiresAt.toISOString(),
             });
-          
-          if (error) {
-            logger.error(`[${requestId}] Error storing tokens: ${JSON.stringify(error)}`);
-            throw new Error(`Error storing tokens: ${error.message}`);
-          }
         }
+        
+        if (upsertResult.error) {
+          logger.error(`[${requestId}] Error upserting profile: ${JSON.stringify(upsertResult.error)}`);
+          throw new Error(`Database error: ${upsertResult.error.message || "Unknown database error"}`);
+        }
+        
+        logger.info(`[${requestId}] Profile saved successfully: ${upsertResult.statusText}`);
       } catch (dbError) {
         logger.error(`[${requestId}] Database error during profile save: ${JSON.stringify(dbError)}`);
         throw new Error(`Database error: ${dbError.message || "Unknown database error"}`);
