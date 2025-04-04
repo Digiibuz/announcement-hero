@@ -85,14 +85,16 @@ export const useGoogleBusiness = () => {
         body: { action: 'get_auth_url' },
       });
       
-      // Log pour débogage
-      console.log("Réponse d'URL reçue:", response);
+      // Log pour débogage en détail
+      console.log("Réponse complète de l'Edge Function:", JSON.stringify(response, null, 2));
       
       if (response.error) {
-        throw new Error(response.error.message);
+        console.error("Erreur de l'Edge Function:", response.error);
+        throw new Error(response.error.message || "Erreur lors de l'appel à l'Edge Function");
       }
       
-      if (!response.data?.url) {
+      if (!response.data || !response.data.url) {
+        console.error("Réponse d'URL reçue, mais sans URL:", response.data);
         throw new Error("L'URL d'authentification est vide ou non définie");
       }
       

@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
@@ -49,8 +48,16 @@ function checkRequiredEnvVars() {
   if (!REDIRECT_URI) missingVars.push('GMB_REDIRECT_URI');
   
   if (missingVars.length > 0) {
-    throw new Error(`Variables d'environnement manquantes: ${missingVars.join(', ')}`);
+    const errorMsg = `Variables d'environnement manquantes: ${missingVars.join(', ')}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
+  
+  console.log("Variables d'environnement vérifiées:", {
+    clientId: GOOGLE_CLIENT_ID ? "Défini" : "Non défini",
+    clientSecret: GOOGLE_CLIENT_SECRET ? "Défini" : "Non défini",
+    redirectUri: REDIRECT_URI,
+  });
 }
 
 // Fonction pour récupérer le profil GMB d'un utilisateur
@@ -76,34 +83,39 @@ async function getUserGoogleProfile(userId: string) {
 
 // Fonction pour générer l'URL d'autorisation OAuth
 function getGoogleAuthUrl(state: string) {
-  // Vérifier que les variables d'environnement nécessaires sont définies
-  checkRequiredEnvVars();
-  
-  console.log("Génération de l'URL d'autorisation avec:", {
-    clientId: GOOGLE_CLIENT_ID ? "Défini" : "Non défini",
-    redirectUri: REDIRECT_URI,
-    state: state
-  });
-  
-  const scopes = [
-    'https://www.googleapis.com/auth/business.manage',
-    'https://www.googleapis.com/auth/userinfo.email'
-  ]
-  
-  const params = new URLSearchParams({
-    client_id: GOOGLE_CLIENT_ID,
-    redirect_uri: REDIRECT_URI,
-    response_type: 'code',
-    scope: scopes.join(' '),
-    access_type: 'offline',
-    state: state,
-    prompt: 'consent', // Forcer l'affichage du consentement pour obtenir un refresh token
-  })
-  
-  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-  console.log("URL d'autorisation générée:", authUrl);
-  
-  return authUrl;
+  try {
+    // Vérifier que les variables d'environnement nécessaires sont définies
+    checkRequiredEnvVars();
+    
+    console.log("Génération de l'URL d'autorisation avec:", {
+      clientId: GOOGLE_CLIENT_ID ? "Défini" : "Non défini",
+      redirectUri: REDIRECT_URI,
+      state: state
+    });
+    
+    const scopes = [
+      'https://www.googleapis.com/auth/business.manage',
+      'https://www.googleapis.com/auth/userinfo.email'
+    ]
+    
+    const params = new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      redirect_uri: REDIRECT_URI,
+      response_type: 'code',
+      scope: scopes.join(' '),
+      access_type: 'offline',
+      state: state,
+      prompt: 'consent', // Forcer l'affichage du consentement pour obtenir un refresh token
+    });
+    
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+    console.log("URL d'autorisation générée:", authUrl);
+    
+    return authUrl;
+  } catch (error) {
+    console.error("Erreur dans getGoogleAuthUrl:", error);
+    throw error; // Remonter l'erreur pour un traitement approprié
+  }
 }
 
 // Fonction pour échanger le code contre des tokens
@@ -238,6 +250,7 @@ serve(async (req) => {
     let requestData;
     try {
       requestData = await req.json();
+      console.log("Données de requête reçues:", JSON.stringify(requestData, null, 2));
     } catch (error) {
       console.error("Erreur lors de la lecture du corps de la requête:", error);
       throw new Error('Format de requête invalide. Veuillez fournir un JSON valide.');
@@ -266,6 +279,7 @@ serve(async (req) => {
     }
     
     const userId = user.id;
+    console.log(`Utilisateur authentifié: ${userId}`);
     
     // Traiter les différentes actions
     if (action === 'get_auth_url') {

@@ -12,4 +12,3 @@ project_id = "rdwqedmvzicerwotjseg"
 verify_jwt = true
 import_map = "./import_map.json"
 
-# Section pour variables d'environnement globales
