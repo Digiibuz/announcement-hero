@@ -114,15 +114,20 @@ async function getUserGoogleProfile(userId: string) {
 function getGoogleAuthUrl(state: string) {
   logger.info(`Generating authorization URL for state: ${state}`);
   
-  // Check if required environment variables are set
-  if (!GOOGLE_CLIENT_ID) {
-    logger.error('GOOGLE_CLIENT_ID not defined in environment variables');
-    throw new Error('GOOGLE_CLIENT_ID not defined. Please configure this variable in the Edge functions secrets.');
+  // Check if required environment variables are set and not placeholder values
+  if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID === "Your Google OAuth client ID") {
+    logger.error('GOOGLE_CLIENT_ID not properly defined in environment variables');
+    throw new Error('GOOGLE_CLIENT_ID not properly defined. Please configure this variable in the Edge functions secrets with your actual Google client ID.');
   }
   
-  if (!REDIRECT_URI) {
-    logger.error('GMB_REDIRECT_URI not defined in environment variables');
-    throw new Error('GMB_REDIRECT_URI not defined. Please configure this variable in the Edge functions secrets.');
+  if (!GOOGLE_CLIENT_SECRET || GOOGLE_CLIENT_SECRET === "Your Google OAuth client secret") {
+    logger.error('GOOGLE_CLIENT_SECRET not properly defined in environment variables');
+    throw new Error('GOOGLE_CLIENT_SECRET not properly defined. Please configure this variable in the Edge functions secrets with your actual Google client secret.');
+  }
+  
+  if (!REDIRECT_URI || REDIRECT_URI === "The URL to redirect back to after Google authentication") {
+    logger.error('GMB_REDIRECT_URI not properly defined in environment variables');
+    throw new Error('GMB_REDIRECT_URI not properly defined. Please configure this variable in the Edge functions secrets with your actual redirect URL.');
   }
   
   const scopes = [
@@ -150,19 +155,19 @@ async function exchangeCodeForTokens(code: string) {
   logger.info(`Exchanging authorization code for tokens. Code length: ${code.length}`);
   
   // Check if required environment variables are set
-  if (!GOOGLE_CLIENT_ID) {
-    logger.error('GOOGLE_CLIENT_ID not defined in environment variables');
-    throw new Error('GOOGLE_CLIENT_ID not defined. Please configure this variable in the Edge functions secrets.');
+  if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID === "Your Google OAuth client ID") {
+    logger.error('GOOGLE_CLIENT_ID not properly defined in environment variables');
+    throw new Error('GOOGLE_CLIENT_ID not properly defined. Please configure this variable with your actual Google client ID.');
   }
   
-  if (!GOOGLE_CLIENT_SECRET) {
-    logger.error('GOOGLE_CLIENT_SECRET not defined in environment variables');
-    throw new Error('GOOGLE_CLIENT_SECRET not defined. Please configure this variable in the Edge functions secrets.');
+  if (!GOOGLE_CLIENT_SECRET || GOOGLE_CLIENT_SECRET === "Your Google OAuth client secret") {
+    logger.error('GOOGLE_CLIENT_SECRET not properly defined in environment variables');
+    throw new Error('GOOGLE_CLIENT_SECRET not properly defined. Please configure this variable with your actual Google client secret.');
   }
   
-  if (!REDIRECT_URI) {
-    logger.error('GMB_REDIRECT_URI not defined in environment variables');
-    throw new Error('GMB_REDIRECT_URI not defined. Please configure this variable in the Edge functions secrets.');
+  if (!REDIRECT_URI || REDIRECT_URI === "The URL to redirect back to after Google authentication") {
+    logger.error('GMB_REDIRECT_URI not properly defined in environment variables');
+    throw new Error('GMB_REDIRECT_URI not properly defined. Please configure this variable with your actual redirect URL.');
   }
   
   const tokenEndpoint = 'https://oauth2.googleapis.com/token';
@@ -343,7 +348,10 @@ serve(async (req) => {
       SUPABASE_SERVICE_ROLE_KEY: !!SUPABASE_SERVICE_ROLE_KEY,
       GOOGLE_CLIENT_ID: !!GOOGLE_CLIENT_ID,
       GOOGLE_CLIENT_SECRET: !!GOOGLE_CLIENT_SECRET,
-      REDIRECT_URI: !!REDIRECT_URI
+      REDIRECT_URI: !!REDIRECT_URI,
+      GOOGLE_CLIENT_ID_PLACEHOLDER: GOOGLE_CLIENT_ID === "Your Google OAuth client ID",
+      GOOGLE_CLIENT_SECRET_PLACEHOLDER: GOOGLE_CLIENT_SECRET === "Your Google OAuth client secret",
+      REDIRECT_URI_PLACEHOLDER: REDIRECT_URI === "The URL to redirect back to after Google authentication"
     };
     
     console.log(`[${requestId}] Environment variables status:`, JSON.stringify(envVarStatus));
@@ -356,6 +364,13 @@ serve(async (req) => {
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !REDIRECT_URI) {
       console.error(`[${requestId}] Missing Google environment variables`);
       throw new Error('Missing Google environment variables. Check secret configuration.');
+    }
+    
+    if (GOOGLE_CLIENT_ID === "Your Google OAuth client ID" || 
+        GOOGLE_CLIENT_SECRET === "Your Google OAuth client secret" || 
+        REDIRECT_URI === "The URL to redirect back to after Google authentication") {
+      console.error(`[${requestId}] Google environment variables contain placeholder values`);
+      throw new Error('Google environment variables contain placeholder values. Please update with actual values in the function secrets.');
     }
     
     // Get request body data

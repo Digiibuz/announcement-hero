@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -116,7 +115,7 @@ export const useGoogleBusiness = () => {
     } catch (error: any) {
       console.error("Error generating authorization URL:", error);
       setError(`Failed to get authentication URL: ${error.message || "Unknown error"}`);
-      toast.error("Error generating authorization URL");
+      toast.error(`Error generating authorization URL: ${error.message || "Unknown error"}`);
       return null;
     } finally {
       setIsLoading(false);
