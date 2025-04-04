@@ -107,6 +107,8 @@ function App() {
                 <Routes>
                   {/* Redirect root to login */}
                   <Route path="/" element={<Navigate to="/login" replace />} />
+                  
+                  {/* Public routes - accessibles sans authentification */}
                   <Route path="/login" element={<Login />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/reset-password" element={<ResetPassword />} />

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,6 +45,7 @@ const ResetPassword = () => {
   const [isTokenValid, setIsTokenValid] = useState<boolean | null>(null);
   const [isChecking, setIsChecking] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const form = useForm<PasswordForm>({
     resolver: zodResolver(passwordSchema),
@@ -58,19 +59,43 @@ const ResetPassword = () => {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        // Récupérer la session pour voir si l'utilisateur a un accès valide pour réinitialiser le mot de passe
-        const { data, error } = await supabase.auth.getSession();
+        // Obtenir le hash du token depuis l'URL
+        const hashParams = new URLSearchParams(location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        const type = hashParams.get('type');
         
-        if (error) {
-          throw error;
-        }
+        // Log pour debug
+        console.log("URL hash params:", { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
         
-        // Si nous avons une session et que le type d'accès est 'recovery', le token est valide
-        if (data?.session?.access_token && data.session.user) {
-          setIsTokenValid(true);
+        if (accessToken && type === 'recovery') {
+          // Si nous avons un token de récupération dans l'URL hash, nous le configurons dans la session
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken || '',
+          });
+          
+          if (error) {
+            console.error("Erreur lors de la configuration de la session:", error);
+            setIsTokenValid(false);
+          } else {
+            console.log("Session configurée avec succès:", data);
+            setIsTokenValid(true);
+          }
         } else {
-          // Sinon, le token n'est pas valide ou a expiré
-          setIsTokenValid(false);
+          // Sinon, nous vérifions si l'utilisateur a une session valide
+          const { data, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            console.error("Erreur lors de la vérification de la session:", error);
+            setIsTokenValid(false);
+          } else if (data?.session?.user) {
+            console.log("Session utilisateur trouvée:", data.session.user);
+            setIsTokenValid(true);
+          } else {
+            console.log("Aucune session trouvée et pas de token dans l'URL");
+            setIsTokenValid(false);
+          }
         }
       } catch (error) {
         console.error("Erreur lors de la vérification du token:", error);
@@ -81,7 +106,7 @@ const ResetPassword = () => {
     };
 
     checkSession();
-  }, []);
+  }, [location]);
 
   const onSubmit = async (data: PasswordForm) => {
     setIsLoading(true);
