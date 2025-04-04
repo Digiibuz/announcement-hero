@@ -30,7 +30,7 @@ const GoogleBusinessPage = () => {
     isLoading, isConnected, profile, accounts, locations, error,
     fetchProfile, getAuthUrl, handleCallback,
     listAccounts, listLocations, saveLocation, disconnect,
-    debugInfo, callbackProcessed // Added these two missing properties
+    debugInfo, callbackProcessed // These properties now properly destructured from the hook
   } = useGoogleBusiness();
   
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
