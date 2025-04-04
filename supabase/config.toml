@@ -1,1 +1,5 @@
-project_id = "rdwqedmvzicerwotjseg"
+
+rdwqedmvzicerwotjseg
+
+[functions.google-business]
+verify_jwt = true

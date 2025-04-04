@@ -233,6 +233,45 @@ export type Database = {
         }
         Relationships: []
       }
+      user_google_business_profiles: {
+        Row: {
+          access_token: string | null
+          created_at: string
+          gmb_account_id: string | null
+          gmb_location_id: string | null
+          google_email: string | null
+          id: string
+          refresh_token: string
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          created_at?: string
+          gmb_account_id?: string | null
+          gmb_location_id?: string | null
+          google_email?: string | null
+          id?: string
+          refresh_token: string
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          created_at?: string
+          gmb_account_id?: string | null
+          gmb_location_id?: string | null
+          google_email?: string | null
+          id?: string
+          refresh_token?: string
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       wordpress_configs: {
         Row: {
           app_password: string | null

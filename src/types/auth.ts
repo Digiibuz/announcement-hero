@@ -29,5 +29,15 @@ export interface AuthContextType {
   stopImpersonating: () => void;
   originalUser: UserProfile | null;
   isImpersonating: boolean;
-  isOnResetPasswordPage: boolean; // Nouvelle propriété
+  isOnResetPasswordPage: boolean;
+}
+
+export interface GoogleBusinessProfile {
+  id: string;
+  userId: string;
+  googleEmail: string | null;
+  gmb_account_id: string | null;
+  gmb_location_id: string | null;
+  created_at: string;
+  updated_at: string;
 }

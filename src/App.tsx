@@ -1,4 +1,3 @@
-
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
@@ -21,6 +20,7 @@ const UserManagement = lazy(() => import("./pages/UserManagement"));
 const WordPressManagement = lazy(() => import("./pages/WordPressManagement"));
 const UserProfile = lazy(() => import("./pages/UserProfile"));
 const Support = lazy(() => import("./pages/Support"));
+const GoogleBusinessPage = lazy(() => import("./pages/GoogleBusinessPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Composant de chargement amélioré avec animation
@@ -173,6 +173,14 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <Support />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/google-business" 
+                    element={
+                      <ProtectedRoute>
+                        <GoogleBusinessPage />
                       </ProtectedRoute>
                     } 
                   />
