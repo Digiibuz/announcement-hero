@@ -350,7 +350,8 @@ export const useGoogleBusiness = () => {
     accounts,
     locations,
     error,
-    debugInfo, // Ajout des informations de débogage
+    debugInfo, // Make sure these properties are included in the return
+    callbackProcessed, // Make sure these properties are included in the return
     fetchProfile,
     getAuthUrl,
     handleCallback,

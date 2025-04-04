@@ -29,7 +29,8 @@ const GoogleBusinessPage = () => {
   const { 
     isLoading, isConnected, profile, accounts, locations, error,
     fetchProfile, getAuthUrl, handleCallback,
-    listAccounts, listLocations, saveLocation, disconnect
+    listAccounts, listLocations, saveLocation, disconnect,
+    debugInfo, callbackProcessed // Added these two missing properties
   } = useGoogleBusiness();
   
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
