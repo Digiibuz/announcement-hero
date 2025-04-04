@@ -11,4 +11,4 @@ project_id = "rdwqedmvzicerwotjseg"
 [functions]
 [functions.google-business]
 verify_jwt = true
-import_map = "./import_map.json"
+import_map = "import_map.json"

@@ -1,6 +1,7 @@
-import { serve } from 'std/http/server.ts';
+
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-import * as log from 'std/log/mod.ts';
+import * as log from 'https://deno.land/std@0.168.0/log/mod.ts';
 
 // Configure logger
 await log.setup({
