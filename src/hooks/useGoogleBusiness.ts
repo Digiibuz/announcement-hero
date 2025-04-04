@@ -30,6 +30,7 @@ export const useGoogleBusiness = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [callbackProcessed, setCallbackProcessed] = useState(false);
 
   // Check connection on startup
   useEffect(() => {
@@ -135,8 +136,14 @@ export const useGoogleBusiness = () => {
   // Process OAuth callback
   const handleCallback = useCallback(async (code: string, state: string) => {
     try {
+      if (callbackProcessed) {
+        console.log("Callback already processed, skipping");
+        return true;
+      }
+
       setIsLoading(true);
       setError(null);
+      setCallbackProcessed(true);
       
       console.log("Processing callback with code and state:", { codeLength: code.length, state });
       
@@ -164,7 +171,7 @@ export const useGoogleBusiness = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchProfile]);
+  }, [fetchProfile, callbackProcessed]);
 
   // List GMB accounts
   const listAccounts = useCallback(async () => {

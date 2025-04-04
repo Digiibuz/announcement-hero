@@ -29,6 +29,7 @@ const GoogleBusinessPage = () => {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("profile");
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [isCallbackProcessing, setIsCallbackProcessing] = useState(false);
   
   // Check if user is logged in
   useEffect(() => {
@@ -59,15 +60,33 @@ const GoogleBusinessPage = () => {
     const code = searchParams.get("code");
     const state = searchParams.get("state");
     
-    if (code && state) {
-      handleCallback(code, state).then((success) => {
-        if (success) {
-          // Remove URL parameters
-          navigate("/google-business", { replace: true });
-        }
-      });
+    if (code && state && !isCallbackProcessing) {
+      setIsCallbackProcessing(true);
+      console.log("Processing OAuth callback with code and state:", { code_length: code.length, state });
+      
+      // Add a slight delay to ensure page is fully loaded before processing
+      setTimeout(() => {
+        handleCallback(code, state).then((success) => {
+          if (success) {
+            // Remove URL parameters
+            navigate("/google-business", { replace: true });
+            
+            // Refresh the profile after a short delay
+            setTimeout(() => {
+              fetchProfile().catch(err => {
+                console.error("Error refreshing profile after callback:", err);
+              });
+            }, 1000);
+          }
+        }).catch(err => {
+          console.error("Error handling callback:", err);
+          toast.error("Error connecting to Google: " + (err.message || "Unknown error"));
+        }).finally(() => {
+          setIsCallbackProcessing(false);
+        });
+      }, 500);
     }
-  }, [searchParams, handleCallback, navigate]);
+  }, [searchParams, handleCallback, navigate, fetchProfile, isCallbackProcessing]);
 
   // Update local error state when the hook error changes
   useEffect(() => {
@@ -172,8 +191,22 @@ const GoogleBusinessPage = () => {
               </CardContent>
             </Card>
           )}
+
+          {isCallbackProcessing && (
+            <Card className="mb-4 shadow-md bg-blue-50 border-blue-200">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <LoadingIndicator variant="dots" size={24} />
+                  <div>
+                    <h3 className="font-medium">Google Account Authentication</h3>
+                    <p className="text-muted-foreground">Processing your Google account authentication. Please wait...</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           
-          {isLoading && !profile ? (
+          {isLoading && !profile && !isCallbackProcessing ? (
             <Card className="shadow-md">
               <CardContent className="pt-6 flex justify-center items-center h-40">
                 <LoadingIndicator variant="dots" size={40} />
