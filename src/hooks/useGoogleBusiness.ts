@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -32,14 +31,12 @@ export const useGoogleBusiness = () => {
   const [error, setError] = useState<string | null>(null);
   const [callbackProcessed, setCallbackProcessed] = useState(false);
 
-  // Check connection on startup
   useEffect(() => {
     fetchProfile().catch(error => {
       console.error("Error during initial profile check:", error);
     });
   }, []);
 
-  // Retrieve user's GMB profile
   const fetchProfile = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -52,14 +49,12 @@ export const useGoogleBusiness = () => {
         throw new Error("User not logged in");
       }
       
-      // Debug log
       console.log("Sending get_profile request");
       
       const response = await supabase.functions.invoke('google-business', {
         body: { action: 'get_profile' },
       });
       
-      // Debug log
       console.log("Response received:", response);
       
       if (response.error) {
@@ -69,40 +64,43 @@ export const useGoogleBusiness = () => {
       
       const { profile } = response.data || {};
       
-      setProfile(profile);
-      setIsConnected(!!profile);
+      if (profile) {
+        setProfile(profile);
+        setIsConnected(true);
+      } else {
+        setProfile(null);
+        setIsConnected(false);
+        console.log("No Google Business profile found for this user");
+      }
       
       return profile;
     } catch (error: any) {
       console.error("Error retrieving GMB profile:", error);
       setError(`Failed to get profile: ${error.message || "Unknown error"}`);
+      setIsConnected(false);
       return null;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Generate OAuth authorization URL
   const getAuthUrl = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
       
-      // Debug log
       console.log("Sending get_auth_url request");
       
       const response = await supabase.functions.invoke('google-business', {
         body: { action: 'get_auth_url' },
       });
       
-      // Detailed debug log
       console.log("Full Edge Function response:", response);
       
       if (response.error) {
         const errorMessage = response.error.message || "Failed to generate authorization URL";
         console.error("Edge Function Error:", response.error);
         
-        // Check for specific error patterns that indicate configuration issues
         if (errorMessage.includes("placeholder value") || errorMessage.includes("not defined")) {
           setError(`Configuration error: ${errorMessage}`);
           toast.error("Google API configuration error. Please check Edge Function logs.");
@@ -119,7 +117,6 @@ export const useGoogleBusiness = () => {
         throw new Error("Missing authorization URL in response");
       }
       
-      // Debug log
       console.log("Authentication URL obtained:", response.data.url);
       
       return response.data.url;
@@ -133,7 +130,6 @@ export const useGoogleBusiness = () => {
     }
   }, []);
 
-  // Process OAuth callback
   const handleCallback = useCallback(async (code: string, state: string) => {
     try {
       if (callbackProcessed) {
@@ -147,7 +143,6 @@ export const useGoogleBusiness = () => {
       
       console.log("Processing callback with code and state:", { codeLength: code.length, state });
       
-      // Make sure the user is authenticated before proceeding
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         console.log("User not logged in when processing callback");
@@ -181,7 +176,6 @@ export const useGoogleBusiness = () => {
     }
   }, [fetchProfile, callbackProcessed]);
 
-  // List GMB accounts
   const listAccounts = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -216,7 +210,6 @@ export const useGoogleBusiness = () => {
     }
   }, []);
 
-  // List locations for a GMB account
   const listLocations = useCallback(async (accountId: string) => {
     try {
       setIsLoading(true);
@@ -251,7 +244,6 @@ export const useGoogleBusiness = () => {
     }
   }, []);
 
-  // Save selected location ID
   const saveLocation = useCallback(async (accountId: string, locationId: string) => {
     try {
       setIsLoading(true);
@@ -289,7 +281,6 @@ export const useGoogleBusiness = () => {
     }
   }, [fetchProfile]);
 
-  // Disconnect Google account
   const disconnect = useCallback(async () => {
     try {
       setIsLoading(true);

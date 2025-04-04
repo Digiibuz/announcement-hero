@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import * as log from "https://deno.land/std@0.168.0/log/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.1";
@@ -94,7 +95,7 @@ async function getUserGoogleProfile(userId: string) {
       .from('user_google_business_profiles')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();  // Changed from .single() to .maybeSingle()
     
     if (error) {
       logger.error(`Error retrieving Google profile: ${JSON.stringify(error)}`);
