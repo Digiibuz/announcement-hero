@@ -41,15 +41,9 @@ export const useGoogleBusiness = () => {
         throw new Error("Utilisateur non connecté");
       }
       
-      // Log pour débogage
-      console.log("Envoi de la requête get_profile");
-      
       const response = await supabase.functions.invoke('google-business', {
         body: { action: 'get_profile' },
       });
-      
-      // Log pour débogage
-      console.log("Réponse reçue:", response);
       
       if (response.error) {
         throw new Error(response.error.message);
@@ -74,15 +68,9 @@ export const useGoogleBusiness = () => {
     try {
       setIsLoading(true);
       
-      // Log pour débogage
-      console.log("Envoi de la requête get_auth_url");
-      
       const response = await supabase.functions.invoke('google-business', {
         body: { action: 'get_auth_url' },
       });
-      
-      // Log pour débogage
-      console.log("Réponse d'URL reçue:", response);
       
       if (response.error) {
         throw new Error(response.error.message);

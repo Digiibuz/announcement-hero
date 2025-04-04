@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -27,7 +28,6 @@ const GoogleBusinessPage = () => {
   
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("profile");
-  const [error, setError] = useState<string | null>(null);
   
   // Vérifier si l'utilisateur est connecté
   useEffect(() => {
@@ -39,14 +39,9 @@ const GoogleBusinessPage = () => {
   // Initialiser le profil GMB
   useEffect(() => {
     const initProfile = async () => {
-      try {
-        const profile = await fetchProfile();
-        if (profile?.gmb_account_id) {
-          setSelectedAccountId(profile.gmb_account_id);
-        }
-      } catch (err: any) {
-        console.error("Erreur lors de l'initialisation du profil:", err);
-        setError("Erreur lors de l'initialisation du profil: " + err.message);
+      const profile = await fetchProfile();
+      if (profile?.gmb_account_id) {
+        setSelectedAccountId(profile.gmb_account_id);
       }
     };
     
@@ -70,20 +65,9 @@ const GoogleBusinessPage = () => {
   
   // Se connecter à Google
   const handleConnect = async () => {
-    setError(null);
-    try {
-      const authUrl = await getAuthUrl();
-      console.log("URL d'authentification obtenue:", authUrl);
-      
-      if (authUrl) {
-        window.location.href = authUrl;
-      } else {
-        throw new Error("Impossible d'obtenir l'URL d'authentification");
-      }
-    } catch (err: any) {
-      console.error("Erreur lors de la connexion:", err);
-      setError("Erreur lors de la connexion à Google: " + err.message);
-      toast.error("Erreur lors de la connexion à Google");
+    const authUrl = await getAuthUrl();
+    if (authUrl) {
+      window.location.href = authUrl;
     }
   };
   
@@ -130,20 +114,6 @@ const GoogleBusinessPage = () => {
               Connectez votre fiche d'établissement Google My Business pour la gérer directement depuis l'application.
             </p>
           </div>
-          
-          {error && (
-            <Card className="bg-red-50 border-red-200 mb-4">
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-2 text-red-600">
-                  <AlertCircle className="h-5 w-5 mt-0.5" />
-                  <div>
-                    <h3 className="font-medium">Erreur détectée</h3>
-                    <p>{error}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
           
           {isLoading && !profile ? (
             <Card className="shadow-md">
