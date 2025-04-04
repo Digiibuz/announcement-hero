@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -158,8 +158,14 @@ const Login = () => {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Mot de passe</Label>
-                  <Button variant="link" className="p-0 h-auto text-xs" type="button" disabled={isLoading}>
-                    Mot de passe oublié ?
+                  <Button 
+                    variant="link" 
+                    className="p-0 h-auto text-xs" 
+                    type="button" 
+                    disabled={isLoading}
+                    asChild
+                  >
+                    <Link to="/forgot-password">Mot de passe oublié ?</Link>
                   </Button>
                 </div>
                 <div className="relative">

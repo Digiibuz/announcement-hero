@@ -11,6 +11,8 @@ import { LoadingIndicator } from "./components/ui/loading-indicator";
 
 // Lazy loading des pages pour améliorer les performances
 const Login = lazy(() => import("./pages/Login"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const CreateAnnouncement = lazy(() => import("./pages/CreateAnnouncement"));
 const Announcements = lazy(() => import("./pages/Announcements"));
@@ -106,6 +108,8 @@ function App() {
                   {/* Redirect root to login */}
                   <Route path="/" element={<Navigate to="/login" replace />} />
                   <Route path="/login" element={<Login />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   
                   {/* Protected routes */}
                   <Route 
