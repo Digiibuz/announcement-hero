@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
@@ -58,6 +57,15 @@ async function getUserGoogleProfile(userId: string) {
 
 // Fonction pour générer l'URL d'autorisation OAuth
 function getGoogleAuthUrl(state: string) {
+  // Vérifier que les variables d'environnement nécessaires sont définies
+  if (!GOOGLE_CLIENT_ID) {
+    throw new Error('GOOGLE_CLIENT_ID non défini dans les variables d\'environnement')
+  }
+  
+  if (!REDIRECT_URI) {
+    throw new Error('GMB_REDIRECT_URI non défini dans les variables d\'environnement')
+  }
+  
   const scopes = [
     'https://www.googleapis.com/auth/business.manage',
     'https://www.googleapis.com/auth/userinfo.email'
@@ -78,6 +86,19 @@ function getGoogleAuthUrl(state: string) {
 
 // Fonction pour échanger le code contre des tokens
 async function exchangeCodeForTokens(code: string) {
+  // Vérifier que les variables d'environnement nécessaires sont définies
+  if (!GOOGLE_CLIENT_ID) {
+    throw new Error('GOOGLE_CLIENT_ID non défini dans les variables d\'environnement')
+  }
+  
+  if (!GOOGLE_CLIENT_SECRET) {
+    throw new Error('GOOGLE_CLIENT_SECRET non défini dans les variables d\'environnement')
+  }
+  
+  if (!REDIRECT_URI) {
+    throw new Error('GMB_REDIRECT_URI non défini dans les variables d\'environnement')
+  }
+  
   const tokenEndpoint = 'https://oauth2.googleapis.com/token'
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
@@ -188,9 +209,17 @@ serve(async (req) => {
   }
   
   try {
+    // Vérifier que les variables d'environnement sont définies
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error('Variables d\'environnement Supabase manquantes')
+    }
+    
     // Récupérer les données du corps de la requête
     const requestData = await req.json()
     const action = requestData.action
+    
+    // Log pour le débogage
+    console.log(`Action requise: ${action}`)
     
     // Extraire le token JWT pour obtenir l'ID utilisateur
     const authHeader = req.headers.get('Authorization')
@@ -209,16 +238,23 @@ serve(async (req) => {
     
     // Traiter les différentes actions
     if (action === 'get_auth_url') {
-      // Générer l'URL d'autorisation OAuth
-      const state = userId // Utiliser l'ID utilisateur comme state
-      const authUrl = getGoogleAuthUrl(state)
-      
-      return new Response(
-        JSON.stringify({ url: authUrl }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
+      try {
+        // Générer l'URL d'autorisation OAuth
+        const state = userId // Utiliser l'ID utilisateur comme state
+        const authUrl = getGoogleAuthUrl(state)
+        
+        console.log(`URL d'autorisation générée: ${authUrl}`)
+        
+        return new Response(
+          JSON.stringify({ url: authUrl }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        )
+      } catch (error) {
+        console.error("Erreur lors de la génération de l'URL d'autorisation:", error)
+        return handleError(error)
+      }
     } 
     else if (action === 'handle_callback') {
       // Traiter le callback OAuth
@@ -421,7 +457,7 @@ serve(async (req) => {
       )
     }
     
-    throw new Error('Action non reconnue')
+    throw new Error(`Action non reconnue: ${action}`)
   } catch (error) {
     return handleError(error)
   }
