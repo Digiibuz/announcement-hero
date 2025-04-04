@@ -42,21 +42,21 @@ const queryClient = new QueryClient({
 
 // Protected route component with improved memory
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, isOnResetPasswordPage } = useAuth();
   const location = useLocation();
 
-  // Store current location in session storage to survive tab changes
+  // Ne pas vérifier l'authentification si nous sommes sur la page de réinitialisation de mot de passe
   useEffect(() => {
-    if (isAuthenticated && !isLoading) {
+    if (isAuthenticated && !isLoading && !isOnResetPasswordPage) {
       sessionStorage.setItem('lastAuthenticatedPath', location.pathname);
     }
-  }, [location.pathname, isAuthenticated, isLoading]);
+  }, [location.pathname, isAuthenticated, isLoading, isOnResetPasswordPage]);
 
   if (isLoading) {
     return <LoadingFallback />;
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !isOnResetPasswordPage) {
     return <Navigate to="/login" replace />;
   }
 
@@ -65,29 +65,29 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Admin only route component with improved state persistence
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading, isAdmin, isClient } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin, isClient, isOnResetPasswordPage } = useAuth();
   const location = useLocation();
 
   // Enhanced admin route persistence
   useEffect(() => {
-    if (isAuthenticated && !isLoading) {
+    if (isAuthenticated && !isLoading && !isOnResetPasswordPage) {
       if (isAdmin || isClient) {
         console.log("Saving admin path:", location.pathname);
         sessionStorage.setItem('lastAdminPath', location.pathname);
       }
     }
-  }, [location.pathname, isAuthenticated, isAdmin, isClient, isLoading]);
+  }, [location.pathname, isAuthenticated, isAdmin, isClient, isLoading, isOnResetPasswordPage]);
 
   if (isLoading) {
     return <LoadingFallback />;
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !isOnResetPasswordPage) {
     return <Navigate to="/login" replace />;
   }
 
   // Autoriser l'accès aux utilisateurs admin et client
-  if (!isAdmin && !isClient) {
+  if (!isAdmin && !isClient && !isOnResetPasswordPage) {
     return <Navigate to="/dashboard" replace />;
   }
 

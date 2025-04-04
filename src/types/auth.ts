@@ -29,4 +29,5 @@ export interface AuthContextType {
   stopImpersonating: () => void;
   originalUser: UserProfile | null;
   isImpersonating: boolean;
+  isOnResetPasswordPage: boolean; // Nouvelle propriété
 }
