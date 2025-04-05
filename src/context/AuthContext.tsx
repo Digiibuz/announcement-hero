@@ -185,28 +185,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Impersonation wrappers
   const impersonateUser = (userToImpersonate: UserProfile) => {
     // Only allow admins to impersonate
-    if (!currentUser || currentUser.role !== "admin") return;
+    if (!userProfile || userProfile.role !== "admin") return;
     
-    // Store the original user
-    setOriginalUser(currentUser);
-    localStorage.setItem("originalUser", JSON.stringify(currentUser));
-    setIsImpersonating(true);
-    
-    return userToImpersonate;
+    // Use the startImpersonation function from useImpersonation hook
+    return startImpersonation(userToImpersonate);
   };
 
   const stopImpersonating = () => {
-    if (!originalUser) return null;
-    
-    // Restore the original user
-    setIsImpersonating(false);
-    
-    // Clear impersonation state
-    localStorage.removeItem("originalUser");
-    const user = originalUser;
-    setOriginalUser(null);
-    
-    return user;
+    // Use the endImpersonation function from useImpersonation hook
+    return endImpersonation();
   };
 
   const value: AuthContextType = {
