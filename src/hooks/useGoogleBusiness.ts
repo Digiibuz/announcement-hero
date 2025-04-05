@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -161,6 +162,7 @@ export const useGoogleBusiness = () => {
       if (!session) {
         console.log("User not logged in when processing callback");
         setError("You must be logged in to connect your Google account");
+        setCallbackProcessed(false); // Reset to allow retrying
         throw new Error("User not logged in");
       }
       
@@ -174,6 +176,7 @@ export const useGoogleBusiness = () => {
       if (response.error) {
         console.error("Error processing callback:", response.error);
         setError(`Authentication error: ${response.error.message || "Failed to connect to Google account"}`);
+        setCallbackProcessed(false); // Reset to allow retrying
         throw new Error(response.error.message || "Error connecting to Google account");
       }
       
@@ -184,17 +187,31 @@ export const useGoogleBusiness = () => {
         console.warn("Profile not found after successful callback - this might indicate a database issue");
         console.log("Will retry profile fetch in 2 seconds...");
         
+        // Try up to 3 times with increasing delays
         setTimeout(async () => {
-          console.log("Retrying profile fetch...");
+          console.log("Retrying profile fetch (1st attempt)...");
           const retryProfile = await fetchProfile();
           
           if (retryProfile) {
             console.log("Profile successfully retrieved on retry:", retryProfile);
             toast.success("Google account connected successfully");
           } else {
-            console.error("Profile still not found after retry");
-            setError("Profile connection succeeded but profile was not found in database after retry");
-            toast.error("Connection partially successful - please try refreshing");
+            console.error("Profile still not found after 1st retry");
+            
+            // Try again after a longer delay
+            setTimeout(async () => {
+              console.log("Retrying profile fetch (2nd attempt)...");
+              const secondRetryProfile = await fetchProfile();
+              
+              if (secondRetryProfile) {
+                console.log("Profile successfully retrieved on 2nd retry:", secondRetryProfile);
+                toast.success("Google account connected successfully");
+              } else {
+                console.error("Profile still not found after multiple retries");
+                setError("Profile connection succeeded but profile was not found in database after retries");
+                toast.error("Connection partially successful - please try refreshing");
+              }
+            }, 3000);
           }
         }, 2000);
       } else {

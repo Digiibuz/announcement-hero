@@ -526,7 +526,7 @@ const GoogleBusinessPage = () => {
       <Dialog open={showNoLocationsDialog} onOpenChange={setShowNoLocationsDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-center text-2xl">Aucune fiche n'a ��té trouvée</DialogTitle>
+            <DialogTitle className="text-center text-2xl">Aucune fiche n'a été trouvée</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col items-center gap-4 py-4">
             <div className="flex items-center justify-center h-20 w-20 rounded-full bg-slate-100">
