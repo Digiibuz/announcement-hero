@@ -34,6 +34,7 @@ export const useGoogleBusiness = () => {
   const [debugInfo, setDebugInfo] = useState<{
     lastApiCall: string;
     lastResponse: any;
+    additionalInfo?: string;
   }>({ lastApiCall: '', lastResponse: null });
   const [noLocationsFound, setNoLocationsFound] = useState(false);
 
@@ -195,6 +196,13 @@ export const useGoogleBusiness = () => {
           if (retryProfile) {
             console.log("Profile successfully retrieved on retry:", retryProfile);
             toast.success("Google account connected successfully");
+            
+            // Auto-load accounts after successful connection
+            setTimeout(() => {
+              listAccounts().catch(e => {
+                console.error("Error auto-loading accounts after connection:", e);
+              });
+            }, 500);
           } else {
             console.error("Profile still not found after 1st retry");
             
@@ -206,6 +214,13 @@ export const useGoogleBusiness = () => {
               if (secondRetryProfile) {
                 console.log("Profile successfully retrieved on 2nd retry:", secondRetryProfile);
                 toast.success("Google account connected successfully");
+                
+                // Auto-load accounts after successful connection
+                setTimeout(() => {
+                  listAccounts().catch(e => {
+                    console.error("Error auto-loading accounts after connection:", e);
+                  });
+                }, 500);
               } else {
                 console.error("Profile still not found after multiple retries");
                 setError("Profile connection succeeded but profile was not found in database after retries");
@@ -217,6 +232,13 @@ export const useGoogleBusiness = () => {
       } else {
         console.log("Profile successfully retrieved after callback:", newProfile);
         toast.success("Google account connected successfully");
+        
+        // Auto-load accounts after successful connection
+        setTimeout(() => {
+          listAccounts().catch(e => {
+            console.error("Error auto-loading accounts after connection:", e);
+          });
+        }, 500);
       }
       
       return true;
@@ -243,6 +265,11 @@ export const useGoogleBusiness = () => {
       });
       
       console.log("Accounts list response:", response);
+      setDebugInfo(prev => ({ 
+        ...prev, 
+        lastApiCall: 'list_accounts', 
+        lastResponse: response 
+      }));
       
       if (response.error) {
         console.error("Error retrieving accounts:", response.error);
@@ -250,13 +277,40 @@ export const useGoogleBusiness = () => {
         throw new Error(response.error.message || "Error retrieving accounts");
       }
       
-      const accountsList = response.data?.accounts?.accounts || [];
+      // Vérifier si les comptes sont définis et ont une structure valide
+      if (!response.data || !response.data.accounts) {
+        console.error("Invalid response structure - missing accounts data");
+        setDebugInfo(prev => ({ 
+          ...prev, 
+          additionalInfo: "Response did not contain expected accounts data structure" 
+        }));
+        setError("La réponse ne contient pas de données de compte attendues");
+        return [];
+      }
+      
+      // Assurer que accounts est un tableau même s'il est vide ou undefined
+      const accountsList = response.data.accounts?.accounts || [];
       console.log("Accounts retrieved:", accountsList);
       
       setAccounts(accountsList);
       
       if (accountsList.length === 0) {
         setNoLocationsFound(true);
+        setDebugInfo(prev => ({ 
+          ...prev, 
+          additionalInfo: "No accounts found - this may indicate issues with Google My Business permissions" 
+        }));
+      } else {
+        // Si nous avons des comptes, chargez automatiquement les emplacements pour le premier compte
+        setTimeout(() => {
+          if (accountsList.length > 0) {
+            const firstAccountId = accountsList[0].name;
+            console.log("Auto-loading locations for first account:", firstAccountId);
+            listLocations(firstAccountId).catch(e => {
+              console.error("Error auto-loading locations:", e);
+            });
+          }
+        }, 500);
       }
       
       return accountsList;
@@ -283,6 +337,11 @@ export const useGoogleBusiness = () => {
       });
       
       console.log("Locations list response:", response);
+      setDebugInfo(prev => ({ 
+        ...prev, 
+        lastApiCall: 'list_locations', 
+        lastResponse: response 
+      }));
       
       if (response.error) {
         console.error("Error retrieving locations:", response.error);
@@ -290,13 +349,39 @@ export const useGoogleBusiness = () => {
         throw new Error(response.error.message || "Error retrieving locations");
       }
       
-      const locationsList = response.data?.locations?.locations || [];
+      // Vérifier si les emplacements sont définis et ont une structure valide
+      if (!response.data || !response.data.locations) {
+        console.error("Invalid response structure - missing locations data");
+        setDebugInfo(prev => ({ 
+          ...prev, 
+          additionalInfo: "Response did not contain expected locations data structure" 
+        }));
+        setError("La réponse ne contient pas de données d'emplacement attendues");
+        return [];
+      }
+      
+      // Assurer que locations est un tableau même s'il est vide ou undefined
+      const locationsList = response.data.locations?.locations || [];
       console.log("Locations retrieved:", locationsList);
       
       setLocations(locationsList);
       
       if (locationsList.length === 0) {
         setNoLocationsFound(true);
+        setDebugInfo(prev => ({ 
+          ...prev, 
+          additionalInfo: "No locations found for this account - this may indicate issues with Google My Business permissions" 
+        }));
+      } else if (locationsList.length === 1) {
+        // Si nous n'avons qu'un seul emplacement, sélectionnez-le automatiquement
+        const onlyLocation = locationsList[0];
+        console.log("Only one location found, auto-selecting:", onlyLocation.name);
+        
+        setTimeout(() => {
+          saveLocation(accountId, onlyLocation.name).catch(e => {
+            console.error("Error auto-selecting location:", e);
+          });
+        }, 500);
       }
       
       return locationsList;
@@ -326,6 +411,11 @@ export const useGoogleBusiness = () => {
       });
       
       console.log("Save location response:", response);
+      setDebugInfo(prev => ({ 
+        ...prev, 
+        lastApiCall: 'save_location', 
+        lastResponse: response 
+      }));
       
       if (response.error) {
         console.error("Error saving location:", response.error);
@@ -359,6 +449,11 @@ export const useGoogleBusiness = () => {
       });
       
       console.log("Disconnection response:", response);
+      setDebugInfo(prev => ({ 
+        ...prev, 
+        lastApiCall: 'disconnect', 
+        lastResponse: response 
+      }));
       
       if (response.error) {
         console.error("Error disconnecting:", response.error);

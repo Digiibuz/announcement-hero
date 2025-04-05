@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -255,24 +256,39 @@ const GoogleBusinessPage = () => {
                     
                     <h3 className="text-sm font-semibold mt-4 mb-2">API Calls</h3>
                     <details open>
-                      <summary>Last API Call</summary>
+                      <summary>Last API Call: {debugInfo.lastApiCall}</summary>
                       <pre className="bg-slate-100 p-2 rounded mt-2">
                         {JSON.stringify(debugInfo, null, 2)}
                       </pre>
                     </details>
                     
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="mt-4"
-                      onClick={() => {
-                        fetchProfile();
-                        toast.info("Profile refreshed");
-                      }}
-                    >
-                      <RefreshCw className="h-3 w-3 mr-2" />
-                      Refresh Profile
-                    </Button>
+                    <div className="flex gap-2 mt-4">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => {
+                          fetchProfile();
+                          toast.info("Profile refreshed");
+                        }}
+                      >
+                        <RefreshCw className="h-3 w-3 mr-2" />
+                        Refresh Profile
+                      </Button>
+                      
+                      {isConnected && (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => {
+                            listAccounts();
+                            toast.info("Accounts refreshed");
+                          }}
+                        >
+                          <RefreshCw className="h-3 w-3 mr-2" />
+                          Refresh Accounts
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </AccordionContent>
               </AccordionItem>
