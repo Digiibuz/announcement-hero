@@ -130,10 +130,11 @@ const Login = () => {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          scopes: 'email',
+          scopes: 'email profile',
           redirectTo: window.location.origin,
           queryParams: {
-            prompt: 'select_account'
+            prompt: 'select_account',
+            access_type: 'offline'
           }
         }
       });
@@ -144,6 +145,7 @@ const Login = () => {
         setIsGoogleLoading(false);
       } else {
         console.log("Google auth initiated, redirecting to:", data?.url);
+        
         if (data?.url) {
           window.location.href = data.url;
         } else {
