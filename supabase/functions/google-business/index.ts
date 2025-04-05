@@ -366,7 +366,7 @@ async function handleCallback(code: string, state: string, userId: string) {
   logger.info(`Processing callback for user: ${userId} with code length: ${code.length}`);
   
   try {
-    // Échange du code d'autorisation contre des tokens
+    // Exchange the authorization code for tokens
     const tokenData = await exchangeCodeForTokens(code);
     const { access_token, refresh_token, expires_in } = tokenData;
     
@@ -375,19 +375,19 @@ async function handleCallback(code: string, state: string, userId: string) {
       throw new Error('No refresh token received from Google. Please try again with a different account or clear your browser cookies.');
     }
     
-    // Récupération des informations utilisateur Google
+    // Get user information from Google
     const userInfo = await getGoogleUserInfo(access_token);
     
-    // Calcul de la date d'expiration du token
+    // Calculate token expiration date
     const tokenExpiresAt = new Date();
     tokenExpiresAt.setSeconds(tokenExpiresAt.getSeconds() + expires_in);
     
-    // Vérification si un profil existe déjà
+    // Check if a profile already exists
     const existingProfile = await getUserGoogleProfile(userId);
     logger.info(`Existing profile check for user ${userId}: ${existingProfile ? 'found' : 'not found'}`);
     
     let upsertResult;
-    // Mise à jour ou création du profil
+    // Update or create the profile
     if (existingProfile) {
       logger.info(`Updating existing Google profile for user: ${userId}`);
       upsertResult = await supabaseAdmin
@@ -403,7 +403,7 @@ async function handleCallback(code: string, state: string, userId: string) {
     } else {
       logger.info(`Creating new Google profile for user: ${userId} with email: ${userInfo.email}`);
       
-      // Log détaillé des données à insérer
+      // Detailed log of the data to be inserted
       const insertData = {
         user_id: userId,
         google_email: userInfo.email,
@@ -416,6 +416,19 @@ async function handleCallback(code: string, state: string, userId: string) {
       
       logger.info(`Data being inserted: ${JSON.stringify(insertData)}`);
       
+      // Try checking table existence and structure first
+      try {
+        const { data: tableInfo, error: tableError } = await supabaseAdmin
+          .from('user_google_business_profiles')
+          .select()
+          .limit(1);
+          
+        logger.info(`Table check result: ${tableError ? 'Error: ' + JSON.stringify(tableError) : 'Table exists'}`);
+      } catch (e) {
+        logger.error(`Error checking table: ${e.message}`);
+      }
+      
+      // Now attempt the insert
       upsertResult = await supabaseAdmin
         .from('user_google_business_profiles')
         .insert(insertData);
@@ -423,11 +436,11 @@ async function handleCallback(code: string, state: string, userId: string) {
       logger.info(`Insert result: ${JSON.stringify(upsertResult)}`);
     }
     
-    // Gestion des erreurs potentielles lors de l'upsert
+    // Handle potential errors during the upsert
     if (upsertResult.error) {
       logger.error(`Error upserting profile: ${JSON.stringify(upsertResult.error)}`);
       
-      // Analyse de l'erreur pour fournir un message plus utile
+      // Analyze the error to provide a more useful message
       if (upsertResult.error.code === '23505') {
         logger.error(`Duplicate key violation - record already exists`);
       } else if (upsertResult.error.code === '42P01') {
@@ -441,7 +454,7 @@ async function handleCallback(code: string, state: string, userId: string) {
       throw new Error(`Database error: ${upsertResult.error.message || "Unknown database error"}`);
     }
     
-    // Vérification post-insertion/mise à jour
+    // Verification after insertion/update
     const verifiedProfile = await getUserGoogleProfile(userId);
     if (verifiedProfile) {
       logger.info(`Profile verified after save: ID=${verifiedProfile.id}, email=${verifiedProfile.google_email}`);

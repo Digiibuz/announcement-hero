@@ -128,9 +128,13 @@ export const useGoogleBusiness = () => {
         const errorMessage = response.error.message || "Failed to generate authorization URL";
         console.error("Edge Function Error:", response.error);
         
+        // More specific error handling
         if (errorMessage.includes("placeholder value") || errorMessage.includes("not defined")) {
           setError(`Configuration error: ${errorMessage}`);
           toast.error("Google API configuration error. Please check Edge Function logs.");
+        } else if (errorMessage.includes("authenticated")) {
+          setError("Authentication required: Please log in first");
+          toast.error("You must be logged in to connect your Google account");
         } else {
           setError(`Authorization error: ${errorMessage}`);
         }
@@ -178,8 +182,13 @@ export const useGoogleBusiness = () => {
         throw new Error("User not logged in");
       }
       
+      // Make sure to pass both code and state in the request body
       const response = await supabase.functions.invoke('google-business', {
-        body: { action: 'handle_callback', code, state },
+        body: { 
+          action: 'handle_callback', 
+          code, 
+          state 
+        },
         headers: {
           Authorization: `Bearer ${session.access_token}`
         }
