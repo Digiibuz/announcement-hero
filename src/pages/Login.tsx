@@ -44,7 +44,7 @@ const Login = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Détection des paramètres d'authentification dans l'URL
+  // Détection et traitement des paramètres d'authentification dans l'URL
   useEffect(() => {
     const url = window.location.href;
     const hasAuthParams = url.includes('#access_token=') || 
@@ -58,6 +58,7 @@ const Login = () => {
       // Traitement explicite de la session lors de la redirection OAuth
       const handleAuthSession = async () => {
         try {
+          console.log("Retrieving session after OAuth callback");
           const { data, error } = await supabase.auth.getSession();
           
           if (error) {
@@ -65,11 +66,12 @@ const Login = () => {
             toast.error("Erreur lors de la connexion: " + error.message);
             setIsProcessingCallback(false);
           } else if (data.session) {
-            console.log("Session successfully retrieved during callback");
+            console.log("Session successfully retrieved during callback:", data.session.user.id);
             toast.success("Connexion Google réussie");
             
             // Donner un peu de temps au contexte d'auth pour se mettre à jour
             setTimeout(() => {
+              console.log("Navigating to dashboard after successful callback");
               navigate("/dashboard");
               setIsProcessingCallback(false);
             }, 1000);
@@ -89,10 +91,12 @@ const Login = () => {
     }
   }, [navigate]);
 
-  // Écouteur d'événements d'authentification
+  // Écouteur d'événements d'authentification amélioré
   useEffect(() => {
     if (isAuthenticated) {
+      console.log("User is already authenticated, redirecting to dashboard");
       navigate("/dashboard");
+      return;
     }
 
     console.log("Setting up auth state listener in Login component");
@@ -100,12 +104,14 @@ const Login = () => {
       console.log("Auth state changed in Login component:", event, session ? "Session exists" : "No session");
       
       if (event === 'SIGNED_IN' && session) {
-        console.log("User signed in successfully in Login component");
+        console.log("User signed in successfully in Login component", session.user.id);
         toast.success("Connexion réussie");
         setIsProcessingCallback(false);
         setIsGoogleLoading(false);
         
+        // Ajouter un délai pour permettre la propagation de l'état d'authentification
         setTimeout(() => {
+          console.log("Navigating to dashboard after auth state change");
           navigate("/dashboard");
         }, 500);
       } else if (event === 'TOKEN_REFRESHED') {
@@ -155,7 +161,7 @@ const Login = () => {
           queryParams: {
             prompt: 'select_account',
             access_type: 'offline',
-            hd: 'domain.com', // Optionnel: pour limiter aux emails d'un domaine spécifique (à modifier ou supprimer)
+            // Suppression de la limitation de domaine pour permettre toutes les connexions
           }
         }
       });
@@ -169,6 +175,8 @@ const Login = () => {
         
         if (data?.url) {
           // Redirection complète vers l'URL d'authentification Google
+          // On stocke un flag dans sessionStorage pour indiquer qu'une redirection est en cours
+          sessionStorage.setItem('google_auth_in_progress', 'true');
           window.location.href = data.url;
         } else {
           console.error("No redirect URL received from Supabase");
@@ -182,6 +190,50 @@ const Login = () => {
       setIsGoogleLoading(false);
     }
   };
+
+  // Vérifier si on revient d'une authentification Google
+  useEffect(() => {
+    const googleAuthInProgress = sessionStorage.getItem('google_auth_in_progress');
+    if (googleAuthInProgress === 'true') {
+      console.log("Detected return from Google authentication");
+      
+      // On supprime le flag
+      sessionStorage.removeItem('google_auth_in_progress');
+      
+      // On s'assure qu'on n'est pas déjà en train de traiter un callback
+      if (!isProcessingCallback) {
+        setIsProcessingCallback(true);
+        
+        // On vérifie si on a une session
+        const checkSession = async () => {
+          try {
+            const { data, error } = await supabase.auth.getSession();
+            
+            if (error) {
+              console.error("Error checking session after Google auth:", error);
+              setIsProcessingCallback(false);
+            } else if (data.session) {
+              console.log("Session found after Google auth:", data.session.user.id);
+              
+              // Redirection vers le dashboard
+              setTimeout(() => {
+                navigate("/dashboard");
+                setIsProcessingCallback(false);
+              }, 500);
+            } else {
+              console.warn("No session found after Google auth");
+              setIsProcessingCallback(false);
+            }
+          } catch (err) {
+            console.error("Exception during session check after Google auth:", err);
+            setIsProcessingCallback(false);
+          }
+        };
+        
+        checkSession();
+      }
+    }
+  }, [isProcessingCallback, navigate]);
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
