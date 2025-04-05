@@ -1,4 +1,3 @@
-
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
@@ -23,6 +22,7 @@ const UserProfile = lazy(() => import("./pages/UserProfile"));
 const Support = lazy(() => import("./pages/Support"));
 const GoogleBusinessPage = lazy(() => import("./pages/GoogleBusinessPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const AuthDebugger = lazy(() => import("./pages/AuthDebugger")); // New debug page
 
 // Composant de chargement amélioré avec animation
 const LoadingFallback = () => (
@@ -178,6 +178,9 @@ function App() {
                   {/* Route spéciale pour la réinitialisation du mot de passe 
                       Pas besoin de ProtectedRoute car elle gère directement l'authentification */}
                   <Route path="/reset-password" element={<ResetPassword />} />
+                  
+                  {/* Debug page - unprotected for troubleshooting */}
+                  <Route path="/auth-debugger" element={<AuthDebugger />} />
                   
                   {/* Protected routes */}
                   <Route 
