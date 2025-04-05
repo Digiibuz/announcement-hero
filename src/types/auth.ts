@@ -1,5 +1,5 @@
 
-import { User, Session } from "@supabase/supabase-js";
+import { User } from "@supabase/supabase-js";
 
 export type Role = "admin" | "client";
 
@@ -19,9 +19,8 @@ export interface UserProfile {
 
 export interface AuthContextType {
   user: UserProfile | null;
-  session: Session | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<any>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   isAdmin: boolean;
@@ -31,9 +30,6 @@ export interface AuthContextType {
   originalUser: UserProfile | null;
   isImpersonating: boolean;
   isOnResetPasswordPage: boolean;
-  sessionChecked: boolean;
-  authError: string | null;
-  isProcessingCallback: boolean;
 }
 
 export interface GoogleBusinessProfile {
@@ -44,7 +40,4 @@ export interface GoogleBusinessProfile {
   gmb_location_id: string | null;
   created_at: string;
   updated_at: string;
-  access_token: string | null;
-  refresh_token: string;
-  token_expires_at: string | null;
 }

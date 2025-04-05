@@ -10,8 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { 
   Building2, LogOut, MapPin, Store, ChevronRight, 
-  RefreshCw, CheckCircle, ExternalLink, AlertCircle, Bug, AlertTriangle, Info, ArrowLeft,
-  Shield
+  RefreshCw, CheckCircle, ExternalLink, AlertCircle, Bug 
 } from "lucide-react";
 import { toast } from "sonner";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
@@ -22,15 +21,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 
 const GoogleBusinessPage = () => {
   const navigate = useNavigate();
@@ -40,24 +30,22 @@ const GoogleBusinessPage = () => {
     isLoading, isConnected, profile, accounts, locations, error,
     fetchProfile, getAuthUrl, handleCallback,
     listAccounts, listLocations, saveLocation, disconnect,
-    debugInfo, callbackProcessed, noLocationsFound, authInProgress,
-    tokenIsValid, checkTokenValidity
+    debugInfo, callbackProcessed // These properties now properly destructured from the hook
   } = useGoogleBusiness();
   
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("profile");
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isCallbackProcessing, setIsCallbackProcessing] = useState(false);
-  const [showNoLocationsDialog, setShowNoLocationsDialog] = useState(false);
-  const [showOAuthErrorDetails, setShowOAuthErrorDetails] = useState(false);
-  const [showTokenDetails, setShowTokenDetails] = useState(false);
   
+  // Check if user is logged in
   useEffect(() => {
-    if (!isAuthenticated && !searchParams.get("code") && !searchParams.get("error")) {
+    if (!isAuthenticated && !searchParams.get("code")) {
       navigate("/login");
     }
   }, [isAuthenticated, navigate, searchParams]);
   
+  // Initialize GMB profile
   useEffect(() => {
     const initProfile = async () => {
       try {
@@ -65,78 +53,37 @@ const GoogleBusinessPage = () => {
         if (profile?.gmb_account_id) {
           setSelectedAccountId(profile.gmb_account_id);
         }
-        
-        // Vérifie la validité du token si un profil existe
-        if (profile) {
-          await checkTokenValidity(profile);
-        }
       } catch (err: any) {
         console.error("Error initializing profile:", err);
         setConnectionError(`Error initializing profile: ${err.message}`);
       }
     };
     
+    // Only init profile if user is authenticated and not processing callback
     if (isAuthenticated && !isCallbackProcessing) {
       initProfile();
     }
-  }, [fetchProfile, isAuthenticated, isCallbackProcessing, checkTokenValidity]);
+  }, [fetchProfile, isAuthenticated, isCallbackProcessing]);
   
+  // Process OAuth callback
   useEffect(() => {
     const code = searchParams.get("code");
     const state = searchParams.get("state");
-    const error = searchParams.get("error");
-    const errorCode = searchParams.get("error_code");
-    const errorDescription = searchParams.get("error_description") || "Unknown error";
-    
-    if (error || errorCode) {
-      console.error("OAuth error detected in URL:", { error, errorCode, errorDescription });
-      
-      const errorMessage = decodeURIComponent(errorDescription).replace(/\+/g, ' ');
-      
-      if (errorCode === "bad_oauth_state" || error?.includes("invalid_request")) {
-        const stateErrorMsg = "Erreur d'authentification: Le paramètre state OAuth est invalide ou a expiré. Veuillez réessayer la connexion.";
-        setConnectionError(stateErrorMsg);
-        
-        setTimeout(() => {
-          toast.error(stateErrorMsg);
-          setShowOAuthErrorDetails(true);
-        }, 500);
-        
-        setTimeout(() => {
-          navigate("/google-business", { replace: true });
-        }, 100);
-        return;
-      }
-      
-      const generalErrorMsg = `Erreur d'authentification Google: ${errorMessage}`;
-      setConnectionError(generalErrorMsg);
-      toast.error("Authentication failed. Please try again.");
-      
-      setTimeout(() => {
-        navigate("/google-business", { replace: true });
-      }, 100);
-      return;
-    }
     
     if (code && state && !isCallbackProcessing) {
       setIsCallbackProcessing(true);
       console.log("Processing OAuth callback with code and state:", { code_length: code.length, state });
       
+      // Process the callback without waiting for other effects
       handleCallback(code, state).then((success) => {
         if (success) {
+          // Remove URL parameters
           navigate("/google-business", { replace: true });
           toast.success("Google account connected successfully");
           
+          // Refresh the profile after a short delay
           setTimeout(() => {
-            fetchProfile().then(profile => {
-              if (profile) {
-                checkTokenValidity(profile).then(isValid => {
-                  if (!isValid) {
-                    toast.error("Token validity check failed after connection. Please try reconnecting.");
-                  }
-                });
-              }
-            }).catch(err => {
+            fetchProfile().catch(err => {
               console.error("Error refreshing profile after callback:", err);
             });
           }, 1000);
@@ -145,35 +92,21 @@ const GoogleBusinessPage = () => {
         }
       }).catch(err => {
         console.error("Error handling callback:", err);
-        const errorMessage = err.message || "Unknown error";
-        
-        if (errorMessage.includes("refresh token")) {
-          toast.error("Connexion impossible: Ce compte Google a déjà été utilisé. Veuillez déconnecter l'application dans les paramètres Google ou utiliser un autre compte.");
-        } else if (errorMessage.includes("permission")) {
-          toast.error("Connexion impossible: Votre compte Google n'a pas accès à Google My Business ou n'a pas de fiche.");
-        } else if (errorMessage.includes("Invalid OAuth state")) {
-          toast.error("Session d'authentification expirée. Veuillez réessayer la connexion.");
-        } else {
-          toast.error("Erreur de connexion à Google: " + errorMessage);
-        }
+        toast.error("Error connecting to Google: " + (err.message || "Unknown error"));
       }).finally(() => {
         setIsCallbackProcessing(false);
       });
     }
-  }, [searchParams, handleCallback, navigate, fetchProfile, isCallbackProcessing, checkTokenValidity]);
-  
-  useEffect(() => {
-    if (noLocationsFound && (activeTab === "accounts" || activeTab === "locations")) {
-      setShowNoLocationsDialog(true);
-    }
-  }, [noLocationsFound, activeTab]);
-  
+  }, [searchParams, handleCallback, navigate, fetchProfile, isCallbackProcessing]);
+
+  // Update local error state when the hook error changes
   useEffect(() => {
     if (error) {
       setConnectionError(error);
     }
   }, [error]);
   
+  // Connect to Google
   const handleConnect = async () => {
     setConnectionError(null);
     try {
@@ -192,18 +125,10 @@ const GoogleBusinessPage = () => {
     }
   };
   
+  // Load GMB accounts
   const handleLoadAccounts = async () => {
     setConnectionError(null);
     try {
-      // Vérifier d'abord la validité du token
-      const isValid = await checkTokenValidity();
-      
-      if (!isValid) {
-        console.log("Token invalid, prompting reconnection");
-        toast.error("Your authorization has expired. Please reconnect your Google account.");
-        return;
-      }
-      
       await listAccounts();
       setActiveTab("accounts");
     } catch (err: any) {
@@ -211,18 +136,10 @@ const GoogleBusinessPage = () => {
     }
   };
   
+  // Load locations for a GMB account
   const handleSelectAccount = async (accountId: string) => {
     setConnectionError(null);
     try {
-      // Vérifier d'abord la validité du token
-      const isValid = await checkTokenValidity();
-      
-      if (!isValid) {
-        console.log("Token invalid, prompting reconnection");
-        toast.error("Your authorization has expired. Please reconnect your Google account.");
-        return;
-      }
-      
       setSelectedAccountId(accountId);
       await listLocations(accountId);
       setActiveTab("locations");
@@ -231,20 +148,12 @@ const GoogleBusinessPage = () => {
     }
   };
   
+  // Select a location
   const handleSelectLocation = async (locationId: string) => {
     if (!selectedAccountId) return;
     
     setConnectionError(null);
     try {
-      // Vérifier d'abord la validité du token
-      const isValid = await checkTokenValidity();
-      
-      if (!isValid) {
-        console.log("Token invalid, prompting reconnection");
-        toast.error("Your authorization has expired. Please reconnect your Google account.");
-        return;
-      }
-      
       const success = await saveLocation(selectedAccountId, locationId);
       if (success) {
         setActiveTab("profile");
@@ -254,6 +163,7 @@ const GoogleBusinessPage = () => {
     }
   };
   
+  // Disconnect from Google
   const handleDisconnect = async () => {
     setConnectionError(null);
     try {
@@ -266,19 +176,11 @@ const GoogleBusinessPage = () => {
     }
   };
   
-  const handleRefreshProfile = async () => {
-    try {
-      await fetchProfile();
-      toast.success("Profile refreshed successfully");
-    } catch (err: any) {
-      toast.error(`Failed to refresh profile: ${err.message}`);
-    }
-  };
+  // Special case: If we're processing a callback, show a loading state
+  // even if the user isn't fully authenticated yet
+  const isProcessingCallback = searchParams.get("code") && searchParams.get("state");
   
-  const isProcessingCallback = (searchParams.get("code") && searchParams.get("state")) || isCallbackProcessing;
-  const hasOAuthError = searchParams.get("error") || searchParams.get("error_code");
-  
-  if (!user && !isProcessingCallback && !hasOAuthError) return null;
+  if (!user && !isProcessingCallback) return null;
   
   return (
     <PageLayout title="Google My Business">
@@ -299,72 +201,7 @@ const GoogleBusinessPage = () => {
                   <div>
                     <h3 className="font-medium">Error Detected</h3>
                     <p>{connectionError}</p>
-                    
-                    {connectionError.includes("expired") || 
-                     connectionError.includes("state") || 
-                     connectionError.includes("OAuth") ||
-                     connectionError.includes("token") ? (
-                      <div className="mt-3 space-y-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={handleConnect}
-                          className="mr-2">
-                          <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                          Try connecting again
-                        </Button>
-                        
-                        {showOAuthErrorDetails && (
-                          <Accordion type="single" collapsible className="w-full">
-                            <AccordionItem value="details">
-                              <AccordionTrigger className="py-2 text-xs">
-                                <span className="flex items-center gap-1">
-                                  <Info className="h-3.5 w-3.5" />
-                                  Technical details
-                                </span>
-                              </AccordionTrigger>
-                              <AccordionContent className="text-xs">
-                                <div className="bg-slate-100 p-2 rounded text-slate-700">
-                                  <p>Error info: {searchParams.get("error") || searchParams.get("error_code")}</p>
-                                  <p>Description: {searchParams.get("error_description") || "No details available"}</p>
-                                  <p>Current state: {debugInfo.storedState || "None"}</p>
-                                  <p>Received state: {debugInfo.receivedState || "None"}</p>
-                                  <p>State valid: {debugInfo.stateValid !== undefined ? String(debugInfo.stateValid) : "Unknown"}</p>
-                                </div>
-                              </AccordionContent>
-                            </AccordionItem>
-                          </Accordion>
-                        )}
-                      </div>
-                    ) : null}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {authInProgress && !isCallbackProcessing && (
-            <Card className="mb-4 shadow-md bg-blue-50 border-blue-200">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <LoadingIndicator variant="dots" size={24} />
-                  <div>
-                    <h3 className="font-medium">Authentication in Progress</h3>
-                    <p className="text-muted-foreground">We're waiting for you to complete the Google authentication. Please complete the process in the Google authorization window.</p>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => {
-                      localStorage.removeItem('gmb_oauth_state');
-                      localStorage.removeItem('gmb_auth_in_progress');
-                      window.location.reload();
-                    }}>
-                    <ArrowLeft className="h-3.5 w-3.5 mr-1" />
-                    Cancel authentication
-                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -384,6 +221,7 @@ const GoogleBusinessPage = () => {
             </Card>
           )}
           
+          {/* Debugging information */}
           {process.env.NODE_ENV !== 'production' && (
             <Accordion type="single" collapsible className="mb-4">
               <AccordionItem value="debug-info">
@@ -401,8 +239,6 @@ const GoogleBusinessPage = () => {
                     <p>Connected: {isConnected ? 'Yes' : 'No'}</p>
                     <p>Has Profile: {profile ? 'Yes' : 'No'}</p>
                     <p>Google Email: {profile?.googleEmail || 'None'}</p>
-                    <p>Token Valid: {tokenIsValid ? 'Yes' : 'No'}</p>
-                    <p>Token Status: {debugInfo.tokenStatus || 'Unknown'}</p>
                     
                     <h3 className="text-sm font-semibold mt-4 mb-2">Callback Processing</h3>
                     <p>State: {searchParams.get("state") || 'None'}</p>
@@ -412,58 +248,31 @@ const GoogleBusinessPage = () => {
                     
                     <h3 className="text-sm font-semibold mt-4 mb-2">API Calls</h3>
                     <details open>
-                      <summary>Last API Call: {debugInfo.lastApiCall}</summary>
+                      <summary>Last API Call</summary>
                       <pre className="bg-slate-100 p-2 rounded mt-2">
                         {JSON.stringify(debugInfo, null, 2)}
                       </pre>
                     </details>
                     
-                    <div className="flex gap-2 mt-4">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        onClick={handleRefreshProfile}
-                      >
-                        <RefreshCw className="h-3 w-3 mr-2" />
-                        Refresh Profile
-                      </Button>
-                      
-                      {isConnected && (
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => {
-                            listAccounts();
-                            toast.info("Accounts refreshed");
-                          }}
-                        >
-                          <RefreshCw className="h-3 w-3 mr-2" />
-                          Refresh Accounts
-                        </Button>
-                      )}
-                      
-                      {isConnected && (
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => {
-                            checkTokenValidity().then(isValid => {
-                              toast.info(`Token validity: ${isValid ? 'Valid' : 'Invalid'}`);
-                              setShowTokenDetails(true);
-                            });
-                          }}
-                        >
-                          <Shield className="h-3 w-3 mr-2" />
-                          Check Token
-                        </Button>
-                      )}
-                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="mt-4"
+                      onClick={() => {
+                        fetchProfile();
+                        toast.info("Profile refreshed");
+                      }}
+                    >
+                      <RefreshCw className="h-3 w-3 mr-2" />
+                      Refresh Profile
+                    </Button>
                   </div>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
           )}
           
+          {/* Show loading indicator if we're waiting for auth or profile, and not processing callback */}
           {isLoading && !profile && !isCallbackProcessing ? (
             <Card className="shadow-md">
               <CardContent className="pt-6 flex justify-center items-center h-40">
@@ -474,10 +283,11 @@ const GoogleBusinessPage = () => {
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
               <TabsList className="grid grid-cols-3 w-full max-w-md">
                 <TabsTrigger value="profile">Profile</TabsTrigger>
-                <TabsTrigger value="accounts" disabled={!isConnected || !tokenIsValid}>Accounts</TabsTrigger>
-                <TabsTrigger value="locations" disabled={!selectedAccountId || !tokenIsValid}>Locations</TabsTrigger>
+                <TabsTrigger value="accounts" disabled={!isConnected}>Accounts</TabsTrigger>
+                <TabsTrigger value="locations" disabled={!selectedAccountId}>Locations</TabsTrigger>
               </TabsList>
               
+              {/* Profile Tab */}
               <TabsContent value="profile">
                 <Card className="shadow-md">
                   <CardHeader>
@@ -490,29 +300,19 @@ const GoogleBusinessPage = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {isConnected ? (
+                    {isConnected && profile ? (
                       <div className="space-y-4">
                         <div className="flex items-center gap-2 text-green-600">
                           <CheckCircle className="h-5 w-5" />
                           <span className="font-medium">Google account connected</span>
                         </div>
                         
-                        {!tokenIsValid && (
-                          <div className="flex items-center gap-2 text-orange-600 bg-orange-50 p-3 rounded-md border border-orange-200">
-                            <AlertCircle className="h-5 w-5" />
-                            <div>
-                              <p className="font-medium">Authorization expired</p>
-                              <p className="text-sm">Your Google authorization has expired. Please reconnect your account.</p>
-                            </div>
-                          </div>
-                        )}
-                        
                         <div className="bg-muted p-4 rounded-md">
                           <p className="text-sm font-medium">Google Email</p>
-                          <p className="text-muted-foreground">{profile?.googleEmail || 'Not specified'}</p>
+                          <p className="text-muted-foreground">{profile.googleEmail || 'Not specified'}</p>
                         </div>
                         
-                        {profile?.gmb_account_id && profile?.gmb_location_id ? (
+                        {profile.gmb_account_id && profile.gmb_location_id ? (
                           <div className="bg-muted p-4 rounded-md">
                             <p className="text-sm font-medium">Selected Location</p>
                             <p className="text-muted-foreground">
@@ -546,19 +346,12 @@ const GoogleBusinessPage = () => {
                   <CardFooter className="flex-col space-y-2 items-start">
                     {isConnected ? (
                       <div className="flex flex-wrap gap-3">
-                        {tokenIsValid ? (
-                          <Button onClick={handleLoadAccounts} className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4" />
-                            {profile?.gmb_account_id 
-                              ? "Change location" 
-                              : "Select a location"}
-                          </Button>
-                        ) : (
-                          <Button onClick={handleConnect} className="flex items-center gap-2">
-                            <RefreshCw className="h-4 w-4" />
-                            Reconnect Google Account
-                          </Button>
-                        )}
+                        <Button onClick={handleLoadAccounts} className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          {profile?.gmb_account_id 
+                            ? "Change location" 
+                            : "Select a location"}
+                        </Button>
                         <Button variant="outline" onClick={handleDisconnect} className="flex items-center gap-2">
                           <LogOut className="h-4 w-4" />
                           Disconnect
@@ -574,6 +367,7 @@ const GoogleBusinessPage = () => {
                 </Card>
               </TabsContent>
               
+              {/* Accounts Tab */}
               <TabsContent value="accounts">
                 <Card className="shadow-md">
                   <CardHeader>
@@ -643,6 +437,7 @@ const GoogleBusinessPage = () => {
                 </Card>
               </TabsContent>
               
+              {/* Locations Tab */}
               <TabsContent value="locations">
                 <Card className="shadow-md">
                   <CardHeader>
@@ -732,80 +527,6 @@ const GoogleBusinessPage = () => {
           </div>
         </AnimatedContainer>
       </div>
-
-      <Dialog open={showNoLocationsDialog} onOpenChange={setShowNoLocationsDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-center text-2xl">Aucune fiche n'a été trouvée</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col items-center gap-4 py-4">
-            <div className="flex items-center justify-center h-20 w-20 rounded-full bg-slate-100">
-              <AlertTriangle className="h-10 w-10 text-orange-500" />
-            </div>
-            <div className="text-center space-y-2">
-              <p className="font-semibold">{profile?.googleEmail || "Votre compte Google"}</p>
-              <Button variant="link" onClick={handleDisconnect} className="text-blue-500">
-                Déconnectez-vous et connectez un autre compte
-              </Button>
-            </div>
-            <Separator className="my-4" />
-            <div className="text-center">
-              <p className="text-base mb-6">
-                Il n'y a pas de fiches qui soient gérées par votre compte. Essayez un autre 
-                compte en vous déconnectant, ou nous pouvons vous aider à créer votre 
-                profil d'entreprise.
-              </p>
-              <Button 
-                className="w-full"
-                onClick={() => {
-                  setShowNoLocationsDialog(false);
-                  window.open("https://business.google.com/create", "_blank");
-                }}
-              >
-                Créer un Profil d'Établissement Google
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showTokenDetails} onOpenChange={setShowTokenDetails}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Token Status</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <div className={`p-4 rounded-md ${tokenIsValid ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
-              <div className="flex items-center gap-2">
-                {tokenIsValid ? (
-                  <CheckCircle className="h-5 w-5" />
-                ) : (
-                  <AlertCircle className="h-5 w-5" />
-                )}
-                <span className="font-medium">
-                  Token is {tokenIsValid ? 'valid' : 'invalid or expired'}
-                </span>
-              </div>
-              {debugInfo.tokenStatus && (
-                <p className="mt-2 text-sm">{debugInfo.tokenStatus}</p>
-              )}
-            </div>
-            
-            {!tokenIsValid && (
-              <div className="mt-4">
-                <p className="text-sm text-gray-600 mb-4">
-                  Your Google account authorization has expired or is invalid. You need to reconnect your account
-                  to continue using Google My Business features.
-                </p>
-                <Button onClick={handleConnect} className="w-full">
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Reconnect Google Account
-                </Button>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </PageLayout>
   );
 };

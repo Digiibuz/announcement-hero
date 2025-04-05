@@ -22,7 +22,6 @@ const UserProfile = lazy(() => import("./pages/UserProfile"));
 const Support = lazy(() => import("./pages/Support"));
 const GoogleBusinessPage = lazy(() => import("./pages/GoogleBusinessPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-const AuthDebugger = lazy(() => import("./pages/AuthDebugger")); // New debug page
 
 // Composant de chargement amélioré avec animation
 const LoadingFallback = () => (
@@ -30,18 +29,6 @@ const LoadingFallback = () => (
     <LoadingIndicator variant="dots" size={42} />
   </div>
 );
-
-const AuthProcessingPage = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
-      <div className="text-center">
-        <LoadingIndicator variant="dots" size={42} />
-        <h2 className="mt-4 text-xl font-semibold">Authentification en cours</h2>
-        <p className="mt-2 text-muted-foreground">Veuillez patienter pendant que nous traitons votre connexion...</p>
-      </div>
-    </div>
-  );
-};
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -55,13 +42,8 @@ const queryClient = new QueryClient({
 
 // Protected route component with improved memory
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading, isOnResetPasswordPage, sessionChecked, isProcessingCallback } = useAuth();
+  const { isAuthenticated, isLoading, isOnResetPasswordPage } = useAuth();
   const location = useLocation();
-
-  // Si la page est toujours en train de traiter une authentification, montrer un indicateur de chargement
-  if (isProcessingCallback) {
-    return <AuthProcessingPage />;
-  }
 
   // Ne pas vérifier l'authentification si nous sommes sur la page de réinitialisation de mot de passe
   useEffect(() => {
@@ -70,7 +52,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     }
   }, [location.pathname, isAuthenticated, isLoading, isOnResetPasswordPage]);
 
-  if (isLoading || !sessionChecked) {
+  if (isLoading) {
     return <LoadingFallback />;
   }
 
@@ -89,13 +71,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Admin only route component with improved state persistence
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading, isAdmin, isClient, isOnResetPasswordPage, sessionChecked, isProcessingCallback } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin, isClient, isOnResetPasswordPage } = useAuth();
   const location = useLocation();
-
-  // Si la page est toujours en train de traiter une authentification, montrer un indicateur de chargement
-  if (isProcessingCallback) {
-    return <AuthProcessingPage />;
-  }
 
   // Enhanced admin route persistence
   useEffect(() => {
@@ -107,7 +84,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
     }
   }, [location.pathname, isAuthenticated, isAdmin, isClient, isLoading, isOnResetPasswordPage]);
 
-  if (isLoading || !sessionChecked) {
+  if (isLoading) {
     return <LoadingFallback />;
   }
 
@@ -129,30 +106,6 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// Special route to handle auth callbacks
-const AuthCallbackRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isProcessingCallback } = useAuth();
-  const location = useLocation();
-  
-  // Check for any auth parameters in the URL
-  const hasAccessToken = window.location.hash.includes('#access_token=');
-  const hasAuthCode = window.location.search.includes('?code=');
-  const hasAuthError = window.location.hash.includes('#error=') || window.location.search.includes('?error=');
-  const hasAuthParams = hasAccessToken || hasAuthCode || hasAuthError;
-  
-  // If we're processing a callback or have auth params in the URL
-  if (isProcessingCallback || hasAuthParams) {
-    return <AuthProcessingPage />;
-  }
-  
-  // If authenticated and not on a special auth page, redirect to dashboard
-  if (isAuthenticated && location.pathname === '/login') {
-    return <Navigate to="/dashboard" replace />;
-  }
-  
-  return <>{children}</>;
-};
-
 // Contents of AppRoutes moved directly into App component to avoid
 // AuthProvider context issues and fix the useAuth error
 function App() {
@@ -167,20 +120,12 @@ function App() {
                   {/* Redirect root to login */}
                   <Route path="/" element={<Navigate to="/login" replace />} />
                   
-                  {/* Public routes - accessibles sans authentification 
-                      Avec AuthCallbackRoute pour gérer les retours d'authentification */}
-                  <Route path="/login" element={
-                    <AuthCallbackRoute>
-                      <Login />
-                    </AuthCallbackRoute>
-                  } />
+                  {/* Public routes - accessibles sans authentification */}
+                  <Route path="/login" element={<Login />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   {/* Route spéciale pour la réinitialisation du mot de passe 
                       Pas besoin de ProtectedRoute car elle gère directement l'authentification */}
                   <Route path="/reset-password" element={<ResetPassword />} />
-                  
-                  {/* Debug page - unprotected for troubleshooting */}
-                  <Route path="/auth-debugger" element={<AuthDebugger />} />
                   
                   {/* Protected routes */}
                   <Route 

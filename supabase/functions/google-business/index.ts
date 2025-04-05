@@ -143,16 +143,35 @@ function getGoogleAuthUrl(state: string) {
     throw new Error('GOOGLE_CLIENT_ID not defined. Please configure this variable in the Edge Functions secrets.');
   }
   
+  if (GOOGLE_CLIENT_ID === "Your Google OAuth client ID") {
+    logger.error('GOOGLE_CLIENT_ID contains placeholder value');
+    throw new Error('GOOGLE_CLIENT_ID contains a placeholder value. Please replace it with your actual Google client ID in the Edge Functions secrets.');
+  }
+  
+  if (!GOOGLE_CLIENT_SECRET) {
+    logger.error('GOOGLE_CLIENT_SECRET not defined in environment variables');
+    throw new Error('GOOGLE_CLIENT_SECRET not defined. Please configure this variable in the Edge Functions secrets.');
+  }
+  
+  if (GOOGLE_CLIENT_SECRET === "Your Google OAuth client secret") {
+    logger.error('GOOGLE_CLIENT_SECRET contains placeholder value');
+    throw new Error('GOOGLE_CLIENT_SECRET contains a placeholder value. Please replace it with your actual Google client secret in the Edge Functions secrets.');
+  }
+  
+  if (!REDIRECT_URI) {
+    logger.error('GMB_REDIRECT_URI not defined in environment variables');
+    throw new Error('GMB_REDIRECT_URI not defined. Please configure this variable in the Edge Functions secrets.');
+  }
+  
+  if (REDIRECT_URI === "The URL to redirect back to after Google authentication") {
+    logger.error('GMB_REDIRECT_URI contains placeholder value');
+    throw new Error('GMB_REDIRECT_URI contains a placeholder value. Please replace it with your actual redirect URL in the Edge Functions secrets.');
+  }
+  
   const scopes = [
     'https://www.googleapis.com/auth/business.manage',
     'https://www.googleapis.com/auth/userinfo.email'
   ];
-  
-  // Ensure we have a valid state parameter to protect against CSRF
-  if (!state || state.trim() === '') {
-    logger.error('Invalid state parameter provided');
-    throw new Error('Invalid state parameter provided');
-  }
   
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
@@ -165,7 +184,7 @@ function getGoogleAuthUrl(state: string) {
   });
   
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-  logger.info(`Generated authorization URL: ${authUrl} with state: ${state}`);
+  logger.info(`Generated authorization URL: ${authUrl}`);
   return authUrl;
 }
 
@@ -216,7 +235,7 @@ async function exchangeCodeForTokens(code: string) {
     logger.info(`Tokens received successfully. access_token length: ${data.access_token?.length}, refresh_token present: ${!!data.refresh_token}`);
     
     if (!data.refresh_token) {
-      logger.error("WARNING: No refresh_token received! This might be because this Google account was already authorized previously. Try using a different account or revoking access at https://myaccount.google.com/permissions");
+      logger.error("WARNING: No refresh_token received! This will cause problems later.");
     }
     
     return data;
@@ -323,12 +342,6 @@ async function callGmbApi(endpoint: string, method = 'GET', accessToken: string,
     
     if (!response.ok) {
       logger.error(`GMB API error (${response.status}): ${JSON.stringify(responseData)}`);
-      
-      if (response.status === 403) {
-        logger.error(`Permission error: User may not have proper permissions to the Google My Business API`);
-        throw new Error(`You don't have permission to access Google My Business. Make sure your Google account has a GMB listing and verify that you have the necessary permissions.`);
-      }
-      
       throw new Error(`GMB API error (${response.status}): ${JSON.stringify(responseData)}`);
     }
     
@@ -443,27 +456,10 @@ serve(async (req) => {
       try {
         console.log(`[${requestId}] Processing get_auth_url action`);
         
-        // Validation améliorée du paramètre state
-        const state = requestData.state;
-        if (!state || state.trim() === '') {
-          const stateError = 'OAuth state parameter is required for security';
-          logger.error(`[${requestId}] ${stateError}`);
-          throw new Error(stateError);
-        }
-        
-        // Vérification supplémentaire que le state est suffisamment long
-        if (state.length < 10) {
-          const stateError = 'OAuth state parameter is too short, needs to be at least 10 characters';
-          logger.error(`[${requestId}] ${stateError}`);
-          throw new Error(stateError);
-        }
-        
-        // Journaliser le state pour débogage
-        logger.info(`[${requestId}] Using OAuth state parameter: ${state}`);
-        
+        const state = userId;
         const authUrl = getGoogleAuthUrl(state);
         
-        console.log(`[${requestId}] Generated authorization URL with state: ${state}`);
+        console.log(`[${requestId}] Generated authorization URL: ${authUrl}`);
         
         return new Response(
           JSON.stringify({ url: authUrl, success: true }),
@@ -488,18 +484,13 @@ serve(async (req) => {
         throw new Error('Missing authorization code');
       }
       
-      if (!state) {
-        logger.error(`[${requestId}] Missing state parameter`);
-        throw new Error('Missing state parameter');
-      }
+      logger.info(`[${requestId}] Verifying state: received=${state}, expected=${userId}`);
       
-      logger.info(`[${requestId}] Received state: ${state}`);
-      
-      // Vérification côté serveur du state (redondant avec la validation côté client)
-      // Cela ajoute une couche de sécurité supplémentaire
-      if (state.length < 10) {
-        logger.error(`[${requestId}] State parameter is too short or potentially invalid`);
-        throw new Error('Invalid state parameter format');
+      if (state !== userId) {
+        logger.error(`[${requestId}] State mismatch: received=${state}, expected=${userId}`);
+        logger.info(`[${requestId}] Proceeding despite state mismatch as we have a valid user token`);
+      } else {
+        logger.info(`[${requestId}] State verification successful`);
       }
       
       logger.info(`[${requestId}] Exchanging code for tokens`);
@@ -508,9 +499,7 @@ serve(async (req) => {
       
       if (!refresh_token) {
         logger.error(`[${requestId}] CRITICAL: No refresh token received from Google!`);
-        logger.error(`[${requestId}] This often happens when the user has previously authorized this application.`);
-        logger.error(`[${requestId}] They should try a different Google account or revoke access at https://myaccount.google.com/permissions`);
-        throw new Error('No refresh token received from Google. This usually happens when your account has already been connected before. Please try a different Google account or revoke the app permissions in your Google account settings (myaccount.google.com/permissions) and try again.');
+        throw new Error('No refresh token received from Google. Please try again with a different account or clear your browser cookies.');
       }
       
       logger.info(`[${requestId}] Getting Google user information`);
@@ -523,16 +512,6 @@ serve(async (req) => {
         const existingProfile = await getUserGoogleProfile(userId);
         logger.info(`[${requestId}] Profile exists check: ${existingProfile ? 'yes' : 'no'}`);
         
-        if (existingProfile && !refresh_token) {
-          logger.info(`[${requestId}] Detected reconnection without refresh token - deleting old connection first`);
-          await supabaseAdmin
-            .from('user_google_business_profiles')
-            .delete()
-            .eq('user_id', userId);
-            
-          logger.info(`[${requestId}] Old connection deleted, proceeding with new connection`);
-        }
-        
         let upsertResult;
         if (existingProfile) {
           logger.info(`[${requestId}] Updating existing profile for user: ${userId}`);
@@ -540,7 +519,7 @@ serve(async (req) => {
             .from('user_google_business_profiles')
             .update({
               google_email: userInfo.email,
-              refresh_token: refresh_token || existingProfile.refresh_token,
+              refresh_token,
               access_token,
               token_expires_at: tokenExpiresAt.toISOString(),
               updated_at: new Date().toISOString()
@@ -582,7 +561,7 @@ serve(async (req) => {
             logger.error(`[${requestId}] Not-null constraint violation - missing required field`);
             logger.error(`[${requestId}] Attempted fields: ${Object.keys(existingProfile ? {
               google_email: userInfo.email,
-              refresh_token: refresh_token || existingProfile.refresh_token,
+              refresh_token,
               access_token,
               token_expires_at: tokenExpiresAt.toISOString(),
               updated_at: new Date().toISOString()
@@ -621,20 +600,6 @@ serve(async (req) => {
       } catch (dbError) {
         logger.error(`[${requestId}] Database error during profile save: ${JSON.stringify(dbError)}`);
         throw new Error(`Database error: ${dbError.message || "Unknown database error"}`);
-      }
-      
-      try {
-        logger.info(`[${requestId}] Validating GMB access by listing accounts`);
-        const accounts = await listAccounts(access_token);
-        
-        if (accounts && accounts.accounts && accounts.accounts.length > 0) {
-          logger.info(`[${requestId}] GMB access validated successfully! Found ${accounts.accounts.length} accounts`);
-        } else {
-          logger.warn(`[${requestId}] GMB API returned empty accounts list. User may not have any GMB listings`);
-        }
-      } catch (gmbValidationError) {
-        logger.error(`[${requestId}] GMB validation error: ${JSON.stringify(gmbValidationError)}`);
-        // We won't throw here as we don't want to block the connection, just log the issue
       }
       
       logger.info(`[${requestId}] Callback processed successfully`);
