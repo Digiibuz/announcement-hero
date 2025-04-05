@@ -443,11 +443,23 @@ serve(async (req) => {
       try {
         console.log(`[${requestId}] Processing get_auth_url action`);
         
-        // Make sure we use a proper state parameter
+        // Validation améliorée du paramètre state
         const state = requestData.state;
         if (!state || state.trim() === '') {
-          throw new Error('OAuth state parameter is required for security');
+          const stateError = 'OAuth state parameter is required for security';
+          logger.error(`[${requestId}] ${stateError}`);
+          throw new Error(stateError);
         }
+        
+        // Vérification supplémentaire que le state est suffisamment long
+        if (state.length < 10) {
+          const stateError = 'OAuth state parameter is too short, needs to be at least 10 characters';
+          logger.error(`[${requestId}] ${stateError}`);
+          throw new Error(stateError);
+        }
+        
+        // Journaliser le state pour débogage
+        logger.info(`[${requestId}] Using OAuth state parameter: ${state}`);
         
         const authUrl = getGoogleAuthUrl(state);
         
@@ -483,7 +495,12 @@ serve(async (req) => {
       
       logger.info(`[${requestId}] Received state: ${state}`);
       
-      // No need to validate state here as it should be done on the client side
+      // Vérification côté serveur du state (redondant avec la validation côté client)
+      // Cela ajoute une couche de sécurité supplémentaire
+      if (state.length < 10) {
+        logger.error(`[${requestId}] State parameter is too short or potentially invalid`);
+        throw new Error('Invalid state parameter format');
+      }
       
       logger.info(`[${requestId}] Exchanging code for tokens`);
       const tokenData = await exchangeCodeForTokens(code);

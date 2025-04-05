@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -22,6 +23,11 @@ interface Location {
   };
 }
 
+// Clé utilisée pour stocker l'état OAuth dans localStorage
+const OAUTH_STATE_KEY = 'gmb_oauth_state';
+// Durée de validité du state en millisecondes (15 minutes)
+const STATE_VALIDITY_DURATION = 15 * 60 * 1000;
+
 export const useGoogleBusiness = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -34,14 +40,37 @@ export const useGoogleBusiness = () => {
     lastApiCall: string;
     lastResponse: any;
     additionalInfo?: string;
+    storedState?: string;
+    receivedState?: string;
+    stateValid?: boolean;
   }>({ lastApiCall: '', lastResponse: null });
   const [noLocationsFound, setNoLocationsFound] = useState(false);
+  const [authInProgress, setAuthInProgress] = useState(false);
 
+  // Génère un paramètre state sécurisé et le stocke dans localStorage
   const generateStateParam = useCallback(() => {
+    // Vérifier si une authentification est déjà en cours
+    const existingState = localStorage.getItem(OAUTH_STATE_KEY);
+    if (existingState) {
+      try {
+        const parsedState = JSON.parse(existingState);
+        // Si le state existant est encore valide (moins de 15 minutes) et qu'il n'y a pas d'erreur
+        if (Date.now() - parsedState.timestamp < STATE_VALIDITY_DURATION && !window.location.href.includes('error=')) {
+          console.log("Using existing OAuth state parameter:", parsedState.value);
+          return parsedState.value;
+        }
+      } catch (e) {
+        console.error("Error parsing existing OAuth state:", e);
+      }
+    }
+    
+    // Générer un nouveau state
     let stateValue;
     try {
+      // Utiliser crypto.randomUUID() si disponible (plus sécurisé)
       stateValue = crypto.randomUUID();
     } catch (e) {
+      // Fallback pour les navigateurs qui ne supportent pas randomUUID
       stateValue = Math.random().toString(36).substring(2, 15) + 
                    Math.random().toString(36).substring(2, 15);
     }
@@ -50,37 +79,73 @@ export const useGoogleBusiness = () => {
       value: stateValue,
       timestamp: Date.now()
     };
-    localStorage.setItem('gmb_oauth_state', JSON.stringify(stateObj));
-    console.log("Generated OAuth state parameter:", stateValue);
+    
+    // Stockage dans localStorage avec timestamp pour vérifier l'expiration
+    localStorage.setItem(OAUTH_STATE_KEY, JSON.stringify(stateObj));
+    console.log("Generated new OAuth state parameter:", stateValue);
+    
+    // Mise à jour des informations de débogage
+    setDebugInfo(prev => ({ 
+      ...prev, 
+      storedState: stateValue,
+      additionalInfo: `New state generated at ${new Date().toISOString()}`
+    }));
+    
     return stateValue;
   }, []);
 
+  // Valide le paramètre state retourné par Google
   const validateStateParam = useCallback((returnedState: string): boolean => {
-    const storedStateJson = localStorage.getItem('gmb_oauth_state');
+    const storedStateJson = localStorage.getItem(OAUTH_STATE_KEY);
     console.log("Validating OAuth state:", { returnedState, storedStateJson });
+    
+    setDebugInfo(prev => ({ 
+      ...prev, 
+      receivedState: returnedState,
+      storedState: storedStateJson || "No stored state found" 
+    }));
     
     if (!storedStateJson) {
       console.error("No stored OAuth state found for validation");
+      setDebugInfo(prev => ({ 
+        ...prev, 
+        stateValid: false,
+        additionalInfo: "No stored OAuth state found in localStorage" 
+      }));
       return false;
     }
     
     try {
       const storedState = JSON.parse(storedStateJson);
       
-      const MAX_STATE_AGE = 30 * 60 * 1000; // 30 minutes in milliseconds
-      const isExpired = (Date.now() - storedState.timestamp) > MAX_STATE_AGE;
+      // Vérifier si le state a expiré (15 minutes)
+      const isExpired = (Date.now() - storedState.timestamp) > STATE_VALIDITY_DURATION;
       
       if (isExpired) {
         console.error("OAuth state has expired");
-        localStorage.removeItem('gmb_oauth_state');
+        localStorage.removeItem(OAUTH_STATE_KEY);
+        setDebugInfo(prev => ({ 
+          ...prev, 
+          stateValid: false,
+          additionalInfo: `State expired. Created: ${new Date(storedState.timestamp).toISOString()}, Now: ${new Date().toISOString()}` 
+        }));
         return false;
       }
       
       const isValid = returnedState === storedState.value;
       
+      setDebugInfo(prev => ({ 
+        ...prev, 
+        stateValid: isValid,
+        additionalInfo: isValid 
+          ? "State validation successful" 
+          : `State mismatch: expected '${storedState.value}', got '${returnedState}'`
+      }));
+      
       if (isValid) {
         console.log("OAuth state validated successfully");
-        localStorage.removeItem('gmb_oauth_state');
+        // Nettoyer après une validation réussie
+        localStorage.removeItem(OAUTH_STATE_KEY);
       } else {
         console.error("OAuth state validation failed");
       }
@@ -88,7 +153,12 @@ export const useGoogleBusiness = () => {
       return isValid;
     } catch (e) {
       console.error("Error parsing stored OAuth state:", e);
-      localStorage.removeItem('gmb_oauth_state');
+      localStorage.removeItem(OAUTH_STATE_KEY);
+      setDebugInfo(prev => ({ 
+        ...prev, 
+        stateValid: false,
+        additionalInfo: `Error parsing stored state: ${e}` 
+      }));
       return false;
     }
   }, []);
@@ -97,6 +167,54 @@ export const useGoogleBusiness = () => {
     fetchProfile().catch(error => {
       console.error("Error during initial profile check:", error);
     });
+  }, []);
+
+  // Vérifie si une authentification est en cours au chargement de la page
+  useEffect(() => {
+    // Vérifier les erreurs OAuth dans l'URL au chargement
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorCode = urlParams.get("error_code");
+    const errorDesc = urlParams.get("error_description");
+    
+    if (errorCode === "bad_oauth_state") {
+      console.error("Bad OAuth state detected in URL params:", { errorCode, errorDesc });
+      // Nettoyer les states invalides
+      localStorage.removeItem(OAUTH_STATE_KEY);
+      setDebugInfo(prev => ({ 
+        ...prev, 
+        additionalInfo: `URL contained bad_oauth_state error: ${errorDesc}` 
+      }));
+    }
+    
+    // Vérifier s'il y a un state actif dans localStorage
+    const existingState = localStorage.getItem(OAUTH_STATE_KEY);
+    if (existingState) {
+      try {
+        const parsedState = JSON.parse(existingState);
+        const isExpired = (Date.now() - parsedState.timestamp) > STATE_VALIDITY_DURATION;
+        
+        if (isExpired) {
+          console.log("Found expired OAuth state, cleaning up");
+          localStorage.removeItem(OAUTH_STATE_KEY);
+        } else if (!window.location.href.includes('code=')) {
+          console.log("Found active OAuth state but no code in URL, authentication might be in progress");
+          setAuthInProgress(true);
+          
+          // Si l'état est actif mais qu'il n'y a pas de code, on est peut-être en attente
+          // On nettoie après un délai si rien ne se passe
+          setTimeout(() => {
+            if (!window.location.href.includes('code=')) {
+              console.log("OAuth flow did not complete after timeout, cleaning up state");
+              localStorage.removeItem(OAUTH_STATE_KEY);
+              setAuthInProgress(false);
+            }
+          }, 120000); // 2 minutes avant de considérer l'authentification comme abandonnée
+        }
+      } catch (e) {
+        console.error("Error parsing OAuth state on init:", e);
+        localStorage.removeItem(OAUTH_STATE_KEY);
+      }
+    }
   }, []);
 
   const fetchProfile = useCallback(async () => {
@@ -160,7 +278,9 @@ export const useGoogleBusiness = () => {
       
       console.log("Sending get_auth_url request");
       
-      localStorage.removeItem('gmb_oauth_state');
+      // Nettoyer tout état précédent et générer un nouveau state
+      localStorage.removeItem(OAUTH_STATE_KEY);
+      setAuthInProgress(true);
       
       const stateParam = generateStateParam();
       
@@ -201,6 +321,7 @@ export const useGoogleBusiness = () => {
       console.error("Error generating authorization URL:", error);
       setError(`Failed to get authentication URL: ${error.message || "Unknown error"}`);
       toast.error(`Error generating authorization URL: ${error.message || "Unknown error"}`);
+      setAuthInProgress(false);
       return null;
     } finally {
       setIsLoading(false);
@@ -219,6 +340,7 @@ export const useGoogleBusiness = () => {
         console.error(stateError);
         setError(stateError);
         toast.error(stateError);
+        setAuthInProgress(false);
         return false;
       }
 
@@ -234,6 +356,7 @@ export const useGoogleBusiness = () => {
         console.log("User not logged in when processing callback");
         setError("You must be logged in to connect your Google account");
         setCallbackProcessed(false); // Reset to allow retrying
+        setAuthInProgress(false);
         throw new Error("User not logged in");
       }
       
@@ -248,6 +371,7 @@ export const useGoogleBusiness = () => {
         console.error("Error processing callback:", response.error);
         setError(`Authentication error: ${response.error.message || "Failed to connect to Google account"}`);
         setCallbackProcessed(false); // Reset to allow retrying
+        setAuthInProgress(false);
         throw new Error(response.error.message || "Error connecting to Google account");
       }
       
@@ -306,16 +430,18 @@ export const useGoogleBusiness = () => {
         }, 500);
       }
       
+      setAuthInProgress(false);
       return true;
     } catch (error: any) {
       console.error("Error processing callback:", error);
       setError(`Authentication failed: ${error.message || "Unknown error"}`);
       toast.error("Error connecting to Google account");
+      setAuthInProgress(false);
       return false;
     } finally {
       setIsLoading(false);
     }
-  }, [fetchProfile, callbackProcessed, validateStateParam]);
+  }, [fetchProfile, callbackProcessed, validateStateParam, listAccounts]);
 
   const listAccounts = useCallback(async () => {
     try {
@@ -548,6 +674,7 @@ export const useGoogleBusiness = () => {
     debugInfo,
     callbackProcessed,
     noLocationsFound,
+    authInProgress,
     fetchProfile,
     getAuthUrl,
     handleCallback,

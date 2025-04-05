@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -10,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { 
   Building2, LogOut, MapPin, Store, ChevronRight, 
-  RefreshCw, CheckCircle, ExternalLink, AlertCircle, Bug, AlertTriangle, Info 
+  RefreshCw, CheckCircle, ExternalLink, AlertCircle, Bug, AlertTriangle, Info, ArrowLeft
 } from "lucide-react";
 import { toast } from "sonner";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
@@ -39,7 +38,7 @@ const GoogleBusinessPage = () => {
     isLoading, isConnected, profile, accounts, locations, error,
     fetchProfile, getAuthUrl, handleCallback,
     listAccounts, listLocations, saveLocation, disconnect,
-    debugInfo, callbackProcessed, noLocationsFound
+    debugInfo, callbackProcessed, noLocationsFound, authInProgress
   } = useGoogleBusiness();
   
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
@@ -47,6 +46,7 @@ const GoogleBusinessPage = () => {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isCallbackProcessing, setIsCallbackProcessing] = useState(false);
   const [showNoLocationsDialog, setShowNoLocationsDialog] = useState(false);
+  const [showOAuthErrorDetails, setShowOAuthErrorDetails] = useState(false);
   
   useEffect(() => {
     if (!isAuthenticated && !searchParams.get("code") && !searchParams.get("error")) {
@@ -77,30 +77,35 @@ const GoogleBusinessPage = () => {
     const state = searchParams.get("state");
     const error = searchParams.get("error");
     const errorCode = searchParams.get("error_code");
-    const errorDescription = searchParams.get("error_description");
+    const errorDescription = searchParams.get("error_description") || "Unknown error";
     
-    // Parse error from the URL - handling both query parameters and hash fragment
     if (error || errorCode) {
-      console.error("OAuth error in URL:", { error, errorCode, errorDescription });
+      console.error("OAuth error detected in URL:", { error, errorCode, errorDescription });
       
-      // Handle specific errors
+      const errorMessage = decodeURIComponent(errorDescription).replace(/\+/g, ' ');
+      
       if (errorCode === "bad_oauth_state" || error?.includes("invalid_request")) {
-        const errorMsg = "Authentication session expired or state mismatch. Please try connecting again.";
-        setConnectionError(errorMsg);
-        toast.error(errorMsg);
+        const stateErrorMsg = "Erreur d'authentification: Le paramètre state OAuth est invalide ou a expiré. Veuillez réessayer la connexion.";
+        setConnectionError(stateErrorMsg);
         
-        // Clear any stale state parameters
-        localStorage.removeItem('gmb_oauth_state');
+        setTimeout(() => {
+          toast.error(stateErrorMsg);
+          setShowOAuthErrorDetails(true);
+        }, 500);
         
-        // Redirect to clean URL
-        navigate("/google-business", { replace: true });
+        setTimeout(() => {
+          navigate("/google-business", { replace: true });
+        }, 100);
         return;
       }
       
-      // Handle other OAuth errors
-      setConnectionError(`Google authentication error: ${errorDescription || error || "Unknown error"}`);
+      const generalErrorMsg = `Erreur d'authentification Google: ${errorMessage}`;
+      setConnectionError(generalErrorMsg);
       toast.error("Authentication failed. Please try again.");
-      navigate("/google-business", { replace: true });
+      
+      setTimeout(() => {
+        navigate("/google-business", { replace: true });
+      }, 100);
       return;
     }
     
@@ -217,7 +222,7 @@ const GoogleBusinessPage = () => {
     }
   };
   
-  const isProcessingCallback = searchParams.get("code") && searchParams.get("state");
+  const isProcessingCallback = (searchParams.get("code") && searchParams.get("state")) || isCallbackProcessing;
   const hasOAuthError = searchParams.get("error") || searchParams.get("error_code");
   
   if (!user && !isProcessingCallback && !hasOAuthError) return null;
@@ -241,16 +246,70 @@ const GoogleBusinessPage = () => {
                   <div>
                     <h3 className="font-medium">Error Detected</h3>
                     <p>{connectionError}</p>
-                    {(connectionError.includes("expired") || connectionError.includes("state mismatch")) && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={handleConnect} 
-                        className="mt-3">
-                        Try connecting again
-                      </Button>
-                    )}
+                    
+                    {connectionError.includes("expired") || 
+                     connectionError.includes("state") || 
+                     connectionError.includes("OAuth") ? (
+                      <div className="mt-3 space-y-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={handleConnect}
+                          className="mr-2">
+                          <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                          Try connecting again
+                        </Button>
+                        
+                        {showOAuthErrorDetails && (
+                          <Accordion type="single" collapsible className="w-full">
+                            <AccordionItem value="details">
+                              <AccordionTrigger className="py-2 text-xs">
+                                <span className="flex items-center gap-1">
+                                  <Info className="h-3.5 w-3.5" />
+                                  Technical details
+                                </span>
+                              </AccordionTrigger>
+                              <AccordionContent className="text-xs">
+                                <div className="bg-slate-100 p-2 rounded text-slate-700">
+                                  <p>Error info: {searchParams.get("error") || searchParams.get("error_code")}</p>
+                                  <p>Description: {searchParams.get("error_description") || "No details available"}</p>
+                                  <p>Current state: {debugInfo.storedState || "None"}</p>
+                                  <p>Received state: {debugInfo.receivedState || "None"}</p>
+                                  <p>State valid: {debugInfo.stateValid !== undefined ? String(debugInfo.stateValid) : "Unknown"}</p>
+                                </div>
+                              </AccordionContent>
+                            </AccordionItem>
+                          </Accordion>
+                        )}
+                      </div>
+                    ) : null}
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {authInProgress && !isCallbackProcessing && (
+            <Card className="mb-4 shadow-md bg-blue-50 border-blue-200">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <LoadingIndicator variant="dots" size={24} />
+                  <div>
+                    <h3 className="font-medium">Authentication in Progress</h3>
+                    <p className="text-muted-foreground">We're waiting for you to complete the Google authentication. Please complete the process in the Google authorization window.</p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => {
+                      localStorage.removeItem('gmb_oauth_state');
+                      window.location.reload();
+                    }}>
+                    <ArrowLeft className="h-3.5 w-3.5 mr-1" />
+                    Cancel authentication
+                  </Button>
                 </div>
               </CardContent>
             </Card>
