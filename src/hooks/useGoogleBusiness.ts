@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -37,6 +36,34 @@ export const useGoogleBusiness = () => {
     additionalInfo?: string;
   }>({ lastApiCall: '', lastResponse: null });
   const [noLocationsFound, setNoLocationsFound] = useState(false);
+
+  const generateStateParam = useCallback(() => {
+    const stateValue = crypto.randomUUID();
+    localStorage.setItem('gmb_oauth_state', stateValue);
+    console.log("Generated OAuth state parameter:", stateValue);
+    return stateValue;
+  }, []);
+
+  const validateStateParam = useCallback((returnedState: string): boolean => {
+    const storedState = localStorage.getItem('gmb_oauth_state');
+    console.log("Validating OAuth state:", { returnedState, storedState });
+    
+    if (!storedState) {
+      console.error("No stored OAuth state found for validation");
+      return false;
+    }
+    
+    const isValid = returnedState === storedState;
+    
+    if (isValid) {
+      console.log("OAuth state validated successfully");
+      localStorage.removeItem('gmb_oauth_state');
+    } else {
+      console.error("OAuth state validation failed");
+    }
+    
+    return isValid;
+  }, []);
 
   useEffect(() => {
     fetchProfile().catch(error => {
@@ -105,8 +132,13 @@ export const useGoogleBusiness = () => {
       
       console.log("Sending get_auth_url request");
       
+      const stateParam = generateStateParam();
+      
       const response = await supabase.functions.invoke('google-business', {
-        body: { action: 'get_auth_url' },
+        body: { 
+          action: 'get_auth_url',
+          state: stateParam
+        },
       });
       
       console.log("Full Edge Function response:", response);
@@ -143,13 +175,21 @@ export const useGoogleBusiness = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [generateStateParam]);
 
   const handleCallback = useCallback(async (code: string, state: string) => {
     try {
       if (callbackProcessed) {
         console.log("Callback already processed, skipping");
         return true;
+      }
+
+      if (!validateStateParam(state)) {
+        const stateError = "Invalid OAuth state parameter. This may be a security issue or your session expired.";
+        console.error(stateError);
+        setError(stateError);
+        toast.error(stateError);
+        return false;
       }
 
       setIsLoading(true);
@@ -188,7 +228,6 @@ export const useGoogleBusiness = () => {
         console.warn("Profile not found after successful callback - this might indicate a database issue");
         console.log("Will retry profile fetch in 2 seconds...");
         
-        // Try up to 3 times with increasing delays
         setTimeout(async () => {
           console.log("Retrying profile fetch (1st attempt)...");
           const retryProfile = await fetchProfile();
@@ -197,7 +236,6 @@ export const useGoogleBusiness = () => {
             console.log("Profile successfully retrieved on retry:", retryProfile);
             toast.success("Google account connected successfully");
             
-            // Auto-load accounts after successful connection
             setTimeout(() => {
               listAccounts().catch(e => {
                 console.error("Error auto-loading accounts after connection:", e);
@@ -206,7 +244,6 @@ export const useGoogleBusiness = () => {
           } else {
             console.error("Profile still not found after 1st retry");
             
-            // Try again after a longer delay
             setTimeout(async () => {
               console.log("Retrying profile fetch (2nd attempt)...");
               const secondRetryProfile = await fetchProfile();
@@ -215,7 +252,6 @@ export const useGoogleBusiness = () => {
                 console.log("Profile successfully retrieved on 2nd retry:", secondRetryProfile);
                 toast.success("Google account connected successfully");
                 
-                // Auto-load accounts after successful connection
                 setTimeout(() => {
                   listAccounts().catch(e => {
                     console.error("Error auto-loading accounts after connection:", e);
@@ -233,7 +269,6 @@ export const useGoogleBusiness = () => {
         console.log("Profile successfully retrieved after callback:", newProfile);
         toast.success("Google account connected successfully");
         
-        // Auto-load accounts after successful connection
         setTimeout(() => {
           listAccounts().catch(e => {
             console.error("Error auto-loading accounts after connection:", e);
@@ -250,7 +285,7 @@ export const useGoogleBusiness = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchProfile, callbackProcessed]);
+  }, [fetchProfile, callbackProcessed, validateStateParam]);
 
   const listAccounts = useCallback(async () => {
     try {
@@ -277,7 +312,6 @@ export const useGoogleBusiness = () => {
         throw new Error(response.error.message || "Error retrieving accounts");
       }
       
-      // Vérifier si les comptes sont définis et ont une structure valide
       if (!response.data || !response.data.accounts) {
         console.error("Invalid response structure - missing accounts data");
         setDebugInfo(prev => ({ 
@@ -288,7 +322,6 @@ export const useGoogleBusiness = () => {
         return [];
       }
       
-      // Assurer que accounts est un tableau même s'il est vide ou undefined
       const accountsList = response.data.accounts?.accounts || [];
       console.log("Accounts retrieved:", accountsList);
       
@@ -301,7 +334,6 @@ export const useGoogleBusiness = () => {
           additionalInfo: "No accounts found - this may indicate issues with Google My Business permissions" 
         }));
       } else {
-        // Si nous avons des comptes, chargez automatiquement les emplacements pour le premier compte
         setTimeout(() => {
           if (accountsList.length > 0) {
             const firstAccountId = accountsList[0].name;
@@ -349,7 +381,6 @@ export const useGoogleBusiness = () => {
         throw new Error(response.error.message || "Error retrieving locations");
       }
       
-      // Vérifier si les emplacements sont définis et ont une structure valide
       if (!response.data || !response.data.locations) {
         console.error("Invalid response structure - missing locations data");
         setDebugInfo(prev => ({ 
@@ -360,7 +391,6 @@ export const useGoogleBusiness = () => {
         return [];
       }
       
-      // Assurer que locations est un tableau même s'il est vide ou undefined
       const locationsList = response.data.locations?.locations || [];
       console.log("Locations retrieved:", locationsList);
       
@@ -373,7 +403,6 @@ export const useGoogleBusiness = () => {
           additionalInfo: "No locations found for this account - this may indicate issues with Google My Business permissions" 
         }));
       } else if (locationsList.length === 1) {
-        // Si nous n'avons qu'un seul emplacement, sélectionnez-le automatiquement
         const onlyLocation = locationsList[0];
         console.log("Only one location found, auto-selecting:", onlyLocation.name);
         

@@ -75,6 +75,27 @@ const GoogleBusinessPage = () => {
   useEffect(() => {
     const code = searchParams.get("code");
     const state = searchParams.get("state");
+    const error = searchParams.get("error");
+    const errorCode = searchParams.get("error_code");
+    
+    // If there's an error in the URL parameters, handle it
+    if (error && errorCode) {
+      setConnectionError(`Google authentication error: ${error} (${errorCode})`);
+      console.error("OAuth error in URL:", { error, errorCode });
+      
+      // Handle specific OAuth state errors
+      if (errorCode === "bad_oauth_state") {
+        setConnectionError("Authentication session expired or invalid. Please try connecting again.");
+        toast.error("Authentication session expired. Please try again.");
+        
+        // Clear any stale state parameters
+        localStorage.removeItem('gmb_oauth_state');
+        
+        // Redirect to remove error params from URL
+        navigate("/google-business", { replace: true });
+        return;
+      }
+    }
     
     if (code && state && !isCallbackProcessing) {
       setIsCallbackProcessing(true);
@@ -101,6 +122,8 @@ const GoogleBusinessPage = () => {
           toast.error("Connexion impossible: Ce compte Google a déjà été utilisé. Veuillez déconnecter l'application dans les paramètres Google ou utiliser un autre compte.");
         } else if (errorMessage.includes("permission")) {
           toast.error("Connexion impossible: Votre compte Google n'a pas accès à Google My Business ou n'a pas de fiche.");
+        } else if (errorMessage.includes("Invalid OAuth state")) {
+          toast.error("Session d'authentification expirée. Veuillez réessayer la connexion.");
         } else {
           toast.error("Erreur de connexion à Google: " + errorMessage);
         }

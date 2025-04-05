@@ -143,31 +143,6 @@ function getGoogleAuthUrl(state: string) {
     throw new Error('GOOGLE_CLIENT_ID not defined. Please configure this variable in the Edge Functions secrets.');
   }
   
-  if (GOOGLE_CLIENT_ID === "Your Google OAuth client ID") {
-    logger.error('GOOGLE_CLIENT_ID contains placeholder value');
-    throw new Error('GOOGLE_CLIENT_ID contains a placeholder value. Please replace it with your actual Google client ID in the Edge Functions secrets.');
-  }
-  
-  if (!GOOGLE_CLIENT_SECRET) {
-    logger.error('GOOGLE_CLIENT_SECRET not defined in environment variables');
-    throw new Error('GOOGLE_CLIENT_SECRET not defined. Please configure this variable in the Edge Functions secrets.');
-  }
-  
-  if (GOOGLE_CLIENT_SECRET === "Your Google OAuth client secret") {
-    logger.error('GOOGLE_CLIENT_SECRET contains placeholder value');
-    throw new Error('GOOGLE_CLIENT_SECRET contains a placeholder value. Please replace it with your actual Google client secret in the Edge Functions secrets.');
-  }
-  
-  if (!REDIRECT_URI) {
-    logger.error('GMB_REDIRECT_URI not defined in environment variables');
-    throw new Error('GMB_REDIRECT_URI not defined. Please configure this variable in the Edge Functions secrets.');
-  }
-  
-  if (REDIRECT_URI === "The URL to redirect back to after Google authentication") {
-    logger.error('GMB_REDIRECT_URI contains placeholder value');
-    throw new Error('GMB_REDIRECT_URI contains a placeholder value. Please replace it with your actual redirect URL in the Edge Functions secrets.');
-  }
-  
   const scopes = [
     'https://www.googleapis.com/auth/business.manage',
     'https://www.googleapis.com/auth/userinfo.email'
@@ -462,10 +437,10 @@ serve(async (req) => {
       try {
         console.log(`[${requestId}] Processing get_auth_url action`);
         
-        const state = userId;
+        const state = requestData.state || userId;
         const authUrl = getGoogleAuthUrl(state);
         
-        console.log(`[${requestId}] Generated authorization URL: ${authUrl}`);
+        console.log(`[${requestId}] Generated authorization URL with state: ${state}`);
         
         return new Response(
           JSON.stringify({ url: authUrl, success: true }),
@@ -490,14 +465,7 @@ serve(async (req) => {
         throw new Error('Missing authorization code');
       }
       
-      logger.info(`[${requestId}] Verifying state: received=${state}, expected=${userId}`);
-      
-      if (state !== userId) {
-        logger.error(`[${requestId}] State mismatch: received=${state}, expected=${userId}`);
-        logger.info(`[${requestId}] Proceeding despite state mismatch as we have a valid user token`);
-      } else {
-        logger.info(`[${requestId}] State verification successful`);
-      }
+      logger.info(`[${requestId}] Received state: ${state}`);
       
       logger.info(`[${requestId}] Exchanging code for tokens`);
       const tokenData = await exchangeCodeForTokens(code);
