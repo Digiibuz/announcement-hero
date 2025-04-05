@@ -40,4 +40,7 @@ export interface GoogleBusinessProfile {
   gmb_location_id: string | null;
   created_at: string;
   updated_at: string;
+  access_token: string | null;
+  refresh_token: string;
+  token_expires_at: string | null;
 }
