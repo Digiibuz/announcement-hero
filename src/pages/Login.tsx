@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Eye, EyeOff, Lock, LogIn, Loader2, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, Lock, LogIn, Loader2, RefreshCw, AlertCircle } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
 import { supabase } from "@/integrations/supabase/client";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -21,7 +22,8 @@ const Login = () => {
   const [pageLoaded, setPageLoaded] = useState(false);
   const [loadingError, setLoadingError] = useState(false);
   const [isProcessingCallback, setIsProcessingCallback] = useState(false);
-  const { login, isAuthenticated, sessionChecked } = useAuth();
+  const [localError, setLocalError] = useState<string | null>(null);
+  const { login, isAuthenticated, sessionChecked, authError } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -55,14 +57,28 @@ const Login = () => {
       if (hasAuthParams) {
         console.log("Detected auth parameters in URL, processing callback...");
         setIsProcessingCallback(true);
+        setLocalError(null);
         
         try {
+          // Get any error information from the URL
+          if (url.includes('#error=')) {
+            const errorParam = new URLSearchParams(url.split('#')[1]).get('error');
+            const errorDescription = new URLSearchParams(url.split('#')[1]).get('error_description');
+            
+            if (errorParam) {
+              console.error("Error in auth callback:", errorParam, errorDescription);
+              setLocalError(errorDescription || `Erreur d'authentification: ${errorParam}`);
+              setIsProcessingCallback(false);
+              return;
+            }
+          }
+          
           // Let Supabase auth handle the URL parameters
           const { data, error } = await supabase.auth.getSession();
           
           if (error) {
             console.error("Error getting session during callback:", error);
-            toast.error("Erreur lors de l'authentification");
+            setLocalError(error.message || "Erreur lors de l'authentification");
             setIsProcessingCallback(false);
           } else if (data.session) {
             console.log("Session obtained during callback:", data.session.user.id);
@@ -74,11 +90,44 @@ const Login = () => {
             }, 500);
           } else {
             console.log("No session found during callback processing");
+            
+            // Try one more time to exchange the token for a session
+            try {
+              // Try to get the hash params and manually set the session
+              const hashParams = new URLSearchParams(url.split('#')[1]);
+              const accessToken = hashParams.get('access_token');
+              const refreshToken = hashParams.get('refresh_token');
+              
+              if (accessToken && refreshToken) {
+                console.log("Found tokens in URL, setting session manually");
+                const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+                  access_token: accessToken,
+                  refresh_token: refreshToken
+                });
+                
+                if (sessionError) {
+                  console.error("Error setting session manually:", sessionError);
+                  setLocalError(sessionError.message || "Erreur lors de l'échange du token");
+                } else if (sessionData.session) {
+                  console.log("Session set successfully:", sessionData.session.user.id);
+                  toast.success("Connexion réussie");
+                  
+                  setTimeout(() => {
+                    navigate("/dashboard");
+                  }, 500);
+                  return;
+                }
+              }
+            } catch (tokenError) {
+              console.error("Error processing tokens:", tokenError);
+            }
+            
+            setLocalError("Aucune session n'a été créée. Veuillez réessayer.");
             setIsProcessingCallback(false);
           }
         } catch (err) {
           console.error("Exception during callback processing:", err);
-          toast.error("Erreur lors du traitement de l'authentification");
+          setLocalError("Erreur lors du traitement de l'authentification");
           setIsProcessingCallback(false);
         }
       }
@@ -109,12 +158,19 @@ const Login = () => {
         toast.success("Connexion réussie");
         setIsProcessingCallback(false);
         setIsGoogleLoading(false);
+        setLocalError(null);
         
         // Give a small delay for context to update
         setTimeout(() => {
           console.log("Navigating to dashboard after auth state change");
           navigate("/dashboard");
         }, 500);
+      } else if (event === 'USER_UPDATED' && session) {
+        console.log("User updated in Login component");
+      } else if (event === 'SIGNED_OUT') {
+        console.log("User signed out in Login component");
+      } else if (event === 'TOKEN_REFRESHED' && session) {
+        console.log("Token refreshed in Login component");
       }
     });
 
@@ -127,6 +183,7 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setLocalError(null);
     
     try {
       await login(email, password);
@@ -137,7 +194,7 @@ const Login = () => {
       }, 500);
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
-      toast.error(error.message || "Échec de la connexion");
+      setLocalError(error.message || "Échec de la connexion");
     } finally {
       setIsLoading(false);
     }
@@ -146,6 +203,7 @@ const Login = () => {
   const handleGoogleLogin = async () => {
     try {
       setIsGoogleLoading(true);
+      setLocalError(null);
       console.log("Initiating Google sign-in");
       
       // Store a flag indicating Google auth is in progress
@@ -165,21 +223,24 @@ const Login = () => {
 
       if (error) {
         console.error("Erreur de connexion Google:", error);
-        toast.error("Échec de la connexion avec Google: " + error.message);
+        setLocalError(error.message || "Échec de la connexion avec Google");
         setIsGoogleLoading(false);
         sessionStorage.removeItem('google_auth_in_progress');
       } else if (data?.url) {
         console.log("Google auth initiated, redirecting to:", data.url);
-        window.location.href = data.url;
+        // Instead of immediately redirecting, wait a moment to ensure everything is ready
+        setTimeout(() => {
+          window.location.href = data.url;
+        }, 100);
       } else {
         console.error("No redirect URL received from Supabase");
-        toast.error("Erreur: Aucune URL de redirection reçue");
+        setLocalError("Erreur: Aucune URL de redirection reçue");
         setIsGoogleLoading(false);
         sessionStorage.removeItem('google_auth_in_progress');
       }
     } catch (error: any) {
       console.error("Exception lors de la connexion Google:", error);
-      toast.error("Erreur lors de la connexion avec Google");
+      setLocalError("Erreur lors de la connexion avec Google");
       setIsGoogleLoading(false);
       sessionStorage.removeItem('google_auth_in_progress');
     }
@@ -210,17 +271,22 @@ const Login = () => {
       supabase.auth.getSession().then(({ data, error }) => {
         if (error) {
           console.error("Error getting session after Google auth return:", error);
+          setLocalError(error.message || "Erreur lors de la récupération de la session");
           setIsProcessingCallback(false);
         } else if (data.session) {
           console.log("Session found after Google auth return:", data.session.user.id);
           // Session will be handled by onAuthStateChange
         } else {
           console.log("No session found after Google auth return");
+          setLocalError("Aucune session trouvée après l'authentification Google. Veuillez réessayer.");
           setIsProcessingCallback(false);
         }
       });
     }
   }, []);
+
+  // Display any auth errors
+  const displayError = localError || authError;
 
   if (loadingError) {
     return (
@@ -253,8 +319,17 @@ const Login = () => {
               Nous finalisons votre connexion, veuillez patienter...
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex justify-center py-6">
+          <CardContent className="flex flex-col items-center gap-4 py-6">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            
+            {displayError && (
+              <Alert className="bg-destructive/10 border-destructive/20 mt-4">
+                <AlertCircle className="h-4 w-4 text-destructive" />
+                <AlertDescription className="text-destructive">
+                  {displayError}
+                </AlertDescription>
+              </Alert>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -311,6 +386,15 @@ const Login = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {displayError && (
+              <Alert className="bg-destructive/10 border-destructive/20 mb-4">
+                <AlertCircle className="h-4 w-4 text-destructive" />
+                <AlertDescription className="text-destructive">
+                  {displayError}
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <form onSubmit={handleSubmit} className="space-y-4">              
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>

@@ -21,7 +21,7 @@ export interface AuthContextType {
   user: UserProfile | null;
   session: Session | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<any>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   isAdmin: boolean;
@@ -32,6 +32,7 @@ export interface AuthContextType {
   isImpersonating: boolean;
   isOnResetPasswordPage: boolean;
   sessionChecked: boolean;
+  authError: string | null;
 }
 
 export interface GoogleBusinessProfile {

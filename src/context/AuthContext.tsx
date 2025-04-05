@@ -16,6 +16,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { originalUser, isImpersonating, impersonateUser: startImpersonation, stopImpersonating: endImpersonation } = useImpersonation(userProfile);
   const [isOnResetPasswordPage, setIsOnResetPasswordPage] = useState(false);
   const [sessionChecked, setSessionChecked] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // Check if we're on the password reset page
   useEffect(() => {
@@ -29,6 +30,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Initialize auth state and set up listeners with improved persistence
   useEffect(() => {
     console.log("Setting up auth state listener");
+    let attemptCount = 0;
+    const maxAttempts = 3;
     
     // First set up the auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -37,6 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // Just update the session state
         setSession(currentSession);
+        setAuthError(null);
         
         if (currentSession?.user) {
           // First set user from metadata for immediate UI feedback
@@ -63,63 +67,87 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    // Then get the initial session
+    // Then get the initial session with retry mechanism
     const initializeAuth = async () => {
       try {
         // First check if we have a locally cached user role
         const cachedUserRole = localStorage.getItem('userRole');
         const cachedUserId = localStorage.getItem('userId');
         
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error("Error retrieving initial session:", error);
-          setUserProfile(null);
-          setIsLoading(false);
-          setSessionChecked(true);
-          return;
-        }
-        
-        // Update session state
-        setSession(data.session);
-        
-        if (data.session?.user) {
-          console.log("Session found during initialization:", data.session.user.id);
-          // First set user from metadata
-          const initialProfile = createProfileFromMetadata(data.session.user);
-          
-          // Apply cached role if available for immediate UI
-          if (cachedUserRole && cachedUserId === data.session.user.id) {
-            initialProfile.role = cachedUserRole as any;
-            console.log("Applied cached role:", cachedUserRole);
-          }
-          
-          setUserProfile(initialProfile);
-          
-          // Then get complete profile
-          setTimeout(() => {
-            fetchFullProfile(data.session.user.id).then((success) => {
-              if (success) {
-                console.log("Successfully fetched complete profile");
-              } else {
-                console.warn("Failed to fetch complete profile, using metadata only");
+        while (attemptCount < maxAttempts) {
+          try {
+            console.log(`Session initialization attempt ${attemptCount + 1}/${maxAttempts}`);
+            const { data, error } = await supabase.auth.getSession();
+            
+            if (error) {
+              console.error("Error retrieving initial session:", error);
+              attemptCount++;
+              if (attemptCount >= maxAttempts) {
+                setUserProfile(null);
+                setIsLoading(false);
+                setSessionChecked(true);
+                setAuthError("Impossible de récupérer la session");
               }
+              // Wait before retrying
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              continue;
+            }
+            
+            // Update session state
+            setSession(data.session);
+            
+            if (data.session?.user) {
+              console.log("Session found during initialization:", data.session.user.id);
+              // First set user from metadata
+              const initialProfile = createProfileFromMetadata(data.session.user);
+              
+              // Apply cached role if available for immediate UI
+              if (cachedUserRole && cachedUserId === data.session.user.id) {
+                initialProfile.role = cachedUserRole as any;
+                console.log("Applied cached role:", cachedUserRole);
+              }
+              
+              setUserProfile(initialProfile);
+              
+              // Then get complete profile
+              setTimeout(() => {
+                fetchFullProfile(data.session.user.id).then((success) => {
+                  if (success) {
+                    console.log("Successfully fetched complete profile");
+                  } else {
+                    console.warn("Failed to fetch complete profile, using metadata only");
+                  }
+                  setIsLoading(false);
+                });
+              }, 100);
+            } else {
+              console.log("No session found during initialization");
+              setUserProfile(null);
               setIsLoading(false);
-            });
-          }, 100);
-        } else {
-          console.log("No session found during initialization");
-          setUserProfile(null);
-          setIsLoading(false);
+            }
+            
+            // Mark that we've checked for a session
+            setSessionChecked(true);
+            break; // Exit the loop if successful
+          } catch (e) {
+            console.error(`Session initialization attempt ${attemptCount + 1} failed:`, e);
+            attemptCount++;
+            if (attemptCount >= maxAttempts) {
+              setUserProfile(null);
+              setIsLoading(false);
+              setSessionChecked(true);
+              setAuthError("Erreur de connexion au serveur");
+            }
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
         }
-        
-        // Mark that we've checked for a session
-        setSessionChecked(true);
       } catch (error) {
         console.error("Exception during auth initialization:", error);
         setUserProfile(null);
         setIsLoading(false);
         setSessionChecked(true);
+        setAuthError("Erreur pendant l'initialisation de l'authentification");
       }
     };
 
@@ -144,6 +172,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
+    setAuthError(null);
     
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -159,8 +188,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(data.session);
       
       // User will be set by the auth state change listener
+      return data;
     } catch (error: any) {
       setIsLoading(false);
+      setAuthError(error.message || "Erreur d'authentification");
       throw new Error(error.message || "Login error");
     }
   };
@@ -211,6 +242,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isImpersonating,
     isOnResetPasswordPage,
     sessionChecked,
+    authError,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
