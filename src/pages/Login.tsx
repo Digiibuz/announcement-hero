@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -44,9 +43,7 @@ const Login = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Handle OAuth callback on page load
   useEffect(() => {
-    // Check if URL contains fragment or search parameters indicating an OAuth callback
     const url = window.location.href;
     const hasAuthParams = url.includes('#access_token=') || 
                           url.includes('?code=') || 
@@ -56,7 +53,6 @@ const Login = () => {
       console.log("Detected auth parameters in URL, processing callback...");
       setIsProcessingCallback(true);
       
-      // Let Supabase handle the auth session - use async/await properly
       const handleAuthSession = async () => {
         try {
           const { data, error } = await supabase.auth.getSession();
@@ -82,7 +78,6 @@ const Login = () => {
       navigate("/dashboard");
     }
 
-    // Set up auth state change listener
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       console.log("Auth state changed:", event, session ? "Session exists" : "No session");
       
@@ -91,7 +86,6 @@ const Login = () => {
         toast.success("Connexion Google réussie");
         setIsProcessingCallback(false);
         
-        // Short delay before navigation to allow toast to be seen
         setTimeout(() => {
           navigate("/dashboard");
         }, 500);
@@ -137,20 +131,30 @@ const Login = () => {
         provider: 'google',
         options: {
           scopes: 'email',
-          redirectTo: window.location.origin
+          redirectTo: window.location.origin,
+          queryParams: {
+            prompt: 'select_account'
+          }
         }
       });
 
       if (error) {
         console.error("Erreur de connexion Google:", error);
         toast.error("Échec de la connexion avec Google: " + error.message);
+        setIsGoogleLoading(false);
       } else {
         console.log("Google auth initiated, redirecting to:", data?.url);
+        if (data?.url) {
+          window.location.href = data.url;
+        } else {
+          console.error("No redirect URL received from Supabase");
+          toast.error("Erreur: Aucune URL de redirection reçue");
+          setIsGoogleLoading(false);
+        }
       }
     } catch (error: any) {
       console.error("Exception lors de la connexion Google:", error);
       toast.error("Erreur lors de la connexion avec Google");
-    } finally {
       setIsGoogleLoading(false);
     }
   };
