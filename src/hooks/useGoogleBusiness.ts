@@ -27,6 +27,8 @@ interface Location {
 const OAUTH_STATE_KEY = 'gmb_oauth_state';
 // Durée de validité du state en millisecondes (15 minutes)
 const STATE_VALIDITY_DURATION = 15 * 60 * 1000;
+// Clé pour stocker l'indicateur d'authentification en cours
+const AUTH_IN_PROGRESS_KEY = 'gmb_auth_in_progress';
 
 export const useGoogleBusiness = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -43,9 +45,47 @@ export const useGoogleBusiness = () => {
     storedState?: string;
     receivedState?: string;
     stateValid?: boolean;
+    tokenStatus?: string;
   }>({ lastApiCall: '', lastResponse: null });
   const [noLocationsFound, setNoLocationsFound] = useState(false);
   const [authInProgress, setAuthInProgress] = useState(false);
+  const [tokenIsValid, setTokenIsValid] = useState(false);
+
+  // Vérifie la validité du token
+  const checkTokenValidity = useCallback(async (profileData?: GoogleBusinessProfile | null) => {
+    const currentProfile = profileData || profile;
+    if (!currentProfile) {
+      setTokenIsValid(false);
+      setDebugInfo(prev => ({ 
+        ...prev, 
+        tokenStatus: 'No profile found, token cannot be valid'
+      }));
+      return false;
+    }
+
+    // Vérifie si la date d'expiration du token est dépassée
+    if (currentProfile.token_expires_at) {
+      const expiresAt = new Date(currentProfile.token_expires_at);
+      const isValid = expiresAt > new Date();
+      
+      setTokenIsValid(isValid);
+      setDebugInfo(prev => ({ 
+        ...prev, 
+        tokenStatus: isValid 
+          ? `Token valid until ${expiresAt.toISOString()}` 
+          : `Token expired at ${expiresAt.toISOString()}`
+      }));
+      
+      return isValid;
+    }
+
+    setTokenIsValid(false);
+    setDebugInfo(prev => ({ 
+      ...prev, 
+      tokenStatus: 'No token expiration date found'
+    }));
+    return false;
+  }, [profile]);
 
   // Génère un paramètre state sécurisé et le stocke dans localStorage
   const generateStateParam = useCallback(() => {
@@ -82,6 +122,9 @@ export const useGoogleBusiness = () => {
     
     // Stockage dans localStorage avec timestamp pour vérifier l'expiration
     localStorage.setItem(OAUTH_STATE_KEY, JSON.stringify(stateObj));
+    // Indiquer qu'une authentification est en cours
+    localStorage.setItem(AUTH_IN_PROGRESS_KEY, 'true');
+    
     console.log("Generated new OAuth state parameter:", stateValue);
     
     // Mise à jour des informations de débogage
@@ -146,6 +189,7 @@ export const useGoogleBusiness = () => {
         console.log("OAuth state validated successfully");
         // Nettoyer après une validation réussie
         localStorage.removeItem(OAUTH_STATE_KEY);
+        localStorage.removeItem(AUTH_IN_PROGRESS_KEY);
       } else {
         console.error("OAuth state validation failed");
       }
@@ -154,6 +198,7 @@ export const useGoogleBusiness = () => {
     } catch (e) {
       console.error("Error parsing stored OAuth state:", e);
       localStorage.removeItem(OAUTH_STATE_KEY);
+      localStorage.removeItem(AUTH_IN_PROGRESS_KEY);
       setDebugInfo(prev => ({ 
         ...prev, 
         stateValid: false,
@@ -180,10 +225,17 @@ export const useGoogleBusiness = () => {
       console.error("Bad OAuth state detected in URL params:", { errorCode, errorDesc });
       // Nettoyer les states invalides
       localStorage.removeItem(OAUTH_STATE_KEY);
+      localStorage.removeItem(AUTH_IN_PROGRESS_KEY);
       setDebugInfo(prev => ({ 
         ...prev, 
         additionalInfo: `URL contained bad_oauth_state error: ${errorDesc}` 
       }));
+    }
+    
+    // Vérifier s'il y a un indicateur d'authentification en cours
+    if (localStorage.getItem(AUTH_IN_PROGRESS_KEY) === 'true') {
+      console.log("Authentication in progress detected from localStorage");
+      setAuthInProgress(true);
     }
     
     // Vérifier s'il y a un state actif dans localStorage
@@ -196,6 +248,8 @@ export const useGoogleBusiness = () => {
         if (isExpired) {
           console.log("Found expired OAuth state, cleaning up");
           localStorage.removeItem(OAUTH_STATE_KEY);
+          localStorage.removeItem(AUTH_IN_PROGRESS_KEY);
+          setAuthInProgress(false);
         } else if (!window.location.href.includes('code=')) {
           console.log("Found active OAuth state but no code in URL, authentication might be in progress");
           setAuthInProgress(true);
@@ -206,6 +260,7 @@ export const useGoogleBusiness = () => {
             if (!window.location.href.includes('code=')) {
               console.log("OAuth flow did not complete after timeout, cleaning up state");
               localStorage.removeItem(OAUTH_STATE_KEY);
+              localStorage.removeItem(AUTH_IN_PROGRESS_KEY);
               setAuthInProgress(false);
             }
           }, 120000); // 2 minutes avant de considérer l'authentification comme abandonnée
@@ -213,6 +268,7 @@ export const useGoogleBusiness = () => {
       } catch (e) {
         console.error("Error parsing OAuth state on init:", e);
         localStorage.removeItem(OAUTH_STATE_KEY);
+        localStorage.removeItem(AUTH_IN_PROGRESS_KEY);
       }
     }
   }, []);
@@ -253,10 +309,14 @@ export const useGoogleBusiness = () => {
         console.log("Google profile found, setting connected state");
         setProfile(profile);
         setIsConnected(true);
+        
+        // Vérifier la validité du token
+        await checkTokenValidity(profile);
       } else {
         console.log("No Google Business profile found for this user - this is normal if not yet connected");
         setProfile(null);
         setIsConnected(false);
+        setTokenIsValid(false);
       }
       
       return profile;
@@ -264,11 +324,12 @@ export const useGoogleBusiness = () => {
       console.error("Error retrieving GMB profile:", error);
       setError(`Failed to get profile: ${error.message || "Unknown error"}`);
       setIsConnected(false);
+      setTokenIsValid(false);
       return null;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [checkTokenValidity]);
 
   const getAuthUrl = useCallback(async () => {
     try {
@@ -335,6 +396,22 @@ export const useGoogleBusiness = () => {
       setError(null);
       setNoLocationsFound(false);
       
+      // Vérifier d'abord si nous avons un profil et un token valide
+      if (!isConnected || !tokenIsValid) {
+        console.error("Cannot list accounts: User not connected or token invalid");
+        
+        // Journaliser l'état actuel pour déboguer
+        console.log({
+          isConnected,
+          tokenIsValid,
+          profileExists: !!profile,
+          tokenStatus: debugInfo.tokenStatus
+        });
+        
+        setError("You need to connect your Google account first");
+        throw new Error("User not connected or token invalid");
+      }
+      
       console.log("Requesting accounts list");
       
       const response = await supabase.functions.invoke('google-business', {
@@ -350,6 +427,16 @@ export const useGoogleBusiness = () => {
       
       if (response.error) {
         console.error("Error retrieving accounts:", response.error);
+        
+        // Si l'erreur indique un problème de token, marquer l'utilisateur comme déconnecté
+        if (response.error.message?.includes("token") || response.error.message?.includes("unauthorized")) {
+          setIsConnected(false);
+          setTokenIsValid(false);
+          setProfile(null);
+          setError("Your Google authorization has expired. Please reconnect your account.");
+          throw new Error("Token expired or invalid");
+        }
+        
         setError(`Failed to get accounts: ${response.error.message || "Unknown error"}`);
         throw new Error(response.error.message || "Error retrieving accounts");
       }
@@ -396,13 +483,20 @@ export const useGoogleBusiness = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isConnected, tokenIsValid, profile, debugInfo.tokenStatus]);
 
   const listLocations = useCallback(async (accountId: string) => {
     try {
       setIsLoading(true);
       setError(null);
       setNoLocationsFound(false);
+      
+      // Vérifier d'abord si nous avons un profil et un token valide
+      if (!isConnected || !tokenIsValid) {
+        console.error("Cannot list locations: User not connected or token invalid");
+        setError("You need to connect your Google account first");
+        throw new Error("User not connected or token invalid");
+      }
       
       console.log("Requesting locations list for account:", accountId);
       
@@ -419,6 +513,16 @@ export const useGoogleBusiness = () => {
       
       if (response.error) {
         console.error("Error retrieving locations:", response.error);
+        
+        // Si l'erreur indique un problème de token, marquer l'utilisateur comme déconnecté
+        if (response.error.message?.includes("token") || response.error.message?.includes("unauthorized")) {
+          setIsConnected(false);
+          setTokenIsValid(false);
+          setProfile(null);
+          setError("Your Google authorization has expired. Please reconnect your account.");
+          throw new Error("Token expired or invalid");
+        }
+        
         setError(`Failed to get locations: ${response.error.message || "Unknown error"}`);
         throw new Error(response.error.message || "Error retrieving locations");
       }
@@ -464,12 +568,19 @@ export const useGoogleBusiness = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isConnected, tokenIsValid]);
 
   const saveLocation = useCallback(async (accountId: string, locationId: string) => {
     try {
       setIsLoading(true);
       setError(null);
+      
+      // Vérifier d'abord si nous avons un profil et un token valide
+      if (!isConnected || !tokenIsValid) {
+        console.error("Cannot save location: User not connected or token invalid");
+        setError("You need to connect your Google account first");
+        throw new Error("User not connected or token invalid");
+      }
       
       console.log("Saving location:", { accountId, locationId });
       
@@ -490,6 +601,16 @@ export const useGoogleBusiness = () => {
       
       if (response.error) {
         console.error("Error saving location:", response.error);
+        
+        // Si l'erreur indique un problème de token, marquer l'utilisateur comme déconnecté
+        if (response.error.message?.includes("token") || response.error.message?.includes("unauthorized")) {
+          setIsConnected(false);
+          setTokenIsValid(false);
+          setProfile(null);
+          setError("Your Google authorization has expired. Please reconnect your account.");
+          throw new Error("Token expired or invalid");
+        }
+        
         setError(`Failed to save location: ${response.error.message || "Unknown error"}`);
         throw new Error(response.error.message || "Error saving location");
       }
@@ -506,7 +627,7 @@ export const useGoogleBusiness = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchProfile]);
+  }, [isConnected, tokenIsValid, fetchProfile]);
 
   const handleCallback = useCallback(async (code: string, state: string) => {
     try {
@@ -570,11 +691,18 @@ export const useGoogleBusiness = () => {
             console.log("Profile successfully retrieved on retry:", retryProfile);
             toast.success("Google account connected successfully");
             
-            setTimeout(() => {
-              listAccounts().catch(e => {
-                console.error("Error auto-loading accounts after connection:", e);
-              });
-            }, 500);
+            // Vérifier la validité du token avant de tenter de charger les comptes
+            const isTokenValid = await checkTokenValidity(retryProfile);
+            
+            if (isTokenValid) {
+              setTimeout(() => {
+                listAccounts().catch(e => {
+                  console.error("Error auto-loading accounts after connection:", e);
+                });
+              }, 500);
+            } else {
+              toast.error("Token validity check failed. Please try reconnecting.");
+            }
           } else {
             console.error("Profile still not found after 1st retry");
             
@@ -586,11 +714,18 @@ export const useGoogleBusiness = () => {
                 console.log("Profile successfully retrieved on 2nd retry:", secondRetryProfile);
                 toast.success("Google account connected successfully");
                 
-                setTimeout(() => {
-                  listAccounts().catch(e => {
-                    console.error("Error auto-loading accounts after connection:", e);
-                  });
-                }, 500);
+                // Vérifier la validité du token avant de tenter de charger les comptes
+                const isTokenValid = await checkTokenValidity(secondRetryProfile);
+                
+                if (isTokenValid) {
+                  setTimeout(() => {
+                    listAccounts().catch(e => {
+                      console.error("Error auto-loading accounts after connection:", e);
+                    });
+                  }, 500);
+                } else {
+                  toast.error("Token validity check failed. Please try reconnecting.");
+                }
               } else {
                 console.error("Profile still not found after multiple retries");
                 setError("Profile connection succeeded but profile was not found in database after retries");
@@ -603,11 +738,18 @@ export const useGoogleBusiness = () => {
         console.log("Profile successfully retrieved after callback:", newProfile);
         toast.success("Google account connected successfully");
         
-        setTimeout(() => {
-          listAccounts().catch(e => {
-            console.error("Error auto-loading accounts after connection:", e);
-          });
-        }, 500);
+        // Vérifier la validité du token avant de tenter de charger les comptes
+        const isTokenValid = await checkTokenValidity(newProfile);
+        
+        if (isTokenValid) {
+          setTimeout(() => {
+            listAccounts().catch(e => {
+              console.error("Error auto-loading accounts after connection:", e);
+            });
+          }, 500);
+        } else {
+          toast.error("Token validity check failed. Please try reconnecting.");
+        }
       }
       
       setAuthInProgress(false);
@@ -621,7 +763,7 @@ export const useGoogleBusiness = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchProfile, callbackProcessed, validateStateParam, listAccounts]);
+  }, [fetchProfile, callbackProcessed, validateStateParam, listAccounts, checkTokenValidity]);
 
   const disconnect = useCallback(async () => {
     try {
@@ -649,8 +791,13 @@ export const useGoogleBusiness = () => {
       
       setProfile(null);
       setIsConnected(false);
+      setTokenIsValid(false);
       setAccounts([]);
       setLocations([]);
+      
+      // Nettoyer toutes les données d'authentification
+      localStorage.removeItem(OAUTH_STATE_KEY);
+      localStorage.removeItem(AUTH_IN_PROGRESS_KEY);
       
       toast.success("Google account disconnected successfully");
       
@@ -676,12 +823,14 @@ export const useGoogleBusiness = () => {
     callbackProcessed,
     noLocationsFound,
     authInProgress,
+    tokenIsValid,
     fetchProfile,
     getAuthUrl,
     handleCallback,
     listAccounts,
     listLocations,
     saveLocation,
-    disconnect
+    disconnect,
+    checkTokenValidity
   };
 };
