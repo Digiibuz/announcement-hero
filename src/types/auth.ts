@@ -33,6 +33,7 @@ export interface AuthContextType {
   isOnResetPasswordPage: boolean;
   sessionChecked: boolean;
   authError: string | null;
+  isProcessingCallback: boolean;
 }
 
 export interface GoogleBusinessProfile {

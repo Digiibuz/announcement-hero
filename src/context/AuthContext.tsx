@@ -17,6 +17,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isOnResetPasswordPage, setIsOnResetPasswordPage] = useState(false);
   const [sessionChecked, setSessionChecked] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [isProcessingCallback, setIsProcessingCallback] = useState(false);
 
   // Check if we're on the password reset page
   useEffect(() => {
@@ -26,6 +27,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsOnResetPasswordPage(isResetPasswordPage && (hasRecoveryToken || isResetPasswordPage));
     console.log("Is on reset password page:", isResetPasswordPage, "Has recovery token:", hasRecoveryToken);
   }, [window.location.pathname, window.location.hash]);
+
+  // Check for auth callback in URL
+  useEffect(() => {
+    const processAuthCallback = async () => {
+      const url = window.location.href;
+      const hasAuthParams = url.includes('#access_token=') || url.includes('?code=') || url.includes('#error=');
+      
+      if (hasAuthParams) {
+        console.log("Auth callback detected in AuthContext, processing...");
+        setIsProcessingCallback(true);
+        
+        try {
+          // Let Supabase process the callback
+          const { data, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            console.error("Error processing auth callback in AuthContext:", error);
+            setAuthError(error.message);
+            setIsProcessingCallback(false);
+          } else if (data.session) {
+            console.log("Session obtained from callback in AuthContext:", data.session.user.id);
+            setSession(data.session);
+            const initialProfile = createProfileFromMetadata(data.session.user);
+            setUserProfile(initialProfile);
+            
+            // Fetch full profile after a short delay
+            setTimeout(() => {
+              fetchFullProfile(data.session.user.id).then(() => {
+                setIsLoading(false);
+                setIsProcessingCallback(false);
+              });
+            }, 100);
+          } else {
+            console.warn("No session found during callback processing in AuthContext");
+            setIsProcessingCallback(false);
+          }
+        } catch (err) {
+          console.error("Exception during callback processing in AuthContext:", err);
+          setIsProcessingCallback(false);
+        }
+      }
+    };
+    
+    processAuthCallback();
+  }, []);
 
   // Initialize auth state and set up listeners with improved persistence
   useEffect(() => {
@@ -73,6 +119,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // First check if we have a locally cached user role
         const cachedUserRole = localStorage.getItem('userRole');
         const cachedUserId = localStorage.getItem('userId');
+        
+        // Check if we have auth fragments in the URL that need to be processed
+        const url = window.location.href;
+        const hasAuthParams = url.includes('#access_token=') || url.includes('?code=') || url.includes('#error=');
+        
+        if (hasAuthParams) {
+          console.log("Auth parameters detected in URL during initialization");
+          // Let the dedicated effect handle this
+          return;
+        }
         
         while (attemptCount < maxAttempts) {
           try {
@@ -243,6 +299,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isOnResetPasswordPage,
     sessionChecked,
     authError,
+    isProcessingCallback
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -31,6 +31,18 @@ const LoadingFallback = () => (
   </div>
 );
 
+const AuthProcessingPage = () => {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
+      <div className="text-center">
+        <LoadingIndicator variant="dots" size={42} />
+        <h2 className="mt-4 text-xl font-semibold">Authentification en cours</h2>
+        <p className="mt-2 text-muted-foreground">Veuillez patienter pendant que nous traitons votre connexion...</p>
+      </div>
+    </div>
+  );
+};
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -43,8 +55,13 @@ const queryClient = new QueryClient({
 
 // Protected route component with improved memory
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading, isOnResetPasswordPage, sessionChecked } = useAuth();
+  const { isAuthenticated, isLoading, isOnResetPasswordPage, sessionChecked, isProcessingCallback } = useAuth();
   const location = useLocation();
+
+  // Si la page est toujours en train de traiter une authentification, montrer un indicateur de chargement
+  if (isProcessingCallback) {
+    return <AuthProcessingPage />;
+  }
 
   // Ne pas vérifier l'authentification si nous sommes sur la page de réinitialisation de mot de passe
   useEffect(() => {
@@ -72,8 +89,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Admin only route component with improved state persistence
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading, isAdmin, isClient, isOnResetPasswordPage, sessionChecked } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin, isClient, isOnResetPasswordPage, sessionChecked, isProcessingCallback } = useAuth();
   const location = useLocation();
+
+  // Si la page est toujours en train de traiter une authentification, montrer un indicateur de chargement
+  if (isProcessingCallback) {
+    return <AuthProcessingPage />;
+  }
 
   // Enhanced admin route persistence
   useEffect(() => {
@@ -107,6 +129,24 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Special route to handle auth callbacks
+const AuthCallbackRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isProcessingCallback } = useAuth();
+  const location = useLocation();
+  const url = window.location.href;
+  const hasAuthParams = url.includes('#access_token=') || url.includes('?code=') || url.includes('#error=');
+  
+  if (isProcessingCallback || hasAuthParams) {
+    return <AuthProcessingPage />;
+  }
+  
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return <>{children}</>;
+};
+
 // Contents of AppRoutes moved directly into App component to avoid
 // AuthProvider context issues and fix the useAuth error
 function App() {
@@ -121,8 +161,13 @@ function App() {
                   {/* Redirect root to login */}
                   <Route path="/" element={<Navigate to="/login" replace />} />
                   
-                  {/* Public routes - accessibles sans authentification */}
-                  <Route path="/login" element={<Login />} />
+                  {/* Public routes - accessibles sans authentification 
+                      Avec AuthCallbackRoute pour gérer les retours d'authentification */}
+                  <Route path="/login" element={
+                    <AuthCallbackRoute>
+                      <Login />
+                    </AuthCallbackRoute>
+                  } />
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   {/* Route spéciale pour la réinitialisation du mot de passe 
                       Pas besoin de ProtectedRoute car elle gère directement l'authentification */}

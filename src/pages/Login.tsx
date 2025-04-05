@@ -21,9 +21,8 @@ const Login = () => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [pageLoaded, setPageLoaded] = useState(false);
   const [loadingError, setLoadingError] = useState(false);
-  const [isProcessingCallback, setIsProcessingCallback] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
-  const { login, isAuthenticated, sessionChecked, authError } = useAuth();
+  const { login, isAuthenticated, sessionChecked, authError, isProcessingCallback } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -46,98 +45,6 @@ const Login = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Process callback parameters on initial load
-  useEffect(() => {
-    const handleAuthCallback = async () => {
-      const url = window.location.href;
-      const hasAuthParams = url.includes('#access_token=') || 
-                            url.includes('?code=') || 
-                            url.includes('#error=');
-      
-      if (hasAuthParams) {
-        console.log("Detected auth parameters in URL, processing callback...");
-        setIsProcessingCallback(true);
-        setLocalError(null);
-        
-        try {
-          // Get any error information from the URL
-          if (url.includes('#error=')) {
-            const errorParam = new URLSearchParams(url.split('#')[1]).get('error');
-            const errorDescription = new URLSearchParams(url.split('#')[1]).get('error_description');
-            
-            if (errorParam) {
-              console.error("Error in auth callback:", errorParam, errorDescription);
-              setLocalError(errorDescription || `Erreur d'authentification: ${errorParam}`);
-              setIsProcessingCallback(false);
-              return;
-            }
-          }
-          
-          // Let Supabase auth handle the URL parameters
-          const { data, error } = await supabase.auth.getSession();
-          
-          if (error) {
-            console.error("Error getting session during callback:", error);
-            setLocalError(error.message || "Erreur lors de l'authentification");
-            setIsProcessingCallback(false);
-          } else if (data.session) {
-            console.log("Session obtained during callback:", data.session.user.id);
-            toast.success("Connexion réussie");
-            
-            // Small delay to allow context to update
-            setTimeout(() => {
-              navigate("/dashboard");
-            }, 500);
-          } else {
-            console.log("No session found during callback processing");
-            
-            // Try one more time to exchange the token for a session
-            try {
-              // Try to get the hash params and manually set the session
-              const hashParams = new URLSearchParams(url.split('#')[1]);
-              const accessToken = hashParams.get('access_token');
-              const refreshToken = hashParams.get('refresh_token');
-              
-              if (accessToken && refreshToken) {
-                console.log("Found tokens in URL, setting session manually");
-                const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-                  access_token: accessToken,
-                  refresh_token: refreshToken
-                });
-                
-                if (sessionError) {
-                  console.error("Error setting session manually:", sessionError);
-                  setLocalError(sessionError.message || "Erreur lors de l'échange du token");
-                } else if (sessionData.session) {
-                  console.log("Session set successfully:", sessionData.session.user.id);
-                  toast.success("Connexion réussie");
-                  
-                  setTimeout(() => {
-                    navigate("/dashboard");
-                  }, 500);
-                  return;
-                }
-              }
-            } catch (tokenError) {
-              console.error("Error processing tokens:", tokenError);
-            }
-            
-            setLocalError("Aucune session n'a été créée. Veuillez réessayer.");
-            setIsProcessingCallback(false);
-          }
-        } catch (err) {
-          console.error("Exception during callback processing:", err);
-          setLocalError("Erreur lors du traitement de l'authentification");
-          setIsProcessingCallback(false);
-        }
-      }
-    };
-    
-    if (!isAuthenticated) {
-      handleAuthCallback();
-    }
-  }, [navigate, isAuthenticated]);
-
   // Redirect if already authenticated, but only after session check is complete
   useEffect(() => {
     if (sessionChecked && isAuthenticated) {
@@ -156,7 +63,6 @@ const Login = () => {
       if (event === 'SIGNED_IN' && session) {
         console.log("User signed in successfully in Login component", session.user.id);
         toast.success("Connexion réussie");
-        setIsProcessingCallback(false);
         setIsGoogleLoading(false);
         setLocalError(null);
         
@@ -258,57 +164,10 @@ const Login = () => {
     }
   };
 
-  // Check if returning from Google auth
-  useEffect(() => {
-    const isReturningFromGoogle = sessionStorage.getItem('google_auth_in_progress');
-    if (isReturningFromGoogle) {
-      console.log("Detected return from Google auth");
-      setIsProcessingCallback(true);
-      // Remove the flag
-      sessionStorage.removeItem('google_auth_in_progress');
-      
-      // Attempt to get session
-      supabase.auth.getSession().then(({ data, error }) => {
-        if (error) {
-          console.error("Error getting session after Google auth return:", error);
-          setLocalError(error.message || "Erreur lors de la récupération de la session");
-          setIsProcessingCallback(false);
-        } else if (data.session) {
-          console.log("Session found after Google auth return:", data.session.user.id);
-          // Session will be handled by onAuthStateChange
-        } else {
-          console.log("No session found after Google auth return");
-          setLocalError("Aucune session trouvée après l'authentification Google. Veuillez réessayer.");
-          setIsProcessingCallback(false);
-        }
-      });
-    }
-  }, []);
-
   // Display any auth errors
   const displayError = localError || authError;
 
-  if (loadingError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle>Problème de chargement</CardTitle>
-            <CardDescription>
-              La page ne semble pas s'être chargée correctement.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-            <Button onClick={handleForceReload}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Recharger l'application
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
+  // If we're processing a callback, don't show the login page
   if (isProcessingCallback) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
@@ -330,6 +189,27 @@ const Login = () => {
                 </AlertDescription>
               </Alert>
             )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (loadingError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle>Problème de chargement</CardTitle>
+            <CardDescription>
+              La page ne semble pas s'être chargée correctement.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+            <Button onClick={handleForceReload}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Recharger l'application
+            </Button>
           </CardContent>
         </Card>
       </div>
