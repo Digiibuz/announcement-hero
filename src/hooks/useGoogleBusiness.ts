@@ -180,6 +180,9 @@ export const useGoogleBusiness = () => {
       
       const response = await supabase.functions.invoke('google-business', {
         body: { action: 'handle_callback', code, state },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
       });
       
       console.log("Callback response:", response);

@@ -362,6 +362,101 @@ async function listLocations(accountId: string, accessToken: string) {
   return await callGmbApi(`accounts/${accountId}/locations`, 'GET', accessToken);
 }
 
+async function handleCallback(code: string, state: string, userId: string) {
+  logger.info(`Processing callback for user: ${userId} with code length: ${code.length}`);
+  
+  try {
+    // Échange du code d'autorisation contre des tokens
+    const tokenData = await exchangeCodeForTokens(code);
+    const { access_token, refresh_token, expires_in } = tokenData;
+    
+    if (!refresh_token) {
+      logger.error(`CRITICAL: No refresh token received from Google for user: ${userId}`);
+      throw new Error('No refresh token received from Google. Please try again with a different account or clear your browser cookies.');
+    }
+    
+    // Récupération des informations utilisateur Google
+    const userInfo = await getGoogleUserInfo(access_token);
+    
+    // Calcul de la date d'expiration du token
+    const tokenExpiresAt = new Date();
+    tokenExpiresAt.setSeconds(tokenExpiresAt.getSeconds() + expires_in);
+    
+    // Vérification si un profil existe déjà
+    const existingProfile = await getUserGoogleProfile(userId);
+    logger.info(`Existing profile check for user ${userId}: ${existingProfile ? 'found' : 'not found'}`);
+    
+    let upsertResult;
+    // Mise à jour ou création du profil
+    if (existingProfile) {
+      logger.info(`Updating existing Google profile for user: ${userId}`);
+      upsertResult = await supabaseAdmin
+        .from('user_google_business_profiles')
+        .update({
+          google_email: userInfo.email,
+          refresh_token,
+          access_token,
+          token_expires_at: tokenExpiresAt.toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId);
+    } else {
+      logger.info(`Creating new Google profile for user: ${userId} with email: ${userInfo.email}`);
+      
+      // Log détaillé des données à insérer
+      const insertData = {
+        user_id: userId,
+        google_email: userInfo.email,
+        refresh_token,
+        access_token,
+        token_expires_at: tokenExpiresAt.toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      logger.info(`Data being inserted: ${JSON.stringify(insertData)}`);
+      
+      upsertResult = await supabaseAdmin
+        .from('user_google_business_profiles')
+        .insert(insertData);
+      
+      logger.info(`Insert result: ${JSON.stringify(upsertResult)}`);
+    }
+    
+    // Gestion des erreurs potentielles lors de l'upsert
+    if (upsertResult.error) {
+      logger.error(`Error upserting profile: ${JSON.stringify(upsertResult.error)}`);
+      
+      // Analyse de l'erreur pour fournir un message plus utile
+      if (upsertResult.error.code === '23505') {
+        logger.error(`Duplicate key violation - record already exists`);
+      } else if (upsertResult.error.code === '42P01') {
+        logger.error(`Table does not exist - check your migrations`);
+      } else if (upsertResult.error.message?.includes('violates row-level security')) {
+        logger.error(`RLS violation - check policies on user_google_business_profiles table`);
+      } else if (upsertResult.error.message?.includes('violates not-null constraint')) {
+        logger.error(`Not-null constraint violation - missing required field`);
+      }
+      
+      throw new Error(`Database error: ${upsertResult.error.message || "Unknown database error"}`);
+    }
+    
+    // Vérification post-insertion/mise à jour
+    const verifiedProfile = await getUserGoogleProfile(userId);
+    if (verifiedProfile) {
+      logger.info(`Profile verified after save: ID=${verifiedProfile.id}, email=${verifiedProfile.google_email}`);
+    } else {
+      logger.error(`CRITICAL: Profile could not be verified after save attempt for user: ${userId}`);
+    }
+    
+    logger.info(`Profile saved successfully for user: ${userId}`);
+    return true;
+  } catch (error) {
+    logger.error(`Error handling callback for user ${userId}: ${JSON.stringify(error)}`);
+    throw error;
+  }
+}
+
 serve(async (req) => {
   const requestId = crypto.randomUUID();
   console.log(`[${requestId}] New request: ${req.method} ${req.url}`);
@@ -493,126 +588,31 @@ serve(async (req) => {
         logger.info(`[${requestId}] State verification successful`);
       }
       
-      logger.info(`[${requestId}] Exchanging code for tokens`);
-      const tokenData = await exchangeCodeForTokens(code);
-      const { access_token, refresh_token, expires_in } = tokenData;
-      
-      if (!refresh_token) {
-        logger.error(`[${requestId}] CRITICAL: No refresh token received from Google!`);
-        throw new Error('No refresh token received from Google. Please try again with a different account or clear your browser cookies.');
-      }
-      
-      logger.info(`[${requestId}] Getting Google user information`);
-      const userInfo = await getGoogleUserInfo(access_token);
-      
-      const tokenExpiresAt = new Date();
-      tokenExpiresAt.setSeconds(tokenExpiresAt.getSeconds() + expires_in);
-      
       try {
-        const existingProfile = await getUserGoogleProfile(userId);
-        logger.info(`[${requestId}] Profile exists check: ${existingProfile ? 'yes' : 'no'}`);
+        await handleCallback(code, state, userId);
         
-        let upsertResult;
-        if (existingProfile) {
-          logger.info(`[${requestId}] Updating existing profile for user: ${userId}`);
-          upsertResult = await supabaseAdmin
-            .from('user_google_business_profiles')
-            .update({
-              google_email: userInfo.email,
-              refresh_token,
-              access_token,
-              token_expires_at: tokenExpiresAt.toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .eq('user_id', userId);
-        } else {
-          logger.info(`[${requestId}] Creating new profile for user: ${userId} with email: ${userInfo.email}`);
-          logger.info(`[${requestId}] Data being inserted: user_id=${userId}, google_email=${userInfo.email}, token_expires_at=${tokenExpiresAt.toISOString()}, refresh_token present=${!!refresh_token}, access_token present=${!!access_token}`);
-          
-          const insertData = {
-            user_id: userId,
-            google_email: userInfo.email,
-            refresh_token: refresh_token,
-            access_token: access_token,
-            token_expires_at: tokenExpiresAt.toISOString(),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
-          
-          logger.info(`[${requestId}] Full insert data: ${JSON.stringify(insertData)}`);
-          
-          upsertResult = await supabaseAdmin
-            .from('user_google_business_profiles')
-            .insert(insertData);
-            
-          logger.info(`[${requestId}] Insert result: ${JSON.stringify(upsertResult)}`);
-        }
-        
-        if (upsertResult.error) {
-          logger.error(`[${requestId}] Error upserting profile: ${JSON.stringify(upsertResult.error)}`);
-          
-          if (upsertResult.error.code === '23505') {
-            logger.error(`[${requestId}] Duplicate key violation - record already exists`);
-          } else if (upsertResult.error.code === '42P01') {
-            logger.error(`[${requestId}] Table does not exist - check your migrations`);
-          } else if (upsertResult.error.message?.includes('violates row-level security')) {
-            logger.error(`[${requestId}] RLS violation - check policies on user_google_business_profiles table`);
-          } else if (upsertResult.error.message?.includes('violates not-null constraint')) {
-            logger.error(`[${requestId}] Not-null constraint violation - missing required field`);
-            logger.error(`[${requestId}] Attempted fields: ${Object.keys(existingProfile ? {
-              google_email: userInfo.email,
-              refresh_token,
-              access_token,
-              token_expires_at: tokenExpiresAt.toISOString(),
-              updated_at: new Date().toISOString()
-            } : insertData).join(', ')}`);
+        logger.info(`[${requestId}] Callback processed successfully`);
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: 'Google account linked successfully' 
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           }
-          
-          throw new Error(`Database error: ${upsertResult.error.message || "Unknown database error"}`);
-        }
-        
-        const verifyProfile = await getUserGoogleProfile(userId);
-        if (verifyProfile) {
-          logger.info(`[${requestId}] Profile verified after save: ID=${verifyProfile.id}, email=${verifyProfile.google_email}`);
-        } else {
-          logger.error(`[${requestId}] CRITICAL: Profile could not be verified after save attempt!`);
-          logger.error(`[${requestId}] Will try direct database query to debug...`);
-          
-          try {
-            const { data: directData, error: directError } = await supabaseAdmin
-              .from('user_google_business_profiles')
-              .select('id, user_id, google_email')
-              .eq('user_id', userId);
-              
-            if (directError) {
-              logger.error(`[${requestId}] Direct query error: ${JSON.stringify(directError)}`);
-            } else if (directData && directData.length > 0) {
-              logger.info(`[${requestId}] Direct query found profile: ${JSON.stringify(directData)}`);
-            } else {
-              logger.error(`[${requestId}] Direct query confirmed profile does not exist!`);
-            }
-          } catch (e) {
-            logger.error(`[${requestId}] Exception during direct query: ${e.message}`);
+        );
+      } catch (error) {
+        logger.error(`[${requestId}] Error handling callback:`, error);
+        return new Response(
+          JSON.stringify({ 
+            error: error.message || "Failed to connect Google account" 
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           }
-        }
-        
-        logger.info(`[${requestId}] Profile save operation completed: ${upsertResult.statusText || "Success"}`);
-      } catch (dbError) {
-        logger.error(`[${requestId}] Database error during profile save: ${JSON.stringify(dbError)}`);
-        throw new Error(`Database error: ${dbError.message || "Unknown database error"}`);
+        );
       }
-      
-      logger.info(`[${requestId}] Callback processed successfully`);
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: 'Google account linked successfully',
-          email: userInfo.email
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
     } 
     else if (action === 'get_profile') {
       logger.info(`[${requestId}] Getting Google profile for user: ${userId}`);
