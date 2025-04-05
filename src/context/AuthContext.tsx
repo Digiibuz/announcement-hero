@@ -15,6 +15,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { userProfile, setUserProfile, fetchFullProfile } = useUserProfile();
   const { originalUser, isImpersonating, impersonateUser: startImpersonation, stopImpersonating: endImpersonation } = useImpersonation(userProfile);
   const [isOnResetPasswordPage, setIsOnResetPasswordPage] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   // Check if we're on the password reset page
   useEffect(() => {
@@ -56,6 +57,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUserProfile(null);
           setIsLoading(false);
         }
+        
+        // Mark that we've checked for a session
+        setSessionChecked(true);
       }
     );
 
@@ -72,6 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.error("Error retrieving initial session:", error);
           setUserProfile(null);
           setIsLoading(false);
+          setSessionChecked(true);
           return;
         }
         
@@ -107,10 +112,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUserProfile(null);
           setIsLoading(false);
         }
+        
+        // Mark that we've checked for a session
+        setSessionChecked(true);
       } catch (error) {
         console.error("Exception during auth initialization:", error);
         setUserProfile(null);
         setIsLoading(false);
+        setSessionChecked(true);
       }
     };
 
@@ -175,21 +184,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Impersonation wrappers
   const impersonateUser = (userToImpersonate: UserProfile) => {
-    const impersonatedUser = startImpersonation(userToImpersonate);
-    if (impersonatedUser) {
-      setUserProfile(impersonatedUser);
-      localStorage.setItem('userRole', impersonatedUser.role);
-      localStorage.setItem('userId', impersonatedUser.id);
-    }
+    // Only allow admins to impersonate
+    if (!currentUser || currentUser.role !== "admin") return;
+    
+    // Store the original user
+    setOriginalUser(currentUser);
+    localStorage.setItem("originalUser", JSON.stringify(currentUser));
+    setIsImpersonating(true);
+    
+    return userToImpersonate;
   };
 
   const stopImpersonating = () => {
-    const originalUserProfile = endImpersonation();
-    if (originalUserProfile) {
-      setUserProfile(originalUserProfile);
-      localStorage.setItem('userRole', originalUserProfile.role);
-      localStorage.setItem('userId', originalUserProfile.id);
-    }
+    if (!originalUser) return null;
+    
+    // Restore the original user
+    setIsImpersonating(false);
+    
+    // Clear impersonation state
+    localStorage.removeItem("originalUser");
+    const user = originalUser;
+    setOriginalUser(null);
+    
+    return user;
   };
 
   const value: AuthContextType = {
@@ -206,6 +223,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     originalUser,
     isImpersonating,
     isOnResetPasswordPage,
+    sessionChecked,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -21,7 +21,7 @@ const Login = () => {
   const [pageLoaded, setPageLoaded] = useState(false);
   const [loadingError, setLoadingError] = useState(false);
   const [isProcessingCallback, setIsProcessingCallback] = useState(false);
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, sessionChecked } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -56,23 +56,47 @@ const Login = () => {
         console.log("Detected auth parameters in URL, processing callback...");
         setIsProcessingCallback(true);
         
-        // Let Supabase auth handle the URL parameters
-        // This will create a session if the auth params are valid
-        await supabase.auth.getSession();
+        try {
+          // Let Supabase auth handle the URL parameters
+          const { data, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            console.error("Error getting session during callback:", error);
+            toast.error("Erreur lors de l'authentification");
+            setIsProcessingCallback(false);
+          } else if (data.session) {
+            console.log("Session obtained during callback:", data.session.user.id);
+            toast.success("Connexion réussie");
+            
+            // Small delay to allow context to update
+            setTimeout(() => {
+              navigate("/dashboard");
+            }, 500);
+          } else {
+            console.log("No session found during callback processing");
+            setIsProcessingCallback(false);
+          }
+        } catch (err) {
+          console.error("Exception during callback processing:", err);
+          toast.error("Erreur lors du traitement de l'authentification");
+          setIsProcessingCallback(false);
+        }
       }
     };
     
-    handleAuthCallback();
-  }, []);
+    if (!isAuthenticated) {
+      handleAuthCallback();
+    }
+  }, [navigate, isAuthenticated]);
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated, but only after session check is complete
   useEffect(() => {
-    if (isAuthenticated) {
+    if (sessionChecked && isAuthenticated) {
       console.log("User is already authenticated, redirecting to dashboard");
       navigate("/dashboard");
       return;
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, sessionChecked]);
 
   // Listen for auth state changes
   useEffect(() => {
@@ -86,6 +110,7 @@ const Login = () => {
         setIsProcessingCallback(false);
         setIsGoogleLoading(false);
         
+        // Give a small delay for context to update
         setTimeout(() => {
           console.log("Navigating to dashboard after auth state change");
           navigate("/dashboard");
@@ -123,6 +148,9 @@ const Login = () => {
       setIsGoogleLoading(true);
       console.log("Initiating Google sign-in");
       
+      // Store a flag indicating Google auth is in progress
+      sessionStorage.setItem('google_auth_in_progress', 'true');
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -139,6 +167,7 @@ const Login = () => {
         console.error("Erreur de connexion Google:", error);
         toast.error("Échec de la connexion avec Google: " + error.message);
         setIsGoogleLoading(false);
+        sessionStorage.removeItem('google_auth_in_progress');
       } else if (data?.url) {
         console.log("Google auth initiated, redirecting to:", data.url);
         window.location.href = data.url;
@@ -146,11 +175,13 @@ const Login = () => {
         console.error("No redirect URL received from Supabase");
         toast.error("Erreur: Aucune URL de redirection reçue");
         setIsGoogleLoading(false);
+        sessionStorage.removeItem('google_auth_in_progress');
       }
     } catch (error: any) {
       console.error("Exception lors de la connexion Google:", error);
       toast.error("Erreur lors de la connexion avec Google");
       setIsGoogleLoading(false);
+      sessionStorage.removeItem('google_auth_in_progress');
     }
   };
 
@@ -165,6 +196,31 @@ const Login = () => {
       window.location.reload();
     }
   };
+
+  // Check if returning from Google auth
+  useEffect(() => {
+    const isReturningFromGoogle = sessionStorage.getItem('google_auth_in_progress');
+    if (isReturningFromGoogle) {
+      console.log("Detected return from Google auth");
+      setIsProcessingCallback(true);
+      // Remove the flag
+      sessionStorage.removeItem('google_auth_in_progress');
+      
+      // Attempt to get session
+      supabase.auth.getSession().then(({ data, error }) => {
+        if (error) {
+          console.error("Error getting session after Google auth return:", error);
+          setIsProcessingCallback(false);
+        } else if (data.session) {
+          console.log("Session found after Google auth return:", data.session.user.id);
+          // Session will be handled by onAuthStateChange
+        } else {
+          console.log("No session found after Google auth return");
+          setIsProcessingCallback(false);
+        }
+      });
+    }
+  }, []);
 
   if (loadingError) {
     return (
@@ -195,6 +251,25 @@ const Login = () => {
             <CardTitle>Authentification en cours</CardTitle>
             <CardDescription>
               Nous finalisons votre connexion, veuillez patienter...
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center py-6">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Only render the login form if not authenticated
+  if (sessionChecked && isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle>Vous êtes déjà connecté</CardTitle>
+            <CardDescription>
+              Redirection vers le tableau de bord...
             </CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center py-6">

@@ -1,3 +1,4 @@
+
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
@@ -42,7 +43,7 @@ const queryClient = new QueryClient({
 
 // Protected route component with improved memory
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading, isOnResetPasswordPage } = useAuth();
+  const { isAuthenticated, isLoading, isOnResetPasswordPage, sessionChecked } = useAuth();
   const location = useLocation();
 
   // Ne pas vérifier l'authentification si nous sommes sur la page de réinitialisation de mot de passe
@@ -52,7 +53,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     }
   }, [location.pathname, isAuthenticated, isLoading, isOnResetPasswordPage]);
 
-  if (isLoading) {
+  if (isLoading || !sessionChecked) {
     return <LoadingFallback />;
   }
 
@@ -71,7 +72,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Admin only route component with improved state persistence
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading, isAdmin, isClient, isOnResetPasswordPage } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin, isClient, isOnResetPasswordPage, sessionChecked } = useAuth();
   const location = useLocation();
 
   // Enhanced admin route persistence
@@ -84,7 +85,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
     }
   }, [location.pathname, isAuthenticated, isAdmin, isClient, isLoading, isOnResetPasswordPage]);
 
-  if (isLoading) {
+  if (isLoading || !sessionChecked) {
     return <LoadingFallback />;
   }
 

@@ -31,6 +31,7 @@ export interface AuthContextType {
   originalUser: UserProfile | null;
   isImpersonating: boolean;
   isOnResetPasswordPage: boolean;
+  sessionChecked: boolean;
 }
 
 export interface GoogleBusinessProfile {
