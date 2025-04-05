@@ -52,6 +52,7 @@ export const useGoogleBusiness = () => {
       
       if (!session) {
         console.log("User not logged in");
+        setDebugInfo(prev => ({ ...prev, lastResponse: { error: "User not logged in" } }));
         throw new Error("User not logged in");
       }
       
@@ -71,7 +72,7 @@ export const useGoogleBusiness = () => {
       
       const { profile } = response.data || {};
       
-      // Ajoutons plus de logs pour comprendre ce qui se passe
+      // Add debug logging to understand what's being returned
       console.log("Profile data returned:", profile);
       
       if (profile) {
@@ -177,18 +178,33 @@ export const useGoogleBusiness = () => {
         throw new Error(response.error.message || "Error connecting to Google account");
       }
       
-      // Vérifier immédiatement si le profil a été créé
+      // Immediately check if the profile was created
       console.log("Callback successful, refreshing profile to verify creation");
       const newProfile = await fetchProfile();
       
       if (!newProfile) {
         console.warn("Profile not found after successful callback - this might indicate a database issue");
-        setError("Profile connection succeeded but profile was not found in database");
+        // Just a warning, not an error - we'll try again later
+        console.log("Will retry profile fetch in 2 seconds...");
+        
+        // Add a delayed retry to give the database time to catch up
+        setTimeout(async () => {
+          console.log("Retrying profile fetch...");
+          const retryProfile = await fetchProfile();
+          
+          if (retryProfile) {
+            console.log("Profile successfully retrieved on retry:", retryProfile);
+            toast.success("Google account connected successfully");
+          } else {
+            console.error("Profile still not found after retry");
+            setError("Profile connection succeeded but profile was not found in database after retry");
+            toast.error("Connection partially successful - please try refreshing");
+          }
+        }, 2000);
       } else {
         console.log("Profile successfully retrieved after callback:", newProfile);
+        toast.success("Google account connected successfully");
       }
-      
-      toast.success("Google account connected successfully");
       
       return true;
     } catch (error: any) {
@@ -350,8 +366,8 @@ export const useGoogleBusiness = () => {
     accounts,
     locations,
     error,
-    debugInfo, // Make sure these properties are included in the return
-    callbackProcessed, // Make sure these properties are included in the return
+    debugInfo,
+    callbackProcessed,
     fetchProfile,
     getAuthUrl,
     handleCallback,
