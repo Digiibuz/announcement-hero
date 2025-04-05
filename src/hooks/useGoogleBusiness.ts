@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -35,6 +34,7 @@ export const useGoogleBusiness = () => {
     lastApiCall: string;
     lastResponse: any;
   }>({ lastApiCall: '', lastResponse: null });
+  const [noLocationsFound, setNoLocationsFound] = useState(false);
 
   useEffect(() => {
     fetchProfile().catch(error => {
@@ -72,7 +72,6 @@ export const useGoogleBusiness = () => {
       
       const { profile } = response.data || {};
       
-      // Add debug logging to understand what's being returned
       console.log("Profile data returned:", profile);
       
       if (profile) {
@@ -178,16 +177,13 @@ export const useGoogleBusiness = () => {
         throw new Error(response.error.message || "Error connecting to Google account");
       }
       
-      // Immediately check if the profile was created
       console.log("Callback successful, refreshing profile to verify creation");
       const newProfile = await fetchProfile();
       
       if (!newProfile) {
         console.warn("Profile not found after successful callback - this might indicate a database issue");
-        // Just a warning, not an error - we'll try again later
         console.log("Will retry profile fetch in 2 seconds...");
         
-        // Add a delayed retry to give the database time to catch up
         setTimeout(async () => {
           console.log("Retrying profile fetch...");
           const retryProfile = await fetchProfile();
@@ -221,6 +217,7 @@ export const useGoogleBusiness = () => {
     try {
       setIsLoading(true);
       setError(null);
+      setNoLocationsFound(false);
       
       console.log("Requesting accounts list");
       
@@ -240,6 +237,11 @@ export const useGoogleBusiness = () => {
       console.log("Accounts retrieved:", accountsList);
       
       setAccounts(accountsList);
+      
+      if (accountsList.length === 0) {
+        setNoLocationsFound(true);
+      }
+      
       return accountsList;
     } catch (error: any) {
       console.error("Error retrieving accounts:", error);
@@ -255,6 +257,7 @@ export const useGoogleBusiness = () => {
     try {
       setIsLoading(true);
       setError(null);
+      setNoLocationsFound(false);
       
       console.log("Requesting locations list for account:", accountId);
       
@@ -274,6 +277,11 @@ export const useGoogleBusiness = () => {
       console.log("Locations retrieved:", locationsList);
       
       setLocations(locationsList);
+      
+      if (locationsList.length === 0) {
+        setNoLocationsFound(true);
+      }
+      
       return locationsList;
     } catch (error: any) {
       console.error("Error retrieving locations:", error);
@@ -368,6 +376,7 @@ export const useGoogleBusiness = () => {
     error,
     debugInfo,
     callbackProcessed,
+    noLocationsFound,
     fetchProfile,
     getAuthUrl,
     handleCallback,

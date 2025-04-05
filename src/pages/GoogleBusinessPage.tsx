@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -10,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { 
   Building2, LogOut, MapPin, Store, ChevronRight, 
-  RefreshCw, CheckCircle, ExternalLink, AlertCircle, Bug 
+  RefreshCw, CheckCircle, ExternalLink, AlertCircle, Bug, AlertTriangle, Info 
 } from "lucide-react";
 import { toast } from "sonner";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
@@ -21,6 +20,15 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 const GoogleBusinessPage = () => {
   const navigate = useNavigate();
@@ -30,22 +38,21 @@ const GoogleBusinessPage = () => {
     isLoading, isConnected, profile, accounts, locations, error,
     fetchProfile, getAuthUrl, handleCallback,
     listAccounts, listLocations, saveLocation, disconnect,
-    debugInfo, callbackProcessed // These properties now properly destructured from the hook
+    debugInfo, callbackProcessed, noLocationsFound
   } = useGoogleBusiness();
   
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("profile");
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isCallbackProcessing, setIsCallbackProcessing] = useState(false);
+  const [showNoLocationsDialog, setShowNoLocationsDialog] = useState(false);
   
-  // Check if user is logged in
   useEffect(() => {
     if (!isAuthenticated && !searchParams.get("code")) {
       navigate("/login");
     }
   }, [isAuthenticated, navigate, searchParams]);
   
-  // Initialize GMB profile
   useEffect(() => {
     const initProfile = async () => {
       try {
@@ -59,13 +66,11 @@ const GoogleBusinessPage = () => {
       }
     };
     
-    // Only init profile if user is authenticated and not processing callback
     if (isAuthenticated && !isCallbackProcessing) {
       initProfile();
     }
   }, [fetchProfile, isAuthenticated, isCallbackProcessing]);
   
-  // Process OAuth callback
   useEffect(() => {
     const code = searchParams.get("code");
     const state = searchParams.get("state");
@@ -74,14 +79,11 @@ const GoogleBusinessPage = () => {
       setIsCallbackProcessing(true);
       console.log("Processing OAuth callback with code and state:", { code_length: code.length, state });
       
-      // Process the callback without waiting for other effects
       handleCallback(code, state).then((success) => {
         if (success) {
-          // Remove URL parameters
           navigate("/google-business", { replace: true });
           toast.success("Google account connected successfully");
           
-          // Refresh the profile after a short delay
           setTimeout(() => {
             fetchProfile().catch(err => {
               console.error("Error refreshing profile after callback:", err);
@@ -98,15 +100,19 @@ const GoogleBusinessPage = () => {
       });
     }
   }, [searchParams, handleCallback, navigate, fetchProfile, isCallbackProcessing]);
-
-  // Update local error state when the hook error changes
+  
+  useEffect(() => {
+    if (noLocationsFound && (activeTab === "accounts" || activeTab === "locations")) {
+      setShowNoLocationsDialog(true);
+    }
+  }, [noLocationsFound, activeTab]);
+  
   useEffect(() => {
     if (error) {
       setConnectionError(error);
     }
   }, [error]);
   
-  // Connect to Google
   const handleConnect = async () => {
     setConnectionError(null);
     try {
@@ -125,7 +131,6 @@ const GoogleBusinessPage = () => {
     }
   };
   
-  // Load GMB accounts
   const handleLoadAccounts = async () => {
     setConnectionError(null);
     try {
@@ -136,7 +141,6 @@ const GoogleBusinessPage = () => {
     }
   };
   
-  // Load locations for a GMB account
   const handleSelectAccount = async (accountId: string) => {
     setConnectionError(null);
     try {
@@ -148,7 +152,6 @@ const GoogleBusinessPage = () => {
     }
   };
   
-  // Select a location
   const handleSelectLocation = async (locationId: string) => {
     if (!selectedAccountId) return;
     
@@ -163,7 +166,6 @@ const GoogleBusinessPage = () => {
     }
   };
   
-  // Disconnect from Google
   const handleDisconnect = async () => {
     setConnectionError(null);
     try {
@@ -176,8 +178,6 @@ const GoogleBusinessPage = () => {
     }
   };
   
-  // Special case: If we're processing a callback, show a loading state
-  // even if the user isn't fully authenticated yet
   const isProcessingCallback = searchParams.get("code") && searchParams.get("state");
   
   if (!user && !isProcessingCallback) return null;
@@ -221,7 +221,6 @@ const GoogleBusinessPage = () => {
             </Card>
           )}
           
-          {/* Debugging information */}
           {process.env.NODE_ENV !== 'production' && (
             <Accordion type="single" collapsible className="mb-4">
               <AccordionItem value="debug-info">
@@ -272,7 +271,6 @@ const GoogleBusinessPage = () => {
             </Accordion>
           )}
           
-          {/* Show loading indicator if we're waiting for auth or profile, and not processing callback */}
           {isLoading && !profile && !isCallbackProcessing ? (
             <Card className="shadow-md">
               <CardContent className="pt-6 flex justify-center items-center h-40">
@@ -287,7 +285,6 @@ const GoogleBusinessPage = () => {
                 <TabsTrigger value="locations" disabled={!selectedAccountId}>Locations</TabsTrigger>
               </TabsList>
               
-              {/* Profile Tab */}
               <TabsContent value="profile">
                 <Card className="shadow-md">
                   <CardHeader>
@@ -367,7 +364,6 @@ const GoogleBusinessPage = () => {
                 </Card>
               </TabsContent>
               
-              {/* Accounts Tab */}
               <TabsContent value="accounts">
                 <Card className="shadow-md">
                   <CardHeader>
@@ -437,7 +433,6 @@ const GoogleBusinessPage = () => {
                 </Card>
               </TabsContent>
               
-              {/* Locations Tab */}
               <TabsContent value="locations">
                 <Card className="shadow-md">
                   <CardHeader>
@@ -527,6 +522,42 @@ const GoogleBusinessPage = () => {
           </div>
         </AnimatedContainer>
       </div>
+
+      <Dialog open={showNoLocationsDialog} onOpenChange={setShowNoLocationsDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-2xl">Aucune fiche n'a ��té trouvée</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-4">
+            <div className="flex items-center justify-center h-20 w-20 rounded-full bg-slate-100">
+              <AlertTriangle className="h-10 w-10 text-orange-500" />
+            </div>
+            <div className="text-center space-y-2">
+              <p className="font-semibold">{profile?.googleEmail || "Votre compte Google"}</p>
+              <Button variant="link" onClick={handleDisconnect} className="text-blue-500">
+                Déconnectez-vous et connectez un autre compte
+              </Button>
+            </div>
+            <Separator className="my-4" />
+            <div className="text-center">
+              <p className="text-base mb-6">
+                Il n'y a pas de fiches qui soient gérées par votre compte. Essayez un autre 
+                compte en vous déconnectant, ou nous pouvons vous aider à créer votre 
+                profil d'entreprise.
+              </p>
+              <Button 
+                className="w-full"
+                onClick={() => {
+                  setShowNoLocationsDialog(false);
+                  window.open("https://business.google.com/create", "_blank");
+                }}
+              >
+                Créer un Profil d'Établissement Google
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 };
