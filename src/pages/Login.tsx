@@ -56,15 +56,24 @@ const Login = () => {
       console.log("Detected auth parameters in URL, processing callback...");
       setIsProcessingCallback(true);
       
-      // Let Supabase handle the auth session
-      const { data, error } = supabase.auth.getSession();
+      // Let Supabase handle the auth session - use async/await properly
+      const handleAuthSession = async () => {
+        try {
+          const { data, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            console.error("Error getting session during callback:", error);
+            toast.error("Erreur lors de la connexion: " + error.message);
+            setIsProcessingCallback(false);
+          }
+        } catch (err) {
+          console.error("Exception during session retrieval:", err);
+          toast.error("Une erreur s'est produite lors de la récupération de la session");
+          setIsProcessingCallback(false);
+        }
+      };
       
-      // Error is handled by onAuthStateChange listener
-      if (error) {
-        console.error("Error getting session during callback:", error);
-        toast.error("Erreur lors de la connexion: " + error.message);
-        setIsProcessingCallback(false);
-      }
+      handleAuthSession();
     }
   }, []);
 
