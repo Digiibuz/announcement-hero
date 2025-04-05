@@ -1,4 +1,3 @@
-
 import { Session } from "@supabase/supabase-js";
 
 /**
@@ -104,7 +103,6 @@ export const debugSessionInfo = (session: Session | null) => {
     tokenInfo: {
       accessTokenPreview: accessToken,
       refreshTokenPreview: refreshToken,
-      provider: session.provider,
       expiresIn: session.expires_in
     }
   };
