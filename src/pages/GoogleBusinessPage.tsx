@@ -94,7 +94,15 @@ const GoogleBusinessPage = () => {
         }
       }).catch(err => {
         console.error("Error handling callback:", err);
-        toast.error("Error connecting to Google: " + (err.message || "Unknown error"));
+        const errorMessage = err.message || "Unknown error";
+        
+        if (errorMessage.includes("refresh token")) {
+          toast.error("Connexion impossible: Ce compte Google a déjà été utilisé. Veuillez déconnecter l'application dans les paramètres Google ou utiliser un autre compte.");
+        } else if (errorMessage.includes("permission")) {
+          toast.error("Connexion impossible: Votre compte Google n'a pas accès à Google My Business ou n'a pas de fiche.");
+        } else {
+          toast.error("Erreur de connexion à Google: " + errorMessage);
+        }
       }).finally(() => {
         setIsCallbackProcessing(false);
       });

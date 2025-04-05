@@ -235,7 +235,7 @@ async function exchangeCodeForTokens(code: string) {
     logger.info(`Tokens received successfully. access_token length: ${data.access_token?.length}, refresh_token present: ${!!data.refresh_token}`);
     
     if (!data.refresh_token) {
-      logger.error("WARNING: No refresh_token received! This will cause problems later.");
+      logger.error("WARNING: No refresh_token received! This might be because this Google account was already authorized previously. Try using a different account or revoking access at https://myaccount.google.com/permissions");
     }
     
     return data;
@@ -342,6 +342,12 @@ async function callGmbApi(endpoint: string, method = 'GET', accessToken: string,
     
     if (!response.ok) {
       logger.error(`GMB API error (${response.status}): ${JSON.stringify(responseData)}`);
+      
+      if (response.status === 403) {
+        logger.error(`Permission error: User may not have proper permissions to the Google My Business API`);
+        throw new Error(`You don't have permission to access Google My Business. Make sure your Google account has a GMB listing and verify that you have the necessary permissions.`);
+      }
+      
       throw new Error(`GMB API error (${response.status}): ${JSON.stringify(responseData)}`);
     }
     
@@ -499,7 +505,9 @@ serve(async (req) => {
       
       if (!refresh_token) {
         logger.error(`[${requestId}] CRITICAL: No refresh token received from Google!`);
-        throw new Error('No refresh token received from Google. Please try again with a different account or clear your browser cookies.');
+        logger.error(`[${requestId}] This often happens when the user has previously authorized this application.`);
+        logger.error(`[${requestId}] They should try a different Google account or revoke access at https://myaccount.google.com/permissions`);
+        throw new Error('No refresh token received from Google. This usually happens when your account has already been connected before. Please try a different Google account or revoke the app permissions in your Google account settings (myaccount.google.com/permissions) and try again.');
       }
       
       logger.info(`[${requestId}] Getting Google user information`);
@@ -512,6 +520,16 @@ serve(async (req) => {
         const existingProfile = await getUserGoogleProfile(userId);
         logger.info(`[${requestId}] Profile exists check: ${existingProfile ? 'yes' : 'no'}`);
         
+        if (existingProfile && !refresh_token) {
+          logger.info(`[${requestId}] Detected reconnection without refresh token - deleting old connection first`);
+          await supabaseAdmin
+            .from('user_google_business_profiles')
+            .delete()
+            .eq('user_id', userId);
+            
+          logger.info(`[${requestId}] Old connection deleted, proceeding with new connection`);
+        }
+        
         let upsertResult;
         if (existingProfile) {
           logger.info(`[${requestId}] Updating existing profile for user: ${userId}`);
@@ -519,7 +537,7 @@ serve(async (req) => {
             .from('user_google_business_profiles')
             .update({
               google_email: userInfo.email,
-              refresh_token,
+              refresh_token: refresh_token || existingProfile.refresh_token,
               access_token,
               token_expires_at: tokenExpiresAt.toISOString(),
               updated_at: new Date().toISOString()
@@ -561,7 +579,7 @@ serve(async (req) => {
             logger.error(`[${requestId}] Not-null constraint violation - missing required field`);
             logger.error(`[${requestId}] Attempted fields: ${Object.keys(existingProfile ? {
               google_email: userInfo.email,
-              refresh_token,
+              refresh_token: refresh_token || existingProfile.refresh_token,
               access_token,
               token_expires_at: tokenExpiresAt.toISOString(),
               updated_at: new Date().toISOString()
@@ -600,6 +618,20 @@ serve(async (req) => {
       } catch (dbError) {
         logger.error(`[${requestId}] Database error during profile save: ${JSON.stringify(dbError)}`);
         throw new Error(`Database error: ${dbError.message || "Unknown database error"}`);
+      }
+      
+      try {
+        logger.info(`[${requestId}] Validating GMB access by listing accounts`);
+        const accounts = await listAccounts(access_token);
+        
+        if (accounts && accounts.accounts && accounts.accounts.length > 0) {
+          logger.info(`[${requestId}] GMB access validated successfully! Found ${accounts.accounts.length} accounts`);
+        } else {
+          logger.warn(`[${requestId}] GMB API returned empty accounts list. User may not have any GMB listings`);
+        }
+      } catch (gmbValidationError) {
+        logger.error(`[${requestId}] GMB validation error: ${JSON.stringify(gmbValidationError)}`);
+        // We won't throw here as we don't want to block the connection, just log the issue
       }
       
       logger.info(`[${requestId}] Callback processed successfully`);
