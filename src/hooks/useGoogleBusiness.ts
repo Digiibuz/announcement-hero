@@ -328,121 +328,7 @@ export const useGoogleBusiness = () => {
     }
   }, [generateStateParam]);
 
-  const handleCallback = useCallback(async (code: string, state: string) => {
-    try {
-      if (callbackProcessed) {
-        console.log("Callback already processed, skipping");
-        return true;
-      }
-
-      if (!validateStateParam(state)) {
-        const stateError = "Invalid OAuth state parameter. This may be a security issue or your session expired.";
-        console.error(stateError);
-        setError(stateError);
-        toast.error(stateError);
-        setAuthInProgress(false);
-        return false;
-      }
-
-      setIsLoading(true);
-      setError(null);
-      setCallbackProcessed(true);
-      setDebugInfo(prev => ({ ...prev, lastApiCall: 'handle_callback' }));
-      
-      console.log("Processing callback with code and state:", { codeLength: code.length, state });
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.log("User not logged in when processing callback");
-        setError("You must be logged in to connect your Google account");
-        setCallbackProcessed(false); // Reset to allow retrying
-        setAuthInProgress(false);
-        throw new Error("User not logged in");
-      }
-      
-      const response = await supabase.functions.invoke('google-business', {
-        body: { action: 'handle_callback', code, state },
-      });
-      
-      console.log("Callback response:", response);
-      setDebugInfo(prev => ({ ...prev, lastResponse: response }));
-      
-      if (response.error) {
-        console.error("Error processing callback:", response.error);
-        setError(`Authentication error: ${response.error.message || "Failed to connect to Google account"}`);
-        setCallbackProcessed(false); // Reset to allow retrying
-        setAuthInProgress(false);
-        throw new Error(response.error.message || "Error connecting to Google account");
-      }
-      
-      console.log("Callback successful, refreshing profile to verify creation");
-      const newProfile = await fetchProfile();
-      
-      if (!newProfile) {
-        console.warn("Profile not found after successful callback - this might indicate a database issue");
-        console.log("Will retry profile fetch in 2 seconds...");
-        
-        setTimeout(async () => {
-          console.log("Retrying profile fetch (1st attempt)...");
-          const retryProfile = await fetchProfile();
-          
-          if (retryProfile) {
-            console.log("Profile successfully retrieved on retry:", retryProfile);
-            toast.success("Google account connected successfully");
-            
-            setTimeout(() => {
-              listAccounts().catch(e => {
-                console.error("Error auto-loading accounts after connection:", e);
-              });
-            }, 500);
-          } else {
-            console.error("Profile still not found after 1st retry");
-            
-            setTimeout(async () => {
-              console.log("Retrying profile fetch (2nd attempt)...");
-              const secondRetryProfile = await fetchProfile();
-              
-              if (secondRetryProfile) {
-                console.log("Profile successfully retrieved on 2nd retry:", secondRetryProfile);
-                toast.success("Google account connected successfully");
-                
-                setTimeout(() => {
-                  listAccounts().catch(e => {
-                    console.error("Error auto-loading accounts after connection:", e);
-                  });
-                }, 500);
-              } else {
-                console.error("Profile still not found after multiple retries");
-                setError("Profile connection succeeded but profile was not found in database after retries");
-                toast.error("Connection partially successful - please try refreshing");
-              }
-            }, 3000);
-          }
-        }, 2000);
-      } else {
-        console.log("Profile successfully retrieved after callback:", newProfile);
-        toast.success("Google account connected successfully");
-        
-        setTimeout(() => {
-          listAccounts().catch(e => {
-            console.error("Error auto-loading accounts after connection:", e);
-          });
-        }, 500);
-      }
-      
-      setAuthInProgress(false);
-      return true;
-    } catch (error: any) {
-      console.error("Error processing callback:", error);
-      setError(`Authentication failed: ${error.message || "Unknown error"}`);
-      toast.error("Error connecting to Google account");
-      setAuthInProgress(false);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [fetchProfile, callbackProcessed, validateStateParam, listAccounts]);
-
+  // First, let's define the listAccounts function before it's used
   const listAccounts = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -621,6 +507,121 @@ export const useGoogleBusiness = () => {
       setIsLoading(false);
     }
   }, [fetchProfile]);
+
+  const handleCallback = useCallback(async (code: string, state: string) => {
+    try {
+      if (callbackProcessed) {
+        console.log("Callback already processed, skipping");
+        return true;
+      }
+
+      if (!validateStateParam(state)) {
+        const stateError = "Invalid OAuth state parameter. This may be a security issue or your session expired.";
+        console.error(stateError);
+        setError(stateError);
+        toast.error(stateError);
+        setAuthInProgress(false);
+        return false;
+      }
+
+      setIsLoading(true);
+      setError(null);
+      setCallbackProcessed(true);
+      setDebugInfo(prev => ({ ...prev, lastApiCall: 'handle_callback' }));
+      
+      console.log("Processing callback with code and state:", { codeLength: code.length, state });
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.log("User not logged in when processing callback");
+        setError("You must be logged in to connect your Google account");
+        setCallbackProcessed(false); // Reset to allow retrying
+        setAuthInProgress(false);
+        throw new Error("User not logged in");
+      }
+      
+      const response = await supabase.functions.invoke('google-business', {
+        body: { action: 'handle_callback', code, state },
+      });
+      
+      console.log("Callback response:", response);
+      setDebugInfo(prev => ({ ...prev, lastResponse: response }));
+      
+      if (response.error) {
+        console.error("Error processing callback:", response.error);
+        setError(`Authentication error: ${response.error.message || "Failed to connect to Google account"}`);
+        setCallbackProcessed(false); // Reset to allow retrying
+        setAuthInProgress(false);
+        throw new Error(response.error.message || "Error connecting to Google account");
+      }
+      
+      console.log("Callback successful, refreshing profile to verify creation");
+      const newProfile = await fetchProfile();
+      
+      if (!newProfile) {
+        console.warn("Profile not found after successful callback - this might indicate a database issue");
+        console.log("Will retry profile fetch in 2 seconds...");
+        
+        setTimeout(async () => {
+          console.log("Retrying profile fetch (1st attempt)...");
+          const retryProfile = await fetchProfile();
+          
+          if (retryProfile) {
+            console.log("Profile successfully retrieved on retry:", retryProfile);
+            toast.success("Google account connected successfully");
+            
+            setTimeout(() => {
+              listAccounts().catch(e => {
+                console.error("Error auto-loading accounts after connection:", e);
+              });
+            }, 500);
+          } else {
+            console.error("Profile still not found after 1st retry");
+            
+            setTimeout(async () => {
+              console.log("Retrying profile fetch (2nd attempt)...");
+              const secondRetryProfile = await fetchProfile();
+              
+              if (secondRetryProfile) {
+                console.log("Profile successfully retrieved on 2nd retry:", secondRetryProfile);
+                toast.success("Google account connected successfully");
+                
+                setTimeout(() => {
+                  listAccounts().catch(e => {
+                    console.error("Error auto-loading accounts after connection:", e);
+                  });
+                }, 500);
+              } else {
+                console.error("Profile still not found after multiple retries");
+                setError("Profile connection succeeded but profile was not found in database after retries");
+                toast.error("Connection partially successful - please try refreshing");
+              }
+            }, 3000);
+          }
+        }, 2000);
+      } else {
+        console.log("Profile successfully retrieved after callback:", newProfile);
+        toast.success("Google account connected successfully");
+        
+        setTimeout(() => {
+          listAccounts().catch(e => {
+            console.error("Error auto-loading accounts after connection:", e);
+          });
+        }, 500);
+      }
+      
+      setAuthInProgress(false);
+      return true;
+    } catch (error: any) {
+      console.error("Error processing callback:", error);
+      setError(`Authentication failed: ${error.message || "Unknown error"}`);
+      toast.error("Error connecting to Google account");
+      setAuthInProgress(false);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchProfile, callbackProcessed, validateStateParam, listAccounts]);
 
   const disconnect = useCallback(async () => {
     try {
