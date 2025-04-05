@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -19,6 +20,7 @@ const Login = () => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [pageLoaded, setPageLoaded] = useState(false);
   const [loadingError, setLoadingError] = useState(false);
+  const [isProcessingCallback, setIsProcessingCallback] = useState(false);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -42,16 +44,54 @@ const Login = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Handle OAuth callback on page load
+  useEffect(() => {
+    // Check if URL contains fragment or search parameters indicating an OAuth callback
+    const url = window.location.href;
+    const hasAuthParams = url.includes('#access_token=') || 
+                          url.includes('?code=') || 
+                          url.includes('#error=');
+    
+    if (hasAuthParams) {
+      console.log("Detected auth parameters in URL, processing callback...");
+      setIsProcessingCallback(true);
+      
+      // Let Supabase handle the auth session
+      const { data, error } = supabase.auth.getSession();
+      
+      // Error is handled by onAuthStateChange listener
+      if (error) {
+        console.error("Error getting session during callback:", error);
+        toast.error("Erreur lors de la connexion: " + error.message);
+        setIsProcessingCallback(false);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (isAuthenticated) {
       navigate("/dashboard");
     }
 
+    // Set up auth state change listener
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("Auth state changed:", event);
+      console.log("Auth state changed:", event, session ? "Session exists" : "No session");
+      
       if (event === 'SIGNED_IN' && session) {
+        console.log("User signed in successfully");
         toast.success("Connexion Google réussie");
-        navigate("/dashboard");
+        setIsProcessingCallback(false);
+        
+        // Short delay before navigation to allow toast to be seen
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 500);
+      } else if (event === 'TOKEN_REFRESHED') {
+        console.log("Token refreshed successfully");
+      } else if (event === 'SIGNED_OUT') {
+        console.log("User signed out");
+      } else if (event === 'USER_UPDATED') {
+        console.log("User updated");
       }
     });
 
@@ -82,7 +122,9 @@ const Login = () => {
   const handleGoogleLogin = async () => {
     try {
       setIsGoogleLoading(true);
-      const { error } = await supabase.auth.signInWithOAuth({
+      console.log("Initiating Google sign-in");
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           scopes: 'email',
@@ -93,6 +135,8 @@ const Login = () => {
       if (error) {
         console.error("Erreur de connexion Google:", error);
         toast.error("Échec de la connexion avec Google: " + error.message);
+      } else {
+        console.log("Google auth initiated, redirecting to:", data?.url);
       }
     } catch (error: any) {
       console.error("Exception lors de la connexion Google:", error);
@@ -129,6 +173,24 @@ const Login = () => {
               <RefreshCw className="mr-2 h-4 w-4" />
               Recharger l'application
             </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isProcessingCallback) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle>Authentification en cours</CardTitle>
+            <CardDescription>
+              Nous finalisons votre connexion, veuillez patienter...
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center py-6">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </CardContent>
         </Card>
       </div>
