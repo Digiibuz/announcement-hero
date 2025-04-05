@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -43,6 +44,7 @@ const Login = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Process callback parameters on initial load
   useEffect(() => {
     const handleAuthCallback = async () => {
       const url = window.location.href;
@@ -54,44 +56,26 @@ const Login = () => {
         console.log("Detected auth parameters in URL, processing callback...");
         setIsProcessingCallback(true);
         
-        try {
-          const { data, error } = await supabase.auth.getSession();
-          
-          if (error) {
-            console.error("Error getting session during callback:", error);
-            toast.error("Erreur lors de la connexion: " + error.message);
-            setIsProcessingCallback(false);
-          } else if (data?.session) {
-            console.log("Session successfully retrieved during callback:", data.session.user.id);
-            toast.success("Connexion réussie");
-            
-            setTimeout(() => {
-              console.log("Navigating to dashboard after successful callback");
-              navigate("/dashboard");
-            }, 500);
-          } else {
-            console.warn("No session found after redirect");
-            toast.error("Aucune session trouvée après redirection");
-            setIsProcessingCallback(false);
-          }
-        } catch (err) {
-          console.error("Exception during session retrieval:", err);
-          toast.error("Une erreur s'est produite lors de la récupération de la session");
-          setIsProcessingCallback(false);
-        }
+        // Let Supabase auth handle the URL parameters
+        // This will create a session if the auth params are valid
+        await supabase.auth.getSession();
       }
     };
     
     handleAuthCallback();
-  }, [navigate]);
+  }, []);
 
+  // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
       console.log("User is already authenticated, redirecting to dashboard");
       navigate("/dashboard");
       return;
     }
+  }, [isAuthenticated, navigate]);
 
+  // Listen for auth state changes
+  useEffect(() => {
     console.log("Setting up auth state listener in Login component");
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       console.log("Auth state changed in Login component:", event, session ? "Session exists" : "No session");
@@ -113,7 +97,7 @@ const Login = () => {
       console.log("Cleaning up auth listener in Login component");
       authListener.subscription.unsubscribe();
     };
-  }, [isAuthenticated, navigate]);
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,8 +130,7 @@ const Login = () => {
           redirectTo: window.location.origin,
           queryParams: {
             prompt: 'select_account',
-            access_type: 'offline',
-            // No domain restriction to allow all email domains
+            access_type: 'offline'
           }
         }
       });
@@ -158,7 +141,6 @@ const Login = () => {
         setIsGoogleLoading(false);
       } else if (data?.url) {
         console.log("Google auth initiated, redirecting to:", data.url);
-        sessionStorage.setItem('google_auth_in_progress', 'true');
         window.location.href = data.url;
       } else {
         console.error("No redirect URL received from Supabase");
@@ -171,45 +153,6 @@ const Login = () => {
       setIsGoogleLoading(false);
     }
   };
-
-  useEffect(() => {
-    const checkGoogleAuthReturn = async () => {
-      const googleAuthInProgress = sessionStorage.getItem('google_auth_in_progress');
-      if (googleAuthInProgress === 'true') {
-        console.log("Detected return from Google authentication");
-        setIsProcessingCallback(true);
-        
-        sessionStorage.removeItem('google_auth_in_progress');
-        
-        try {
-          const { data, error } = await supabase.auth.getSession();
-          
-          if (error) {
-            console.error("Error checking session after Google auth:", error);
-            toast.error("Erreur lors de la vérification de session: " + error.message);
-            setIsProcessingCallback(false);
-          } else if (data?.session) {
-            console.log("Session found after Google auth:", data.session.user.id);
-            toast.success("Connexion Google réussie");
-            
-            setTimeout(() => {
-              navigate("/dashboard");
-            }, 500);
-          } else {
-            console.warn("No session found after Google auth");
-            toast.error("Aucune session trouvée après l'authentification Google");
-            setIsProcessingCallback(false);
-          }
-        } catch (err) {
-          console.error("Exception during session check after Google auth:", err);
-          toast.error("Une erreur s'est produite lors de la vérification de la session");
-          setIsProcessingCallback(false);
-        }
-      }
-    };
-    
-    checkGoogleAuthReturn();
-  }, [navigate]);
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);

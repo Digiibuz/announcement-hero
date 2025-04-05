@@ -14,12 +14,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const { userProfile, setUserProfile, fetchFullProfile } = useUserProfile();
   const { originalUser, isImpersonating, impersonateUser: startImpersonation, stopImpersonating: endImpersonation } = useImpersonation(userProfile);
-  // État pour suivre si nous sommes sur une page de réinitialisation de mot de passe
   const [isOnResetPasswordPage, setIsOnResetPasswordPage] = useState(false);
 
-  // Vérifier si nous sommes sur la page de réinitialisation de mot de passe
+  // Check if we're on the password reset page
   useEffect(() => {
-    // Vérifier si nous sommes sur la page de réinitialisation ET si nous avons des tokens dans l'URL
     const isResetPasswordPage = window.location.pathname === '/reset-password';
     const hasRecoveryToken = window.location.hash.includes('type=recovery');
     
@@ -30,13 +28,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Initialize auth state and set up listeners with improved persistence
   useEffect(() => {
     console.log("Setting up auth state listener");
-    // Set up the auth state change listener
+    
+    // First set up the auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         console.log("Auth state changed:", event, currentSession ? "Session exists" : "No session");
-        setIsLoading(true);
         
-        // Update session state
+        // Just update the session state
         setSession(currentSession);
         
         if (currentSession?.user) {
@@ -61,7 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    // Get initial session with improved caching
+    // Then get the initial session
     const initializeAuth = async () => {
       try {
         // First check if we have a locally cached user role
