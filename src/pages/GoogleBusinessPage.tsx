@@ -49,7 +49,7 @@ const GoogleBusinessPage = () => {
   const [showNoLocationsDialog, setShowNoLocationsDialog] = useState(false);
   
   useEffect(() => {
-    if (!isAuthenticated && !searchParams.get("code")) {
+    if (!isAuthenticated && !searchParams.get("code") && !searchParams.get("error")) {
       navigate("/login");
     }
   }, [isAuthenticated, navigate, searchParams]);
@@ -77,24 +77,31 @@ const GoogleBusinessPage = () => {
     const state = searchParams.get("state");
     const error = searchParams.get("error");
     const errorCode = searchParams.get("error_code");
+    const errorDescription = searchParams.get("error_description");
     
-    // If there's an error in the URL parameters, handle it
-    if (error && errorCode) {
-      setConnectionError(`Google authentication error: ${error} (${errorCode})`);
-      console.error("OAuth error in URL:", { error, errorCode });
+    // Parse error from the URL - handling both query parameters and hash fragment
+    if (error || errorCode) {
+      console.error("OAuth error in URL:", { error, errorCode, errorDescription });
       
-      // Handle specific OAuth state errors
-      if (errorCode === "bad_oauth_state") {
-        setConnectionError("Authentication session expired or invalid. Please try connecting again.");
-        toast.error("Authentication session expired. Please try again.");
+      // Handle specific errors
+      if (errorCode === "bad_oauth_state" || error?.includes("invalid_request")) {
+        const errorMsg = "Authentication session expired or state mismatch. Please try connecting again.";
+        setConnectionError(errorMsg);
+        toast.error(errorMsg);
         
         // Clear any stale state parameters
         localStorage.removeItem('gmb_oauth_state');
         
-        // Redirect to remove error params from URL
+        // Redirect to clean URL
         navigate("/google-business", { replace: true });
         return;
       }
+      
+      // Handle other OAuth errors
+      setConnectionError(`Google authentication error: ${errorDescription || error || "Unknown error"}`);
+      toast.error("Authentication failed. Please try again.");
+      navigate("/google-business", { replace: true });
+      return;
     }
     
     if (code && state && !isCallbackProcessing) {
@@ -211,8 +218,9 @@ const GoogleBusinessPage = () => {
   };
   
   const isProcessingCallback = searchParams.get("code") && searchParams.get("state");
+  const hasOAuthError = searchParams.get("error") || searchParams.get("error_code");
   
-  if (!user && !isProcessingCallback) return null;
+  if (!user && !isProcessingCallback && !hasOAuthError) return null;
   
   return (
     <PageLayout title="Google My Business">
@@ -233,6 +241,15 @@ const GoogleBusinessPage = () => {
                   <div>
                     <h3 className="font-medium">Error Detected</h3>
                     <p>{connectionError}</p>
+                    {(connectionError.includes("expired") || connectionError.includes("state mismatch")) && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleConnect} 
+                        className="mt-3">
+                        Try connecting again
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>

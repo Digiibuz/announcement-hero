@@ -38,31 +38,59 @@ export const useGoogleBusiness = () => {
   const [noLocationsFound, setNoLocationsFound] = useState(false);
 
   const generateStateParam = useCallback(() => {
-    const stateValue = crypto.randomUUID();
-    localStorage.setItem('gmb_oauth_state', stateValue);
+    let stateValue;
+    try {
+      stateValue = crypto.randomUUID();
+    } catch (e) {
+      stateValue = Math.random().toString(36).substring(2, 15) + 
+                   Math.random().toString(36).substring(2, 15);
+    }
+    
+    const stateObj = {
+      value: stateValue,
+      timestamp: Date.now()
+    };
+    localStorage.setItem('gmb_oauth_state', JSON.stringify(stateObj));
     console.log("Generated OAuth state parameter:", stateValue);
     return stateValue;
   }, []);
 
   const validateStateParam = useCallback((returnedState: string): boolean => {
-    const storedState = localStorage.getItem('gmb_oauth_state');
-    console.log("Validating OAuth state:", { returnedState, storedState });
+    const storedStateJson = localStorage.getItem('gmb_oauth_state');
+    console.log("Validating OAuth state:", { returnedState, storedStateJson });
     
-    if (!storedState) {
+    if (!storedStateJson) {
       console.error("No stored OAuth state found for validation");
       return false;
     }
     
-    const isValid = returnedState === storedState;
-    
-    if (isValid) {
-      console.log("OAuth state validated successfully");
+    try {
+      const storedState = JSON.parse(storedStateJson);
+      
+      const MAX_STATE_AGE = 30 * 60 * 1000; // 30 minutes in milliseconds
+      const isExpired = (Date.now() - storedState.timestamp) > MAX_STATE_AGE;
+      
+      if (isExpired) {
+        console.error("OAuth state has expired");
+        localStorage.removeItem('gmb_oauth_state');
+        return false;
+      }
+      
+      const isValid = returnedState === storedState.value;
+      
+      if (isValid) {
+        console.log("OAuth state validated successfully");
+        localStorage.removeItem('gmb_oauth_state');
+      } else {
+        console.error("OAuth state validation failed");
+      }
+      
+      return isValid;
+    } catch (e) {
+      console.error("Error parsing stored OAuth state:", e);
       localStorage.removeItem('gmb_oauth_state');
-    } else {
-      console.error("OAuth state validation failed");
+      return false;
     }
-    
-    return isValid;
   }, []);
 
   useEffect(() => {
@@ -131,6 +159,8 @@ export const useGoogleBusiness = () => {
       setDebugInfo(prev => ({ ...prev, lastApiCall: 'get_auth_url' }));
       
       console.log("Sending get_auth_url request");
+      
+      localStorage.removeItem('gmb_oauth_state');
       
       const stateParam = generateStateParam();
       

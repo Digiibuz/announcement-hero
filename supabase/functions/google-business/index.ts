@@ -148,6 +148,12 @@ function getGoogleAuthUrl(state: string) {
     'https://www.googleapis.com/auth/userinfo.email'
   ];
   
+  // Ensure we have a valid state parameter to protect against CSRF
+  if (!state || state.trim() === '') {
+    logger.error('Invalid state parameter provided');
+    throw new Error('Invalid state parameter provided');
+  }
+  
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: REDIRECT_URI,
@@ -159,7 +165,7 @@ function getGoogleAuthUrl(state: string) {
   });
   
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-  logger.info(`Generated authorization URL: ${authUrl}`);
+  logger.info(`Generated authorization URL: ${authUrl} with state: ${state}`);
   return authUrl;
 }
 
@@ -437,7 +443,12 @@ serve(async (req) => {
       try {
         console.log(`[${requestId}] Processing get_auth_url action`);
         
-        const state = requestData.state || userId;
+        // Make sure we use a proper state parameter
+        const state = requestData.state;
+        if (!state || state.trim() === '') {
+          throw new Error('OAuth state parameter is required for security');
+        }
+        
         const authUrl = getGoogleAuthUrl(state);
         
         console.log(`[${requestId}] Generated authorization URL with state: ${state}`);
@@ -465,7 +476,14 @@ serve(async (req) => {
         throw new Error('Missing authorization code');
       }
       
+      if (!state) {
+        logger.error(`[${requestId}] Missing state parameter`);
+        throw new Error('Missing state parameter');
+      }
+      
       logger.info(`[${requestId}] Received state: ${state}`);
+      
+      // No need to validate state here as it should be done on the client side
       
       logger.info(`[${requestId}] Exchanging code for tokens`);
       const tokenData = await exchangeCodeForTokens(code);
