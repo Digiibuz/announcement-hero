@@ -328,7 +328,7 @@ export const useGoogleBusiness = () => {
     }
   }, [generateStateParam]);
 
-  // First, let's define the listAccounts function before it's used
+  // Define listAccounts first before it's used
   const listAccounts = useCallback(async () => {
     try {
       setIsLoading(true);
