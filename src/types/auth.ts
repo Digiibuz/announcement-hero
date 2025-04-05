@@ -1,5 +1,5 @@
 
-import { User } from "@supabase/supabase-js";
+import { User, Session } from "@supabase/supabase-js";
 
 export type Role = "admin" | "client";
 
@@ -19,6 +19,7 @@ export interface UserProfile {
 
 export interface AuthContextType {
   user: UserProfile | null;
+  session: Session | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;

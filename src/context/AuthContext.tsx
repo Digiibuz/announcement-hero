@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
+import { User, Session } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { useUserProfile, createProfileFromMetadata } from "@/hooks/useUserProfile";
 import { useImpersonation } from "@/hooks/useImpersonation";
@@ -11,6 +11,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
+  const [session, setSession] = useState<Session | null>(null);
   const { userProfile, setUserProfile, fetchFullProfile } = useUserProfile();
   const { originalUser, isImpersonating, impersonateUser: startImpersonation, stopImpersonating: endImpersonation } = useImpersonation(userProfile);
   // État pour suivre si nous sommes sur une page de réinitialisation de mot de passe
@@ -31,19 +32,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log("Setting up auth state listener");
     // Set up the auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("Auth state changed:", event);
+      async (event, currentSession) => {
+        console.log("Auth state changed:", event, currentSession ? "Session exists" : "No session");
         setIsLoading(true);
         
-        if (session?.user) {
+        // Update session state
+        setSession(currentSession);
+        
+        if (currentSession?.user) {
           // First set user from metadata for immediate UI feedback
-          const initialProfile = createProfileFromMetadata(session.user);
+          const initialProfile = createProfileFromMetadata(currentSession.user);
           setUserProfile(initialProfile);
           console.log("Initial profile from metadata:", initialProfile);
           
           // Then asynchronously fetch the complete profile
           setTimeout(() => {
-            fetchFullProfile(session.user.id).then((success) => {
+            fetchFullProfile(currentSession.user.id).then((success) => {
               if (!success) {
                 console.warn("Failed to fetch complete profile, using metadata only");
               }
@@ -59,38 +63,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Get initial session with improved caching
     const initializeAuth = async () => {
-      // First check if we have a locally cached user role
-      const cachedUserRole = localStorage.getItem('userRole');
-      const cachedUserId = localStorage.getItem('userId');
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        console.log("Session found during initialization");
-        // First set user from metadata
-        const initialProfile = createProfileFromMetadata(session.user);
+      try {
+        // First check if we have a locally cached user role
+        const cachedUserRole = localStorage.getItem('userRole');
+        const cachedUserId = localStorage.getItem('userId');
         
-        // Apply cached role if available for immediate UI
-        if (cachedUserRole && cachedUserId === session.user.id) {
-          initialProfile.role = cachedUserRole as any;
-          console.log("Applied cached role:", cachedUserRole);
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Error retrieving initial session:", error);
+          setUserProfile(null);
+          setIsLoading(false);
+          return;
         }
         
-        setUserProfile(initialProfile);
+        // Update session state
+        setSession(data.session);
         
-        // Then get complete profile
-        setTimeout(() => {
-          fetchFullProfile(session.user.id).then((success) => {
-            if (success) {
-              console.log("Successfully fetched complete profile");
-            } else {
-              console.warn("Failed to fetch complete profile, using metadata only");
-            }
-            setIsLoading(false);
-          });
-        }, 100);
-      } else {
-        console.log("No session found during initialization");
+        if (data.session?.user) {
+          console.log("Session found during initialization:", data.session.user.id);
+          // First set user from metadata
+          const initialProfile = createProfileFromMetadata(data.session.user);
+          
+          // Apply cached role if available for immediate UI
+          if (cachedUserRole && cachedUserId === data.session.user.id) {
+            initialProfile.role = cachedUserRole as any;
+            console.log("Applied cached role:", cachedUserRole);
+          }
+          
+          setUserProfile(initialProfile);
+          
+          // Then get complete profile
+          setTimeout(() => {
+            fetchFullProfile(data.session.user.id).then((success) => {
+              if (success) {
+                console.log("Successfully fetched complete profile");
+              } else {
+                console.warn("Failed to fetch complete profile, using metadata only");
+              }
+              setIsLoading(false);
+            });
+          }, 100);
+        } else {
+          console.log("No session found during initialization");
+          setUserProfile(null);
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error("Exception during auth initialization:", error);
         setUserProfile(null);
         setIsLoading(false);
       }
@@ -128,6 +148,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
       
+      // Update session state
+      setSession(data.session);
+      
       // User will be set by the auth state change listener
     } catch (error: any) {
       setIsLoading(false);
@@ -141,8 +164,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('userId');
       sessionStorage.removeItem('lastAdminPath');
       sessionStorage.removeItem('lastAuthenticatedPath');
+      sessionStorage.removeItem('google_auth_in_progress');
       
       await supabase.auth.signOut();
+      setSession(null);
       setUserProfile(null);
       localStorage.removeItem("originalUser");
     } catch (error) {
@@ -171,10 +196,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const value: AuthContextType = {
     user: userProfile,
+    session,
     isLoading,
     login,
     logout,
-    isAuthenticated: !!userProfile,
+    isAuthenticated: !!userProfile && !!session,
     isAdmin: userProfile?.role === "admin",
     isClient: userProfile?.role === "client",
     impersonateUser,
