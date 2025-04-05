@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -23,21 +22,16 @@ const Login = () => {
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  // Vérifier si la page est correctement chargée
   useEffect(() => {
-    // Si après 3 secondes l'authentification n'est pas terminée, marquer comme chargée
     const timeout = setTimeout(() => {
       setPageLoaded(true);
     }, 3000);
 
-    // Nettoyer le timer si le composant est démonté
     return () => clearTimeout(timeout);
   }, []);
 
-  // Vérifier périodiquement si la page semble corrompue
   useEffect(() => {
     const interval = setInterval(() => {
-      // Si l'élément root est vide ou contient très peu d'éléments, c'est probablement un problème
       const rootElement = document.getElementById('root');
       if (rootElement && rootElement.children.length < 2) {
         console.log('Page de login potentiellement corrompue, marquer comme erreur');
@@ -49,12 +43,10 @@ const Login = () => {
   }, []);
 
   useEffect(() => {
-    // Redirect if already authenticated
     if (isAuthenticated) {
       navigate("/dashboard");
     }
 
-    // Check for Google auth redirect
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       console.log("Auth state changed:", event);
       if (event === 'SIGNED_IN' && session) {
@@ -73,11 +65,9 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      // Login process
       await login(email, password);
       toast.success("Connexion réussie");
       
-      // Attendre un court instant avant de rediriger pour permettre à la session d'être complètement chargée
       setTimeout(() => {
         navigate("/dashboard");
       }, 500);
@@ -95,7 +85,7 @@ const Login = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          scopes: 'https://www.googleapis.com/auth/business.manage https://www.googleapis.com/auth/userinfo.email',
+          scopes: 'email',
           redirectTo: window.location.origin
         }
       });
@@ -117,16 +107,13 @@ const Login = () => {
   };
 
   const handleForceReload = () => {
-    // Utiliser la fonction globale si disponible
     if (window.clearCacheAndReload) {
       window.clearCacheAndReload();
     } else {
-      // Fallback
       window.location.reload();
     }
   };
 
-  // Si une erreur de chargement est détectée, afficher un bouton de rechargement
   if (loadingError) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
@@ -275,7 +262,7 @@ const Login = () => {
                         fill="#4285F4"
                       />
                       <path
-                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23 17.45 20.53 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                         fill="#34A853"
                       />
                       <path
@@ -305,7 +292,6 @@ const Login = () => {
   );
 };
 
-// Ajouter la définition de la fonction globale
 declare global {
   interface Window {
     clearCacheAndReload: () => void;
