@@ -117,8 +117,10 @@ function App() {
             <TooltipProvider>
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>
-                  {/* Redirect root to login */}
-                  <Route path="/" element={<Navigate to="/login" replace />} />
+                  {/* Redirect root to dashboard if logged in, otherwise to login */}
+                  <Route path="/" element={
+                    <Navigate to="/dashboard" replace />
+                  } />
                   
                   {/* Public routes - accessibles sans authentification */}
                   <Route path="/login" element={<Login />} />

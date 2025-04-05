@@ -37,6 +37,7 @@ export const useGoogleBusiness = () => {
   }>({ lastApiCall: '', lastResponse: null });
 
   useEffect(() => {
+    console.log("Initializing useGoogleBusiness hook");
     fetchProfile().catch(error => {
       console.error("Error during initial profile check:", error);
     });
@@ -56,10 +57,13 @@ export const useGoogleBusiness = () => {
         throw new Error("User not logged in");
       }
       
-      console.log("Sending get_profile request");
+      console.log("Sending get_profile request with auth token length:", session.access_token.length);
       
       const response = await supabase.functions.invoke('google-business', {
         body: { action: 'get_profile' },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
       });
       
       console.log("Response received:", response);
@@ -72,7 +76,6 @@ export const useGoogleBusiness = () => {
       
       const { profile } = response.data || {};
       
-      // Add debug logging to understand what's being returned
       console.log("Profile data returned:", profile);
       
       if (profile) {
@@ -102,10 +105,20 @@ export const useGoogleBusiness = () => {
       setError(null);
       setDebugInfo(prev => ({ ...prev, lastApiCall: 'get_auth_url' }));
       
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        console.log("User not logged in when requesting auth URL");
+        throw new Error("You must be logged in to connect your Google account");
+      }
+      
       console.log("Sending get_auth_url request");
       
       const response = await supabase.functions.invoke('google-business', {
         body: { action: 'get_auth_url' },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
       });
       
       console.log("Full Edge Function response:", response);
