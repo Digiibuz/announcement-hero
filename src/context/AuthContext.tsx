@@ -28,50 +28,115 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log("Is on reset password page:", isResetPasswordPage, "Has recovery token:", hasRecoveryToken);
   }, [window.location.pathname, window.location.hash]);
 
-  // Check for auth callback in URL
+  // Analyze URL for auth params and handle callback more efficiently
   useEffect(() => {
-    const processAuthCallback = async () => {
+    const handleAuthCallback = async () => {
+      // Check if we have auth parameters in the URL
       const url = window.location.href;
-      const hasAuthParams = url.includes('#access_token=') || url.includes('?code=') || url.includes('#error=');
+      const hasAccessToken = url.includes('#access_token=');
+      const hasAuthCode = url.includes('?code=');
+      const hasAuthError = url.includes('#error=') || url.includes('?error=');
       
-      if (hasAuthParams) {
-        console.log("Auth callback detected in AuthContext, processing...");
+      // If we detect any auth parameters, we're processing a callback
+      if (hasAccessToken || hasAuthCode || hasAuthError) {
+        console.log("Auth parameters detected in URL, starting callback processing");
         setIsProcessingCallback(true);
         
         try {
-          // Let Supabase process the callback
-          const { data, error } = await supabase.auth.getSession();
-          
-          if (error) {
-            console.error("Error processing auth callback in AuthContext:", error);
-            setAuthError(error.message);
-            setIsProcessingCallback(false);
-          } else if (data.session) {
-            console.log("Session obtained from callback in AuthContext:", data.session.user.id);
-            setSession(data.session);
-            const initialProfile = createProfileFromMetadata(data.session.user);
-            setUserProfile(initialProfile);
+          // For token in URL fragment (#access_token=...)
+          if (hasAccessToken) {
+            console.log("Access token detected in URL fragment");
             
-            // Fetch full profile after a short delay
-            setTimeout(() => {
-              fetchFullProfile(data.session.user.id).then(() => {
-                setIsLoading(false);
-                setIsProcessingCallback(false);
-              });
-            }, 100);
-          } else {
-            console.warn("No session found during callback processing in AuthContext");
+            // Let supabase handle the fragment parsing - it already knows how to do this
+            const { data, error } = await supabase.auth.getSession();
+            
+            if (error) {
+              console.error("Error getting session from access_token:", error);
+              setAuthError(`Error during authentication: ${error.message}`);
+              setIsProcessingCallback(false);
+              return;
+            }
+            
+            if (data.session) {
+              console.log("Successfully retrieved session from access_token");
+              setSession(data.session);
+              const initialProfile = createProfileFromMetadata(data.session.user);
+              setUserProfile(initialProfile);
+              
+              // Fetch the complete profile after a short delay
+              setTimeout(() => {
+                fetchFullProfile(data.session!.user.id).finally(() => {
+                  setIsLoading(false);
+                  setIsProcessingCallback(false);
+                });
+              }, 200);
+            } else {
+              console.error("No session found after parsing access_token");
+              setAuthError("Authentication failed: No session found");
+              setIsProcessingCallback(false);
+            }
+          } 
+          // For authorization code flow (?code=...)
+          else if (hasAuthCode) {
+            console.log("Auth code detected in URL query");
+            
+            // Let supabase handle the code exchange
+            const { data, error } = await supabase.auth.getSession();
+            
+            if (error) {
+              console.error("Error exchanging auth code for session:", error);
+              setAuthError(`Error during authentication: ${error.message}`);
+              setIsProcessingCallback(false);
+              return;
+            }
+            
+            if (data.session) {
+              console.log("Successfully exchanged auth code for session");
+              setSession(data.session);
+              const initialProfile = createProfileFromMetadata(data.session.user);
+              setUserProfile(initialProfile);
+              
+              // Fetch the complete profile after a short delay
+              setTimeout(() => {
+                fetchFullProfile(data.session!.user.id).finally(() => {
+                  setIsLoading(false);
+                  setIsProcessingCallback(false);
+                });
+              }, 200);
+            } else {
+              console.error("No session found after exchanging auth code");
+              setAuthError("Authentication failed: No session found");
+              setIsProcessingCallback(false);
+            }
+          } 
+          // For error responses
+          else if (hasAuthError) {
+            console.error("Auth error detected in URL");
+            // Extract error details
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            const queryParams = new URLSearchParams(window.location.search);
+            
+            const errorMessage = hashParams.get('error_description') || 
+                                queryParams.get('error_description') || 
+                                hashParams.get('error') ||
+                                queryParams.get('error') ||
+                                'Unknown authentication error';
+            
+            console.error("Auth error details:", errorMessage);
+            setAuthError(`Authentication failed: ${errorMessage}`);
             setIsProcessingCallback(false);
           }
         } catch (err) {
-          console.error("Exception during callback processing in AuthContext:", err);
+          console.error("Exception during auth callback processing:", err);
+          setAuthError("Authentication process failed unexpectedly");
           setIsProcessingCallback(false);
         }
       }
     };
     
-    processAuthCallback();
-  }, []);
+    // Process auth callback if detected
+    handleAuthCallback();
+  }, [fetchFullProfile]);
 
   // Initialize auth state and set up listeners with improved persistence
   useEffect(() => {
@@ -212,7 +277,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [fetchFullProfile]);
 
   // Cache the user role when it changes
   useEffect(() => {

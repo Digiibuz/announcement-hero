@@ -133,14 +133,20 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 const AuthCallbackRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isProcessingCallback } = useAuth();
   const location = useLocation();
-  const url = window.location.href;
-  const hasAuthParams = url.includes('#access_token=') || url.includes('?code=') || url.includes('#error=');
   
+  // Check for any auth parameters in the URL
+  const hasAccessToken = window.location.hash.includes('#access_token=');
+  const hasAuthCode = window.location.search.includes('?code=');
+  const hasAuthError = window.location.hash.includes('#error=') || window.location.search.includes('?error=');
+  const hasAuthParams = hasAccessToken || hasAuthCode || hasAuthError;
+  
+  // If we're processing a callback or have auth params in the URL
   if (isProcessingCallback || hasAuthParams) {
     return <AuthProcessingPage />;
   }
   
-  if (isAuthenticated) {
+  // If authenticated and not on a special auth page, redirect to dashboard
+  if (isAuthenticated && location.pathname === '/login') {
     return <Navigate to="/dashboard" replace />;
   }
   

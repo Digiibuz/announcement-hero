@@ -45,6 +45,25 @@ const Login = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Check for persisted Google auth indicator and set loading state
+  useEffect(() => {
+    const inProgress = sessionStorage.getItem('google_auth_in_progress');
+    if (inProgress === 'true') {
+      console.log("Google authentication in progress detected from storage");
+      setIsGoogleLoading(true);
+      
+      // Set a timeout to clear this state if auth doesn't complete
+      setTimeout(() => {
+        const stillInProgress = sessionStorage.getItem('google_auth_in_progress');
+        if (stillInProgress === 'true') {
+          console.log("Google auth didn't complete after timeout, clearing state");
+          sessionStorage.removeItem('google_auth_in_progress');
+          setIsGoogleLoading(false);
+        }
+      }, 30000); // 30 second timeout
+    }
+  }, []);
+
   // Redirect if already authenticated, but only after session check is complete
   useEffect(() => {
     if (sessionChecked && isAuthenticated) {
@@ -59,6 +78,12 @@ const Login = () => {
     console.log("Setting up auth state listener in Login component");
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       console.log("Auth state changed in Login component:", event, session ? "Session exists" : "No session");
+      
+      // Clear any Google auth in progress indicator
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        sessionStorage.removeItem('google_auth_in_progress');
+        setIsGoogleLoading(false);
+      }
       
       if (event === 'SIGNED_IN' && session) {
         console.log("User signed in successfully in Login component", session.user.id);
@@ -157,6 +182,14 @@ const Login = () => {
   };
 
   const handleForceReload = () => {
+    // Clear any auth in progress flags
+    sessionStorage.removeItem('google_auth_in_progress');
+    
+    // Force clear hash and query params from URL
+    if (window.location.hash || window.location.search) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    
     if (window.clearCacheAndReload) {
       window.clearCacheAndReload();
     } else {
