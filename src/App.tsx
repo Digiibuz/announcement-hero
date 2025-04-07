@@ -1,3 +1,4 @@
+
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
@@ -22,6 +23,7 @@ const UserProfile = lazy(() => import("./pages/UserProfile"));
 const Support = lazy(() => import("./pages/Support"));
 const GoogleBusinessPage = lazy(() => import("./pages/GoogleBusinessPage"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
+const NotificationAdminPage = lazy(() => import("./pages/NotificationAdminPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Composant de chargement amélioré avec animation
@@ -210,6 +212,14 @@ function App() {
                     element={
                       <AdminRoute>
                         <WordPressManagement />
+                      </AdminRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/notifications-admin" 
+                    element={
+                      <AdminRoute>
+                        <NotificationAdminPage />
                       </AdminRoute>
                     } 
                   />
