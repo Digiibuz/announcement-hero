@@ -143,9 +143,12 @@ serve(async (req) => {
         );
       }
 
-      // Création d'un seul enregistrement pour toute la liste des notifications
-      const notifications = profiles.map(profile => ({
-        user_id: profile.id,
+      // Création d'un tableau pour les notifications - un par utilisateur uniquement
+      const uniqueUserIds = [...new Set(profiles.map(profile => profile.id))];
+      console.log(`Found ${uniqueUserIds.length} unique users to notify`);
+      
+      const notifications = uniqueUserIds.map(userId => ({
+        user_id: userId,
         title: notificationData.title,
         content: notificationData.content,
         type: notificationData.type,
@@ -153,7 +156,7 @@ serve(async (req) => {
         metadata: metadata || null
       }));
 
-      console.log(`Preparing to send ${notifications.length} notifications`);
+      console.log(`Preparing to send ${notifications.length} notifications - one per user`);
 
       // Insérer toutes les notifications en une seule opération
       const { error: insertError } = await supabaseClient
@@ -174,13 +177,13 @@ serve(async (req) => {
         );
       }
 
-      console.log(`Successfully sent ${profiles.length} notifications`);
+      console.log(`Successfully sent ${notifications.length} notifications (one per user)`);
 
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: `Notifications envoyées à ${profiles.length} utilisateurs`,
-          count: profiles.length
+          message: `Notifications envoyées à ${notifications.length} utilisateurs`,
+          count: notifications.length
         }),
         {
           status: 200,
