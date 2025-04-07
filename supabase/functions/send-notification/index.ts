@@ -143,7 +143,7 @@ serve(async (req) => {
         );
       }
 
-      // Préparer le lot de notifications
+      // Création d'un seul enregistrement pour toute la liste des notifications
       const notifications = profiles.map(profile => ({
         user_id: profile.id,
         title: notificationData.title,
@@ -156,7 +156,7 @@ serve(async (req) => {
       console.log(`Preparing to send ${notifications.length} notifications`);
 
       // Insérer toutes les notifications en une seule opération
-      const { data: insertedNotifications, error: insertError } = await supabaseClient
+      const { error: insertError } = await supabaseClient
         .from("user_notifications")
         .insert(notifications);
 

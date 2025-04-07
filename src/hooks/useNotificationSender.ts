@@ -29,6 +29,7 @@ export const useNotificationSender = () => {
         throw new Error('Soit templateId, soit title, content et type sont requis');
       }
 
+      // Appeler la fonction Supabase pour envoyer la notification à un seul utilisateur
       const { data, error } = await supabase.functions.invoke('send-notification', {
         body: {
           userId,
@@ -37,7 +38,7 @@ export const useNotificationSender = () => {
           type,
           templateId,
           metadata,
-          sendToAll: false // Explicitly set to false for single user
+          sendToAll: false // Explicitement défini à false pour un seul utilisateur
         }
       });
 
@@ -45,6 +46,7 @@ export const useNotificationSender = () => {
         throw error;
       }
 
+      toast.success('Notification envoyée');
       return data;
     } catch (error: any) {
       console.error('Erreur lors de l\'envoi de la notification:', error.message);
@@ -63,7 +65,7 @@ export const useNotificationSender = () => {
     try {
       setIsSending(true);
 
-      // Utiliser directement l'endpoint avec sendToAll=true sans récupérer les utilisateurs d'abord
+      // Appeler directement la fonction Edge avec sendToAll=true
       const { data, error } = await supabase.functions.invoke('send-notification', {
         body: {
           sendToAll: true,
