@@ -123,16 +123,15 @@ serve(async (req) => {
 
     console.log("Notification data prepared:", notificationData);
 
-    // Si c'est pour tous les utilisateurs, on prépare une insertion en masse
+    // NOUVELLE APPROCHE POUR ENVOYER À TOUS LES UTILISATEURS
     if (sendToAll) {
-      // APPROCHE COMPLÈTEMENT NOUVELLE: Insert direct sans boucle
-
-      // 1. Récupérer les IDs de tous les utilisateurs
+      // 1. Récupérer tous les IDs utilisateurs en une seule requête
       const { data: profiles, error: profilesError } = await supabaseClient
         .from("profiles")
         .select("id");
 
       if (profilesError) {
+        console.error("Error fetching user profiles:", profilesError);
         return new Response(
           JSON.stringify({ 
             error: "Erreur lors de la récupération des utilisateurs", 
@@ -145,48 +144,54 @@ serve(async (req) => {
         );
       }
 
-      // 2. Préparer les données pour l'insertion en masse avec SQL brut pour éviter toute duplication
-      const values = profiles.map(profile => `('${profile.id}', '${notificationData.title}', '${notificationData.content}', '${notificationData.type}', ${notificationData.template_id ? `'${notificationData.template_id}'` : 'null'}, ${metadata ? `'${JSON.stringify(metadata)}'` : 'null'}, NOW(), NOW(), false, null)`).join(',');
-      
-      // Seulement si on a des utilisateurs
-      if (profiles.length > 0) {
-        // 3. Exécuter l'insertion en masse avec SQL brut
-        const { error: insertError } = await supabaseClient.rpc('insert_user_notifications', { values_param: values });
-        
-        if (insertError) {
-          console.error("Error with RPC insert_user_notifications:", insertError);
-          
-          // Fallback: méthode alternative avec .insert standard si le RPC échoue
-          const insertData = profiles.map(profile => ({
-            user_id: profile.id,
-            title: notificationData.title,
-            content: notificationData.content,
-            type: notificationData.type,
-            template_id: notificationData.template_id || null,
-            metadata: metadata || null
-          }));
-          
-          const { error: fallbackError } = await supabaseClient
-            .from("user_notifications")
-            .insert(insertData);
-            
-          if (fallbackError) {
-            return new Response(
-              JSON.stringify({ 
-                error: "Erreur lors de l'insertion des notifications (avec fallback)", 
-                details: fallbackError 
-              }),
-              {
-                status: 500,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-              }
-            );
+      // 2. S'il n'y a aucun utilisateur, renvoyer succès avec compte = 0
+      if (!profiles || profiles.length === 0) {
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: "Aucun utilisateur trouvé pour envoyer des notifications",
+            count: 0
+          }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
           }
-        }
-        
-        console.log(`Successfully sent notifications to ${profiles.length} users`);
+        );
       }
 
+      console.log(`Found ${profiles.length} users to send notifications to`);
+
+      // 3. Préparer un tableau d'objets pour l'insertion en une seule requête
+      const notificationsToInsert = profiles.map(profile => ({
+        user_id: profile.id,
+        title: notificationData.title,
+        content: notificationData.content,
+        type: notificationData.type,
+        template_id: notificationData.template_id || null,
+        metadata: metadata || null
+      }));
+
+      // 4. Insérer toutes les notifications en une seule opération
+      const { error: insertError } = await supabaseClient
+        .from("user_notifications")
+        .insert(notificationsToInsert);
+        
+      if (insertError) {
+        console.error("Error inserting batch notifications:", insertError);
+        return new Response(
+          JSON.stringify({ 
+            error: "Erreur lors de l'insertion des notifications", 
+            details: insertError 
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      console.log(`Successfully sent ${profiles.length} notifications`);
+      
       return new Response(
         JSON.stringify({ 
           success: true, 
