@@ -29,7 +29,24 @@ serve(async (req) => {
     );
 
     // Récupération du corps de la requête
-    const { userId, templateId, title, content, type, metadata, sendToAll } = await req.json();
+    const requestBody = await req.json();
+    const { 
+      userId, 
+      templateId, 
+      title, 
+      content, 
+      type, 
+      metadata, 
+      sendToAll 
+    } = requestBody;
+
+    console.log("Request received:", {
+      sendToAll,
+      userId: userId || "N/A",
+      templateId: templateId || "N/A",
+      hasTitle: !!title,
+      hasContent: !!content
+    });
 
     // Validation des paramètres
     if (!sendToAll && !userId) {
@@ -68,7 +85,7 @@ serve(async (req) => {
     }
 
     // Si un templateId est fourni, récupérer les détails du template
-    let notificationData: any = {};
+    let notificationData = {};
     
     if (templateId) {
       const { data: template, error: templateError } = await supabaseClient
@@ -104,6 +121,8 @@ serve(async (req) => {
       };
     }
 
+    console.log("Notification data prepared:", notificationData);
+
     // Traitement des notifications selon que c'est pour tous les utilisateurs ou un seul
     if (sendToAll) {
       // Récupérer tous les utilisateurs
@@ -134,12 +153,15 @@ serve(async (req) => {
         metadata: metadata || null
       }));
 
+      console.log(`Preparing to send ${notifications.length} notifications`);
+
       // Insérer toutes les notifications en une seule opération
       const { data: insertedNotifications, error: insertError } = await supabaseClient
         .from("user_notifications")
         .insert(notifications);
 
       if (insertError) {
+        console.error("Error inserting notifications:", insertError);
         return new Response(
           JSON.stringify({ 
             error: "Erreur lors de l'insertion des notifications", 
@@ -151,6 +173,8 @@ serve(async (req) => {
           }
         );
       }
+
+      console.log(`Successfully sent ${profiles.length} notifications`);
 
       return new Response(
         JSON.stringify({ 
@@ -191,6 +215,8 @@ serve(async (req) => {
         }
       }
 
+      console.log(`Sending notification to user: ${userId}`);
+
       // Insérer la notification dans la base de données
       const { data: notification, error: insertError } = await supabaseClient
         .from("user_notifications")
@@ -206,6 +232,7 @@ serve(async (req) => {
         .single();
 
       if (insertError) {
+        console.error("Error inserting notification:", insertError);
         return new Response(
           JSON.stringify({ 
             error: "Erreur lors de l'insertion de la notification", 
@@ -217,6 +244,8 @@ serve(async (req) => {
           }
         );
       }
+
+      console.log("Notification sent successfully");
 
       return new Response(
         JSON.stringify({ 

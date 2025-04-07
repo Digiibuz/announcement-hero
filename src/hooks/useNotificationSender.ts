@@ -36,7 +36,8 @@ export const useNotificationSender = () => {
           content,
           type,
           templateId,
-          metadata
+          metadata,
+          sendToAll: false // Explicitly set to false for single user
         }
       });
 
@@ -62,17 +63,7 @@ export const useNotificationSender = () => {
     try {
       setIsSending(true);
 
-      // Récupérer tous les utilisateurs (seulement possible pour les administrateurs)
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id');
-
-      if (profilesError) {
-        throw profilesError;
-      }
-
-      // Utiliser l'endpoint d'API pour envoyer une notification à tous les utilisateurs
-      // au lieu d'envoyer individuellement à chaque utilisateur
+      // Utiliser directement l'endpoint avec sendToAll=true sans récupérer les utilisateurs d'abord
       const { data, error } = await supabase.functions.invoke('send-notification', {
         body: {
           sendToAll: true,
@@ -88,8 +79,8 @@ export const useNotificationSender = () => {
         throw error;
       }
 
-      toast.success(`Notification envoyée à ${profiles.length} utilisateurs`);
-      return { success: true, count: profiles.length };
+      toast.success(`Notification envoyée à tous les utilisateurs`);
+      return data;
     } catch (error: any) {
       console.error('Erreur lors de l\'envoi des notifications:', error.message);
       toast.error('Erreur lors de l\'envoi des notifications');
