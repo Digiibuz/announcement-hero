@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useEffect } from "react";
@@ -19,8 +18,7 @@ import {
   FileText,
   Menu,
   UserCircle,
-  Ticket,
-  Store
+  Ticket
 } from "lucide-react";
 import { useTicketNotifications } from "@/hooks/useTicketNotifications";
 import { supabase } from "@/integrations/supabase/client";
@@ -108,12 +106,6 @@ const Sidebar = () => {
       href: "/create",
       icon: <Newspaper className="h-5 w-5 dark:text-gray-200" />,
       isActive: pathname === "/create",
-    },
-    {
-      name: "Google My Business",
-      href: "/google-business",
-      icon: <Store className="h-5 w-5 dark:text-gray-200" />,
-      isActive: pathname === "/google-business",
     },
   ];
 
