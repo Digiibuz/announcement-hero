@@ -5,7 +5,8 @@ import { useAuth } from '@/context/AuthContext';
 import { NotificationPreferences } from '@/types/notifications';
 
 export const usePreferenceRealtime = (
-  setPreferences: React.Dispatch<React.SetStateAction<NotificationPreferences>>
+  preferences: NotificationPreferences,
+  setPreferences: (prefs: NotificationPreferences) => void
 ) => {
   const { user } = useAuth();
 

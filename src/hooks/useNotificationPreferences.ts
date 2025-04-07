@@ -18,13 +18,16 @@ export const useNotificationPreferences = () => {
     if (!user) return;
 
     try {
+      // S'assurer que tous les en-têtes nécessaires sont inclus
       const { data, error } = await supabase
         .from('notification_preferences')
         .select('*')
+        .eq('user_id', user.id)
         .single();
 
       if (error && error.code !== 'PGRST116') {
         // PGRST116 est l'erreur "did not return a single row" - ignorable
+        console.error('Erreur complète lors du chargement des préférences:', error);
         throw error;
       }
 
@@ -49,10 +52,13 @@ export const useNotificationPreferences = () => {
 
   // Mettre à jour les préférences de notifications
   const updatePreferences = async (newPreferences: NotificationPreferences) => {
+    if (!user) return;
+    
     try {
       const { error } = await supabase
         .from('notification_preferences')
-        .update(newPreferences as any);
+        .update(newPreferences as any)
+        .eq('user_id', user.id);
 
       if (error) throw error;
 

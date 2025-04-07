@@ -4,12 +4,13 @@ import { AlertCircle, Info, Clock } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { NotificationPreferences, useNotifications } from '@/hooks/useNotifications';
+import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
+import { NotificationPreferences as NotificationPreferencesType } from '@/types/notifications';
 
 const NotificationPreferencesComponent = () => {
-  const { preferences, updatePreferences } = useNotifications();
+  const { preferences, updatePreferences } = useNotificationPreferences();
 
-  const handlePreferenceChange = (key: keyof NotificationPreferences, value: boolean) => {
+  const handlePreferenceChange = (key: keyof NotificationPreferencesType, value: boolean) => {
     updatePreferences({
       ...preferences,
       [key]: value

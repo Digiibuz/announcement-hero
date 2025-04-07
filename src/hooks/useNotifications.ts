@@ -13,14 +13,9 @@ export type { NotificationType, Notification, NotificationPreferences } from '@/
 export const useNotifications = () => {
   const { user } = useAuth();
   const { notifications, setNotifications, isLoading, fetchNotifications } = useNotificationFetch();
-  const [preferences, setPreferences] = useState<NotificationPreferences>({
-    reminder_enabled: true,
-    alert_enabled: true,
-    info_enabled: true,
-  });
+  const { preferences, updatePreferences } = useNotificationPreferences();
   const { unreadCount, calculateUnreadCount, markAsRead, markAllAsRead } = 
     useNotificationStatus(notifications, setNotifications);
-  const { preferences: prefData, updatePreferences } = useNotificationPreferences();
 
   // Initialize notifications and unread count
   useEffect(() => {
@@ -33,16 +28,9 @@ export const useNotifications = () => {
     }
   }, [user]);
 
-  // Sync preferences from the preferences hook
-  useEffect(() => {
-    if (prefData) {
-      setPreferences(prefData);
-    }
-  }, [prefData]);
-
   // Set up realtime subscriptions
-  useNotificationRealtime(setNotifications, setUnreadCount => setUnreadCount, markAsRead);
-  usePreferenceRealtime(setPreferences);
+  useNotificationRealtime(setNotifications, calculateUnreadCount, markAsRead);
+  usePreferenceRealtime(preferences, updatePreferences);
 
   return {
     notifications,
