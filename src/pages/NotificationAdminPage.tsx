@@ -11,13 +11,13 @@ const NotificationAdminPage = () => {
   const { isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState<string>('send');
 
-  // Rediriger si l'utilisateur n'est pas administrateur
+  // Si l'utilisateur n'est pas administrateur, on le redirige
   if (!isAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
 
   return (
-    <PageLayout title="Administration des notifications">
+    <PageLayout title="Gestion des notifications">
       <div className="max-w-4xl mx-auto space-y-6">
         <p className="text-muted-foreground mb-6">
           Gérez et envoyez des notifications aux utilisateurs de l'application

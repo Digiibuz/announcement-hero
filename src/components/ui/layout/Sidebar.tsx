@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useEffect } from "react";
@@ -132,9 +133,9 @@ const Sidebar = () => {
     },
     {
       name: "Notifications",
-      href: "/notifications",
+      href: isAdmin ? "/notifications-admin" : "/notifications",
       icon: <Bell className="h-5 w-5 dark:text-gray-200" />,
-      isActive: pathname === "/notifications",
+      isActive: pathname === "/notifications" || pathname === "/notifications-admin",
       badge: notificationUnreadCount > 0 ? (
         <Badge 
           variant="destructive" 

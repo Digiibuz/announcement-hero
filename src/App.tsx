@@ -193,7 +193,11 @@ function App() {
                     path="/notifications" 
                     element={
                       <ProtectedRoute>
-                        <NotificationsPage />
+                        {/* Rediriger les administrateurs vers la page d'administration des notifications */}
+                        <AdminRedirect 
+                          redirectPath="/notifications-admin"
+                          fallbackComponent={<NotificationsPage />}
+                        />
                       </ProtectedRoute>
                     } 
                   />
@@ -237,5 +241,22 @@ function App() {
     </BrowserRouter>
   );
 }
+
+// Nouveau composant pour rediriger les administrateurs vers une autre page
+const AdminRedirect = ({ 
+  redirectPath, 
+  fallbackComponent 
+}: { 
+  redirectPath: string, 
+  fallbackComponent: React.ReactNode 
+}) => {
+  const { isAdmin } = useAuth();
+  
+  if (isAdmin) {
+    return <Navigate to={redirectPath} replace />;
+  }
+  
+  return <>{fallbackComponent}</>;
+};
 
 export default App;
