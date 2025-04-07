@@ -143,12 +143,14 @@ serve(async (req) => {
         );
       }
 
-      // Création d'un tableau pour les notifications - un par utilisateur uniquement
-      const uniqueUserIds = [...new Set(profiles.map(profile => profile.id))];
-      console.log(`Found ${uniqueUserIds.length} unique users to notify`);
+      // MODIFICATION: Préparation d'un tableau de notifications en une seule fois
+      // sans boucler lors de l'insertion
+      const userIds = profiles.map(profile => profile.id);
+      console.log(`Preparing notifications for ${userIds.length} users`);
       
-      const notifications = uniqueUserIds.map(userId => ({
-        user_id: userId,
+      // Créer un tableau d'objets pour l'insertion en batch
+      const notifications = userIds.map(uid => ({
+        user_id: uid,
         title: notificationData.title,
         content: notificationData.content,
         type: notificationData.type,
@@ -156,10 +158,8 @@ serve(async (req) => {
         metadata: metadata || null
       }));
 
-      console.log(`Preparing to send ${notifications.length} notifications - one per user`);
-
-      // Insérer toutes les notifications en une seule opération
-      const { error: insertError } = await supabaseClient
+      // Insertion en batch - en une seule requête
+      const { error: insertError, count } = await supabaseClient
         .from("user_notifications")
         .insert(notifications);
 
