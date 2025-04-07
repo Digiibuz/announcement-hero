@@ -25,8 +25,6 @@ export const useNotificationSender = () => {
     metadata
   }: SendNotificationParams) => {
     try {
-      setIsSending(true);
-
       if (!templateId && (!title || !content || !type)) {
         throw new Error('Soit templateId, soit title, content et type sont requis');
       }
@@ -51,8 +49,6 @@ export const useNotificationSender = () => {
       console.error('Erreur lors de l\'envoi de la notification:', error.message);
       toast.error('Erreur lors de l\'envoi de la notification');
       throw error;
-    } finally {
-      setIsSending(false);
     }
   };
 
@@ -75,19 +71,22 @@ export const useNotificationSender = () => {
         throw profilesError;
       }
 
-      // Envoyer la notification à chaque utilisateur
-      const promises = profiles.map(profile =>
-        sendNotification({
-          userId: profile.id,
+      // Utiliser l'endpoint d'API pour envoyer une notification à tous les utilisateurs
+      // au lieu d'envoyer individuellement à chaque utilisateur
+      const { data, error } = await supabase.functions.invoke('send-notification', {
+        body: {
+          sendToAll: true,
           title,
           content,
           type,
           templateId,
           metadata
-        })
-      );
+        }
+      });
 
-      await Promise.all(promises);
+      if (error) {
+        throw error;
+      }
 
       toast.success(`Notification envoyée à ${profiles.length} utilisateurs`);
       return { success: true, count: profiles.length };

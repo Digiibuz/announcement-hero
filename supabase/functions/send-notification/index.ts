@@ -29,12 +29,12 @@ serve(async (req) => {
     );
 
     // Récupération du corps de la requête
-    const { userId, templateId, title, content, type, metadata } = await req.json();
+    const { userId, templateId, title, content, type, metadata, sendToAll } = await req.json();
 
     // Validation des paramètres
-    if (!userId) {
+    if (!sendToAll && !userId) {
       return new Response(
-        JSON.stringify({ error: "L'ID de l'utilisateur est requis" }),
+        JSON.stringify({ error: "L'ID de l'utilisateur est requis lorsque sendToAll est false" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -104,71 +104,132 @@ serve(async (req) => {
       };
     }
 
-    // Vérifier les préférences de notification de l'utilisateur
-    const { data: preferences, error: preferencesError } = await supabaseClient
-      .from("notification_preferences")
-      .select("*")
-      .eq("user_id", userId)
-      .single();
+    // Traitement des notifications selon que c'est pour tous les utilisateurs ou un seul
+    if (sendToAll) {
+      // Récupérer tous les utilisateurs
+      const { data: profiles, error: profilesError } = await supabaseClient
+        .from("profiles")
+        .select("id");
 
-    if (preferencesError && preferencesError.code !== "PGRST116") {
-      console.error("Erreur lors de la récupération des préférences:", preferencesError);
-    }
-
-    // Si l'utilisateur a désactivé ce type de notification, ne pas l'envoyer
-    if (preferences) {
-      const typeEnabledField = `${notificationData.type}_enabled`;
-      if (preferences[typeEnabledField] === false) {
+      if (profilesError) {
         return new Response(
           JSON.stringify({ 
-            message: "L'utilisateur a désactivé ce type de notification" 
+            error: "Erreur lors de la récupération des utilisateurs", 
+            details: profilesError 
           }),
           {
-            status: 200,
+            status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           }
         );
       }
-    }
 
-    // Insérer la notification dans la base de données
-    const { data: notification, error: insertError } = await supabaseClient
-      .from("user_notifications")
-      .insert({
-        user_id: userId,
+      // Préparer le lot de notifications
+      const notifications = profiles.map(profile => ({
+        user_id: profile.id,
         title: notificationData.title,
         content: notificationData.content,
         type: notificationData.type,
         template_id: notificationData.template_id || null,
         metadata: metadata || null
-      })
-      .select()
-      .single();
+      }));
 
-    if (insertError) {
+      // Insérer toutes les notifications en une seule opération
+      const { data: insertedNotifications, error: insertError } = await supabaseClient
+        .from("user_notifications")
+        .insert(notifications);
+
+      if (insertError) {
+        return new Response(
+          JSON.stringify({ 
+            error: "Erreur lors de l'insertion des notifications", 
+            details: insertError 
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
       return new Response(
         JSON.stringify({ 
-          error: "Erreur lors de l'insertion de la notification", 
-          details: insertError 
+          success: true, 
+          message: `Notifications envoyées à ${profiles.length} utilisateurs`,
+          count: profiles.length
         }),
         {
-          status: 500,
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    } else {
+      // Vérifier les préférences de notification de l'utilisateur
+      const { data: preferences, error: preferencesError } = await supabaseClient
+        .from("notification_preferences")
+        .select("*")
+        .eq("user_id", userId)
+        .single();
+
+      if (preferencesError && preferencesError.code !== "PGRST116") {
+        console.error("Erreur lors de la récupération des préférences:", preferencesError);
+      }
+
+      // Si l'utilisateur a désactivé ce type de notification, ne pas l'envoyer
+      if (preferences) {
+        const typeEnabledField = `${notificationData.type}_enabled`;
+        if (preferences[typeEnabledField] === false) {
+          return new Response(
+            JSON.stringify({ 
+              message: "L'utilisateur a désactivé ce type de notification" 
+            }),
+            {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            }
+          );
+        }
+      }
+
+      // Insérer la notification dans la base de données
+      const { data: notification, error: insertError } = await supabaseClient
+        .from("user_notifications")
+        .insert({
+          user_id: userId,
+          title: notificationData.title,
+          content: notificationData.content,
+          type: notificationData.type,
+          template_id: notificationData.template_id || null,
+          metadata: metadata || null
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        return new Response(
+          JSON.stringify({ 
+            error: "Erreur lors de l'insertion de la notification", 
+            details: insertError 
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: "Notification envoyée avec succès", 
+          notification 
+        }),
+        {
+          status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: "Notification envoyée avec succès", 
-        notification 
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
   } catch (error) {
     console.error("Erreur inattendue:", error);
     return new Response(
