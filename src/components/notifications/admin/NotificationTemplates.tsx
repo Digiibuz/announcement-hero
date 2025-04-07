@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Pencil, Trash2, Plus } from 'lucide-react';
+import { Pencil, Trash2, Plus, Send } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -15,6 +15,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Badge } from '@/components/ui/badge';
 import { NotificationType } from '@/hooks/useNotifications';
+import { useNotificationSender } from '@/hooks/useNotificationSender';
 
 interface NotificationTemplate {
   id: string;
@@ -46,6 +47,12 @@ const NotificationTemplates = () => {
   const [currentTemplate, setCurrentTemplate] = useState<NotificationTemplate | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
+  const [isSendDialogOpen, setIsSendDialogOpen] = useState(false);
+  const [templateToSend, setTemplateToSend] = useState<NotificationTemplate | null>(null);
+  const [sendToAll, setSendToAll] = useState(true);
+  const [userId, setUserId] = useState('');
+  
+  const { sendNotification, sendNotificationToAllUsers, isSending } = useNotificationSender();
 
   const form = useForm<TemplateFormValues>({
     resolver: zodResolver(templateSchema),
@@ -114,6 +121,14 @@ const NotificationTemplates = () => {
     setTemplateToDelete(templateId);
     setDeleteConfirmOpen(true);
   };
+  
+  // Ouvrir le dialogue d'envoi rapide de notification
+  const openSendDialog = (template: NotificationTemplate) => {
+    setTemplateToSend(template);
+    setSendToAll(true);
+    setUserId('');
+    setIsSendDialogOpen(true);
+  };
 
   // Soumettre le formulaire
   const onSubmit = async (data: TemplateFormValues) => {
@@ -179,6 +194,34 @@ const NotificationTemplates = () => {
       toast.error(`Erreur: ${error.message}`);
     }
   };
+  
+  // Envoyer une notification basée sur un modèle
+  const handleSendNotification = async () => {
+    if (!templateToSend) return;
+    
+    try {
+      if (sendToAll) {
+        await sendNotificationToAllUsers({
+          templateId: templateToSend.id
+        });
+        toast.success('Notification envoyée à tous les utilisateurs');
+      } else if (userId) {
+        await sendNotification({
+          userId,
+          templateId: templateToSend.id
+        });
+        toast.success('Notification envoyée à l\'utilisateur');
+      } else {
+        toast.error('Veuillez spécifier un ID d\'utilisateur');
+        return;
+      }
+      
+      setIsSendDialogOpen(false);
+    } catch (error: any) {
+      console.error('Erreur lors de l\'envoi de la notification:', error.message);
+      toast.error(`Erreur: ${error.message}`);
+    }
+  };
 
   // Afficher un indicateur de type
   const getTypeBadge = (type: NotificationType) => {
@@ -237,6 +280,14 @@ const NotificationTemplates = () => {
                     <p className="text-sm text-muted-foreground line-clamp-2">{template.content}</p>
                   </div>
                   <div className="flex items-center space-x-2 self-end sm:self-center">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => openSendDialog(template)}
+                    >
+                      <Send className="h-4 w-4 mr-1" />
+                      Envoyer
+                    </Button>
                     <Button 
                       variant="outline" 
                       size="sm"
@@ -377,6 +428,60 @@ const NotificationTemplates = () => {
             </Button>
             <Button variant="destructive" onClick={deleteTemplate}>
               Supprimer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialogue d'envoi de notification */}
+      <Dialog open={isSendDialogOpen} onOpenChange={setIsSendDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Envoyer la notification</DialogTitle>
+            <DialogDescription>
+              Envoyez le modèle "{templateToSend?.title}" aux utilisateurs
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="send-to-all"
+                checked={sendToAll}
+                onCheckedChange={setSendToAll}
+              />
+              <label htmlFor="send-to-all" className="cursor-pointer">
+                Envoyer à tous les utilisateurs
+              </label>
+            </div>
+            
+            {!sendToAll && (
+              <div className="space-y-2">
+                <label htmlFor="user-id" className="text-sm font-medium">
+                  ID de l'utilisateur
+                </label>
+                <Input 
+                  id="user-id"
+                  value={userId}
+                  onChange={(e) => setUserId(e.target.value)}
+                  placeholder="UUID de l'utilisateur"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Entrez l'identifiant unique de l'utilisateur
+                </p>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsSendDialogOpen(false)}>
+              Annuler
+            </Button>
+            <Button 
+              onClick={handleSendNotification}
+              disabled={isSending || (!sendToAll && !userId)}
+            >
+              {isSending ? 'Envoi en cours...' : 'Envoyer'}
             </Button>
           </DialogFooter>
         </DialogContent>
