@@ -40,6 +40,7 @@ export const useNotifications = () => {
 
     try {
       setIsLoading(true);
+      // Utiliser .from() avec un cast générique pour contourner les limitations TypeScript
       const { data, error } = await supabase
         .from('user_notifications')
         .select('*')
@@ -47,8 +48,11 @@ export const useNotifications = () => {
 
       if (error) throw error;
 
-      setNotifications(data || []);
-      calculateUnreadCount(data || []);
+      // Cast explicite vers le type Notification[]
+      const typedData = data as unknown as Notification[];
+      
+      setNotifications(typedData || []);
+      calculateUnreadCount(typedData || []);
     } catch (error: any) {
       console.error('Erreur lors du chargement des notifications:', error.message);
     } finally {
@@ -72,10 +76,17 @@ export const useNotifications = () => {
       }
 
       if (data) {
+        // Cast explicite vers le type de préférences
+        const prefs = data as unknown as {
+          reminder_enabled: boolean;
+          alert_enabled: boolean;
+          info_enabled: boolean;
+        };
+        
         setPreferences({
-          reminder_enabled: data.reminder_enabled,
-          alert_enabled: data.alert_enabled,
-          info_enabled: data.info_enabled,
+          reminder_enabled: prefs.reminder_enabled,
+          alert_enabled: prefs.alert_enabled,
+          info_enabled: prefs.info_enabled,
         });
       }
     } catch (error: any) {
@@ -88,7 +99,7 @@ export const useNotifications = () => {
     try {
       const { error } = await supabase
         .from('user_notifications')
-        .update({ is_read: true })
+        .update({ is_read: true } as any)
         .eq('id', notificationId);
 
       if (error) throw error;
@@ -115,7 +126,7 @@ export const useNotifications = () => {
     try {
       const { error } = await supabase
         .from('user_notifications')
-        .update({ is_read: true })
+        .update({ is_read: true } as any)
         .eq('is_read', false);
 
       if (error) throw error;
@@ -139,7 +150,7 @@ export const useNotifications = () => {
     try {
       const { error } = await supabase
         .from('notification_preferences')
-        .update(newPreferences);
+        .update(newPreferences as any);
 
       if (error) throw error;
 
@@ -173,7 +184,7 @@ export const useNotifications = () => {
         table: 'user_notifications',
         filter: `user_id=eq.${user.id}`,
       }, (payload) => {
-        const newNotification = payload.new as Notification;
+        const newNotification = payload.new as unknown as Notification;
         setNotifications(prev => [newNotification, ...prev]);
         setUnreadCount(prev => prev + 1);
         
