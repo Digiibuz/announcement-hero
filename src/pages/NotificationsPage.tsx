@@ -7,9 +7,11 @@ import { Button } from '@/components/ui/button';
 import { useNotifications, Notification } from '@/hooks/useNotifications';
 import NotificationsList from '@/components/notifications/NotificationsList';
 import NotificationPreferences from '@/components/notifications/NotificationPreferences';
+import { useAuth } from '@/context/AuthContext';
 
 const NotificationsPage = () => {
   const { notifications, isLoading, markAllAsRead, unreadCount } = useNotifications();
+  const { isClient } = useAuth();
   
   // Filtrer les notifications par statut (lues/non lues)
   const unreadNotifications = notifications.filter(
@@ -25,7 +27,7 @@ const NotificationsPage = () => {
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
           <p className="text-muted-foreground">
-            Gérez vos notifications et préférences
+            Gérez vos notifications{!isClient && " et préférences"}
           </p>
           {unreadCount > 0 && (
             <Button onClick={markAllAsRead} variant="outline">
@@ -34,8 +36,8 @@ const NotificationsPage = () => {
           )}
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="md:col-span-2">
+        <div className={`grid ${!isClient ? 'md:grid-cols-3' : ''} gap-6`}>
+          <div className={`${!isClient ? 'md:col-span-2' : ''}`}>
             <Tabs defaultValue="unread">
               <TabsList className="mb-4">
                 <TabsTrigger value="unread">
@@ -72,9 +74,11 @@ const NotificationsPage = () => {
             </Tabs>
           </div>
           
-          <div>
-            <NotificationPreferences />
-          </div>
+          {!isClient && (
+            <div>
+              <NotificationPreferences />
+            </div>
+          )}
         </div>
       </div>
     </PageLayout>
