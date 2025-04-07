@@ -123,9 +123,11 @@ serve(async (req) => {
 
     console.log("Notification data prepared:", notificationData);
 
-    // Traitement des notifications selon que c'est pour tous les utilisateurs ou un seul
+    // Si c'est pour tous les utilisateurs, on prépare une insertion en masse
     if (sendToAll) {
-      // Récupérer tous les utilisateurs
+      // APPROCHE COMPLÈTEMENT NOUVELLE: Insert direct sans boucle
+
+      // 1. Récupérer les IDs de tous les utilisateurs
       const { data: profiles, error: profilesError } = await supabaseClient
         .from("profiles")
         .select("id");
@@ -143,47 +145,53 @@ serve(async (req) => {
         );
       }
 
-      // MODIFICATION: Préparation d'un tableau de notifications en une seule fois
-      // sans boucler lors de l'insertion
-      const userIds = profiles.map(profile => profile.id);
-      console.log(`Preparing notifications for ${userIds.length} users`);
+      // 2. Préparer les données pour l'insertion en masse avec SQL brut pour éviter toute duplication
+      const values = profiles.map(profile => `('${profile.id}', '${notificationData.title}', '${notificationData.content}', '${notificationData.type}', ${notificationData.template_id ? `'${notificationData.template_id}'` : 'null'}, ${metadata ? `'${JSON.stringify(metadata)}'` : 'null'}, NOW(), NOW(), false, null)`).join(',');
       
-      // Créer un tableau d'objets pour l'insertion en batch
-      const notifications = userIds.map(uid => ({
-        user_id: uid,
-        title: notificationData.title,
-        content: notificationData.content,
-        type: notificationData.type,
-        template_id: notificationData.template_id || null,
-        metadata: metadata || null
-      }));
-
-      // Insertion en batch - en une seule requête
-      const { error: insertError, count } = await supabaseClient
-        .from("user_notifications")
-        .insert(notifications);
-
-      if (insertError) {
-        console.error("Error inserting notifications:", insertError);
-        return new Response(
-          JSON.stringify({ 
-            error: "Erreur lors de l'insertion des notifications", 
-            details: insertError 
-          }),
-          {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+      // Seulement si on a des utilisateurs
+      if (profiles.length > 0) {
+        // 3. Exécuter l'insertion en masse avec SQL brut
+        const { error: insertError } = await supabaseClient.rpc('insert_user_notifications', { values_param: values });
+        
+        if (insertError) {
+          console.error("Error with RPC insert_user_notifications:", insertError);
+          
+          // Fallback: méthode alternative avec .insert standard si le RPC échoue
+          const insertData = profiles.map(profile => ({
+            user_id: profile.id,
+            title: notificationData.title,
+            content: notificationData.content,
+            type: notificationData.type,
+            template_id: notificationData.template_id || null,
+            metadata: metadata || null
+          }));
+          
+          const { error: fallbackError } = await supabaseClient
+            .from("user_notifications")
+            .insert(insertData);
+            
+          if (fallbackError) {
+            return new Response(
+              JSON.stringify({ 
+                error: "Erreur lors de l'insertion des notifications (avec fallback)", 
+                details: fallbackError 
+              }),
+              {
+                status: 500,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              }
+            );
           }
-        );
+        }
+        
+        console.log(`Successfully sent notifications to ${profiles.length} users`);
       }
-
-      console.log(`Successfully sent ${notifications.length} notifications (one per user)`);
 
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: `Notifications envoyées à ${notifications.length} utilisateurs`,
-          count: notifications.length
+          message: `Notifications envoyées à ${profiles.length} utilisateurs`,
+          count: profiles.length
         }),
         {
           status: 200,
@@ -191,6 +199,8 @@ serve(async (req) => {
         }
       );
     } else {
+      // Cas d'un envoi à un utilisateur spécifique
+      
       // Vérifier les préférences de notification de l'utilisateur
       const { data: preferences, error: preferencesError } = await supabaseClient
         .from("notification_preferences")
@@ -265,7 +275,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Erreur inattendue:", error);
     return new Response(
-      JSON.stringify({ error: "Une erreur inattendue s'est produite" }),
+      JSON.stringify({ error: "Une erreur inattendue s'est produite", details: String(error) }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
