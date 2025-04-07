@@ -18,29 +18,30 @@ import {
   FileText,
   Menu,
   UserCircle,
-  Ticket
+  Ticket,
+  Bell
 } from "lucide-react";
 import { useTicketNotifications } from "@/hooks/useTicketNotifications";
+import { useNotifications } from "@/hooks/useNotifications";
 import { supabase } from "@/integrations/supabase/client";
+import NotificationIcon from "@/components/notifications/NotificationIcon";
 
 const Sidebar = () => {
   const isMobile = useIsMobile();
   const { pathname } = useLocation();
   const { user, logout, isLoading, isAuthenticated, isAdmin, isClient } = useAuth();
   const [isOpen, setIsOpen] = React.useState(false);
-  const { unreadCount, resetTicketTabView } = useTicketNotifications();
-  const [localUnreadCount, setLocalUnreadCount] = React.useState(0);
+  const { unreadCount: ticketUnreadCount, resetTicketTabView } = useTicketNotifications();
+  const { unreadCount: notificationUnreadCount } = useNotifications();
+  const [localTicketUnreadCount, setLocalTicketUnreadCount] = React.useState(0);
 
-  // Initialize local unread count with the value from the hook
   useEffect(() => {
-    setLocalUnreadCount(unreadCount);
-  }, [unreadCount]);
+    setLocalTicketUnreadCount(ticketUnreadCount);
+  }, [ticketUnreadCount]);
 
-  // Set up real-time listener for ticket responses and read status changes
   useEffect(() => {
     if (!user?.id) return;
 
-    // Listen for new ticket responses
     const responsesChannel = supabase
       .channel('sidebar_ticket_responses')
       .on('postgres_changes', {
@@ -48,12 +49,10 @@ const Sidebar = () => {
         schema: 'public',
         table: 'ticket_responses'
       }, () => {
-        // Update the local unread count with a slight delay
-        setTimeout(() => setLocalUnreadCount(unreadCount), 300);
+        setTimeout(() => setLocalTicketUnreadCount(ticketUnreadCount), 300);
       })
       .subscribe();
 
-    // Listen for changes in ticket read status
     const readStatusChannel = supabase
       .channel('sidebar_ticket_read_status')
       .on('postgres_changes', {
@@ -61,16 +60,14 @@ const Sidebar = () => {
         schema: 'public',
         table: 'ticket_read_status'
       }, () => {
-        // Update the local unread count with a slight delay
-        setTimeout(() => setLocalUnreadCount(unreadCount), 300);
+        setTimeout(() => setLocalTicketUnreadCount(ticketUnreadCount), 300);
       })
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
         table: 'ticket_read_status'
       }, () => {
-        // Update the local unread count with a slight delay
-        setTimeout(() => setLocalUnreadCount(unreadCount), 300);
+        setTimeout(() => setLocalTicketUnreadCount(ticketUnreadCount), 300);
       })
       .subscribe();
 
@@ -78,7 +75,7 @@ const Sidebar = () => {
       supabase.removeChannel(responsesChannel);
       supabase.removeChannel(readStatusChannel);
     };
-  }, [user?.id, unreadCount]);
+  }, [user?.id, ticketUnreadCount]);
 
   useEffect(() => {
     if (!pathname.includes('/support')) {
@@ -134,16 +131,30 @@ const Sidebar = () => {
       isActive: pathname === "/profile",
     },
     {
-      name: "Support & Assistance",
-      href: "/support",
-      icon: <Ticket className="h-5 w-5 dark:text-gray-200" />,
-      isActive: pathname === "/support",
-      badge: localUnreadCount > 0 ? (
+      name: "Notifications",
+      href: "/notifications",
+      icon: <Bell className="h-5 w-5 dark:text-gray-200" />,
+      isActive: pathname === "/notifications",
+      badge: notificationUnreadCount > 0 ? (
         <Badge 
           variant="destructive" 
           className="ml-2 px-1.5 py-0.5 text-xs"
         >
-          {localUnreadCount}
+          {notificationUnreadCount}
+        </Badge>
+      ) : null,
+    },
+    {
+      name: "Support & Assistance",
+      href: "/support",
+      icon: <Ticket className="h-5 w-5 dark:text-gray-200" />,
+      isActive: pathname === "/support",
+      badge: localTicketUnreadCount > 0 ? (
+        <Badge 
+          variant="destructive" 
+          className="ml-2 px-1.5 py-0.5 text-xs"
+        >
+          {localTicketUnreadCount}
         </Badge>
       ) : null,
     },
@@ -165,7 +176,6 @@ const Sidebar = () => {
       </div>
 
       <div className={`h-[calc(100vh-4rem)] overflow-y-auto px-3 py-4 flex flex-col ${isMobile ? "" : "relative"}`}>
-        {/* Main navigation items */}
         <div className="flex-grow">
           <ul className="space-y-2">
             {navItems.map((item) => (
@@ -215,7 +225,6 @@ const Sidebar = () => {
           </ul>
         </div>
 
-        {/* Profile, support and logout items - always at the bottom */}
         <div className="mt-auto border-t border-border pt-4">
           {profileItems.map((item) => (
             <Link key={item.href} to={item.href} onClick={() => isMobile && setIsOpen(false)}>
@@ -262,16 +271,19 @@ const Sidebar = () => {
             </span>
           </Link>
           
-          <Sheet open={isOpen} onOpenChange={setIsOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-72">
-              <SidebarContent />
-            </SheetContent>
-          </Sheet>
+          <div className="flex items-center gap-2">
+            <NotificationIcon />
+            <Sheet open={isOpen} onOpenChange={setIsOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="p-0 w-72">
+                <SidebarContent />
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
         
         <div className="h-16" />
@@ -280,9 +292,17 @@ const Sidebar = () => {
   }
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 transform border-r border-border bg-card shadow-sm transition-transform md:translate-x-0">
-      <SidebarContent />
-    </aside>
+    <>
+      <aside className="fixed left-0 top-0 z-40 h-screen w-64 transform border-r border-border bg-card shadow-sm transition-transform md:translate-x-0">
+        <SidebarContent />
+      </aside>
+      
+      <div className="fixed top-0 right-0 z-40 h-16 bg-background/90 backdrop-blur-sm border-b border-border flex items-center px-4">
+        <div className="ml-auto">
+          <NotificationIcon />
+        </div>
+      </div>
+    </>
   );
 };
 

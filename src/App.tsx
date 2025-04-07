@@ -21,6 +21,7 @@ const WordPressManagement = lazy(() => import("./pages/WordPressManagement"));
 const UserProfile = lazy(() => import("./pages/UserProfile"));
 const Support = lazy(() => import("./pages/Support"));
 const GoogleBusinessPage = lazy(() => import("./pages/GoogleBusinessPage"));
+const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Composant de chargement amélioré avec animation
@@ -183,6 +184,14 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <GoogleBusinessPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/notifications" 
+                    element={
+                      <ProtectedRoute>
+                        <NotificationsPage />
                       </ProtectedRoute>
                     } 
                   />

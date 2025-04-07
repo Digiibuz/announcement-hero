@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
+import NotificationIcon from "@/components/notifications/NotificationIcon";
 
 const Header = () => {
   const { user, isAuthenticated } = useAuth();
