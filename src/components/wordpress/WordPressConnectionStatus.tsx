@@ -48,6 +48,7 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
   const [configDetails, setConfigDetails] = useState<{name?: string, site_url?: string}>({});
   const [showHelp, setShowHelp] = useState(false);
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
+  const [syncInProgress, setSyncInProgress] = useState(false);
   const { 
     categories, 
     isLoading: isCategoriesLoading, 
@@ -105,6 +106,7 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
         return;
       }
       
+      setSyncInProgress(true);
       const result = await checkConnection(effectiveConfigId);
       setLastChecked(new Date());
       
@@ -124,11 +126,13 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
     } catch (error) {
       console.error("Sync error:", error);
       toast.error("Erreur lors de la synchronisation");
+    } finally {
+      setSyncInProgress(false);
     }
   };
 
   const getStatusContent = () => {
-    if (isChecking) {
+    if (isChecking || syncInProgress) {
       return (
         <Badge variant="outline" className="bg-slate-100">
           <Loader2 className="h-3 w-3 animate-spin mr-1" />
@@ -198,10 +202,10 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
         variant="outline" 
         size="sm" 
         onClick={handleSync}
-        disabled={isChecking || isCategoriesLoading || isPagesLoading}
+        disabled={isChecking || isCategoriesLoading || isPagesLoading || syncInProgress}
         className="px-2 h-8"
       >
-        {(isChecking || isCategoriesLoading || isPagesLoading) ? (
+        {(isChecking || isCategoriesLoading || isPagesLoading || syncInProgress) ? (
           <Loader2 className="h-3 w-3 animate-spin" />
         ) : (
           <RefreshCw className="h-3 w-3" />

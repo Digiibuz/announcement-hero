@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -32,7 +32,8 @@ const WordPressManagement = () => {
     fetchConfigs,
   } = useWordPressConfigs();
 
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const handleCreateConfig = async (data: any) => {
     await createConfig(data);
@@ -48,9 +49,16 @@ const WordPressManagement = () => {
   };
 
   // Fonction de rafraîchissement pour le bouton
-  const handleRefresh = () => {
-    fetchConfigs();
-    toast.success("Configurations WordPress mises à jour");
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await fetchConfigs();
+      toast.success("Configurations WordPress mises à jour");
+    } catch (error) {
+      toast.error("Erreur lors de la mise à jour des configurations");
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   // Le bouton d'ajout n'est disponible que pour les administrateurs, pas pour les clients
@@ -96,6 +104,7 @@ const WordPressManagement = () => {
       title={pageTitle} 
       titleAction={titleAction}
       onRefresh={handleRefresh}
+      isLoading={refreshing}
     >
       {!(isAdmin || isClient) ? (
         <AccessDenied />

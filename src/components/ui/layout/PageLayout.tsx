@@ -51,7 +51,7 @@ const PageLayout = ({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="fixed inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-50">
         <LoadingIndicator variant="dots" size={42} />
       </div>
     );
