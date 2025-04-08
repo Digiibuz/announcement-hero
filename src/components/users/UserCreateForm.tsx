@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -89,7 +90,13 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       if (functionCallError) {
         console.error("Erreur d'appel à la fonction Edge:", functionCallError);
         toast.dismiss(toastId);
-        toast.error(`Erreur: ${functionCallError.message || "Échec de la création de l'utilisateur"}`);
+        
+        // Si l'erreur est liée à un problème de permission ou technique
+        if (functionCallError.message && functionCallError.message.includes("non-2xx status code")) {
+          toast.error("Erreur technique lors de la création de l'utilisateur. Contactez l'administrateur système.");
+        } else {
+          toast.error(`Erreur: ${functionCallError.message || "Échec de la création de l'utilisateur"}`);
+        }
         return;
       }
       
@@ -101,7 +108,9 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
         toast.dismiss(toastId);
         
         // Messages d'erreur plus précis pour les cas courants
-        if (errorMessage.includes("L'utilisateur existe déjà") || 
+        if (errorMessage.includes("Erreur technique")) {
+          toast.error(`${errorMessage}. ${errorDetails}`);
+        } else if (errorMessage.includes("L'utilisateur existe déjà") || 
             errorMessage.includes("L'email est déjà utilisé")) {
           toast.error(`Cet email est déjà utilisé par un autre utilisateur. ${errorDetails}`);
         } else if (errorMessage.includes("Mot de passe")) {

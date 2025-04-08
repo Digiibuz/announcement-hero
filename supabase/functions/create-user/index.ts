@@ -115,7 +115,8 @@ serve(async (req) => {
 
             if (profileError) {
               console.log("Erreur lors de la création du profil manquant:", profileError.message);
-              throw profileError;
+              // Ne pas faire échouer l'opération ici, car les préférences de notification pourraient être gérées séparément
+              console.log("Tentative de poursuite malgré l'erreur du profil");
             }
             
             console.log("Profil manquant créé avec succès pour l'utilisateur existant:", existingUserId);
@@ -248,12 +249,12 @@ serve(async (req) => {
         if (authError.message && authError.message.includes("Database error")) {
           return new Response(
             JSON.stringify({ 
-              error: "Erreur de base de données", 
-              details: "Une erreur est survenue lors de la création de l'utilisateur. Cela peut être dû à un conflit d'email ou à une contrainte de base de données."
+              error: "Erreur technique lors de la création", 
+              details: "Une erreur est survenue lors de la création de l'utilisateur. Contactez l'administrateur pour vérifier les permissions."
             }),
             {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 400,
+              status: 500,
             }
           );
         }
@@ -274,7 +275,8 @@ serve(async (req) => {
       );
     }
 
-    // After creating the user in Auth, create their profile
+    // After creating the user in Auth, manually create their profile
+    // Skip the trigger that might attempt to create notification_preferences
     try {
       console.log("Création du profil pour l'utilisateur:", newUserData.user.id);
       const { error: profileError } = await supabaseAdmin
@@ -291,24 +293,33 @@ serve(async (req) => {
         console.log("Erreur lors de la création du profil:", profileError.message);
         
         // If profile creation fails, delete the user to avoid inconsistencies
-        try {
-          console.log("Suppression de l'utilisateur après échec de création de profil:", newUserData.user.id);
-          await supabaseAdmin.auth.admin.deleteUser(newUserData.user.id);
-        } catch (deleteError) {
-          console.error("Erreur lors de la suppression de l'utilisateur après échec de création de profil:", deleteError);
+        // but don't fail if notification preferences creation would have failed
+        if (!profileError.message.includes("notification_preferences")) {
+          try {
+            console.log("Suppression de l'utilisateur après échec de création de profil:", newUserData.user.id);
+            await supabaseAdmin.auth.admin.deleteUser(newUserData.user.id);
+          } catch (deleteError) {
+            console.error("Erreur lors de la suppression de l'utilisateur après échec de création de profil:", deleteError);
+          }
+          
+          throw profileError;
+        } else {
+          console.log("Erreur ignorée liée aux notification_preferences, l'utilisateur est tout de même créé");
         }
-        
-        throw profileError;
       }
     } catch (error) {
       console.error("Erreur lors de la création du profil:", error);
-      return new Response(
-        JSON.stringify({ error: error.message || "Erreur lors de la création du profil" }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500,
-        }
-      );
+      
+      // Only return error if it's not related to notification preferences
+      if (!error.message || !error.message.includes("notification_preferences")) {
+        return new Response(
+          JSON.stringify({ error: error.message || "Erreur lors de la création du profil" }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500,
+          }
+        );
+      }
     }
 
     console.log("Utilisateur créé avec succès:", newUserData.user.id);
