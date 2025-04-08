@@ -102,8 +102,18 @@ serve(async (req) => {
       }
 
       console.log("[create-user] Résultat de la recherche dans auth.users:", JSON.stringify(existingUsers, null, 2));
+      console.log("[create-user] Structure de existingUsers:", Object.keys(existingUsers || {}));
+      console.log("[create-user] Type de existingUsers:", typeof existingUsers);
+      console.log("[create-user] existingUsers.users existe:", existingUsers && Array.isArray(existingUsers.users));
+      console.log("[create-user] Longueur de existingUsers.users:", existingUsers?.users?.length || 0);
+      
+      if (existingUsers?.users) {
+        for (let i = 0; i < existingUsers.users.length; i++) {
+          console.log(`[create-user] User #${i + 1}:`, JSON.stringify(existingUsers.users[i], null, 2));
+        }
+      }
 
-      if (existingUsers && existingUsers.users.length > 0) {
+      if (existingUsers && existingUsers.users && existingUsers.users.length > 0) {
         console.log("[create-user] L'utilisateur existe déjà dans auth.users:", email);
         existingUser = existingUsers.users[0];
         console.log("[create-user] Détails de l'utilisateur existant:", JSON.stringify(existingUser, null, 2));
