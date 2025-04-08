@@ -113,11 +113,28 @@ serve(async (req) => {
         }
       }
 
+      // CORRECTION: Vérifier si un utilisateur avec l'email spécifique existe
+      let foundExistingUser = false;
       if (existingUsers && existingUsers.users && existingUsers.users.length > 0) {
-        console.log("[create-user] L'utilisateur existe déjà dans auth.users:", email);
-        existingUser = existingUsers.users[0];
-        console.log("[create-user] Détails de l'utilisateur existant:", JSON.stringify(existingUser, null, 2));
+        for (const user of existingUsers.users) {
+          // Vérification explicite que l'email correspond
+          if (user.email === email) {
+            console.log("[create-user] L'utilisateur existe déjà dans auth.users:", email, "ID:", user.id);
+            existingUser = user;
+            foundExistingUser = true;
+            break;
+          }
+        }
         
+        if (!foundExistingUser) {
+          console.log("[create-user] Aucun utilisateur trouvé dans auth.users pour l'email:", email);
+        }
+      } else {
+        console.log("[create-user] Aucun utilisateur trouvé dans auth.users");
+      }
+      
+      // Continuer le processus uniquement si nous avons trouvé un utilisateur correspondant à l'email
+      if (foundExistingUser && existingUser) {
         // Check if the user exists in the profiles table
         const { data: existingProfiles, error: profilesError } = await supabaseAdmin
           .from('profiles')
