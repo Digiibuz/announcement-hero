@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -548,7 +549,7 @@ const NotificationTemplates = () => {
                                     key={user.id}
                                     onSelect={() => toggleUserSelection(user.id)}
                                     className="flex items-center gap-2"
-                                    value={user.id}
+                                    value={user.id || ''}
                                   >
                                     <Checkbox 
                                       checked={selectedUserIds.includes(user.id)}

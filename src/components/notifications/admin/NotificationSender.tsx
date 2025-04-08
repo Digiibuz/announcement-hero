@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNotificationSender } from '@/hooks/useNotificationSender';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -73,6 +74,7 @@ const NotificationSender = () => {
           throw error;
         }
         
+        // Ensure data is always an array
         setUsers(Array.isArray(data) ? data : []);
       } catch (error: any) {
         console.error('Erreur lors du chargement des utilisateurs:', error);
@@ -277,7 +279,7 @@ const NotificationSender = () => {
                                     key={user.id}
                                     onSelect={() => toggleUserSelection(user.id)}
                                     className="flex items-center gap-2"
-                                    value={user.id}
+                                    value={user.id || ''}
                                   >
                                     <Checkbox 
                                       checked={selectedUserIds.includes(user.id)}
