@@ -54,6 +54,7 @@ interface UserCreateFormProps {
 const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
   const { configs } = useWordPressConfigs();
 
   const form = useForm<FormSchema>({
@@ -70,8 +71,9 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
   const onSubmit = async (values: FormSchema) => {
     try {
       setIsSubmitting(true);
-      setIsDialogOpen(false);
+      setServerError(null);
       
+      // Ne pas fermer la boîte de dialogue immédiatement en cas d'erreur
       const toastId = toast.loading("Création de l'utilisateur en cours...");
       
       console.log("Envoi des données:", values);
@@ -97,6 +99,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       if (error) {
         console.error("Erreur d'appel à la fonction Edge:", error);
         toast.dismiss(toastId);
+        setServerError(error.message || "Échec de la création de l'utilisateur");
         toast.error(`Erreur: ${error.message || "Échec de la création de l'utilisateur"}`);
         return;
       }
@@ -106,7 +109,9 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       if (!data || (data as any).error) {
         const errorMessage = (data as any)?.error || "Erreur lors de la création de l'utilisateur";
         const errorDetails = (data as any)?.details || "";
+        
         toast.dismiss(toastId);
+        setServerError(`${errorMessage}${errorDetails ? ` - ${errorDetails}` : ""}`);
         toast.error(`${errorMessage}${errorDetails ? ` - ${errorDetails}` : ""}`);
         return;
       }
@@ -114,11 +119,13 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       toast.dismiss(toastId);
       toast.success("Utilisateur créé avec succès");
       
+      setIsDialogOpen(false);
       form.reset();
       onUserCreated();
     } catch (error: any) {
       toast.dismiss();
       console.error("Error creating user:", error);
+      setServerError(error.message || "Erreur lors de la création de l'utilisateur");
       toast.error(error.message || "Erreur lors de la création de l'utilisateur");
     } finally {
       setIsSubmitting(false);
@@ -140,6 +147,11 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
             Créez un compte pour un nouveau client ou administrateur.
           </DialogDescription>
         </DialogHeader>
+        {serverError && (
+          <div className="bg-destructive/15 border border-destructive text-destructive px-4 py-2 rounded-md text-sm">
+            {serverError}
+          </div>
+        )}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField

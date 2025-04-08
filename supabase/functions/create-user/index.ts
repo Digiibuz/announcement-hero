@@ -52,13 +52,16 @@ serve(async (req) => {
       );
     }
 
-    // Check if email exists in the profiles table
+    // Normalize email to lowercase
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Check if email exists in the profiles table - case insensitive
     try {
-      console.log("Vérification si l'email existe dans la table profiles:", email);
+      console.log("Vérification si l'email existe dans la table profiles:", normalizedEmail);
       const { data: existingProfiles, error: profilesError } = await supabaseAdmin
         .from('profiles')
         .select('*')
-        .eq('email', email.toLowerCase());
+        .ilike('email', normalizedEmail);
         
       if (profilesError) {
         console.error("Erreur lors de la vérification du profil existant:", profilesError);
@@ -96,11 +99,11 @@ serve(async (req) => {
     }
 
     // Create the user in auth.users
-    console.log("Création de l'utilisateur dans auth.users:", email);
+    console.log("Création de l'utilisateur dans auth.users:", normalizedEmail);
     let newUserData;
     try {
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         password,
         email_confirm: true,
         user_metadata: {
@@ -119,27 +122,32 @@ serve(async (req) => {
     } catch (error) {
       console.error("Erreur détaillée lors de la création dans auth:", error);
       
-      // Return specific error
+      const errorMessage = error.message || "Erreur lors de la création de l'utilisateur";
+      const statusCode = error.status || 500;
+      const details = errorMessage.includes("User already registered") 
+        ? "Un utilisateur avec cet email existe déjà dans le système."
+        : `Code d'erreur: ${statusCode}`;
+      
       return new Response(
         JSON.stringify({ 
-          error: error.message || "Erreur lors de la création de l'utilisateur",
-          details: error.status ? `Code d'erreur: ${error.status}` : undefined
+          error: errorMessage,
+          details: details
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: error.status || 500,
+          status: statusCode,
         }
       );
     }
 
-    // Create profile separately
+    // Try to create the profile
     try {
       console.log("Création du profil pour l'utilisateur:", newUserData.user.id);
       const { error: profileError } = await supabaseAdmin
         .from('profiles')
         .insert({
           id: newUserData.user.id,
-          email: email.toLowerCase(),
+          email: normalizedEmail,
           name: name,
           role: role,
           wordpress_config_id: role === "client" ? wordpressConfigId : null,
