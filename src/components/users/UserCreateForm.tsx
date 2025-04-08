@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
-import { Loader2, UserPlus } from "lucide-react";
+import { Loader2, UserPlus, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,12 +35,19 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
 
+// Schema de validation amélioré
 const formSchema = z.object({
-  email: z.string().email({ message: "Email invalide" }).toLowerCase(),
-  name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères" }),
-  password: z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères" }),
+  email: z
+    .string({ required_error: "L'email est requis" })
+    .email({ message: "Format d'email invalide" })
+    .toLowerCase(),
+  name: z
+    .string({ required_error: "Le nom est requis" })
+    .min(2, { message: "Le nom doit contenir au moins 2 caractères" }),
+  password: z
+    .string({ required_error: "Le mot de passe est requis" })
+    .min(6, { message: "Le mot de passe doit contenir au moins 6 caractères" }),
   role: z.enum(["admin", "client"], {
     required_error: "Veuillez sélectionner un rôle",
   }),
@@ -71,13 +78,24 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
     },
   });
 
+  const closeDialog = () => {
+    // Ne ferme le dialogue que s'il n'y a pas d'erreur ou si on n'est pas en cours de soumission
+    if (!isSubmitting) {
+      setIsDialogOpen(false);
+      // Reset form et erreurs
+      form.reset();
+      setServerError(null);
+      setServerErrorDetails(null);
+    }
+  };
+
   const onSubmit = async (values: FormSchema) => {
     try {
       setIsSubmitting(true);
       setServerError(null);
       setServerErrorDetails(null);
       
-      // Ne pas fermer la boîte de dialogue immédiatement en cas d'erreur
+      // ID de toast pour pouvoir le mettre à jour
       const toastId = toast.loading("Création de l'utilisateur en cours...");
       
       console.log("Envoi des données:", values);
@@ -89,44 +107,54 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
         wordpressConfigId: values.wordpressConfigId && values.wordpressConfigId !== "none" ? values.wordpressConfigId : null,
       };
       
-      // Call the Edge function
-      const { data, error } = await supabase.functions.invoke("create-user", {
-        body: {
-          email: sanitizedValues.email,
-          name: sanitizedValues.name,
-          password: sanitizedValues.password,
-          role: sanitizedValues.role,
-          wordpressConfigId: sanitizedValues.role === "client" ? sanitizedValues.wordpressConfigId : null,
-        },
-      });
-      
-      if (error) {
-        console.error("Erreur d'appel à la fonction Edge:", error);
-        toast.dismiss(toastId);
-        setServerError(error.message || "Échec de la création de l'utilisateur");
-        toast.error(`Erreur: ${error.message || "Échec de la création de l'utilisateur"}`);
-        return;
-      }
-      
-      console.log("Réponse de la fonction Edge:", data);
-      
-      if (!data || (data as any).error) {
-        const errorMessage = (data as any)?.error || "Erreur lors de la création de l'utilisateur";
-        const errorDetails = (data as any)?.details || "";
+      // Appel à la fonction Edge avec try/catch amélioré
+      try {
+        const { data, error } = await supabase.functions.invoke("create-user", {
+          body: {
+            email: sanitizedValues.email,
+            name: sanitizedValues.name,
+            password: sanitizedValues.password,
+            role: sanitizedValues.role,
+            wordpressConfigId: sanitizedValues.role === "client" ? sanitizedValues.wordpressConfigId : null,
+          },
+        });
+        
+        if (error) {
+          console.error("Erreur d'appel à la fonction Edge:", error);
+          toast.dismiss(toastId);
+          setServerError(error.message || "Échec de la création de l'utilisateur");
+          toast.error(`Erreur: ${error.message || "Échec de la création de l'utilisateur"}`);
+          return;
+        }
+        
+        console.log("Réponse de la fonction Edge:", data);
+        
+        if (!data || (data as any).error) {
+          const errorMessage = (data as any)?.error || "Erreur lors de la création de l'utilisateur";
+          const errorDetails = (data as any)?.details || "";
+          
+          toast.dismiss(toastId);
+          setServerError(errorMessage);
+          setServerErrorDetails(errorDetails);
+          toast.error(`${errorMessage}${errorDetails ? ` - ${errorDetails}` : ""}`);
+          return;
+        }
         
         toast.dismiss(toastId);
-        setServerError(errorMessage);
-        setServerErrorDetails(errorDetails);
-        toast.error(`${errorMessage}${errorDetails ? ` - ${errorDetails}` : ""}`);
-        return;
+        toast.success("Utilisateur créé avec succès");
+        
+        // Ferme le dialogue et réinitialise le formulaire
+        setIsDialogOpen(false);
+        form.reset();
+        onUserCreated();
+      } catch (edgeFnError) {
+        console.error("Erreur lors de l'appel de la fonction Edge:", edgeFnError);
+        
+        toast.dismiss(toastId);
+        setServerError("Erreur de communication avec le serveur");
+        setServerErrorDetails(edgeFnError.message || "Veuillez réessayer plus tard.");
+        toast.error(`Erreur de communication: ${edgeFnError.message || "Veuillez réessayer"}`);
       }
-      
-      toast.dismiss(toastId);
-      toast.success("Utilisateur créé avec succès");
-      
-      setIsDialogOpen(false);
-      form.reset();
-      onUserCreated();
     } catch (error: any) {
       toast.dismiss();
       console.error("Error creating user:", error);
@@ -138,7 +166,17 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
   };
 
   return (
-    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+    <Dialog open={isDialogOpen} onOpenChange={(open) => {
+      if (!isSubmitting) {
+        setIsDialogOpen(open);
+        if (!open) {
+          // Reset le formulaire seulement quand on ferme
+          form.reset();
+          setServerError(null);
+          setServerErrorDetails(null);
+        }
+      }
+    }}>
       <DialogTrigger asChild>
         <Button>
           <UserPlus className="mr-2 h-4 w-4" />
@@ -268,6 +306,9 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
             )}
             
             <DialogFooter>
+              <Button variant="outline" type="button" onClick={closeDialog} disabled={isSubmitting}>
+                Annuler
+              </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>

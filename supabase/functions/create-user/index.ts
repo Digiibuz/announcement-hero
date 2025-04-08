@@ -22,6 +22,42 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
+    // Test database connection first to ensure connectivity
+    try {
+      console.log("Test de connexion à la base de données...");
+      const { data: dbTest, error: dbTestError } = await supabaseAdmin
+        .from('profiles')
+        .select('count(*)', { count: 'exact', head: true })
+        .limit(1);
+      
+      if (dbTestError) {
+        console.error("Échec de connexion à la base de données:", dbTestError);
+        return new Response(
+          JSON.stringify({ 
+            error: "Problème de connexion à la base de données", 
+            details: dbTestError.message 
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500,
+          }
+        );
+      }
+      console.log("Connexion à la base de données réussie");
+    } catch (dbConnErr) {
+      console.error("Erreur critique lors du test de connexion:", dbConnErr);
+      return new Response(
+        JSON.stringify({ 
+          error: "Erreur critique de connexion à la base de données", 
+          details: dbConnErr.message 
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
+    }
+
     // Get request data
     let requestData;
     try {
@@ -54,6 +90,15 @@ serve(async (req) => {
 
     // Normalize email to lowercase
     const normalizedEmail = email.toLowerCase().trim();
+
+    // Log data being used to create user
+    console.log("Tentative de création d'utilisateur avec:", {
+      email: normalizedEmail,
+      password: "******", // Don't log the actual password
+      name,
+      role,
+      wordpressConfigId: wordpressConfigId || null
+    });
 
     // First check if user exists in auth.users (this is often more reliable)
     try {
@@ -140,43 +185,32 @@ serve(async (req) => {
     console.log("Tentative de création de l'utilisateur dans auth.users:", normalizedEmail);
     let newUserData;
     try {
-      // Test database connection first
-      const { error: testError } = await supabaseAdmin
-        .from('profiles')
-        .select('count(*)', { count: 'exact', head: true });
-      
-      if (testError) {
-        console.error("Problème de connexion à la base de données:", testError);
-        return new Response(
-          JSON.stringify({ 
-            error: "Problème de connexion à la base de données", 
-            details: testError.message 
-          }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 500,
+      // Create user with a detailed try/catch to capture all potential issues
+      try {
+        const createUserResult = await supabaseAdmin.auth.admin.createUser({
+          email: normalizedEmail,
+          password,
+          email_confirm: true,
+          user_metadata: {
+            name,
+            role,
           }
-        );
-      }
+        });
 
-      const { data, error } = await supabaseAdmin.auth.admin.createUser({
-        email: normalizedEmail,
-        password,
-        email_confirm: true,
-        user_metadata: {
-          name,
-          role,
+        if (createUserResult.error) {
+          throw createUserResult.error;
         }
-      });
-
-      if (error) {
-        console.error("Erreur lors de la création de l'utilisateur dans auth.users:", error);
         
-        // Format error message for better clarity
-        const errorMessage = error.message || "Erreur lors de la création de l'utilisateur";
+        newUserData = createUserResult.data;
+      } catch (authError) {
+        // Log the complete error object for debugging
+        console.error("Erreur détaillée lors de la création dans auth:", JSON.stringify(authError, null, 2));
         
-        // If the error contains any database constraint information, provide a clearer message
-        if (errorMessage.includes("duplicate key") || errorMessage.includes("already registered")) {
+        const errorMessage = authError.message || "Erreur lors de la création de l'utilisateur";
+        
+        // Improved error handling with specific conditions
+        if (errorMessage.includes("duplicate key") || errorMessage.includes("already registered") || 
+            errorMessage.includes("User already registered")) {
           return new Response(
             JSON.stringify({ 
               error: "Cet email est déjà utilisé", 
@@ -184,17 +218,44 @@ serve(async (req) => {
             }),
             {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 409, // Conflict status code
+              status: 409,
+            }
+          );
+        }
+        
+        if (errorMessage.includes("invalid_password")) {
+          return new Response(
+            JSON.stringify({ 
+              error: "Mot de passe invalide", 
+              details: "Le mot de passe doit respecter les critères de sécurité (min. 6 caractères)."
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 400,
+            }
+          );
+        }
+        
+        if (errorMessage.includes("invalid_email")) {
+          return new Response(
+            JSON.stringify({ 
+              error: "Email invalide", 
+              details: "Veuillez fournir une adresse email valide."
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 400,
             }
           );
         }
         
         // Database-specific error
-        if (errorMessage.includes("Database error") || error.status === 500) {
+        if (errorMessage.includes("Database error") || authError.status === 500) {
+          console.error("Database error with status:", authError.status, "Code:", authError.code);
           return new Response(
             JSON.stringify({ 
               error: "Erreur de base de données lors de la création de l'utilisateur", 
-              details: "Veuillez contacter l'administrateur système. Il peut s'agir d'un problème de permissions ou de configuration Supabase."
+              details: "Détails: " + errorMessage + " (Code: " + (authError.code || "inconnu") + ")"
             }),
             {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -203,27 +264,31 @@ serve(async (req) => {
           );
         }
         
+        // Default error case
         return new Response(
           JSON.stringify({ 
             error: errorMessage,
-            details: `Code d'erreur: ${error.status || 500}`
+            details: `Code d'erreur: ${authError.status || 500}, Type: ${authError.name || "Inconnu"}`
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: error.status || 500,
+            status: authError.status || 500,
           }
         );
       }
       
-      newUserData = data;
+      if (!newUserData || !newUserData.user) {
+        throw new Error("Échec de création de l'utilisateur: Aucune donnée retournée");
+      }
+      
       console.log("Utilisateur créé dans auth.users avec succès:", newUserData.user.id);
     } catch (error) {
-      console.error("Erreur détaillée lors de la création dans auth:", error);
+      console.error("Erreur critique lors de la création dans auth:", error);
       
       return new Response(
         JSON.stringify({ 
           error: "Erreur lors de la création de l'utilisateur",
-          details: "Erreur de base de données inattendue. Vérifiez les permissions et la configuration de Supabase."
+          details: "Erreur critique: " + (error.message || "Inconnu")
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -307,7 +372,10 @@ serve(async (req) => {
   } catch (error) {
     console.error("Erreur non gérée:", error.message, error.stack);
     return new Response(
-      JSON.stringify({ error: error.message || "Une erreur est survenue" }),
+      JSON.stringify({ 
+        error: error.message || "Une erreur est survenue",
+        details: "Erreur non gérée dans la fonction"
+      }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,
