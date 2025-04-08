@@ -170,7 +170,7 @@ const Sidebar = () => {
             alt="Digiibuz" 
             className="h-8 w-auto" 
           />
-          <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-digibuz-navy to-digibuz-navy/70">
+          <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-digibuz-navy to-digibuz-navy/70 dark:from-white dark:to-white/70">
             Digiibuz
           </span>
         </Link>
@@ -267,7 +267,7 @@ const Sidebar = () => {
               alt="Digiibuz" 
               className="h-7 w-auto" 
             />
-            <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-digibuz-navy to-digibuz-navy/70">
+            <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-digibuz-navy to-digibuz-navy/70 dark:from-white dark:to-white/70">
               Digiibuz
             </span>
           </Link>
