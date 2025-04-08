@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNotificationSender } from '@/hooks/useNotificationSender';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -74,11 +73,10 @@ const NotificationSender = () => {
           throw error;
         }
         
-        setUsers(data as UserItem[] || []);
+        setUsers(Array.isArray(data) ? data : []);
       } catch (error: any) {
         console.error('Erreur lors du chargement des utilisateurs:', error);
         toast.error('Impossible de charger la liste des utilisateurs');
-        // Ensure users is at least an empty array even when loading fails
         setUsers([]);
       } finally {
         setIsLoadingUsers(false);
@@ -119,7 +117,6 @@ const NotificationSender = () => {
         return;
       }
       
-      // Réinitialiser le formulaire
       form.reset({
         title: '',
         content: '',
@@ -280,6 +277,7 @@ const NotificationSender = () => {
                                     key={user.id}
                                     onSelect={() => toggleUserSelection(user.id)}
                                     className="flex items-center gap-2"
+                                    value={user.id}
                                   >
                                     <Checkbox 
                                       checked={selectedUserIds.includes(user.id)}

@@ -109,7 +109,8 @@ const NotificationTemplates = () => {
         
       if (error) throw error;
       
-      setUsers(data as UserItem[] || []);
+      // Ensure data is always an array, even if the fetch returns null or undefined
+      setUsers(Array.isArray(data) ? data : []);
     } catch (error: any) {
       console.error('Erreur lors du chargement des utilisateurs:', error);
       toast.error('Impossible de charger la liste des utilisateurs');
@@ -550,6 +551,7 @@ const NotificationTemplates = () => {
                                     key={user.id}
                                     onSelect={() => toggleUserSelection(user.id)}
                                     className="flex items-center gap-2"
+                                    value={user.id}
                                   >
                                     <Checkbox 
                                       checked={selectedUserIds.includes(user.id)}
