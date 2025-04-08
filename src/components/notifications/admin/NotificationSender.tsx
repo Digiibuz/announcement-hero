@@ -74,8 +74,12 @@ const NotificationSender = () => {
           throw error;
         }
         
-        // Ensure data is always an array
-        setUsers(Array.isArray(data) ? data : []);
+        // Ensure data is always an array and all items have valid IDs
+        const validUsers = Array.isArray(data) 
+          ? data.filter(user => user && user.id) 
+          : [];
+        
+        setUsers(validUsers);
       } catch (error: any) {
         console.error('Erreur lors du chargement des utilisateurs:', error);
         toast.error('Impossible de charger la liste des utilisateurs');
@@ -268,7 +272,11 @@ const NotificationSender = () => {
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent className="w-full p-0">
-                        {users.length > 0 ? (
+                        {isLoadingUsers ? (
+                          <div className="p-4 text-center">
+                            <p>Chargement des utilisateurs...</p>
+                          </div>
+                        ) : users.length > 0 ? (
                           <Command>
                             <CommandInput placeholder="Rechercher un utilisateur..." />
                             <CommandEmpty>Aucun utilisateur trouvé.</CommandEmpty>
@@ -300,11 +308,7 @@ const NotificationSender = () => {
                           </Command>
                         ) : (
                           <div className="p-4 text-center">
-                            {isLoadingUsers ? (
-                              <p>Chargement des utilisateurs...</p>
-                            ) : (
-                              <p>Aucun utilisateur disponible.</p>
-                            )}
+                            <p>Aucun utilisateur disponible.</p>
                           </div>
                         )}
                       </PopoverContent>

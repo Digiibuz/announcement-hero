@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -109,7 +108,11 @@ const NotificationTemplates = () => {
         
       if (error) throw error;
       
-      setUsers(Array.isArray(data) ? data : []);
+      const validUsers = Array.isArray(data) 
+        ? data.filter(user => user && user.id) 
+        : [];
+      
+      setUsers(validUsers);
     } catch (error: any) {
       console.error('Erreur lors du chargement des utilisateurs:', error);
       toast.error('Impossible de charger la liste des utilisateurs');
@@ -538,7 +541,11 @@ const NotificationTemplates = () => {
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-full p-0">
-                        {users.length > 0 ? (
+                        {isLoadingUsers ? (
+                          <div className="p-4 text-center">
+                            <p>Chargement des utilisateurs...</p>
+                          </div>
+                        ) : users.length > 0 ? (
                           <Command>
                             <CommandInput placeholder="Rechercher un utilisateur..." />
                             <CommandEmpty>Aucun utilisateur trouvé.</CommandEmpty>
@@ -570,11 +577,7 @@ const NotificationTemplates = () => {
                           </Command>
                         ) : (
                           <div className="p-4 text-center">
-                            {isLoadingUsers ? (
-                              <p>Chargement des utilisateurs...</p>
-                            ) : (
-                              <p>Aucun utilisateur disponible.</p>
-                            )}
+                            <p>Aucun utilisateur disponible.</p>
                           </div>
                         )}
                       </PopoverContent>
