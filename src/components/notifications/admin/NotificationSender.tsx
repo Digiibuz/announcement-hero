@@ -74,10 +74,12 @@ const NotificationSender = () => {
           throw error;
         }
         
-        setUsers(data as UserItem[]);
+        setUsers(data as UserItem[] || []);
       } catch (error: any) {
         console.error('Erreur lors du chargement des utilisateurs:', error);
         toast.error('Impossible de charger la liste des utilisateurs');
+        // Ensure users is at least an empty array even when loading fails
+        setUsers([]);
       } finally {
         setIsLoadingUsers(false);
       }
@@ -267,34 +269,44 @@ const NotificationSender = () => {
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent className="w-full p-0">
-                        <Command>
-                          <CommandInput placeholder="Rechercher un utilisateur..." />
-                          <CommandEmpty>Aucun utilisateur trouvé.</CommandEmpty>
-                          <ScrollArea className="h-72">
-                            <CommandGroup>
-                              {users.map((user) => (
-                                <CommandItem
-                                  key={user.id}
-                                  onSelect={() => toggleUserSelection(user.id)}
-                                  className="flex items-center gap-2"
-                                >
-                                  <Checkbox 
-                                    checked={selectedUserIds.includes(user.id)}
-                                    onCheckedChange={() => toggleUserSelection(user.id)}
-                                    className="mr-2"
-                                  />
-                                  <div className="flex flex-col">
-                                    <span>{user.name}</span>
-                                    <span className="text-xs text-muted-foreground">{user.email}</span>
-                                  </div>
-                                  {selectedUserIds.includes(user.id) && (
-                                    <Check className="ml-auto h-4 w-4" />
-                                  )}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </ScrollArea>
-                        </Command>
+                        {users.length > 0 ? (
+                          <Command>
+                            <CommandInput placeholder="Rechercher un utilisateur..." />
+                            <CommandEmpty>Aucun utilisateur trouvé.</CommandEmpty>
+                            <ScrollArea className="h-72">
+                              <CommandGroup>
+                                {users.map((user) => (
+                                  <CommandItem
+                                    key={user.id}
+                                    onSelect={() => toggleUserSelection(user.id)}
+                                    className="flex items-center gap-2"
+                                  >
+                                    <Checkbox 
+                                      checked={selectedUserIds.includes(user.id)}
+                                      onCheckedChange={() => toggleUserSelection(user.id)}
+                                      className="mr-2"
+                                    />
+                                    <div className="flex flex-col">
+                                      <span>{user.name || 'Utilisateur sans nom'}</span>
+                                      <span className="text-xs text-muted-foreground">{user.email || 'Sans email'}</span>
+                                    </div>
+                                    {selectedUserIds.includes(user.id) && (
+                                      <Check className="ml-auto h-4 w-4" />
+                                    )}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </ScrollArea>
+                          </Command>
+                        ) : (
+                          <div className="p-4 text-center">
+                            {isLoadingUsers ? (
+                              <p>Chargement des utilisateurs...</p>
+                            ) : (
+                              <p>Aucun utilisateur disponible.</p>
+                            )}
+                          </div>
+                        )}
                       </PopoverContent>
                     </Popover>
                     
@@ -319,11 +331,17 @@ const NotificationSender = () => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {users.map(user => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.name} ({user.email})
-                          </SelectItem>
-                        ))}
+                        {users.length > 0 ? (
+                          users.map(user => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.name || 'Utilisateur sans nom'} ({user.email || 'Sans email'})
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="p-2 text-center text-sm text-muted-foreground">
+                            {isLoadingUsers ? 'Chargement...' : 'Aucun utilisateur disponible'}
+                          </div>
+                        )}
                       </SelectContent>
                     </Select>
                     <FormDescription>

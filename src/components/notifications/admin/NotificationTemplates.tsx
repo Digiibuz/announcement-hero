@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,11 @@ import * as z from 'zod';
 import { Badge } from '@/components/ui/badge';
 import { NotificationType } from '@/hooks/useNotifications';
 import { useNotificationSender } from '@/hooks/useNotificationSender';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
+import { Check, ChevronsUpDown, Users } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface NotificationTemplate {
   id: string;
@@ -27,6 +33,12 @@ interface NotificationTemplate {
   updated_at: string;
   event_trigger?: string;
   frequency_days?: number;
+}
+
+interface UserItem {
+  id: string;
+  name: string;
+  email: string;
 }
 
 const templateSchema = z.object({
@@ -48,8 +60,12 @@ const NotificationTemplates = () => {
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
   const [isSendDialogOpen, setIsSendDialogOpen] = useState(false);
   const [templateToSend, setTemplateToSend] = useState<NotificationTemplate | null>(null);
-  const [sendToAll, setSendToAll] = useState(true);
+  const [sendToAll, setSendToAll] = useState(false);
   const [userId, setUserId] = useState('');
+  const [users, setUsers] = useState<UserItem[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [open, setOpen] = useState(false);
   
   const { sendNotification, sendNotificationToUsers, isSending } = useNotificationSender();
 
@@ -83,8 +99,29 @@ const NotificationTemplates = () => {
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      setIsLoadingUsers(true);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, name, email')
+        .order('name');
+        
+      if (error) throw error;
+      
+      setUsers(data as UserItem[] || []);
+    } catch (error: any) {
+      console.error('Erreur lors du chargement des utilisateurs:', error);
+      toast.error('Impossible de charger la liste des utilisateurs');
+      setUsers([]);
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
   useEffect(() => {
     fetchTemplates();
+    fetchUsers();
   }, []);
 
   useEffect(() => {
@@ -107,6 +144,14 @@ const NotificationTemplates = () => {
     }
   }, [isDialogOpen, currentTemplate, form]);
 
+  useEffect(() => {
+    if (isSendDialogOpen) {
+      setSelectedUserIds([]);
+      setSendToAll(false);
+      setUserId('');
+    }
+  }, [isSendDialogOpen]);
+
   const openTemplateDialog = (template?: NotificationTemplate) => {
     setCurrentTemplate(template || null);
     setIsDialogOpen(true);
@@ -119,8 +164,9 @@ const NotificationTemplates = () => {
 
   const openSendDialog = (template: NotificationTemplate) => {
     setTemplateToSend(template);
-    setSendToAll(true);
+    setSendToAll(false);
     setUserId('');
+    setSelectedUserIds([]);
     setIsSendDialogOpen(true);
   };
 
@@ -184,19 +230,24 @@ const NotificationTemplates = () => {
     }
   };
 
+  const toggleUserSelection = (userId: string) => {
+    setSelectedUserIds(prev => {
+      if (prev.includes(userId)) {
+        return prev.filter(id => id !== userId);
+      } else {
+        return [...prev, userId];
+      }
+    });
+  };
+
   const handleSendNotification = async () => {
     if (!templateToSend) return;
     
     try {
       if (sendToAll) {
-        const { data: users, error: fetchError } = await supabase
-          .from('profiles')
-          .select('id');
-          
-        if (fetchError) throw fetchError;
-        
-        if (!users || users.length === 0) {
-          toast.error('Aucun utilisateur trouvé');
+        // Check if we have users first
+        if (users.length === 0) {
+          toast.error('Aucun utilisateur disponible pour envoyer la notification');
           return;
         }
         
@@ -207,6 +258,12 @@ const NotificationTemplates = () => {
           templateId: templateToSend.id
         });
         toast.success('Notification envoyée à tous les utilisateurs');
+      } else if (selectedUserIds.length > 0) {
+        await sendNotificationToUsers({
+          userIds: selectedUserIds,
+          templateId: templateToSend.id
+        });
+        toast.success(`Notification envoyée à ${selectedUserIds.length} utilisateur(s)`);
       } else if (userId) {
         await sendNotification({
           userId,
@@ -214,7 +271,7 @@ const NotificationTemplates = () => {
         });
         toast.success('Notification envoyée à l\'utilisateur');
       } else {
-        toast.error('Veuillez spécifier un ID d\'utilisateur');
+        toast.error('Veuillez sélectionner au moins un utilisateur');
         return;
       }
       
@@ -433,7 +490,7 @@ const NotificationTemplates = () => {
       </Dialog>
 
       <Dialog open={isSendDialogOpen} onOpenChange={setIsSendDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[525px]">
           <DialogHeader>
             <DialogTitle>Envoyer la notification</DialogTitle>
             <DialogDescription>
@@ -442,33 +499,114 @@ const NotificationTemplates = () => {
           </DialogHeader>
           
           <div className="space-y-4 py-4">
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="send-to-all"
-                checked={sendToAll}
-                onCheckedChange={setSendToAll}
-              />
-              <label htmlFor="send-to-all" className="cursor-pointer">
-                Envoyer à tous les utilisateurs
-              </label>
-            </div>
-            
-            {!sendToAll && (
-              <div className="space-y-2">
-                <label htmlFor="user-id" className="text-sm font-medium">
-                  ID de l'utilisateur
-                </label>
-                <Input 
-                  id="user-id"
-                  value={userId}
-                  onChange={(e) => setUserId(e.target.value)}
-                  placeholder="UUID de l'utilisateur"
+            <div className="flex flex-col space-y-4">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="send-to-all"
+                  checked={sendToAll}
+                  onCheckedChange={setSendToAll}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Entrez l'identifiant unique de l'utilisateur
-                </p>
+                <label htmlFor="send-to-all" className="cursor-pointer">
+                  Envoyer à tous les utilisateurs
+                </label>
               </div>
-            )}
+              
+              {!sendToAll && (
+                <div className="space-y-4">
+                  <div className="flex flex-col space-y-2">
+                    <label className="text-sm font-medium">
+                      Sélectionner des utilisateurs
+                    </label>
+                    
+                    <Popover open={open} onOpenChange={setOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={open}
+                          className="w-full justify-between"
+                          onClick={() => setOpen(true)}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            <span>
+                              {selectedUserIds.length 
+                                ? `${selectedUserIds.length} utilisateur${selectedUserIds.length > 1 ? 's' : ''} sélectionné${selectedUserIds.length > 1 ? 's' : ''}`
+                                : "Sélectionner des utilisateurs"}
+                            </span>
+                          </div>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0">
+                        {users.length > 0 ? (
+                          <Command>
+                            <CommandInput placeholder="Rechercher un utilisateur..." />
+                            <CommandEmpty>Aucun utilisateur trouvé.</CommandEmpty>
+                            <ScrollArea className="h-72">
+                              <CommandGroup>
+                                {users.map((user) => (
+                                  <CommandItem
+                                    key={user.id}
+                                    onSelect={() => toggleUserSelection(user.id)}
+                                    className="flex items-center gap-2"
+                                  >
+                                    <Checkbox 
+                                      checked={selectedUserIds.includes(user.id)}
+                                      onCheckedChange={() => toggleUserSelection(user.id)}
+                                      className="mr-2"
+                                    />
+                                    <div className="flex flex-col">
+                                      <span>{user.name || 'Utilisateur sans nom'}</span>
+                                      <span className="text-xs text-muted-foreground">{user.email || 'Sans email'}</span>
+                                    </div>
+                                    {selectedUserIds.includes(user.id) && (
+                                      <Check className="ml-auto h-4 w-4" />
+                                    )}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </ScrollArea>
+                          </Command>
+                        ) : (
+                          <div className="p-4 text-center">
+                            {isLoadingUsers ? (
+                              <p>Chargement des utilisateurs...</p>
+                            ) : (
+                              <p>Aucun utilisateur disponible.</p>
+                            )}
+                          </div>
+                        )}
+                      </PopoverContent>
+                    </Popover>
+                    
+                    <p className="text-xs text-muted-foreground">
+                      Sélectionnez un ou plusieurs utilisateurs qui recevront cette notification
+                    </p>
+                  </div>
+                  
+                  <div className="text-sm font-medium py-2">
+                    OU
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="user-id" className="text-sm font-medium">
+                      ID spécifique d'un utilisateur
+                    </label>
+                    <Input 
+                      id="user-id"
+                      value={userId}
+                      onChange={(e) => setUserId(e.target.value)}
+                      placeholder="UUID de l'utilisateur"
+                      disabled={selectedUserIds.length > 0}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Entrez l'identifiant unique d'un utilisateur spécifique
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           
           <DialogFooter>
@@ -477,7 +615,7 @@ const NotificationTemplates = () => {
             </Button>
             <Button 
               onClick={handleSendNotification}
-              disabled={isSending || (!sendToAll && !userId)}
+              disabled={isSending || (!sendToAll && selectedUserIds.length === 0 && !userId)}
             >
               {isSending ? 'Envoi en cours...' : 'Envoyer'}
             </Button>
