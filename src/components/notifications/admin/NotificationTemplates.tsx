@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,7 +29,6 @@ interface NotificationTemplate {
   frequency_days?: number;
 }
 
-// Schéma de validation pour le formulaire
 const templateSchema = z.object({
   title: z.string().min(3, { message: 'Le titre doit contenir au moins 3 caractères' }),
   content: z.string().min(10, { message: 'Le contenu doit contenir au moins 10 caractères' }),
@@ -53,7 +51,7 @@ const NotificationTemplates = () => {
   const [sendToAll, setSendToAll] = useState(true);
   const [userId, setUserId] = useState('');
   
-  const { sendNotification, sendNotificationToAllUsers, isSending } = useNotificationSender();
+  const { sendNotification, sendNotificationToUsers, isSending } = useNotificationSender();
 
   const form = useForm<TemplateFormValues>({
     resolver: zodResolver(templateSchema),
@@ -66,7 +64,6 @@ const NotificationTemplates = () => {
     },
   });
 
-  // Charger les modèles de notifications
   const fetchTemplates = async () => {
     try {
       setIsLoading(true);
@@ -90,7 +87,6 @@ const NotificationTemplates = () => {
     fetchTemplates();
   }, []);
 
-  // Réinitialiser le formulaire lors de l'ouverture du dialogue
   useEffect(() => {
     if (isDialogOpen && currentTemplate) {
       form.reset({
@@ -111,19 +107,16 @@ const NotificationTemplates = () => {
     }
   }, [isDialogOpen, currentTemplate, form]);
 
-  // Ouvrir le dialogue pour créer ou éditer un modèle
   const openTemplateDialog = (template?: NotificationTemplate) => {
     setCurrentTemplate(template || null);
     setIsDialogOpen(true);
   };
 
-  // Ouvrir le dialogue de confirmation de suppression
   const openDeleteConfirm = (templateId: string) => {
     setTemplateToDelete(templateId);
     setDeleteConfirmOpen(true);
   };
-  
-  // Ouvrir le dialogue d'envoi rapide de notification
+
   const openSendDialog = (template: NotificationTemplate) => {
     setTemplateToSend(template);
     setSendToAll(true);
@@ -131,11 +124,9 @@ const NotificationTemplates = () => {
     setIsSendDialogOpen(true);
   };
 
-  // Soumettre le formulaire
   const onSubmit = async (data: TemplateFormValues) => {
     try {
       if (currentTemplate) {
-        // Mettre à jour un modèle existant
         const { error } = await supabase
           .from('notification_templates')
           .update({
@@ -150,7 +141,6 @@ const NotificationTemplates = () => {
         if (error) throw error;
         toast.success('Modèle de notification mis à jour');
       } else {
-        // Créer un nouveau modèle
         const { error } = await supabase
           .from('notification_templates')
           .insert({
@@ -165,7 +155,6 @@ const NotificationTemplates = () => {
         toast.success('Modèle de notification créé');
       }
 
-      // Fermer le dialogue et rafraîchir la liste
       setIsDialogOpen(false);
       fetchTemplates();
     } catch (error: any) {
@@ -174,7 +163,6 @@ const NotificationTemplates = () => {
     }
   };
 
-  // Supprimer un modèle
   const deleteTemplate = async () => {
     if (!templateToDelete) return;
 
@@ -195,14 +183,27 @@ const NotificationTemplates = () => {
       toast.error(`Erreur: ${error.message}`);
     }
   };
-  
-  // Envoyer une notification basée sur un modèle
+
   const handleSendNotification = async () => {
     if (!templateToSend) return;
     
     try {
       if (sendToAll) {
-        await sendNotificationToAllUsers({
+        const { data: users, error: fetchError } = await supabase
+          .from('profiles')
+          .select('id');
+          
+        if (fetchError) throw fetchError;
+        
+        if (!users || users.length === 0) {
+          toast.error('Aucun utilisateur trouvé');
+          return;
+        }
+        
+        const userIds = users.map(user => user.id);
+        
+        await sendNotificationToUsers({
+          userIds,
           templateId: templateToSend.id
         });
         toast.success('Notification envoyée à tous les utilisateurs');
@@ -224,7 +225,6 @@ const NotificationTemplates = () => {
     }
   };
 
-  // Afficher un indicateur de type
   const getTypeBadge = (type: NotificationType) => {
     const variants: Record<NotificationType, "default" | "secondary" | "destructive"> = {
       info: "default",
@@ -313,7 +313,6 @@ const NotificationTemplates = () => {
         </CardContent>
       </Card>
 
-      {/* Dialogue d'édition / création de modèle */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[525px]">
           <DialogHeader>
@@ -414,7 +413,6 @@ const NotificationTemplates = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Dialogue de confirmation de suppression */}
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -433,8 +431,7 @@ const NotificationTemplates = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
-      {/* Dialogue d'envoi de notification */}
+
       <Dialog open={isSendDialogOpen} onOpenChange={setIsSendDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
