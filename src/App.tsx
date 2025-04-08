@@ -1,4 +1,3 @@
-
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
@@ -22,8 +21,6 @@ const WordPressManagement = lazy(() => import("./pages/WordPressManagement"));
 const UserProfile = lazy(() => import("./pages/UserProfile"));
 const Support = lazy(() => import("./pages/Support"));
 const GoogleBusinessPage = lazy(() => import("./pages/GoogleBusinessPage"));
-const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
-const NotificationAdminPage = lazy(() => import("./pages/NotificationAdminPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Composant de chargement amélioré avec animation
@@ -189,18 +186,6 @@ function App() {
                       </ProtectedRoute>
                     } 
                   />
-                  <Route 
-                    path="/notifications" 
-                    element={
-                      <ProtectedRoute>
-                        {/* Rediriger les administrateurs vers la page d'administration des notifications */}
-                        <AdminRedirect 
-                          redirectPath="/notifications-admin"
-                          fallbackComponent={<NotificationsPage />}
-                        />
-                      </ProtectedRoute>
-                    } 
-                  />
                   
                   {/* Admin/Client only routes */}
                   <Route 
@@ -219,14 +204,6 @@ function App() {
                       </AdminRoute>
                     } 
                   />
-                  <Route 
-                    path="/notifications-admin" 
-                    element={
-                      <AdminRoute>
-                        <NotificationAdminPage />
-                      </AdminRoute>
-                    } 
-                  />
                   
                   {/* Fallback route */}
                   <Route path="*" element={<NotFound />} />
@@ -241,22 +218,5 @@ function App() {
     </BrowserRouter>
   );
 }
-
-// Nouveau composant pour rediriger les administrateurs vers une autre page
-const AdminRedirect = ({ 
-  redirectPath, 
-  fallbackComponent 
-}: { 
-  redirectPath: string, 
-  fallbackComponent: React.ReactNode 
-}) => {
-  const { isAdmin } = useAuth();
-  
-  if (isAdmin) {
-    return <Navigate to={redirectPath} replace />;
-  }
-  
-  return <>{fallbackComponent}</>;
-};
 
 export default App;

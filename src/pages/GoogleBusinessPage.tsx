@@ -20,7 +20,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { supabase } from "@/integrations/supabase/client";
 
 const GoogleBusinessPage = () => {
   const navigate = useNavigate();
@@ -38,9 +37,11 @@ const GoogleBusinessPage = () => {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isCallbackProcessing, setIsCallbackProcessing] = useState(false);
   
+  // Enhanced authentication check
   useEffect(() => {
     console.log("Auth status check: isAuthenticated =", isAuthenticated);
     if (!isAuthenticated) {
+      // Only redirect if we're not processing a callback
       if (!searchParams.get("code")) {
         console.log("User not authenticated, redirecting to login");
         toast.error("You need to log in to access Google Business features");
@@ -51,6 +52,7 @@ const GoogleBusinessPage = () => {
     }
   }, [isAuthenticated, navigate, searchParams]);
   
+  // Initialize GMB profile with better error handling
   useEffect(() => {
     const initProfile = async () => {
       try {
@@ -67,6 +69,7 @@ const GoogleBusinessPage = () => {
       }
     };
     
+    // Only init profile if user is authenticated and not processing callback
     if (isAuthenticated && !isCallbackProcessing) {
       console.log("User is authenticated, initializing profile");
       initProfile();
@@ -75,6 +78,7 @@ const GoogleBusinessPage = () => {
     }
   }, [fetchProfile, isAuthenticated, isCallbackProcessing]);
   
+  // Process OAuth callback with better logging
   useEffect(() => {
     const code = searchParams.get("code");
     const state = searchParams.get("state");
@@ -83,6 +87,7 @@ const GoogleBusinessPage = () => {
       console.log("OAuth callback detected with code and state");
       setIsCallbackProcessing(true);
       
+      // Get a session first to ensure we're authenticated
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (!session) {
           console.error("No session found during callback processing");
@@ -95,9 +100,11 @@ const GoogleBusinessPage = () => {
         console.log("Session found, processing callback");
         handleCallback(code, state).then((success) => {
           if (success) {
+            // Remove URL parameters
             navigate("/google-business", { replace: true });
             toast.success("Google account connected successfully");
             
+            // Refresh the profile after a short delay
             setTimeout(() => {
               fetchProfile().catch(err => {
                 console.error("Error refreshing profile after callback:", err);
@@ -115,13 +122,15 @@ const GoogleBusinessPage = () => {
       });
     }
   }, [searchParams, handleCallback, navigate, fetchProfile, isCallbackProcessing]);
-  
+
+  // Update local error state when the hook error changes
   useEffect(() => {
     if (error) {
       setConnectionError(error);
     }
   }, [error]);
   
+  // Connect to Google
   const handleConnect = async () => {
     setConnectionError(null);
     try {
@@ -140,6 +149,7 @@ const GoogleBusinessPage = () => {
     }
   };
   
+  // Load GMB accounts
   const handleLoadAccounts = async () => {
     setConnectionError(null);
     try {
@@ -150,6 +160,7 @@ const GoogleBusinessPage = () => {
     }
   };
   
+  // Load locations for a GMB account
   const handleSelectAccount = async (accountId: string) => {
     setConnectionError(null);
     try {
@@ -161,6 +172,7 @@ const GoogleBusinessPage = () => {
     }
   };
   
+  // Select a location
   const handleSelectLocation = async (locationId: string) => {
     if (!selectedAccountId) return;
     
@@ -175,6 +187,7 @@ const GoogleBusinessPage = () => {
     }
   };
   
+  // Disconnect from Google
   const handleDisconnect = async () => {
     setConnectionError(null);
     try {
@@ -187,9 +200,12 @@ const GoogleBusinessPage = () => {
     }
   };
   
+  // Special case: If we're processing a callback, show a loading state
+  // even if the user isn't fully authenticated yet
   const isProcessingCallback = searchParams.get("code") && searchParams.get("state");
   
   if (!isAuthenticated && !isCallbackProcessing) {
+    // Don't render full component if not authenticated
     return null;
   }
   
@@ -232,6 +248,7 @@ const GoogleBusinessPage = () => {
             </Card>
           )}
           
+          {/* Debugging information */}
           {process.env.NODE_ENV !== 'production' && (
             <Accordion type="single" collapsible className="mb-4">
               <AccordionItem value="debug-info">
@@ -282,6 +299,7 @@ const GoogleBusinessPage = () => {
             </Accordion>
           )}
           
+          {/* Show loading indicator if we're waiting for auth or profile, and not processing callback */}
           {isLoading && !profile && !isCallbackProcessing ? (
             <Card className="shadow-md">
               <CardContent className="pt-6 flex justify-center items-center h-40">
@@ -296,6 +314,7 @@ const GoogleBusinessPage = () => {
                 <TabsTrigger value="locations" disabled={!selectedAccountId}>Locations</TabsTrigger>
               </TabsList>
               
+              {/* Profile Tab */}
               <TabsContent value="profile">
                 <Card className="shadow-md">
                   <CardHeader>
@@ -375,6 +394,7 @@ const GoogleBusinessPage = () => {
                 </Card>
               </TabsContent>
               
+              {/* Accounts Tab */}
               <TabsContent value="accounts">
                 <Card className="shadow-md">
                   <CardHeader>
@@ -444,6 +464,7 @@ const GoogleBusinessPage = () => {
                 </Card>
               </TabsContent>
               
+              {/* Locations Tab */}
               <TabsContent value="locations">
                 <Card className="shadow-md">
                   <CardHeader>

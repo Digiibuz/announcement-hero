@@ -4,11 +4,9 @@ import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
-import NotificationIcon from "@/components/notifications/NotificationIcon";
-import { Bell } from "lucide-react";
 
 const Header = () => {
-  const { user, isAuthenticated, isAdmin } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   // Si l'utilisateur est authentifié, ne pas afficher le header du tout
   if (isAuthenticated) {
@@ -33,17 +31,6 @@ const Header = () => {
           </div>
 
           <div className="flex items-center gap-4">
-            {isAdmin && (
-              <Link to="/notifications-admin">
-                <Button 
-                  variant="outline"
-                  className="flex items-center"
-                >
-                  <Bell className="h-4 w-4 mr-2" />
-                  Gérer les notifications
-                </Button>
-              </Link>
-            )}
             <Link to="/login">
               <Button 
                 className="bg-digibuz-navy hover:bg-digibuz-navy/90 text-white dark:bg-digibuz-yellow dark:text-digibuz-navy dark:hover:bg-digibuz-yellow/90"

@@ -51,7 +51,7 @@ const PageLayout = ({
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-50">
+      <div className="min-h-screen flex items-center justify-center">
         <LoadingIndicator variant="dots" size={42} />
       </div>
     );
@@ -64,7 +64,7 @@ const PageLayout = ({
       <Sidebar />
 
       <main className={`pt-16 md:pl-64 ${bannerPadding}`}>
-        <div className={`container ${fullWidthMobile && isMobile ? 'px-0 sm:px-4' : 'px-4'} py-0 pb-16 ${containerClassName || ''}`}>
+        <div className={`container ${fullWidthMobile && isMobile ? 'px-0 sm:px-4' : 'px-4'} py-0 ${isCreateAnnouncementPage && !isMobile ? 'max-w-3xl mx-auto' : ''} ${containerClassName || ''}`}>
           {(title || titleAction || showRefreshButton) && (
             <AnimatedContainer delay={100} className={containerClassName?.includes('max-w-full') ? 'w-full' : ''}>
               <div className={`flex flex-col ${!isMobile ? "sm:flex-row sm:items-center sm:justify-between" : ""} mb-4 ${isMobile ? "pt-0 px-4" : "pt-2"} gap-3`}>

@@ -8,7 +8,6 @@ import TicketList from "@/components/support/TicketList";
 import CreateTicketForm from "@/components/support/CreateTicketForm";
 import AdminTickets from "@/components/support/AdminTickets";
 import { useTicketNotifications } from "@/hooks/useTicketNotifications";
-import AnimatedContainer from "@/components/ui/AnimatedContainer";
 
 const Support = () => {
   const { isAdmin, isClient } = useAuth();
@@ -35,61 +34,59 @@ const Support = () => {
     <PageLayout 
       title="Support & Assistance"
     >
-      <AnimatedContainer delay={200}>
-        <div className="space-y-6">
-          {isAdmin ? (
-            <Tabs defaultValue="open" className="w-full" onValueChange={handleTabChange}>
-              <TabsList className="mb-4">
-                <TabsTrigger value="all">Tous les tickets</TabsTrigger>
-                <TabsTrigger value="open" className="relative">
-                  Tickets ouverts
-                  {unreadCount > 0 && (
-                    <Badge 
-                      variant="destructive" 
-                      className="ml-2 px-1.5 py-0.5 text-xs"
-                    >
-                      {unreadCount}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="closed">Tickets résolus</TabsTrigger>
-              </TabsList>
-              <TabsContent value="all">
-                <AdminTickets filter="all" />
-              </TabsContent>
-              <TabsContent value="open">
-                <AdminTickets filter="open" />
-              </TabsContent>
-              <TabsContent value="closed">
-                <AdminTickets filter="closed" />
-              </TabsContent>
-            </Tabs>
-          ) : (
-            <Tabs defaultValue="create" className="w-full" onValueChange={handleTabChange}>
-              <TabsList className="mb-4">
-                <TabsTrigger value="create">Nouveau ticket</TabsTrigger>
-                <TabsTrigger value="previous" className="relative">
-                  Mes tickets
-                  {unreadCount > 0 && (
-                    <Badge 
-                      variant="destructive" 
-                      className="ml-2 px-1.5 py-0.5 text-xs"
-                    >
-                      {unreadCount}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="create">
-                <CreateTicketForm />
-              </TabsContent>
-              <TabsContent value="previous">
-                <TicketList />
-              </TabsContent>
-            </Tabs>
-          )}
-        </div>
-      </AnimatedContainer>
+      <div className="max-w-5xl mx-auto">
+        {isAdmin ? (
+          <Tabs defaultValue="open" className="w-full" onValueChange={handleTabChange}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="all">Tous les tickets</TabsTrigger>
+              <TabsTrigger value="open" className="relative">
+                Tickets ouverts
+                {unreadCount > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="ml-2 px-1.5 py-0.5 text-xs"
+                  >
+                    {unreadCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="closed">Tickets résolus</TabsTrigger>
+            </TabsList>
+            <TabsContent value="all">
+              <AdminTickets filter="all" />
+            </TabsContent>
+            <TabsContent value="open">
+              <AdminTickets filter="open" />
+            </TabsContent>
+            <TabsContent value="closed">
+              <AdminTickets filter="closed" />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <Tabs defaultValue="create" className="w-full" onValueChange={handleTabChange}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="create">Nouveau ticket</TabsTrigger>
+              <TabsTrigger value="previous" className="relative">
+                Mes tickets
+                {unreadCount > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="ml-2 px-1.5 py-0.5 text-xs"
+                  >
+                    {unreadCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="create">
+              <CreateTicketForm />
+            </TabsContent>
+            <TabsContent value="previous">
+              <TicketList />
+            </TabsContent>
+          </Tabs>
+        )}
+      </div>
     </PageLayout>
   );
 };
