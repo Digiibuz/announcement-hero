@@ -13,6 +13,15 @@ interface SendNotificationParams {
   metadata?: Record<string, any>;
 }
 
+interface SendNotificationToUsersParams {
+  userIds: string[];
+  title?: string;
+  content?: string;
+  type?: NotificationType;
+  templateId?: string;
+  metadata?: Record<string, any>;
+}
+
 export const useNotificationSender = () => {
   const [isSending, setIsSending] = useState(false);
 
@@ -38,7 +47,7 @@ export const useNotificationSender = () => {
           type,
           templateId,
           metadata,
-          sendToAll: false // Explicitement défini à false pour un seul utilisateur
+          sendToUsers: false
         }
       });
 
@@ -46,7 +55,6 @@ export const useNotificationSender = () => {
         throw error;
       }
 
-      toast.success('Notification envoyée');
       return data;
     } catch (error: any) {
       console.error('Erreur lors de l\'envoi de la notification:', error.message);
@@ -55,25 +63,35 @@ export const useNotificationSender = () => {
     }
   };
 
-  const sendNotificationToAllUsers = async ({
+  const sendNotificationToUsers = async ({
+    userIds,
     title,
     content,
     type,
     templateId,
     metadata
-  }: Omit<SendNotificationParams, 'userId'>) => {
+  }: SendNotificationToUsersParams) => {
     try {
       setIsSending(true);
 
-      // Appeler directement la fonction Edge avec sendToAll=true
+      if (!templateId && (!title || !content || !type)) {
+        throw new Error('Soit templateId, soit title, content et type sont requis');
+      }
+
+      if (!userIds || userIds.length === 0) {
+        throw new Error('La liste des utilisateurs ne peut pas être vide');
+      }
+
+      // Appeler la fonction Edge avec la liste des utilisateurs spécifiques
       const { data, error } = await supabase.functions.invoke('send-notification', {
         body: {
-          sendToAll: true,
+          userIds,
           title,
           content,
           type,
           templateId,
-          metadata
+          metadata,
+          sendToUsers: true
         }
       });
 
@@ -81,7 +99,6 @@ export const useNotificationSender = () => {
         throw error;
       }
 
-      toast.success(`Notification envoyée à tous les utilisateurs`);
       return data;
     } catch (error: any) {
       console.error('Erreur lors de l\'envoi des notifications:', error.message);
@@ -94,7 +111,7 @@ export const useNotificationSender = () => {
 
   return {
     sendNotification,
-    sendNotificationToAllUsers,
+    sendNotificationToUsers,
     isSending
   };
 };

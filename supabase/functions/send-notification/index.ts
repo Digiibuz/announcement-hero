@@ -32,26 +32,38 @@ serve(async (req) => {
     const requestBody = await req.json();
     const { 
       userId, 
+      userIds,
       templateId, 
       title, 
       content, 
       type, 
       metadata, 
-      sendToAll 
+      sendToUsers
     } = requestBody;
 
     console.log("Request received:", {
-      sendToAll,
+      sendToUsers,
       userId: userId || "N/A",
+      userIds: userIds ? `${userIds.length} users` : "N/A",
       templateId: templateId || "N/A",
       hasTitle: !!title,
       hasContent: !!content
     });
 
     // Validation des paramètres
-    if (!sendToAll && !userId) {
+    if (!sendToUsers && !userId) {
       return new Response(
-        JSON.stringify({ error: "L'ID de l'utilisateur est requis lorsque sendToAll est false" }),
+        JSON.stringify({ error: "L'ID de l'utilisateur est requis lorsque sendToUsers est false" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    if (sendToUsers && (!userIds || userIds.length === 0)) {
+      return new Response(
+        JSON.stringify({ error: "La liste des utilisateurs ne peut pas être vide lorsque sendToUsers est true" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -123,33 +135,54 @@ serve(async (req) => {
 
     console.log("Notification data prepared:", notificationData);
 
-    // NOUVELLE APPROCHE POUR ENVOYER À TOUS LES UTILISATEURS
-    if (sendToAll) {
-      // 1. Récupérer tous les IDs utilisateurs en une seule requête
-      const { data: profiles, error: profilesError } = await supabaseClient
-        .from("profiles")
-        .select("id");
-
-      if (profilesError) {
-        console.error("Error fetching user profiles:", profilesError);
+    // APPROCHE POUR ENVOYER À PLUSIEURS UTILISATEURS SPÉCIFIQUES
+    if (sendToUsers) {
+      if (!userIds || userIds.length === 0) {
         return new Response(
           JSON.stringify({ 
-            error: "Erreur lors de la récupération des utilisateurs", 
-            details: profilesError 
+            error: "La liste des utilisateurs ne peut pas être vide" 
           }),
           {
-            status: 500,
+            status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           }
         );
       }
 
-      // 2. S'il n'y a aucun utilisateur, renvoyer succès avec compte = 0
-      if (!profiles || profiles.length === 0) {
+      console.log(`Sending notifications to ${userIds.length} specified users`);
+
+      // Vérifier les préférences de notification pour chaque utilisateur
+      const { data: preferences, error: preferencesError } = await supabaseClient
+        .from("notification_preferences")
+        .select("*")
+        .in("user_id", userIds);
+
+      if (preferencesError) {
+        console.error("Error fetching notification preferences:", preferencesError);
+      }
+
+      // Créer un map des préférences par user_id
+      const preferencesMap = new Map();
+      if (preferences) {
+        preferences.forEach(pref => {
+          preferencesMap.set(pref.user_id, pref);
+        });
+      }
+
+      // Filtrer les utilisateurs qui ont désactivé ce type de notification
+      const filteredUserIds = userIds.filter(uid => {
+        const userPref = preferencesMap.get(uid);
+        if (!userPref) return true; // Si pas de préférences, autoriser par défaut
+        
+        const typeEnabledField = `${notificationData.type}_enabled`;
+        return userPref[typeEnabledField] !== false;
+      });
+
+      if (filteredUserIds.length === 0) {
         return new Response(
           JSON.stringify({ 
             success: true, 
-            message: "Aucun utilisateur trouvé pour envoyer des notifications",
+            message: "Tous les utilisateurs sélectionnés ont désactivé ce type de notification",
             count: 0
           }),
           {
@@ -159,11 +192,9 @@ serve(async (req) => {
         );
       }
 
-      console.log(`Found ${profiles.length} users to send notifications to`);
-
-      // 3. Préparer un tableau d'objets pour l'insertion en une seule requête
-      const notificationsToInsert = profiles.map(profile => ({
-        user_id: profile.id,
+      // Préparer un tableau d'objets pour l'insertion en une seule requête
+      const notificationsToInsert = filteredUserIds.map(userId => ({
+        user_id: userId,
         title: notificationData.title,
         content: notificationData.content,
         type: notificationData.type,
@@ -171,7 +202,7 @@ serve(async (req) => {
         metadata: metadata || null
       }));
 
-      // 4. Insérer toutes les notifications en une seule opération
+      // Insérer toutes les notifications en une seule opération
       const { error: insertError } = await supabaseClient
         .from("user_notifications")
         .insert(notificationsToInsert);
@@ -190,13 +221,14 @@ serve(async (req) => {
         );
       }
 
-      console.log(`Successfully sent ${profiles.length} notifications`);
+      console.log(`Successfully sent ${filteredUserIds.length} notifications`);
       
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: `Notifications envoyées à ${profiles.length} utilisateurs`,
-          count: profiles.length
+          message: `Notifications envoyées à ${filteredUserIds.length} utilisateurs`,
+          count: filteredUserIds.length,
+          skippedCount: userIds.length - filteredUserIds.length
         }),
         {
           status: 200,

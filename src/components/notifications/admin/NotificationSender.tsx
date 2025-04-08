@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNotificationSender } from '@/hooks/useNotificationSender';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -13,20 +13,37 @@ import * as z from 'zod';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
 import { NotificationType } from '@/hooks/useNotifications';
+import { supabase } from '@/integrations/supabase/client';
+import { Check, ChevronsUpDown, Users } from 'lucide-react';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Schéma de validation pour le formulaire
 const notificationSchema = z.object({
   title: z.string().min(3, { message: 'Le titre doit contenir au moins 3 caractères' }),
   content: z.string().min(10, { message: 'Le contenu doit contenir au moins 10 caractères' }),
   type: z.enum(['info', 'alert', 'reminder'] as const),
-  sendToAll: z.boolean().default(true),
+  sendToMultiple: z.boolean().default(false),
   userId: z.string().optional(),
+  selectedUserIds: z.array(z.string()).optional(),
 });
 
 type NotificationFormValues = z.infer<typeof notificationSchema>;
 
+interface UserItem {
+  id: string;
+  name: string;
+  email: string;
+}
+
 const NotificationSender = () => {
-  const { sendNotification, sendNotificationToAllUsers, isSending } = useNotificationSender();
+  const { sendNotification, sendNotificationToUsers, isSending } = useNotificationSender();
+  const [users, setUsers] = useState<UserItem[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [open, setOpen] = useState(false);
   
   const form = useForm<NotificationFormValues>({
     resolver: zodResolver(notificationSchema),
@@ -34,24 +51,59 @@ const NotificationSender = () => {
       title: '',
       content: '',
       type: 'info',
-      sendToAll: true,
+      sendToMultiple: false,
       userId: '',
+      selectedUserIds: [],
     },
   });
 
-  const sendToAll = form.watch('sendToAll');
+  const sendToMultiple = form.watch('sendToMultiple');
+  const selectedUserIds = form.watch('selectedUserIds') || [];
+
+  // Charger la liste des utilisateurs
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        setIsLoadingUsers(true);
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, name, email')
+          .order('name');
+          
+        if (error) {
+          throw error;
+        }
+        
+        setUsers(data as UserItem[]);
+      } catch (error: any) {
+        console.error('Erreur lors du chargement des utilisateurs:', error);
+        toast.error('Impossible de charger la liste des utilisateurs');
+      } finally {
+        setIsLoadingUsers(false);
+      }
+    };
+    
+    loadUsers();
+  }, []);
 
   const onSubmit = async (data: NotificationFormValues) => {
     try {
-      const { title, content, type, sendToAll, userId } = data;
+      const { title, content, type, sendToMultiple, userId, selectedUserIds } = data;
       
-      if (sendToAll) {
-        await sendNotificationToAllUsers({
+      if (sendToMultiple) {
+        if (!selectedUserIds || selectedUserIds.length === 0) {
+          toast.error('Veuillez sélectionner au moins un utilisateur');
+          return;
+        }
+        
+        await sendNotificationToUsers({
+          userIds: selectedUserIds,
           title,
           content,
           type: type as NotificationType,
         });
-        toast.success('Notification envoyée à tous les utilisateurs');
+        
+        toast.success(`Notification envoyée à ${selectedUserIds.length} utilisateur(s)`);
       } else if (userId) {
         await sendNotification({
           userId,
@@ -70,11 +122,22 @@ const NotificationSender = () => {
         title: '',
         content: '',
         type: 'info',
-        sendToAll: true,
+        sendToMultiple: false,
         userId: '',
+        selectedUserIds: [],
       });
     } catch (error: any) {
       toast.error(`Erreur lors de l'envoi de la notification: ${error.message}`);
+    }
+  };
+
+  const toggleUserSelection = (userId: string) => {
+    const currentSelected = form.getValues('selectedUserIds') || [];
+    
+    if (currentSelected.includes(userId)) {
+      form.setValue('selectedUserIds', currentSelected.filter(id => id !== userId));
+    } else {
+      form.setValue('selectedUserIds', [...currentSelected, userId]);
     }
   };
 
@@ -83,7 +146,7 @@ const NotificationSender = () => {
       <CardHeader>
         <CardTitle>Envoyer une notification</CardTitle>
         <CardDescription>
-          Envoyez une notification instantanée à un utilisateur spécifique ou à tous les utilisateurs
+          Envoyez une notification instantanée à un ou plusieurs utilisateurs
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -152,13 +215,13 @@ const NotificationSender = () => {
             
             <FormField
               control={form.control}
-              name="sendToAll"
+              name="sendToMultiple"
               render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
-                    <FormLabel className="text-base">Envoyer à tous les utilisateurs</FormLabel>
+                    <FormLabel className="text-base">Envoyer à plusieurs utilisateurs</FormLabel>
                     <FormDescription>
-                      Activez cette option pour envoyer la notification à tous les utilisateurs
+                      Activez cette option pour sélectionner plusieurs destinataires
                     </FormDescription>
                   </div>
                   <FormControl>
@@ -171,18 +234,100 @@ const NotificationSender = () => {
               )}
             />
             
-            {!sendToAll && (
+            {sendToMultiple ? (
+              <FormField
+                control={form.control}
+                name="selectedUserIds"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sélectionner les destinataires</FormLabel>
+                    <FormDescription>
+                      Choisissez un ou plusieurs utilisateurs qui recevront cette notification
+                    </FormDescription>
+                    
+                    <Popover open={open} onOpenChange={setOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={open}
+                            className="w-full justify-between"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Users className="h-4 w-4" />
+                              <span>
+                                {selectedUserIds.length 
+                                  ? `${selectedUserIds.length} utilisateur${selectedUserIds.length > 1 ? 's' : ''} sélectionné${selectedUserIds.length > 1 ? 's' : ''}`
+                                  : "Sélectionner des utilisateurs"}
+                              </span>
+                            </div>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0">
+                        <Command>
+                          <CommandInput placeholder="Rechercher un utilisateur..." />
+                          <CommandEmpty>Aucun utilisateur trouvé.</CommandEmpty>
+                          <ScrollArea className="h-72">
+                            <CommandGroup>
+                              {users.map((user) => (
+                                <CommandItem
+                                  key={user.id}
+                                  onSelect={() => toggleUserSelection(user.id)}
+                                  className="flex items-center gap-2"
+                                >
+                                  <Checkbox 
+                                    checked={selectedUserIds.includes(user.id)}
+                                    onCheckedChange={() => toggleUserSelection(user.id)}
+                                    className="mr-2"
+                                  />
+                                  <div className="flex flex-col">
+                                    <span>{user.name}</span>
+                                    <span className="text-xs text-muted-foreground">{user.email}</span>
+                                  </div>
+                                  {selectedUserIds.includes(user.id) && (
+                                    <Check className="ml-auto h-4 w-4" />
+                                  )}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </ScrollArea>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : (
               <FormField
                 control={form.control}
                 name="userId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>ID de l'utilisateur</FormLabel>
-                    <FormControl>
-                      <Input placeholder="ID de l'utilisateur" {...field} />
-                    </FormControl>
+                    <FormLabel>Sélectionner un utilisateur</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner un utilisateur" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {users.map(user => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.name} ({user.email})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormDescription>
-                      Entrez l'identifiant UUID de l'utilisateur destinataire
+                      Choisissez l'utilisateur qui recevra cette notification
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
