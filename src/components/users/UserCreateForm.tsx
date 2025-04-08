@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -121,10 +120,6 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
             role: sanitizedValues.role,
             wordpressConfigId: sanitizedValues.role === "client" ? sanitizedValues.wordpressConfigId : null,
           },
-          // Augmenter le timeout pour donner plus de temps à la fonction Edge
-          options: {
-            timeout: 30000, // 30 secondes
-          }
         });
         
         // Assurer un temps minimum d'affichage du chargement pour éviter un UX saccadé
