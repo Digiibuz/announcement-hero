@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -109,7 +108,6 @@ const NotificationTemplates = () => {
         
       if (error) throw error;
       
-      // Ensure data is always an array, even if the fetch returns null or undefined
       setUsers(Array.isArray(data) ? data : []);
     } catch (error: any) {
       console.error('Erreur lors du chargement des utilisateurs:', error);
@@ -246,7 +244,6 @@ const NotificationTemplates = () => {
     
     try {
       if (sendToAll) {
-        // Check if we have users first
         if (users.length === 0) {
           toast.error('Aucun utilisateur disponible pour envoyer la notification');
           return;
