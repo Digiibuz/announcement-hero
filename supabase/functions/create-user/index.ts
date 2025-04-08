@@ -192,65 +192,54 @@ serve(async (req) => {
     console.log("Création de l'utilisateur:", email);
     let newUserData;
     try {
-      // Enhanced error handling for user creation
-      try {
-        // Créer l'utilisateur sans dépendance à notification_preferences
-        const { data, error } = await supabaseAdmin.auth.admin.createUser({
-          email: email.toLowerCase(),
-          password,
-          email_confirm: true,
-          user_metadata: {
-            name,
-            role,
-            wordpressConfigId: role === "client" ? wordpressConfigId : null,
-          },
-        });
+      const { data, error } = await supabaseAdmin.auth.admin.createUser({
+        email: email.toLowerCase(),
+        password,
+        email_confirm: true,
+        user_metadata: {
+          name,
+          role,
+          wordpressConfigId: role === "client" ? wordpressConfigId : null,
+        },
+      });
 
-        if (error) {
-          console.error("Erreur lors de la création de l'utilisateur:", error);
-          
-          // Check for specific error types and provide better messages
-          if (error.message.includes("duplicate key")) {
-            return new Response(
-              JSON.stringify({ 
-                error: "L'email est déjà utilisé", 
-                details: "Un utilisateur avec cet email existe déjà dans notre système."
-              }),
-              {
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-                status: 400,
-              }
-            );
-          }
-          
-          // Check for password strength issues
-          if (error.message.includes("password")) {
-            return new Response(
-              JSON.stringify({ 
-                error: "Mot de passe invalide", 
-                details: "Le mot de passe ne respecte pas les critères de sécurité requis."
-              }),
-              {
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-                status: 400,
-              }
-            );
-          }
-          
-          throw error;
+      if (error) {
+        console.error("Erreur lors de la création de l'utilisateur:", error);
+        
+        // Check for specific error types and provide better messages
+        if (error.message.includes("duplicate key")) {
+          return new Response(
+            JSON.stringify({ 
+              error: "L'email est déjà utilisé", 
+              details: "Un utilisateur avec cet email existe déjà dans notre système."
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 400,
+            }
+          );
         }
         
-        newUserData = data;
-        console.log("Utilisateur créé dans auth:", newUserData.user.id);
-      } catch (authError) {
-        console.error("Erreur détaillée lors de la création dans auth:", authError);
+        // Check for password strength issues
+        if (error.message.includes("password")) {
+          return new Response(
+            JSON.stringify({ 
+              error: "Mot de passe invalide", 
+              details: "Le mot de passe ne respecte pas les critères de sécurité requis."
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 400,
+            }
+          );
+        }
         
-        // Provide a specific error message for database errors
-        if (authError.message && authError.message.includes("Database error")) {
+        // Generic database error (likely related to notification_preferences)
+        if (error.message.includes("Database error")) {
           return new Response(
             JSON.stringify({ 
               error: "Erreur technique lors de la création", 
-              details: "Une erreur est survenue lors de la création de l'utilisateur. Contactez l'administrateur pour vérifier les permissions."
+              details: "Une erreur est survenue lors de la création de l'utilisateur. Contactez l'administrateur système."
             }),
             {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -259,8 +248,11 @@ serve(async (req) => {
           );
         }
         
-        throw authError;
+        throw error;
       }
+      
+      newUserData = data;
+      console.log("Utilisateur créé dans auth:", newUserData.user.id);
     } catch (error) {
       console.error("Erreur lors de la création de l'utilisateur:", error);
       return new Response(
@@ -275,7 +267,7 @@ serve(async (req) => {
       );
     }
 
-    // After creating the user in Auth, manually create their profile WITHOUT creating notification_preferences
+    // After creating the user in Auth, manually create their profile
     try {
       console.log("Création du profil pour l'utilisateur:", newUserData.user.id);
       const { error: profileError } = await supabaseAdmin
