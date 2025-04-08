@@ -14,9 +14,7 @@ import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
 import { NotificationType } from '@/hooks/useNotifications';
 import { supabase } from '@/integrations/supabase/client';
-import { Check, ChevronsUpDown, Users } from 'lucide-react';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Check, Users } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -43,7 +41,7 @@ const NotificationSender = () => {
   const { sendNotification, sendNotificationToUsers, isSending } = useNotificationSender();
   const [users, setUsers] = useState<UserItem[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [userSelectorOpen, setUserSelectorOpen] = useState(false);
   
   const form = useForm<NotificationFormValues>({
     resolver: zodResolver(notificationSchema),
@@ -74,9 +72,9 @@ const NotificationSender = () => {
           throw error;
         }
         
-        // Ensure data is always an array and all items have valid IDs
+        // S'assurer que data est toujours un tableau valide
         const validUsers = Array.isArray(data) 
-          ? data.filter(user => user && user.id) 
+          ? data.filter(user => user && typeof user === 'object' && 'id' in user && user.id) 
           : [];
         
         setUsers(validUsers);
@@ -144,6 +142,60 @@ const NotificationSender = () => {
     } else {
       form.setValue('selectedUserIds', [...currentSelected, userId]);
     }
+  };
+
+  // Composant simplifié de sélection d'utilisateurs
+  const UserSelector = () => {
+    if (isLoadingUsers) {
+      return (
+        <div className="p-4 border rounded-md">
+          <p className="text-center">Chargement des utilisateurs...</p>
+        </div>
+      );
+    }
+
+    if (users.length === 0) {
+      return (
+        <div className="p-4 border rounded-md">
+          <p className="text-center">Aucun utilisateur disponible</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="border rounded-md">
+        <div className="p-2 border-b">
+          <Input 
+            placeholder="Rechercher un utilisateur..." 
+            className="w-full"
+          />
+        </div>
+        <ScrollArea className="h-72">
+          <div className="p-2">
+            {users.map((user) => (
+              <div 
+                key={user.id}
+                className="flex items-center p-2 hover:bg-muted rounded-md cursor-pointer"
+                onClick={() => toggleUserSelection(user.id)}
+              >
+                <Checkbox 
+                  checked={selectedUserIds.includes(user.id)}
+                  onCheckedChange={() => toggleUserSelection(user.id)}
+                  className="mr-2"
+                />
+                <div className="flex-1">
+                  <div className="font-medium">{user.name || 'Sans nom'}</div>
+                  <div className="text-xs text-muted-foreground">{user.email || 'Sans email'}</div>
+                </div>
+                {selectedUserIds.includes(user.id) && (
+                  <Check className="h-4 w-4 text-primary" />
+                )}
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+    );
   };
 
   return (
@@ -250,69 +302,32 @@ const NotificationSender = () => {
                       Choisissez un ou plusieurs utilisateurs qui recevront cette notification
                     </FormDescription>
                     
-                    <Popover open={open} onOpenChange={setOpen}>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={open}
-                            className="w-full justify-between"
-                          >
-                            <div className="flex items-center gap-2">
-                              <Users className="h-4 w-4" />
-                              <span>
-                                {selectedUserIds.length 
-                                  ? `${selectedUserIds.length} utilisateur${selectedUserIds.length > 1 ? 's' : ''} sélectionné${selectedUserIds.length > 1 ? 's' : ''}`
-                                  : "Sélectionner des utilisateurs"}
-                              </span>
-                            </div>
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-full p-0">
-                        {isLoadingUsers ? (
-                          <div className="p-4 text-center">
-                            <p>Chargement des utilisateurs...</p>
-                          </div>
-                        ) : users.length > 0 ? (
-                          <Command>
-                            <CommandInput placeholder="Rechercher un utilisateur..." />
-                            <CommandEmpty>Aucun utilisateur trouvé.</CommandEmpty>
-                            <ScrollArea className="h-72">
-                              <CommandGroup>
-                                {users.map((user) => (
-                                  <CommandItem
-                                    key={user.id}
-                                    onSelect={() => toggleUserSelection(user.id)}
-                                    className="flex items-center gap-2"
-                                    value={user.id || ''}
-                                  >
-                                    <Checkbox 
-                                      checked={selectedUserIds.includes(user.id)}
-                                      onCheckedChange={() => toggleUserSelection(user.id)}
-                                      className="mr-2"
-                                    />
-                                    <div className="flex flex-col">
-                                      <span>{user.name || 'Utilisateur sans nom'}</span>
-                                      <span className="text-xs text-muted-foreground">{user.email || 'Sans email'}</span>
-                                    </div>
-                                    {selectedUserIds.includes(user.id) && (
-                                      <Check className="ml-auto h-4 w-4" />
-                                    )}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </ScrollArea>
-                          </Command>
-                        ) : (
-                          <div className="p-4 text-center">
-                            <p>Aucun utilisateur disponible.</p>
-                          </div>
+                    <div className="mt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setUserSelectorOpen(!userSelectorOpen)}
+                        className={cn(
+                          "w-full justify-between",
+                          userSelectorOpen && "border-primary"
                         )}
-                      </PopoverContent>
-                    </Popover>
+                      >
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          <span>
+                            {selectedUserIds.length 
+                              ? `${selectedUserIds.length} utilisateur${selectedUserIds.length > 1 ? 's' : ''} sélectionné${selectedUserIds.length > 1 ? 's' : ''}`
+                              : "Sélectionner des utilisateurs"}
+                          </span>
+                        </div>
+                      </Button>
+                      
+                      {userSelectorOpen && (
+                        <div className="mt-2">
+                          <UserSelector />
+                        </div>
+                      )}
+                    </div>
                     
                     <FormMessage />
                   </FormItem>
