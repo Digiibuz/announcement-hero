@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -75,9 +76,12 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       
       console.log("Envoi des données:", values);
       
+      // Properly handle wordpressConfigId
       const wordpressConfigId = values.wordpressConfigId === "none" || !values.wordpressConfigId 
                               ? null 
                               : values.wordpressConfigId;
+      
+      console.log("WordPress config ID après traitement:", wordpressConfigId);
       
       const { data, error: functionCallError } = await supabase.functions.invoke("create-user", {
         body: {
