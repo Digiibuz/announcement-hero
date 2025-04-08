@@ -70,6 +70,20 @@ const PageLayout = ({
     return ""; // alignement par défaut (à gauche) pour les autres pages
   };
 
+  // Déterminer la largeur maximale du conteneur en fonction de la page
+  const getContainerWidth = () => {
+    if (location.pathname === '/profile') {
+      return "max-w-3xl mx-auto";
+    }
+    if (location.pathname === '/notifications') {
+      return "max-w-4xl mx-auto";
+    }
+    if (location.pathname === '/support') {
+      return "max-w-5xl mx-auto";
+    }
+    return "";
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <ImpersonationBanner />
@@ -77,7 +91,7 @@ const PageLayout = ({
       <Sidebar />
 
       <main className={`pt-16 md:pl-64 ${bannerPadding}`}>
-        <div className={`container ${fullWidthMobile && isMobile ? 'px-0 sm:px-4' : 'px-4'} py-0 ${isCreateAnnouncementPage && !isMobile ? 'max-w-3xl mx-auto' : ''} ${containerClassName || ''}`}>
+        <div className={`container ${fullWidthMobile && isMobile ? 'px-0 sm:px-4' : 'px-4'} py-0 ${isCreateAnnouncementPage && !isMobile ? 'max-w-3xl mx-auto' : ''} ${getContainerWidth()} ${containerClassName || ''}`}>
           {(title || titleAction || showRefreshButton) && (
             <AnimatedContainer delay={100} className={containerClassName?.includes('max-w-full') ? 'w-full' : ''}>
               <div className={`flex flex-col ${!isMobile ? "sm:flex-row sm:items-center sm:justify-between" : ""} mb-4 ${isMobile ? "pt-0 px-4" : "pt-2"} gap-3`}>
