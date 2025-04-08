@@ -78,10 +78,8 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
   });
 
   const closeDialog = () => {
-    // Ne ferme le dialogue que s'il n'y a pas d'erreur ou si on n'est pas en cours de soumission
     if (!isSubmitting) {
       setIsDialogOpen(false);
-      // Reset form et erreurs
       form.reset();
       setServerError(null);
       setServerErrorDetails(null);
@@ -94,24 +92,19 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       setServerError(null);
       setServerErrorDetails(null);
       
-      // ID de toast pour pouvoir le mettre à jour
       const toastId = toast.loading("Création de l'utilisateur en cours...");
       
       console.log("Envoi des données:", values);
       
-      // Transformations pour s'assurer que l'email est bien en minuscules et le wordpressConfigId est null si vide
       const sanitizedValues = {
         ...values,
         email: values.email.toLowerCase().trim(),
         wordpressConfigId: values.wordpressConfigId && values.wordpressConfigId !== "none" ? values.wordpressConfigId : null,
       };
       
-      // Ajouter un délai minimal pour éviter le stress sur la fonction Edge
       const edgeFunctionStart = Date.now();
       
-      // Appel à la fonction Edge avec try/catch amélioré
       try {
-        // Envoi de la requête à la fonction Edge avec des timeouts plus longs
         const { data, error } = await supabase.functions.invoke("create-user", {
           body: {
             email: sanitizedValues.email,
@@ -122,7 +115,6 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
           },
         });
         
-        // Assurer un temps minimum d'affichage du chargement pour éviter un UX saccadé
         const processingTime = Date.now() - edgeFunctionStart;
         if (processingTime < 1000) {
           await new Promise(resolve => setTimeout(resolve, 1000 - processingTime));
@@ -132,7 +124,6 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
           console.error("Erreur d'appel à la fonction Edge:", error);
           toast.dismiss(toastId);
           
-          // Gérer spécifiquement les erreurs de connexion à la base de données
           if (error.message?.includes("failed to fetch") || error.message?.includes("network error")) {
             setServerError("Problème de connexion au serveur");
             setServerErrorDetails("Veuillez vérifier votre connexion internet et réessayer");
@@ -144,7 +135,6 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
           return;
         }
         
-        // Validation de la réponse de la fonction Edge
         if (!data) {
           toast.dismiss(toastId);
           setServerError("Réponse invalide du serveur");
@@ -168,7 +158,6 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
         toast.dismiss(toastId);
         toast.success("Utilisateur créé avec succès");
         
-        // Ferme le dialogue et réinitialise le formulaire
         setIsDialogOpen(false);
         form.reset();
         onUserCreated();
@@ -177,7 +166,6 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
         
         toast.dismiss(toastId);
         
-        // Gérer les erreurs de base de données
         if (edgeFnError.message?.includes("database") || edgeFnError.message?.includes("Database")) {
           setServerError("Erreur de base de données");
           setServerErrorDetails(edgeFnError.message || "Problème lors de la création dans la base de données.");
@@ -203,7 +191,6 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       if (!isSubmitting) {
         setIsDialogOpen(open);
         if (!open) {
-          // Reset le formulaire seulement quand on ferme
           form.reset();
           setServerError(null);
           setServerErrorDetails(null);
@@ -298,7 +285,6 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
               )}
             />
             
-            {/* Sélection de configuration WordPress uniquement pour les clients */}
             {form.watch("role") === "client" && (
               <FormField
                 control={form.control}
