@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 
 export const useNotificationRealtime = (
   setNotifications: React.Dispatch<React.SetStateAction<Notification[]>>,
-  onNewNotification: (callback: (updatedNotifications: Notification[]) => void) => void,
+  onNewNotification: (updatedNotifications: Notification[]) => void,
   markAsRead: (id: string) => Promise<void>
 ) => {
   const { user } = useAuth();
@@ -27,7 +27,7 @@ export const useNotificationRealtime = (
         const newNotification = payload.new as unknown as Notification;
         setNotifications(prev => {
           const updatedNotifications = [newNotification, ...prev];
-          // Appeler le callback fourni par useNotifications pour mettre à jour le compteur
+          // Appeler le callback fourni par useNotifications avec les notifications mises à jour
           onNewNotification(updatedNotifications);
           return updatedNotifications;
         });

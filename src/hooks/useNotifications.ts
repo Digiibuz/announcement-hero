@@ -29,13 +29,14 @@ export const useNotifications = () => {
   }, [user]);
 
   // Set up realtime subscriptions
-  useNotificationRealtime(setNotifications, setNotifications => {
-    // Use a callback that updates notifications and recalculates the unread count
-    return (notifs: Notification[]) => {
-      setNotifications(notifs);
-      calculateUnreadCount(notifs);
-    };
-  }, markAsRead);
+  useNotificationRealtime(
+    setNotifications, 
+    // Pass a function that receives the updated notifications array
+    (updatedNotifications) => {
+      calculateUnreadCount(updatedNotifications);
+    },
+    markAsRead
+  );
   
   usePreferenceRealtime(preferences, updatePreferences);
 
