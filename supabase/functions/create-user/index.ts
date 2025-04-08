@@ -7,50 +7,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Fonction pour tester la connexion à la base de données avec retry
-async function testDatabaseConnection(supabaseAdmin, maxRetries = 3, retryDelay = 1000) {
-  let attempt = 0;
-  
-  while (attempt < maxRetries) {
-    try {
-      console.log(`Tentative de connexion à la base de données (${attempt + 1}/${maxRetries})...`);
-      
-      const { data, error } = await supabaseAdmin
-        .from('profiles')
-        .select('count(*)', { count: 'exact', head: true })
-        .limit(1);
-      
-      if (error) {
-        console.error(`Échec de la tentative ${attempt + 1}:`, error);
-        
-        // Si c'est la dernière tentative, propager l'erreur
-        if (attempt === maxRetries - 1) {
-          throw error;
-        }
-        
-        // Sinon, attendre avant la prochaine tentative
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
-        attempt++;
-        continue;
-      }
-      
-      console.log("Connexion à la base de données réussie");
-      return true;
-    } catch (err) {
-      console.error(`Erreur critique lors de la tentative ${attempt + 1}:`, err);
-      
-      if (attempt === maxRetries - 1) {
-        throw err;
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, retryDelay));
-      attempt++;
-    }
-  }
-  
-  throw new Error("Échec de toutes les tentatives de connexion à la base de données");
-}
-
 // Fonction pour vérifier l'existence d'un email avec retry
 async function checkEmailExists(supabaseAdmin, email, maxRetries = 3, retryDelay = 1000) {
   let attempt = 0;
@@ -133,16 +89,12 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
-    if (!supabaseUrl || !supabaseServiceRoleKey) {
-      console.error("Variables d'environnement manquantes:", { 
-        hasUrl: !!supabaseUrl, 
-        hasKey: !!supabaseServiceRoleKey 
-      });
-      
+    if (!supabaseUrl) {
+      console.error("SUPABASE_URL est manquante");
       return new Response(
         JSON.stringify({
           error: "Configuration serveur incomplète",
-          details: "Les variables d'environnement requises sont manquantes"
+          details: "La variable d'environnement SUPABASE_URL est manquante"
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -151,18 +103,54 @@ serve(async (req) => {
       );
     }
     
+    if (!supabaseServiceRoleKey) {
+      console.error("SUPABASE_SERVICE_ROLE_KEY est manquante");
+      return new Response(
+        JSON.stringify({
+          error: "Configuration serveur incomplète",
+          details: "La variable d'environnement SUPABASE_SERVICE_ROLE_KEY est manquante"
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
+    }
+    
+    console.log("Variables d'environnement vérifiées avec succès");
+    
     // Create a Supabase client with the service role key
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
-
-    // Test database connection with retry mechanism
+    
+    // Vérifier la connexion à la base de données
     try {
-      await testDatabaseConnection(supabaseAdmin);
-    } catch (dbConnErr) {
-      console.error("Erreur critique de connexion à la base de données:", dbConnErr);
+      console.log("Test de connexion à la base de données...");
+      const { data, error } = await supabaseAdmin
+        .from('profiles')
+        .select('count(*)', { count: 'exact', head: true })
+        .limit(1);
+      
+      if (error) {
+        console.error("Erreur lors du test de connexion à la base de données:", error);
+        return new Response(
+          JSON.stringify({ 
+            error: "Erreur de connexion à la base de données", 
+            details: error?.message || "Impossible de se connecter à la base de données"
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500,
+          }
+        );
+      }
+      
+      console.log("Connexion à la base de données réussie");
+    } catch (dbError) {
+      console.error("Exception lors du test de connexion à la base de données:", dbError);
       return new Response(
         JSON.stringify({ 
           error: "Erreur critique de connexion à la base de données", 
-          details: dbConnErr?.message || "Échec de connexion à la base de données"
+          details: dbError?.message || "Échec de connexion à la base de données"
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -216,7 +204,7 @@ serve(async (req) => {
       wordpressConfigId: wordpressConfigId || null
     });
 
-    // Check if email exists (with retry)
+    // Check if email exists
     try {
       const emailExists = await checkEmailExists(supabaseAdmin, normalizedEmail);
       if (emailExists) {
