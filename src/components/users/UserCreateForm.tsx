@@ -107,8 +107,12 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
         wordpressConfigId: values.wordpressConfigId && values.wordpressConfigId !== "none" ? values.wordpressConfigId : null,
       };
       
+      // Ajouter un délai minimal pour éviter le stress sur la fonction Edge
+      const edgeFunctionStart = Date.now();
+      
       // Appel à la fonction Edge avec try/catch amélioré
       try {
+        // Envoi de la requête à la fonction Edge avec des timeouts plus longs
         const { data, error } = await supabase.functions.invoke("create-user", {
           body: {
             email: sanitizedValues.email,
@@ -117,19 +121,45 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
             role: sanitizedValues.role,
             wordpressConfigId: sanitizedValues.role === "client" ? sanitizedValues.wordpressConfigId : null,
           },
+          // Augmenter le timeout pour donner plus de temps à la fonction Edge
+          options: {
+            timeout: 30000, // 30 secondes
+          }
         });
+        
+        // Assurer un temps minimum d'affichage du chargement pour éviter un UX saccadé
+        const processingTime = Date.now() - edgeFunctionStart;
+        if (processingTime < 1000) {
+          await new Promise(resolve => setTimeout(resolve, 1000 - processingTime));
+        }
         
         if (error) {
           console.error("Erreur d'appel à la fonction Edge:", error);
           toast.dismiss(toastId);
-          setServerError(error.message || "Échec de la création de l'utilisateur");
+          
+          // Gérer spécifiquement les erreurs de connexion à la base de données
+          if (error.message?.includes("failed to fetch") || error.message?.includes("network error")) {
+            setServerError("Problème de connexion au serveur");
+            setServerErrorDetails("Veuillez vérifier votre connexion internet et réessayer");
+          } else {
+            setServerError(error.message || "Échec de la création de l'utilisateur");
+          }
+          
           toast.error(`Erreur: ${error.message || "Échec de la création de l'utilisateur"}`);
+          return;
+        }
+        
+        // Validation de la réponse de la fonction Edge
+        if (!data) {
+          toast.dismiss(toastId);
+          setServerError("Réponse invalide du serveur");
+          toast.error("Réponse invalide du serveur");
           return;
         }
         
         console.log("Réponse de la fonction Edge:", data);
         
-        if (!data || (data as any).error) {
+        if ((data as any).error) {
           const errorMessage = (data as any)?.error || "Erreur lors de la création de l'utilisateur";
           const errorDetails = (data as any)?.details || "";
           
@@ -151,8 +181,16 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
         console.error("Erreur lors de l'appel de la fonction Edge:", edgeFnError);
         
         toast.dismiss(toastId);
-        setServerError("Erreur de communication avec le serveur");
-        setServerErrorDetails(edgeFnError.message || "Veuillez réessayer plus tard.");
+        
+        // Gérer les erreurs de base de données
+        if (edgeFnError.message?.includes("database") || edgeFnError.message?.includes("Database")) {
+          setServerError("Erreur de base de données");
+          setServerErrorDetails(edgeFnError.message || "Problème lors de la création dans la base de données.");
+        } else {
+          setServerError("Erreur de communication avec le serveur");
+          setServerErrorDetails(edgeFnError.message || "Veuillez réessayer plus tard.");
+        }
+        
         toast.error(`Erreur de communication: ${edgeFnError.message || "Veuillez réessayer"}`);
       }
     } catch (error: any) {

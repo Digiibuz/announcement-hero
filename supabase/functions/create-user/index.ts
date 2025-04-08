@@ -7,6 +7,119 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Fonction pour tester la connexion à la base de données avec retry
+async function testDatabaseConnection(supabaseAdmin, maxRetries = 3, retryDelay = 1000) {
+  let attempt = 0;
+  
+  while (attempt < maxRetries) {
+    try {
+      console.log(`Tentative de connexion à la base de données (${attempt + 1}/${maxRetries})...`);
+      
+      const { data, error } = await supabaseAdmin
+        .from('profiles')
+        .select('count(*)', { count: 'exact', head: true })
+        .limit(1);
+      
+      if (error) {
+        console.error(`Échec de la tentative ${attempt + 1}:`, error);
+        
+        // Si c'est la dernière tentative, propager l'erreur
+        if (attempt === maxRetries - 1) {
+          throw error;
+        }
+        
+        // Sinon, attendre avant la prochaine tentative
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        attempt++;
+        continue;
+      }
+      
+      console.log("Connexion à la base de données réussie");
+      return true;
+    } catch (err) {
+      console.error(`Erreur critique lors de la tentative ${attempt + 1}:`, err);
+      
+      if (attempt === maxRetries - 1) {
+        throw err;
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, retryDelay));
+      attempt++;
+    }
+  }
+  
+  throw new Error("Échec de toutes les tentatives de connexion à la base de données");
+}
+
+// Fonction pour vérifier l'existence d'un email avec retry
+async function checkEmailExists(supabaseAdmin, email, maxRetries = 3, retryDelay = 1000) {
+  let attempt = 0;
+  
+  while (attempt < maxRetries) {
+    try {
+      console.log(`Vérification si l'email existe (${attempt + 1}/${maxRetries}):`, email);
+      
+      // 1. Vérifier dans auth.users
+      const { data: userList, error: userError } = await supabaseAdmin.auth.admin.listUsers({
+        filters: { email }
+      });
+      
+      if (userError) {
+        console.error(`Erreur lors de la vérification dans auth.users (tentative ${attempt + 1}):`, userError);
+        
+        if (attempt === maxRetries - 1) {
+          throw userError;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        attempt++;
+        continue;
+      }
+      
+      if (userList && userList.users.length > 0) {
+        console.log("L'email existe déjà dans auth.users");
+        return true;
+      }
+      
+      // 2. Vérifier dans profiles
+      const { data: existingProfiles, error: profilesError } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .ilike('email', email);
+        
+      if (profilesError) {
+        console.error(`Erreur lors de la vérification dans profiles (tentative ${attempt + 1}):`, profilesError);
+        
+        if (attempt === maxRetries - 1) {
+          throw profilesError;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        attempt++;
+        continue;
+      }
+      
+      if (existingProfiles && existingProfiles.length > 0) {
+        console.log("L'email existe déjà dans profiles");
+        return true;
+      }
+      
+      return false;
+    } catch (err) {
+      console.error(`Erreur critique lors de la vérification d'email (tentative ${attempt + 1}):`, err);
+      
+      if (attempt === maxRetries - 1) {
+        throw err;
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, retryDelay));
+      attempt++;
+    }
+  }
+  
+  throw new Error("Échec de toutes les tentatives de vérification d'email");
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -16,40 +129,40 @@ serve(async (req) => {
   try {
     console.log("Démarrage de la fonction create-user");
     
-    // Create a Supabase client with the service role key
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
-
-    // Test database connection first to ensure connectivity
-    try {
-      console.log("Test de connexion à la base de données...");
-      const { data: dbTest, error: dbTestError } = await supabaseAdmin
-        .from('profiles')
-        .select('count(*)', { count: 'exact', head: true })
-        .limit(1);
+    // Vérifier les variables d'environnement
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
+      console.error("Variables d'environnement manquantes:", { 
+        hasUrl: !!supabaseUrl, 
+        hasKey: !!supabaseServiceRoleKey 
+      });
       
-      if (dbTestError) {
-        console.error("Échec de connexion à la base de données:", dbTestError);
-        return new Response(
-          JSON.stringify({ 
-            error: "Problème de connexion à la base de données", 
-            details: dbTestError.message 
-          }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 500,
-          }
-        );
-      }
-      console.log("Connexion à la base de données réussie");
+      return new Response(
+        JSON.stringify({
+          error: "Configuration serveur incomplète",
+          details: "Les variables d'environnement requises sont manquantes"
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
+    }
+    
+    // Create a Supabase client with the service role key
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
+
+    // Test database connection with retry mechanism
+    try {
+      await testDatabaseConnection(supabaseAdmin);
     } catch (dbConnErr) {
-      console.error("Erreur critique lors du test de connexion:", dbConnErr);
+      console.error("Erreur critique de connexion à la base de données:", dbConnErr);
       return new Response(
         JSON.stringify({ 
           error: "Erreur critique de connexion à la base de données", 
-          details: dbConnErr.message 
+          details: dbConnErr?.message || "Échec de connexion à la base de données"
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -80,7 +193,10 @@ serve(async (req) => {
     if (!email || !password || !name || !role) {
       console.log("Données requises manquantes");
       return new Response(
-        JSON.stringify({ error: "Données requises manquantes" }),
+        JSON.stringify({ 
+          error: "Données requises manquantes",
+          details: "Email, mot de passe, nom et rôle sont obligatoires" 
+        }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 400,
@@ -100,28 +216,10 @@ serve(async (req) => {
       wordpressConfigId: wordpressConfigId || null
     });
 
-    // First check if user exists in auth.users (this is often more reliable)
+    // Check if email exists (with retry)
     try {
-      console.log("Vérification si l'email existe dans auth.users:", normalizedEmail);
-      const { data: userList, error: userError } = await supabaseAdmin.auth.admin.listUsers({
-        filters: {
-          email: normalizedEmail
-        }
-      });
-      
-      if (userError) {
-        console.error("Erreur lors de la vérification de l'utilisateur:", userError);
-        return new Response(
-          JSON.stringify({ error: "Erreur lors de la vérification de l'utilisateur" }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 500,
-          }
-        );
-      }
-      
-      if (userList && userList.users.length > 0) {
-        console.log("L'email existe déjà dans auth.users:", userList.users);
+      const emailExists = await checkEmailExists(supabaseAdmin, normalizedEmail);
+      if (emailExists) {
         return new Response(
           JSON.stringify({ 
             error: "L'utilisateur existe déjà", 
@@ -133,36 +231,80 @@ serve(async (req) => {
           }
         );
       }
-    } catch (error) {
-      console.error("Erreur lors de la vérification de l'utilisateur:", error);
-      // Continue despite this error - this is just a pre-check
+    } catch (emailCheckError) {
+      console.error("Erreur lors de la vérification de l'email:", emailCheckError);
+      // Continuer malgré cette erreur pour essayer de créer l'utilisateur quand même
     }
 
-    // Also check if email exists in the profiles table - case insensitive
+    // Create the user in auth.users with a try-catch for detailed error handling
+    console.log("Tentative de création de l'utilisateur dans auth.users:", normalizedEmail);
+    let newUserData;
+    
     try {
-      console.log("Vérification si l'email existe dans la table profiles:", normalizedEmail);
-      const { data: existingProfiles, error: profilesError } = await supabaseAdmin
-        .from('profiles')
-        .select('*')
-        .ilike('email', normalizedEmail);
-        
-      if (profilesError) {
-        console.error("Erreur lors de la vérification du profil existant:", profilesError);
+      console.log("Appel à createUser avec:", {
+        email: normalizedEmail,
+        passwordLength: password ? password.length : 0,
+        hasName: !!name,
+        hasRole: !!role
+      });
+      
+      // Récupérer le client auth pour des logs détaillés
+      const authClient = supabaseAdmin.auth.admin;
+      
+      // Vérifier que le client auth est disponible
+      if (!authClient) {
+        throw new Error("Client auth non disponible");
+      }
+      
+      const createUserResult = await authClient.createUser({
+        email: normalizedEmail,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          name,
+          role,
+        }
+      });
+
+      if (createUserResult.error) {
+        console.error("Erreur détaillée lors de la création dans auth:", 
+                     JSON.stringify(createUserResult.error, null, 2));
+        throw createUserResult.error;
+      }
+      
+      newUserData = createUserResult.data;
+      
+      if (!newUserData || !newUserData.user) {
+        throw new Error("Échec de création de l'utilisateur: Aucune donnée retournée");
+      }
+      
+      console.log("Utilisateur créé dans auth.users avec succès:", newUserData.user.id);
+    } catch (authError) {
+      // Log the complete error object for debugging
+      console.error("Erreur lors de la création de l'utilisateur dans auth.users:", authError);
+      
+      const errorMessage = authError.message || "Erreur lors de la création de l'utilisateur";
+      
+      // Improved error handling with specific conditions
+      if (errorMessage.includes("duplicate key") || errorMessage.includes("already registered") || 
+          errorMessage.includes("User already registered")) {
         return new Response(
-          JSON.stringify({ error: "Erreur de base de données" }),
+          JSON.stringify({ 
+            error: "Cet email est déjà utilisé", 
+            details: "Un utilisateur avec cet email existe déjà dans le système."
+          }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 500,
+            status: 409,
           }
         );
       }
       
-      if (existingProfiles && existingProfiles.length > 0) {
-        console.log("L'email existe déjà dans la table profiles:", existingProfiles);
+      if (errorMessage.includes("invalid_password")) {
         return new Response(
           JSON.stringify({ 
-            error: "L'utilisateur existe déjà", 
-            details: "Cet email est déjà utilisé dans le système."
+            error: "Mot de passe invalide", 
+            details: "Le mot de passe doit respecter les critères de sécurité (min. 6 caractères)."
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -170,129 +312,52 @@ serve(async (req) => {
           }
         );
       }
-    } catch (error) {
-      console.error("Erreur lors de la vérification du profil existant:", error);
-      return new Response(
-        JSON.stringify({ error: "Erreur de base de données" }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500,
-        }
-      );
-    }
-
-    // Create the user in auth.users with specific error handling
-    console.log("Tentative de création de l'utilisateur dans auth.users:", normalizedEmail);
-    let newUserData;
-    try {
-      // Create user with a detailed try/catch to capture all potential issues
-      try {
-        const createUserResult = await supabaseAdmin.auth.admin.createUser({
-          email: normalizedEmail,
-          password,
-          email_confirm: true,
-          user_metadata: {
-            name,
-            role,
-          }
-        });
-
-        if (createUserResult.error) {
-          throw createUserResult.error;
-        }
-        
-        newUserData = createUserResult.data;
-      } catch (authError) {
-        // Log the complete error object for debugging
-        console.error("Erreur détaillée lors de la création dans auth:", JSON.stringify(authError, null, 2));
-        
-        const errorMessage = authError.message || "Erreur lors de la création de l'utilisateur";
-        
-        // Improved error handling with specific conditions
-        if (errorMessage.includes("duplicate key") || errorMessage.includes("already registered") || 
-            errorMessage.includes("User already registered")) {
-          return new Response(
-            JSON.stringify({ 
-              error: "Cet email est déjà utilisé", 
-              details: "Un utilisateur avec cet email existe déjà dans le système."
-            }),
-            {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 409,
-            }
-          );
-        }
-        
-        if (errorMessage.includes("invalid_password")) {
-          return new Response(
-            JSON.stringify({ 
-              error: "Mot de passe invalide", 
-              details: "Le mot de passe doit respecter les critères de sécurité (min. 6 caractères)."
-            }),
-            {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 400,
-            }
-          );
-        }
-        
-        if (errorMessage.includes("invalid_email")) {
-          return new Response(
-            JSON.stringify({ 
-              error: "Email invalide", 
-              details: "Veuillez fournir une adresse email valide."
-            }),
-            {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 400,
-            }
-          );
-        }
-        
-        // Database-specific error
-        if (errorMessage.includes("Database error") || authError.status === 500) {
-          console.error("Database error with status:", authError.status, "Code:", authError.code);
-          return new Response(
-            JSON.stringify({ 
-              error: "Erreur de base de données lors de la création de l'utilisateur", 
-              details: "Détails: " + errorMessage + " (Code: " + (authError.code || "inconnu") + ")"
-            }),
-            {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 500,
-            }
-          );
-        }
-        
-        // Default error case
+      
+      if (errorMessage.includes("invalid_email")) {
         return new Response(
           JSON.stringify({ 
-            error: errorMessage,
-            details: `Code d'erreur: ${authError.status || 500}, Type: ${authError.name || "Inconnu"}`
+            error: "Email invalide", 
+            details: "Veuillez fournir une adresse email valide."
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: authError.status || 500,
+            status: 400,
           }
         );
       }
       
-      if (!newUserData || !newUserData.user) {
-        throw new Error("Échec de création de l'utilisateur: Aucune donnée retournée");
+      // Database-specific error
+      if (errorMessage.includes("Database error") || authError.status === 500) {
+        console.error("Database error with status:", authError.status, "Code:", authError.code);
+        
+        // Ajout de détails sur l'erreur de base de données
+        let detailsMessage = "Détails: " + errorMessage;
+        
+        if (authError.code) {
+          detailsMessage += " (Code: " + authError.code + ")";
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            error: "Erreur de base de données lors de la création de l'utilisateur", 
+            details: detailsMessage
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500,
+          }
+        );
       }
       
-      console.log("Utilisateur créé dans auth.users avec succès:", newUserData.user.id);
-    } catch (error) {
-      console.error("Erreur critique lors de la création dans auth:", error);
-      
+      // Default error case
       return new Response(
         JSON.stringify({ 
-          error: "Erreur lors de la création de l'utilisateur",
-          details: "Erreur critique: " + (error.message || "Inconnu")
+          error: errorMessage,
+          details: `Code d'erreur: ${authError.status || 500}, Type: ${authError.name || "Inconnu"}`
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500,
+          status: authError.status || 500,
         }
       );
     }
