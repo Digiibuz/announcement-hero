@@ -260,7 +260,7 @@ const Dashboard = () => {
           </p>
           <Button asChild className="mt-2 sm:mt-0 bg-digibuz-yellow text-digibuz-navy hover:bg-digibuz-yellow/90">
             <Link to="/create">
-              <Plus className="mr-2 h-4 w-4 text-digibuz-navy dark:text-digibuz-navy" />
+              <Plus className="mr-2 h-4 w-4 text-digibuz-navy dark:text-blue-600" />
               Créer une annonce
             </Link>
           </Button>
@@ -531,7 +531,7 @@ const Dashboard = () => {
         className="bg-digibuz-yellow text-digibuz-navy hover:bg-digibuz-yellow/90 font-bold"
       >
         <Link to="/create">
-          <Plus className="mr-2 h-4 w-4 text-digibuz-navy dark:text-digibuz-navy" />
+          <Plus className="mr-2 h-4 w-4 text-digibuz-navy dark:text-blue-600" />
           Créer
         </Link>
       </FloatingActionButton>
