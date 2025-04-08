@@ -16,38 +16,12 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [pageLoaded, setPageLoaded] = useState(false);
   const [loadingError, setLoadingError] = useState(false);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  // Vérifier si la page est correctement chargée
+  // Redirect if already authenticated
   useEffect(() => {
-    // Si après 3 secondes l'authentification n'est pas terminée, marquer comme chargée
-    const timeout = setTimeout(() => {
-      setPageLoaded(true);
-    }, 3000);
-
-    // Nettoyer le timer si le composant est démonté
-    return () => clearTimeout(timeout);
-  }, []);
-
-  // Vérifier périodiquement si la page semble corrompue
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Si l'élément root est vide ou contient très peu d'éléments, c'est probablement un problème
-      const rootElement = document.getElementById('root');
-      if (rootElement && rootElement.children.length < 2) {
-        console.log('Page de login potentiellement corrompue, marquer comme erreur');
-        setLoadingError(true);
-      }
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    // Redirect if already authenticated
     if (isAuthenticated) {
       navigate("/dashboard");
     }
@@ -58,14 +32,13 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      // Login process
       await login(email, password);
       toast.success("Connexion réussie");
       
-      // Attendre un court instant avant de rediriger pour permettre à la session d'être complètement chargée
+      // Redirect after successful login
       setTimeout(() => {
         navigate("/dashboard");
-      }, 500);
+      }, 300);
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
       toast.error(error.message || "Échec de la connexion");
@@ -79,16 +52,10 @@ const Login = () => {
   };
 
   const handleForceReload = () => {
-    // Utiliser la fonction globale si disponible
-    if (window.clearCacheAndReload) {
-      window.clearCacheAndReload();
-    } else {
-      // Fallback
-      window.location.reload();
-    }
+    window.location.reload();
   };
 
-  // Si une erreur de chargement est détectée, afficher un bouton de rechargement
+  // Show error recovery UI if needed
   if (loadingError) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
@@ -217,12 +184,5 @@ const Login = () => {
     </div>
   );
 };
-
-// Ajouter la définition de la fonction globale
-declare global {
-  interface Window {
-    clearCacheAndReload: () => void;
-  }
-}
 
 export default Login;

@@ -1,6 +1,6 @@
 
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v16';
+const CACHE_NAME = 'digiibuz-cache-v17';
 
 // Liste des ressources à mettre en cache
 const urlsToCache = [
@@ -25,6 +25,12 @@ function isValidCacheUrl(url) {
 function shouldSkipCaching(url) {
   try {
     const urlObj = new URL(url);
+    
+    // Login module specifically should not be cached
+    if (url.includes('Login-') && url.includes('.js')) {
+      return true;
+    }
+    
     return (
       urlObj.pathname.endsWith('.js') || 
       urlObj.pathname.endsWith('.ts') || 
@@ -51,6 +57,7 @@ function shouldSkipCaching(url) {
 
 // Installation du service worker
 self.addEventListener('install', event => {
+  console.log('Installing Service Worker v17');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -64,6 +71,7 @@ self.addEventListener('install', event => {
 
 // Activation et nettoyage des anciens caches
 self.addEventListener('activate', event => {
+  console.log('Activating Service Worker v17');
   const cacheWhitelist = [CACHE_NAME];
 
   event.waitUntil(
@@ -85,7 +93,7 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Gestion des requêtes avec stratégie améliorée
+// Gestion des requêtes 
 self.addEventListener('fetch', event => {
   // Ne jamais intercepter certaines requêtes qui poseraient problème
   if (shouldSkipCaching(event.request.url)) {
@@ -96,68 +104,34 @@ self.addEventListener('fetch', event => {
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
-        .then(networkResponse => {
-          return networkResponse;
-        })
         .catch(() => {
           // En cas d'échec, utiliser le cache ou rediriger vers la page d'accueil
-          return caches.match('/index.html')
-            .then(response => {
-              if (response) {
-                return response;
-              }
-              // Si même index.html n'est pas en cache, essayer de récupérer depuis le réseau
-              return fetch('/index.html');
-            });
+          return caches.match('/index.html');
         })
     );
     return;
   }
 
-  // Pour les autres requêtes - stratégie "network-first" avec meilleure gestion d'erreur
+  // Pour les autres requêtes - pas de mise en cache pour simplifier
+  // et éviter les problèmes avec les modules dynamiques
+  if (event.request.url.includes('.js') || 
+      event.request.url.includes('.css') ||
+      event.request.url.includes('assets/')) {
+    return; // Ne pas intercepter les requêtes JS/CSS
+  }
+
+  // Laisser passer les autres requêtes
   event.respondWith(
     fetch(event.request)
-      .then(networkResponse => {
-        // Mettre à jour le cache avec la nouvelle réponse si valide
-        if (networkResponse && 
-            networkResponse.status === 200 && 
-            networkResponse.type === 'basic' && 
-            isValidCacheUrl(event.request.url) &&
-            !shouldSkipCaching(event.request.url)) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME)
-            .then(cache => {
-              try {
-                cache.put(event.request, responseToCache);
-              } catch (error) {
-                console.error('Erreur lors de la mise en cache:', error);
-              }
-            });
-        }
-        return networkResponse;
-      })
       .catch(error => {
-        console.log('Fetch failed, fallback to cache for:', event.request.url);
-        // Si le réseau échoue, on essaie le cache
         return caches.match(event.request)
           .then(cachedResponse => {
             if (cachedResponse) {
               return cachedResponse;
             }
-            // Si l'élément n'est pas dans le cache, essayer de récupérer une version plus générique
-            if (event.request.url.includes('.js') || event.request.url.includes('.css')) {
-              return new Response('/* Ressource non disponible hors ligne */', {
-                status: 200,
-                headers: { 'Content-Type': event.request.url.includes('.js') ? 'application/javascript' : 'text/css' }
-              });
-            }
             
-            // Pour les autres ressources, retourner une réponse vide
+            // Pour les ressources non trouvées, retourner une réponse vide
             return new Response('', { status: 404 });
-          })
-          .catch(err => {
-            console.error('Cache match also failed:', err);
-            throw error;
           });
       })
   );

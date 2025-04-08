@@ -5,11 +5,11 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { Toaster as UIToaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
-import { Suspense, lazy, useEffect } from 'react';
+import { Suspense, lazy } from 'react';
 import { LoadingIndicator } from "./components/ui/loading-indicator";
+import Login from "./pages/Login";
 
-// Lazy loading des pages pour améliorer les performances
-const Login = lazy(() => import("./pages/Login"));
+// Lazy loading other pages for performance
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -125,8 +125,6 @@ function App() {
                   {/* Public routes - accessibles sans authentification */}
                   <Route path="/login" element={<Login />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />
-                  {/* Route spéciale pour la réinitialisation du mot de passe 
-                      Pas besoin de ProtectedRoute car elle gère directement l'authentification */}
                   <Route path="/reset-password" element={<ResetPassword />} />
                   
                   {/* Protected routes */}

@@ -1,12 +1,11 @@
 
 import React from "react";
 import { Link } from "react-router-dom";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 
 const Header = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   // Si l'utilisateur est authentifié, ne pas afficher le header du tout
   if (isAuthenticated) {
