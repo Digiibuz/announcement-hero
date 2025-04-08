@@ -57,6 +57,19 @@ const PageLayout = ({
     );
   }
 
+  // Déterminer la classe d'alignement pour les titres selon la page
+  const getTitleAlignment = () => {
+    // Aligner au centre pour les pages spécifiques
+    if (
+      location.pathname === '/profile' || 
+      location.pathname === '/notifications' || 
+      location.pathname === '/support'
+    ) {
+      return "text-center";
+    }
+    return ""; // alignement par défaut (à gauche) pour les autres pages
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <ImpersonationBanner />
@@ -68,8 +81,8 @@ const PageLayout = ({
           {(title || titleAction || showRefreshButton) && (
             <AnimatedContainer delay={100} className={containerClassName?.includes('max-w-full') ? 'w-full' : ''}>
               <div className={`flex flex-col ${!isMobile ? "sm:flex-row sm:items-center sm:justify-between" : ""} mb-4 ${isMobile ? "pt-0 px-4" : "pt-2"} gap-3`}>
-                <div className="flex flex-row items-center gap-4">
-                  {title && <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>}
+                <div className={`flex flex-row items-center gap-4 ${getTitleAlignment()} ${getTitleAlignment() ? 'w-full justify-center' : ''}`}>
+                  {title && <h1 className={`text-2xl md:text-3xl font-bold ${getTitleAlignment()}`}>{title}</h1>}
                   {showRefreshButton && (
                     <Button 
                       variant="outline" 
@@ -83,7 +96,7 @@ const PageLayout = ({
                     </Button>
                   )}
                 </div>
-                <div className={`${isMobile ? "w-full" : ""} flex items-center gap-2`}>
+                <div className={`${isMobile ? "w-full" : ""} flex items-center gap-2 ${getTitleAlignment() ? 'w-full justify-center' : ''}`}>
                   {titleAction && <div>{titleAction}</div>}
                 </div>
               </div>
