@@ -53,6 +53,7 @@ serve(async (req) => {
     }
 
     // Check if the user already exists in Auth
+    let existingUserId = null;
     try {
       console.log("Vérification si l'utilisateur existe dans auth.users:", email);
       const { data: existingUsers, error: searchError } = await supabaseAdmin.auth.admin.listUsers({
@@ -68,6 +69,7 @@ serve(async (req) => {
 
       if (existingUsers && existingUsers.users.length > 0) {
         console.log("L'utilisateur existe déjà dans auth.users:", email);
+        existingUserId = existingUsers.users[0].id;
         
         // Check if the user exists in the profiles table
         const { data: existingProfiles, error: profilesError } = await supabaseAdmin
@@ -77,24 +79,59 @@ serve(async (req) => {
           
         if (profilesError) {
           console.error("Erreur lors de la vérification du profil existant:", profilesError);
+          throw profilesError;
         }
         
         if (existingProfiles && existingProfiles.length > 0) {
           console.log("L'utilisateur existe également dans la table profiles:", existingProfiles);
+          return new Response(
+            JSON.stringify({ 
+              error: "L'utilisateur existe déjà", 
+              details: "L'email est déjà utilisé dans le système d'authentification"
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 400,
+            }
+          );
         } else {
           console.log("L'utilisateur existe dans auth.users mais PAS dans la table profiles");
-        }
-        
-        return new Response(
-          JSON.stringify({ 
-            error: "L'utilisateur existe déjà", 
-            details: "L'email est déjà utilisé dans le système d'authentification"
-          }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 400,
+          console.log("Création du profil manquant pour l'utilisateur:", existingUserId);
+          
+          // Create profile for existing user
+          const { error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .insert({
+              id: existingUserId,
+              email: email,
+              name: name,
+              role: role,
+              wordpress_config_id: role === "client" ? wordpressConfigId : null,
+            });
+
+          if (profileError) {
+            console.log("Erreur lors de la création du profil manquant:", profileError.message);
+            throw profileError;
           }
-        );
+          
+          console.log("Profil manquant créé avec succès pour l'utilisateur existant:", existingUserId);
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              user: {
+                id: existingUserId,
+                email: email,
+                name: name,
+                role: role
+              },
+              message: "Profil créé pour un utilisateur existant" 
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 200,
+            }
+          );
+        }
       }
     } catch (error) {
       console.error("Erreur lors de la vérification d'utilisateur existant:", error);
@@ -107,7 +144,7 @@ serve(async (req) => {
       );
     }
     
-    // Also check if the email exists in the profiles table
+    // Also check if the email exists in the profiles table but not in auth
     try {
       console.log("Vérification si l'email existe dans la table profiles:", email);
       const { data: existingProfiles, error: profilesError } = await supabaseAdmin
@@ -144,7 +181,7 @@ serve(async (req) => {
       );
     }
 
-    // Create the user
+    // Create the user if they don't exist yet
     console.log("Création de l'utilisateur:", email);
     let newUserData;
     try {
