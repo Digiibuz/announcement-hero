@@ -1,6 +1,6 @@
 
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v17';
+const CACHE_NAME = 'digiibuz-cache-v18';
 
 // Liste des ressources à mettre en cache
 const urlsToCache = [
@@ -27,12 +27,17 @@ function shouldSkipCaching(url) {
     const urlObj = new URL(url);
     
     // Login module specifically should not be cached
-    if (url.includes('Login-') && url.includes('.js')) {
+    if (url.includes('Login-') || url.includes('login')) {
+      console.log('Skipping cache for login resource:', url);
+      return true;
+    }
+    
+    // Ne jamais mettre en cache les ressources JavaScript
+    if (urlObj.pathname.endsWith('.js')) {
       return true;
     }
     
     return (
-      urlObj.pathname.endsWith('.js') || 
       urlObj.pathname.endsWith('.ts') || 
       urlObj.pathname.endsWith('.tsx') || 
       url.includes('assets/') ||
@@ -57,7 +62,7 @@ function shouldSkipCaching(url) {
 
 // Installation du service worker
 self.addEventListener('install', event => {
-  console.log('Installing Service Worker v17');
+  console.log('Installing Service Worker v18');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -71,7 +76,7 @@ self.addEventListener('install', event => {
 
 // Activation et nettoyage des anciens caches
 self.addEventListener('activate', event => {
-  console.log('Activating Service Worker v17');
+  console.log('Activating Service Worker v18');
   const cacheWhitelist = [CACHE_NAME];
 
   event.waitUntil(
@@ -95,6 +100,11 @@ self.addEventListener('activate', event => {
 
 // Gestion des requêtes 
 self.addEventListener('fetch', event => {
+  // Pour tous les fichiers JavaScript, surtout Login, aller directement au réseau
+  if (event.request.url.includes('Login-') || event.request.url.includes('.js')) {
+    return;
+  }
+  
   // Ne jamais intercepter certaines requêtes qui poseraient problème
   if (shouldSkipCaching(event.request.url)) {
     return;
@@ -112,15 +122,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Pour les autres requêtes - pas de mise en cache pour simplifier
-  // et éviter les problèmes avec les modules dynamiques
-  if (event.request.url.includes('.js') || 
-      event.request.url.includes('.css') ||
-      event.request.url.includes('assets/')) {
-    return; // Ne pas intercepter les requêtes JS/CSS
-  }
-
-  // Laisser passer les autres requêtes
+  // Pour les autres requêtes - stratégie réseau d'abord, puis cache
   event.respondWith(
     fetch(event.request)
       .catch(error => {

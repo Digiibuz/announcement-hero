@@ -12,6 +12,14 @@ if ('scrollRestoration' in history) {
 // Variable globale pour le contrôle du service worker
 let serviceWorkerRegistration = null;
 
+// Define the clearCacheAndReload method on the window object
+// Type declaration for the global window object
+declare global {
+  interface Window {
+    clearCacheAndReload: () => void;
+  }
+}
+
 // Fonction pour enregistrer le service worker de manière plus robuste
 const registerServiceWorker = async () => {
   if ('serviceWorker' in navigator) {

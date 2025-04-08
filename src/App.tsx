@@ -5,7 +5,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { Toaster as UIToaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { LoadingIndicator } from "./components/ui/loading-indicator";
 import Login from "./pages/Login";
 
@@ -106,8 +106,6 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// Contents of AppRoutes moved directly into App component to avoid
-// AuthProvider context issues and fix the useAuth error
 function App() {
   return (
     <BrowserRouter>

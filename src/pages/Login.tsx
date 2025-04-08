@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Eye, EyeOff, Lock, LogIn, Loader2, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
 
 const Login = () => {
@@ -16,12 +16,11 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingError, setLoadingError] = useState(false);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already authenticated
-  useEffect(() => {
+  React.useEffect(() => {
     if (isAuthenticated) {
       navigate("/dashboard");
     }
@@ -51,32 +50,6 @@ const Login = () => {
     setShowPassword(!showPassword);
   };
 
-  const handleForceReload = () => {
-    window.location.reload();
-  };
-
-  // Show error recovery UI if needed
-  if (loadingError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle>Problème de chargement</CardTitle>
-            <CardDescription>
-              La page ne semble pas s'être chargée correctement.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-            <Button onClick={handleForceReload}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Recharger l'application
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
       <ImpersonationBanner />
@@ -88,10 +61,6 @@ const Login = () => {
                 src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
                 alt="DigiiBuz" 
                 className="h-16 w-auto mb-2"
-                onError={(e) => {
-                  console.error("Erreur de chargement de l'image:", e);
-                  e.currentTarget.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzMzM2E0NSIgLz48dGV4dCB4PSI1MCIgeT0iNTAiIGZvbnQtc2l6ZT0iMTgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGFsaWdubWVudC1iYXNlbGluZT0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSI+RGlnaWlCdXo8L3RleHQ+PC9zdmc+";
-                }}
               />
               <span className="text-xl font-bold text-digibuz-navy dark:text-digibuz-yellow">
                 DigiiBuz
