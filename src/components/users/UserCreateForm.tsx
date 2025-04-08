@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/dialog";
 
 const formSchema = z.object({
-  email: z.string().email({ message: "Email invalide" }),
+  email: z.string().email({ message: "Email invalide" }).toLowerCase(),
   name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères" }),
   password: z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères" }),
   role: z.enum(["admin", "client"], {
@@ -76,14 +76,21 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       
       console.log("Envoi des données:", values);
       
+      // Transformations pour s'assurer que l'email est bien en minuscules et le wordpressConfigId est null si vide
+      const sanitizedValues = {
+        ...values,
+        email: values.email.toLowerCase().trim(),
+        wordpressConfigId: values.wordpressConfigId && values.wordpressConfigId !== "none" ? values.wordpressConfigId : null,
+      };
+      
       // Call the Edge function with improved error handling
       const { data, error: functionCallError } = await supabase.functions.invoke("create-user", {
         body: {
-          email: values.email,
-          name: values.name,
-          password: values.password,
-          role: values.role,
-          wordpressConfigId: values.role === "client" ? values.wordpressConfigId : null,
+          email: sanitizedValues.email,
+          name: sanitizedValues.name,
+          password: sanitizedValues.password,
+          role: sanitizedValues.role,
+          wordpressConfigId: sanitizedValues.role === "client" ? sanitizedValues.wordpressConfigId : null,
         },
       });
       

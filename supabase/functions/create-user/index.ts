@@ -79,7 +79,7 @@ serve(async (req) => {
           const { data: existingProfiles, error: profilesError } = await supabaseAdmin
             .from('profiles')
             .select('*')
-            .eq('email', email);
+            .eq('email', email.toLowerCase());
             
           if (profilesError) {
             console.error("Erreur lors de la vérification du profil existant:", profilesError);
@@ -102,12 +102,12 @@ serve(async (req) => {
             console.log("L'utilisateur existe dans auth.users mais PAS dans la table profiles");
             console.log("Création du profil manquant pour l'utilisateur:", existingUserId);
             
-            // Create profile for existing user
+            // Create profile for existing user - IMPORTANT: No notification_preferences creation
             const { error: profileError } = await supabaseAdmin
               .from('profiles')
               .insert({
                 id: existingUserId,
-                email: email,
+                email: email.toLowerCase(),
                 name: name,
                 role: role,
                 wordpress_config_id: role === "client" ? wordpressConfigId : null,
@@ -115,8 +115,7 @@ serve(async (req) => {
 
             if (profileError) {
               console.log("Erreur lors de la création du profil manquant:", profileError.message);
-              // Ne pas faire échouer l'opération ici, car les préférences de notification pourraient être gérées séparément
-              console.log("Tentative de poursuite malgré l'erreur du profil");
+              throw profileError;
             }
             
             console.log("Profil manquant créé avec succès pour l'utilisateur existant:", existingUserId);
@@ -158,7 +157,7 @@ serve(async (req) => {
       const { data: existingProfiles, error: profilesError } = await supabaseAdmin
         .from('profiles')
         .select('*')
-        .eq('email', email);
+        .eq('email', email.toLowerCase());
         
       if (profilesError) {
         console.error("Erreur lors de la vérification du profil existant:", profilesError);
@@ -195,8 +194,9 @@ serve(async (req) => {
     try {
       // Enhanced error handling for user creation
       try {
+        // Créer l'utilisateur sans dépendance à notification_preferences
         const { data, error } = await supabaseAdmin.auth.admin.createUser({
-          email,
+          email: email.toLowerCase(),
           password,
           email_confirm: true,
           user_metadata: {
@@ -275,15 +275,14 @@ serve(async (req) => {
       );
     }
 
-    // After creating the user in Auth, manually create their profile
-    // Skip the trigger that might attempt to create notification_preferences
+    // After creating the user in Auth, manually create their profile WITHOUT creating notification_preferences
     try {
       console.log("Création du profil pour l'utilisateur:", newUserData.user.id);
       const { error: profileError } = await supabaseAdmin
         .from('profiles')
         .insert({
           id: newUserData.user.id,
-          email: email,
+          email: email.toLowerCase(),
           name: name,
           role: role,
           wordpress_config_id: role === "client" ? wordpressConfigId : null,
@@ -293,33 +292,24 @@ serve(async (req) => {
         console.log("Erreur lors de la création du profil:", profileError.message);
         
         // If profile creation fails, delete the user to avoid inconsistencies
-        // but don't fail if notification preferences creation would have failed
-        if (!profileError.message.includes("notification_preferences")) {
-          try {
-            console.log("Suppression de l'utilisateur après échec de création de profil:", newUserData.user.id);
-            await supabaseAdmin.auth.admin.deleteUser(newUserData.user.id);
-          } catch (deleteError) {
-            console.error("Erreur lors de la suppression de l'utilisateur après échec de création de profil:", deleteError);
-          }
-          
-          throw profileError;
-        } else {
-          console.log("Erreur ignorée liée aux notification_preferences, l'utilisateur est tout de même créé");
+        try {
+          console.log("Suppression de l'utilisateur après échec de création de profil:", newUserData.user.id);
+          await supabaseAdmin.auth.admin.deleteUser(newUserData.user.id);
+        } catch (deleteError) {
+          console.error("Erreur lors de la suppression de l'utilisateur après échec de création de profil:", deleteError);
         }
+        
+        throw profileError;
       }
     } catch (error) {
       console.error("Erreur lors de la création du profil:", error);
-      
-      // Only return error if it's not related to notification preferences
-      if (!error.message || !error.message.includes("notification_preferences")) {
-        return new Response(
-          JSON.stringify({ error: error.message || "Erreur lors de la création du profil" }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 500,
-          }
-        );
-      }
+      return new Response(
+        JSON.stringify({ error: error.message || "Erreur lors de la création du profil" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
     }
 
     console.log("Utilisateur créé avec succès:", newUserData.user.id);
