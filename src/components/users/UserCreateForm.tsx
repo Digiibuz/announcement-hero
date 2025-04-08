@@ -34,6 +34,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Email invalide" }).toLowerCase(),
@@ -55,7 +57,8 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
-  const { configs } = useWordPressConfigs();
+  const [serverErrorDetails, setServerErrorDetails] = useState<string | null>(null);
+  const { configs, isLoading: isLoadingConfigs } = useWordPressConfigs();
 
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
@@ -72,6 +75,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
     try {
       setIsSubmitting(true);
       setServerError(null);
+      setServerErrorDetails(null);
       
       // Ne pas fermer la boîte de dialogue immédiatement en cas d'erreur
       const toastId = toast.loading("Création de l'utilisateur en cours...");
@@ -111,7 +115,8 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
         const errorDetails = (data as any)?.details || "";
         
         toast.dismiss(toastId);
-        setServerError(`${errorMessage}${errorDetails ? ` - ${errorDetails}` : ""}`);
+        setServerError(errorMessage);
+        setServerErrorDetails(errorDetails);
         toast.error(`${errorMessage}${errorDetails ? ` - ${errorDetails}` : ""}`);
         return;
       }
@@ -147,11 +152,15 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
             Créez un compte pour un nouveau client ou administrateur.
           </DialogDescription>
         </DialogHeader>
+        
         {serverError && (
-          <div className="bg-destructive/15 border border-destructive text-destructive px-4 py-2 rounded-md text-sm">
-            {serverError}
-          </div>
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>{serverError}</AlertTitle>
+            {serverErrorDetails && <AlertDescription>{serverErrorDetails}</AlertDescription>}
+          </Alert>
         )}
+        
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -229,6 +238,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
                     <Select 
                       onValueChange={field.onChange} 
                       value={field.value || "none"}
+                      disabled={isLoadingConfigs}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -237,11 +247,15 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="none">Aucun site</SelectItem>
-                        {configs.map((config) => (
-                          <SelectItem key={config.id} value={config.id}>
-                            {config.name} ({config.site_url})
-                          </SelectItem>
-                        ))}
+                        {isLoadingConfigs ? (
+                          <SelectItem value="loading" disabled>Chargement...</SelectItem>
+                        ) : (
+                          configs.map((config) => (
+                            <SelectItem key={config.id} value={config.id}>
+                              {config.name} ({config.site_url})
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                     <FormDescription>

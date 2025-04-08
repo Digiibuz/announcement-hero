@@ -55,7 +55,45 @@ serve(async (req) => {
     // Normalize email to lowercase
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Check if email exists in the profiles table - case insensitive
+    // First check if user exists in auth.users (this is often more reliable)
+    try {
+      console.log("Vérification si l'email existe dans auth.users:", normalizedEmail);
+      const { data: userList, error: userError } = await supabaseAdmin.auth.admin.listUsers({
+        filters: {
+          email: normalizedEmail
+        }
+      });
+      
+      if (userError) {
+        console.error("Erreur lors de la vérification de l'utilisateur:", userError);
+        return new Response(
+          JSON.stringify({ error: "Erreur lors de la vérification de l'utilisateur" }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500,
+          }
+        );
+      }
+      
+      if (userList && userList.users.length > 0) {
+        console.log("L'email existe déjà dans auth.users:", userList.users);
+        return new Response(
+          JSON.stringify({ 
+            error: "L'utilisateur existe déjà", 
+            details: "Cet email est déjà utilisé dans le système."
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 409, // Using 409 Conflict for this case
+          }
+        );
+      }
+    } catch (error) {
+      console.error("Erreur lors de la vérification de l'utilisateur:", error);
+      // Continue despite this error - this is just a pre-check
+    }
+
+    // Also check if email exists in the profiles table - case insensitive
     try {
       console.log("Vérification si l'email existe dans la table profiles:", normalizedEmail);
       const { data: existingProfiles, error: profilesError } = await supabaseAdmin
@@ -98,10 +136,29 @@ serve(async (req) => {
       );
     }
 
-    // Create the user in auth.users
-    console.log("Création de l'utilisateur dans auth.users:", normalizedEmail);
+    // Create the user in auth.users with specific error handling
+    console.log("Tentative de création de l'utilisateur dans auth.users:", normalizedEmail);
     let newUserData;
     try {
+      // Test database connection first
+      const { error: testError } = await supabaseAdmin
+        .from('profiles')
+        .select('count(*)', { count: 'exact', head: true });
+      
+      if (testError) {
+        console.error("Problème de connexion à la base de données:", testError);
+        return new Response(
+          JSON.stringify({ 
+            error: "Problème de connexion à la base de données", 
+            details: testError.message 
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500,
+          }
+        );
+      }
+
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email: normalizedEmail,
         password,
@@ -132,6 +189,20 @@ serve(async (req) => {
           );
         }
         
+        // Database-specific error
+        if (errorMessage.includes("Database error") || error.status === 500) {
+          return new Response(
+            JSON.stringify({ 
+              error: "Erreur de base de données lors de la création de l'utilisateur", 
+              details: "Veuillez contacter l'administrateur système. Il peut s'agir d'un problème de permissions ou de configuration Supabase."
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 500,
+            }
+          );
+        }
+        
         return new Response(
           JSON.stringify({ 
             error: errorMessage,
@@ -145,14 +216,14 @@ serve(async (req) => {
       }
       
       newUserData = data;
-      console.log("Utilisateur créé dans auth.users:", newUserData.user.id);
+      console.log("Utilisateur créé dans auth.users avec succès:", newUserData.user.id);
     } catch (error) {
       console.error("Erreur détaillée lors de la création dans auth:", error);
       
       return new Response(
         JSON.stringify({ 
-          error: error.message || "Erreur lors de la création de l'utilisateur",
-          details: "Erreur de base de données inattendue"
+          error: "Erreur lors de la création de l'utilisateur",
+          details: "Erreur de base de données inattendue. Vérifiez les permissions et la configuration de Supabase."
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
