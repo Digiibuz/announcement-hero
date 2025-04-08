@@ -83,8 +83,8 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
         wordpressConfigId: values.wordpressConfigId && values.wordpressConfigId !== "none" ? values.wordpressConfigId : null,
       };
       
-      // Call the Edge function with improved error handling
-      const { data, error: functionCallError } = await supabase.functions.invoke("create-user", {
+      // Call the Edge function
+      const { data, error } = await supabase.functions.invoke("create-user", {
         body: {
           email: sanitizedValues.email,
           name: sanitizedValues.name,
@@ -94,16 +94,10 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
         },
       });
       
-      if (functionCallError) {
-        console.error("Erreur d'appel à la fonction Edge:", functionCallError);
+      if (error) {
+        console.error("Erreur d'appel à la fonction Edge:", error);
         toast.dismiss(toastId);
-        
-        // Si l'erreur est liée à un problème de permission ou technique
-        if (functionCallError.message && functionCallError.message.includes("non-2xx status code")) {
-          toast.error("Erreur technique lors de la création de l'utilisateur. Contactez l'administrateur système.");
-        } else {
-          toast.error(`Erreur: ${functionCallError.message || "Échec de la création de l'utilisateur"}`);
-        }
+        toast.error(`Erreur: ${error.message || "Échec de la création de l'utilisateur"}`);
         return;
       }
       
@@ -113,51 +107,19 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
         const errorMessage = (data as any)?.error || "Erreur lors de la création de l'utilisateur";
         const errorDetails = (data as any)?.details || "";
         toast.dismiss(toastId);
-        
-        // Messages d'erreur plus précis pour les cas courants
-        if (errorMessage.includes("Erreur technique")) {
-          toast.error(`${errorMessage}. ${errorDetails}`);
-        } else if (errorMessage.includes("L'utilisateur existe déjà") || 
-            errorMessage.includes("L'email est déjà utilisé")) {
-          toast.error(`Cet email est déjà utilisé par un autre utilisateur. ${errorDetails}`);
-        } else if (errorMessage.includes("Mot de passe")) {
-          toast.error(`Problème avec le mot de passe: ${errorMessage}. ${errorDetails}`);
-        } else if (errorMessage.includes("base de données")) {
-          toast.error(`Erreur technique: ${errorMessage}. ${errorDetails}`);
-        } else {
-          toast.error(`${errorMessage}${errorDetails ? ` - ${errorDetails}` : ""}`);
-        }
+        toast.error(`${errorMessage}${errorDetails ? ` - ${errorDetails}` : ""}`);
         return;
       }
       
       toast.dismiss(toastId);
-      
-      if ((data as any).message && (data as any).message.includes("Profil créé pour un utilisateur existant")) {
-        toast.success("Profil créé pour un utilisateur existant");
-      } else {
-        toast.success("Utilisateur créé avec succès");
-      }
+      toast.success("Utilisateur créé avec succès");
       
       form.reset();
       onUserCreated();
     } catch (error: any) {
       toast.dismiss();
       console.error("Error creating user:", error);
-      
-      // More detailed error message for debugging
-      let errorMessage = error.message || "Erreur lors de la création de l'utilisateur";
-      
-      // If the error contains additional details
-      if (error.details) {
-        errorMessage += ` (${error.details})`;
-      }
-      
-      // Add status to the error if available
-      if (error.status) {
-        errorMessage += ` (Status: ${error.status})`;
-      }
-      
-      toast.error(errorMessage);
+      toast.error(error.message || "Erreur lors de la création de l'utilisateur");
     } finally {
       setIsSubmitting(false);
     }
@@ -187,7 +149,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="email@example.com" {...field} />
+                    <Input placeholder="email@example.com" {...field} type="email" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
