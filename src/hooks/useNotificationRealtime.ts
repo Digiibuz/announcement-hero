@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 
 export const useNotificationRealtime = (
   setNotifications: React.Dispatch<React.SetStateAction<Notification[]>>,
-  setUnreadCount: React.Dispatch<React.SetStateAction<number>>,
+  onNewNotification: (callback: (updatedNotifications: Notification[]) => void) => void,
   markAsRead: (id: string) => Promise<void>
 ) => {
   const { user } = useAuth();
@@ -25,8 +25,12 @@ export const useNotificationRealtime = (
         filter: `user_id=eq.${user.id}`,
       }, (payload) => {
         const newNotification = payload.new as unknown as Notification;
-        setNotifications(prev => [newNotification, ...prev]);
-        setUnreadCount(prev => prev + 1);
+        setNotifications(prev => {
+          const updatedNotifications = [newNotification, ...prev];
+          // Appeler le callback fourni par useNotifications pour mettre à jour le compteur
+          onNewNotification(updatedNotifications);
+          return updatedNotifications;
+        });
         
         // Afficher une toast pour la nouvelle notification
         toast(newNotification.title, {
@@ -42,5 +46,5 @@ export const useNotificationRealtime = (
     return () => {
       supabase.removeChannel(notificationsSubscription);
     };
-  }, [user, setNotifications, setUnreadCount, markAsRead]);
+  }, [user, setNotifications, onNewNotification, markAsRead]);
 };
