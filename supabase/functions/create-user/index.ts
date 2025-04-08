@@ -195,6 +195,13 @@ serve(async (req) => {
     // After creating the user in Auth or retrieving an existing one, create their profile
     try {
       console.log("Création du profil pour l'utilisateur:", userData.user.id);
+      
+      // Correction ici: Traitement approprié pour le wordpress_config_id null/undefined
+      let wordpress_config_id = null;
+      if (role === "client" && wordpressConfigId && wordpressConfigId !== "") {
+        wordpress_config_id = wordpressConfigId;
+      }
+      
       const { error: profileError } = await supabaseAdmin
         .from('profiles')
         .insert({
@@ -202,7 +209,7 @@ serve(async (req) => {
           email: email,
           name: name,
           role: role,
-          wordpress_config_id: role === "client" ? wordpressConfigId : null,
+          wordpress_config_id: wordpress_config_id,
         });
 
       if (profileError) {

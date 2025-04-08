@@ -75,14 +75,17 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       
       console.log("Envoi des données:", values);
       
-      // Call the Edge function with better error handling
+      const wordpressConfigId = values.wordpressConfigId === "none" || !values.wordpressConfigId 
+                              ? null 
+                              : values.wordpressConfigId;
+      
       const { data, error: functionCallError } = await supabase.functions.invoke("create-user", {
         body: {
           email: values.email,
           name: values.name,
           password: values.password,
           role: values.role,
-          wordpressConfigId: values.role === "client" ? values.wordpressConfigId : null,
+          wordpressConfigId: wordpressConfigId,
         },
       });
       
@@ -100,7 +103,6 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
         const errorDetails = (data as any)?.details || "";
         toast.dismiss(toastId);
         
-        // Messages d'erreur plus précis pour les cas courants
         if (errorMessage.includes("L'utilisateur existe déjà")) {
           toast.error(`Cet email est déjà utilisé par un autre utilisateur. ${errorDetails}`);
         } else {
@@ -117,15 +119,12 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       toast.dismiss();
       console.error("Error creating user:", error);
       
-      // More detailed error message for debugging
       let errorMessage = error.message || "Erreur lors de la création de l'utilisateur";
       
-      // If the error contains additional details
       if (error.details) {
         errorMessage += ` (${error.details})`;
       }
       
-      // Add status to the error if available
       if (error.status) {
         errorMessage += ` (Status: ${error.status})`;
       }
@@ -217,7 +216,6 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
               )}
             />
             
-            {/* Sélection de configuration WordPress uniquement pour les clients */}
             {form.watch("role") === "client" && (
               <FormField
                 control={form.control}
