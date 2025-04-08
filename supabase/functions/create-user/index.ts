@@ -69,7 +69,7 @@ serve(async (req) => {
 
       if (existingUsers && existingUsers.users.length > 0) {
         // Double-check that the email exactly matches the one we're trying to create
-        const exactEmailMatch = existingUsers.users.find(user => user.email === email);
+        const exactEmailMatch = existingUsers.users.find(user => user.email.toLowerCase() === email.toLowerCase());
         
         if (exactEmailMatch) {
           console.log("L'utilisateur existe déjà dans auth.users avec l'email exact:", email);
@@ -192,31 +192,84 @@ serve(async (req) => {
     console.log("Création de l'utilisateur:", email);
     let newUserData;
     try {
-      const { data, error } = await supabaseAdmin.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: {
-          name,
-          role,
-          wordpressConfigId: role === "client" ? wordpressConfigId : null,
-        },
-      });
+      // Enhanced error handling for user creation
+      try {
+        const { data, error } = await supabaseAdmin.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true,
+          user_metadata: {
+            name,
+            role,
+            wordpressConfigId: role === "client" ? wordpressConfigId : null,
+          },
+        });
 
-      if (error) {
-        console.log("Erreur lors de la création de l'utilisateur:", error.message);
-        throw error;
+        if (error) {
+          console.error("Erreur lors de la création de l'utilisateur:", error);
+          
+          // Check for specific error types and provide better messages
+          if (error.message.includes("duplicate key")) {
+            return new Response(
+              JSON.stringify({ 
+                error: "L'email est déjà utilisé", 
+                details: "Un utilisateur avec cet email existe déjà dans notre système."
+              }),
+              {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 400,
+              }
+            );
+          }
+          
+          // Check for password strength issues
+          if (error.message.includes("password")) {
+            return new Response(
+              JSON.stringify({ 
+                error: "Mot de passe invalide", 
+                details: "Le mot de passe ne respecte pas les critères de sécurité requis."
+              }),
+              {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 400,
+              }
+            );
+          }
+          
+          throw error;
+        }
+        
+        newUserData = data;
+        console.log("Utilisateur créé dans auth:", newUserData.user.id);
+      } catch (authError) {
+        console.error("Erreur détaillée lors de la création dans auth:", authError);
+        
+        // Provide a specific error message for database errors
+        if (authError.message && authError.message.includes("Database error")) {
+          return new Response(
+            JSON.stringify({ 
+              error: "Erreur de base de données", 
+              details: "Une erreur est survenue lors de la création de l'utilisateur. Cela peut être dû à un conflit d'email ou à une contrainte de base de données."
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 400,
+            }
+          );
+        }
+        
+        throw authError;
       }
-      
-      newUserData = data;
-      console.log("Utilisateur créé dans auth:", newUserData.user.id);
     } catch (error) {
       console.error("Erreur lors de la création de l'utilisateur:", error);
       return new Response(
-        JSON.stringify({ error: error.message || "Erreur lors de la création de l'utilisateur" }),
+        JSON.stringify({ 
+          error: error.message || "Erreur lors de la création de l'utilisateur",
+          details: error.status ? `Code d'erreur: ${error.status}` : undefined
+        }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500,
+          status: error.status || 500,
         }
       );
     }

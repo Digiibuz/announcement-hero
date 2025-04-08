@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -76,7 +75,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       
       console.log("Envoi des données:", values);
       
-      // Call the Edge function with better error handling
+      // Call the Edge function with improved error handling
       const { data, error: functionCallError } = await supabase.functions.invoke("create-user", {
         body: {
           email: values.email,
@@ -102,8 +101,13 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
         toast.dismiss(toastId);
         
         // Messages d'erreur plus précis pour les cas courants
-        if (errorMessage.includes("L'utilisateur existe déjà")) {
+        if (errorMessage.includes("L'utilisateur existe déjà") || 
+            errorMessage.includes("L'email est déjà utilisé")) {
           toast.error(`Cet email est déjà utilisé par un autre utilisateur. ${errorDetails}`);
+        } else if (errorMessage.includes("Mot de passe")) {
+          toast.error(`Problème avec le mot de passe: ${errorMessage}. ${errorDetails}`);
+        } else if (errorMessage.includes("base de données")) {
+          toast.error(`Erreur technique: ${errorMessage}. ${errorDetails}`);
         } else {
           toast.error(`${errorMessage}${errorDetails ? ` - ${errorDetails}` : ""}`);
         }
