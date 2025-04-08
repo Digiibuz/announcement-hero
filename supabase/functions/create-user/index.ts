@@ -66,7 +66,7 @@ serve(async (req) => {
       if (profilesError) {
         console.error("Erreur lors de la vérification du profil existant:", profilesError);
         return new Response(
-          JSON.stringify({ error: profilesError.message }),
+          JSON.stringify({ error: "Erreur de base de données" }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 500,
@@ -90,7 +90,7 @@ serve(async (req) => {
     } catch (error) {
       console.error("Erreur lors de la vérification du profil existant:", error);
       return new Response(
-        JSON.stringify({ error: error.message }),
+        JSON.stringify({ error: "Erreur de base de données" }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 500,
@@ -114,7 +114,34 @@ serve(async (req) => {
 
       if (error) {
         console.error("Erreur lors de la création de l'utilisateur dans auth.users:", error);
-        throw error;
+        
+        // Format error message for better clarity
+        const errorMessage = error.message || "Erreur lors de la création de l'utilisateur";
+        
+        // If the error contains any database constraint information, provide a clearer message
+        if (errorMessage.includes("duplicate key") || errorMessage.includes("already registered")) {
+          return new Response(
+            JSON.stringify({ 
+              error: "Cet email est déjà utilisé", 
+              details: "Un utilisateur avec cet email existe déjà dans le système."
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 409, // Conflict status code
+            }
+          );
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            error: errorMessage,
+            details: `Code d'erreur: ${error.status || 500}`
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: error.status || 500,
+          }
+        );
       }
       
       newUserData = data;
@@ -122,20 +149,14 @@ serve(async (req) => {
     } catch (error) {
       console.error("Erreur détaillée lors de la création dans auth:", error);
       
-      const errorMessage = error.message || "Erreur lors de la création de l'utilisateur";
-      const statusCode = error.status || 500;
-      const details = errorMessage.includes("User already registered") 
-        ? "Un utilisateur avec cet email existe déjà dans le système."
-        : `Code d'erreur: ${statusCode}`;
-      
       return new Response(
         JSON.stringify({ 
-          error: errorMessage,
-          details: details
+          error: error.message || "Erreur lors de la création de l'utilisateur",
+          details: "Erreur de base de données inattendue"
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: statusCode,
+          status: 500,
         }
       );
     }
@@ -143,15 +164,21 @@ serve(async (req) => {
     // Try to create the profile
     try {
       console.log("Création du profil pour l'utilisateur:", newUserData.user.id);
+      const profileData = {
+        id: newUserData.user.id,
+        email: normalizedEmail,
+        name: name,
+        role: role,
+      };
+      
+      // Add wordpress_config_id only for client role
+      if (role === "client" && wordpressConfigId) {
+        profileData.wordpress_config_id = wordpressConfigId;
+      }
+      
       const { error: profileError } = await supabaseAdmin
         .from('profiles')
-        .insert({
-          id: newUserData.user.id,
-          email: normalizedEmail,
-          name: name,
-          role: role,
-          wordpress_config_id: role === "client" ? wordpressConfigId : null,
-        });
+        .insert(profileData);
 
       if (profileError) {
         console.error("Erreur lors de la création du profil:", profileError);
@@ -166,8 +193,8 @@ serve(async (req) => {
         
         return new Response(
           JSON.stringify({ 
-            error: profileError.message,
-            details: "Erreur lors de la création du profil utilisateur"
+            error: "Erreur lors de la création du profil utilisateur",
+            details: profileError.message
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
