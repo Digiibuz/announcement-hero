@@ -57,33 +57,6 @@ const PageLayout = ({
     );
   }
 
-  // Déterminer la classe d'alignement pour les titres selon la page
-  const getTitleAlignment = () => {
-    // Aligner au centre pour les pages spécifiques
-    if (
-      location.pathname === '/profile' || 
-      location.pathname === '/notifications' || 
-      location.pathname === '/support'
-    ) {
-      return "text-center";
-    }
-    return ""; // alignement par défaut (à gauche) pour les autres pages
-  };
-
-  // Déterminer la largeur maximale du conteneur en fonction de la page
-  const getContainerWidth = () => {
-    if (location.pathname === '/profile') {
-      return "max-w-3xl mx-auto";
-    }
-    if (location.pathname === '/notifications') {
-      return "max-w-4xl mx-auto";
-    }
-    if (location.pathname === '/support') {
-      return "max-w-5xl mx-auto";
-    }
-    return "";
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <ImpersonationBanner />
@@ -91,12 +64,12 @@ const PageLayout = ({
       <Sidebar />
 
       <main className={`pt-16 md:pl-64 ${bannerPadding}`}>
-        <div className={`container ${fullWidthMobile && isMobile ? 'px-0 sm:px-4' : 'px-4'} py-0 ${isCreateAnnouncementPage && !isMobile ? 'max-w-3xl mx-auto' : ''} ${getContainerWidth()} ${containerClassName || ''}`}>
+        <div className={`container ${fullWidthMobile && isMobile ? 'px-0 sm:px-4' : 'px-4'} py-0 ${containerClassName || ''}`}>
           {(title || titleAction || showRefreshButton) && (
             <AnimatedContainer delay={100} className={containerClassName?.includes('max-w-full') ? 'w-full' : ''}>
               <div className={`flex flex-col ${!isMobile ? "sm:flex-row sm:items-center sm:justify-between" : ""} mb-4 ${isMobile ? "pt-0 px-4" : "pt-2"} gap-3`}>
-                <div className={`flex flex-row items-center gap-4 ${getTitleAlignment()} ${getTitleAlignment() ? 'w-full justify-center' : ''}`}>
-                  {title && <h1 className={`text-2xl md:text-3xl font-bold ${getTitleAlignment()}`}>{title}</h1>}
+                <div className="flex flex-row items-center gap-4">
+                  {title && <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>}
                   {showRefreshButton && (
                     <Button 
                       variant="outline" 
@@ -110,7 +83,7 @@ const PageLayout = ({
                     </Button>
                   )}
                 </div>
-                <div className={`${isMobile ? "w-full" : ""} flex items-center gap-2 ${getTitleAlignment() ? 'w-full justify-center' : ''}`}>
+                <div className={`${isMobile ? "w-full" : ""} flex items-center gap-2`}>
                   {titleAction && <div>{titleAction}</div>}
                 </div>
               </div>

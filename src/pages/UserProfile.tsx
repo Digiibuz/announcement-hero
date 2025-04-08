@@ -39,8 +39,8 @@ const UserProfile = () => {
 
   return (
     <PageLayout title="Mon Profil">
-      <div className="max-w-3xl mx-auto">
-        <AnimatedContainer delay={100}>
+      <AnimatedContainer delay={200}>
+        <div className="space-y-6">
           <Card className="mb-6">
             <CardHeader className="pb-3">
               <CardTitle className="text-2xl font-bold flex items-center gap-2">
@@ -65,9 +65,7 @@ const UserProfile = () => {
               </div>
             </CardContent>
           </Card>
-        </AnimatedContainer>
 
-        <AnimatedContainer delay={200}>
           <Card className="mb-6">
             <CardHeader className="pb-3">
               <CardTitle className="text-2xl font-bold">Préférences d'affichage</CardTitle>
@@ -96,9 +94,7 @@ const UserProfile = () => {
               </div>
             </CardContent>
           </Card>
-        </AnimatedContainer>
 
-        <AnimatedContainer delay={300}>
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-2xl font-bold">Actions</CardTitle>
@@ -109,8 +105,8 @@ const UserProfile = () => {
               </Button>
             </CardContent>
           </Card>
-        </AnimatedContainer>
-      </div>
+        </div>
+      </AnimatedContainer>
     </PageLayout>
   );
 };
