@@ -167,7 +167,7 @@ export function useOptimizedImage({
       // Pour le tracking dans l'Observer
       'data-src': src,
       // Pour les performances de rendu
-      decoding: 'async',
+      decoding: "async" as "async" | "auto" | "sync",
       // Style de transition pour les images
       style: {
         transition: 'opacity 0.3s ease-in-out',

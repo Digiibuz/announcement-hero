@@ -107,6 +107,7 @@ export function OptimizedImage({
         onLoad={handleLoad}
         loading={!priority && enableNativeLazyLoading ? "lazy" : undefined}
         fetchPriority={priority ? "high" : "auto"}
+        decoding={"async" as "async" | "auto" | "sync"}
       />
 
       {isNativeError && (

@@ -31,7 +31,7 @@ export function NetworkAwareLoading({
 }: NetworkAwareLoadingProps) {
   const { 
     showLoading, 
-    showSlowNetworkWarning, 
+    showSlowNetworkWarning: displaySlowNetworkWarning, 
     isSlowNetwork,
     loadDuration 
   } = useNetworkAwareLoading(isLoading, {
@@ -72,7 +72,7 @@ export function NetworkAwareLoading({
         {getMessage()}
       </p>
       
-      {showSlowNetworkWarning && isSlowNetwork && (
+      {showSlowNetworkWarning && displaySlowNetworkWarning && isSlowNetwork && (
         <Alert className="mt-6 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800/30 max-w-md">
           <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
           <AlertDescription className="text-amber-800 dark:text-amber-300">
