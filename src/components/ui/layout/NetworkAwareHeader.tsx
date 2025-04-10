@@ -14,16 +14,18 @@ export const NetworkAwareHeader = ({
   ...props
 }: NetworkAwareHeaderProps) => {
   return (
-    <Header className={className} {...props}>
-      {children}
-      
-      <div className="ml-auto flex items-center gap-2">
-        <NetworkStatus 
-          className="hidden md:flex" 
-          showDetailedInfo={true}
-          onRetry={() => window.location.reload()}
-        />
-      </div>
-    </Header>
+    <div className={className}>
+      <Header {...props}>
+        {children}
+        
+        <div className="ml-auto flex items-center gap-2">
+          <NetworkStatus 
+            className="hidden md:flex" 
+            showDetailedInfo={true}
+            onRetry={() => window.location.reload()}
+          />
+        </div>
+      </Header>
+    </div>
   );
 };
