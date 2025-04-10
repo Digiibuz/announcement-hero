@@ -9,19 +9,104 @@ if ('scrollRestoration' in history) {
   history.scrollRestoration = 'manual';
 }
 
-// Variable globale pour le contrôle du service worker
+// Variables globales pour le contrôle du service worker et de l'état réseau
 let serviceWorkerRegistration = null;
+let networkStatusCheckInterval = null;
+let lastNetworkType = '';
 
-// Define the clearCacheAndReload method on the window object
-// Type declaration for the global window object
+// Define methods on the window object
 declare global {
   interface Window {
     clearCacheAndReload: () => void;
+    checkNetworkStatus: () => Promise<{
+      type: string; 
+      downlink: number;
+      rtt: number;
+      saveData: boolean;
+    }>;
+    getNetworkQuality: () => 'slow' | 'medium' | 'fast';
+    isOnSlowNetwork: () => boolean;
+    isSaveDataEnabled: () => boolean;
   }
 }
 
-// Fonction pour enregistrer le service worker de manière plus robuste
-const registerServiceWorker = async () => {
+// Détection intelligente du type de réseau et des performances
+window.checkNetworkStatus = async () => {
+  // Obtenir les informations de connexion depuis l'API Network Information
+  const connection = (navigator as any).connection || 
+                    (navigator as any).mozConnection || 
+                    (navigator as any).webkitConnection;
+  
+  if (connection) {
+    // Tenter d'obtenir le type de connexion spécifique (non disponible dans tous les navigateurs)
+    const networkType = connection.type || connection.effectiveType || 'unknown';
+    
+    // Si le type de réseau a changé depuis la dernière vérification, logger l'information
+    if (networkType !== lastNetworkType) {
+      console.log(`Type de réseau détecté: ${networkType}, Débit estimé: ${connection.downlink}Mbps, RTT: ${connection.rtt}ms`);
+      lastNetworkType = networkType;
+      
+      // Publier un événement personnalisé pour que l'application puisse réagir
+      window.dispatchEvent(new CustomEvent('networkchange', { 
+        detail: { 
+          type: networkType,
+          downlink: connection.downlink,
+          rtt: connection.rtt,
+          saveData: connection.saveData
+        } 
+      }));
+    }
+    
+    return {
+      type: networkType,
+      downlink: connection.downlink || 0,
+      rtt: connection.rtt || 0,
+      saveData: connection.saveData || false
+    };
+  }
+  
+  // Fallback si l'API Network Information n'est pas disponible
+  return {
+    type: 'unknown',
+    downlink: 0,
+    rtt: 0,
+    saveData: false
+  };
+};
+
+// Utilitaire pour classifier la qualité du réseau
+window.getNetworkQuality = () => {
+  const connection = (navigator as any).connection || 
+                    (navigator as any).mozConnection || 
+                    (navigator as any).webkitConnection;
+  
+  if (!connection) return 'medium'; // Par défaut
+  
+  // Classification basée sur effective type ou combinaison downlink/rtt
+  const effectiveType = connection.effectiveType;
+  
+  if (effectiveType === '2g' || connection.downlink < 0.5 || connection.rtt > 600) {
+    return 'slow';
+  } else if (effectiveType === '3g' || connection.downlink < 2 || connection.rtt > 300) {
+    return 'medium';
+  } else {
+    return 'fast';
+  }
+};
+
+// Vérifier si l'utilisateur est sur un réseau lent (2G/EDGE ou equivalent)
+window.isOnSlowNetwork = () => {
+  return window.getNetworkQuality() === 'slow';
+};
+
+// Vérifier si le mode économie de données est activé
+window.isSaveDataEnabled = () => {
+  const connection = (navigator as any).connection;
+  return connection ? connection.saveData === true : false;
+};
+
+// Fonction pour enregistrer le service worker de manière plus robuste avec retry
+const registerServiceWorker = async (retryCount = 3) => {
   if ('serviceWorker' in navigator) {
     try {
       const registration = await navigator.serviceWorker.register('/sw.js', {
@@ -59,16 +144,32 @@ const registerServiceWorker = async () => {
       
       // Écouter les messages du service worker
       navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data && event.data.type === 'cacheCleared') {
-          console.log('Le cache a été vidé, rechargement de la page...');
-          window.location.reload();
+        if (event.data) {
+          if (event.data.type === 'cacheCleared') {
+            console.log('Le cache a été vidé, rechargement de la page...');
+            window.location.reload();
+          } else if (event.data.type === 'networkStatus') {
+            console.log('Status cache:', event.data);
+          }
         }
       });
       
+      return registration;
     } catch (error) {
       console.error('Erreur d\'enregistrement du SW:', error);
+      
+      // Réessayer avec un délai exponentiel
+      if (retryCount > 0) {
+        const delay = Math.pow(2, 4 - retryCount) * 1000; // 1s, 2s, 4s
+        console.log(`Nouvelle tentative d'enregistrement du SW dans ${delay}ms...`);
+        
+        setTimeout(() => {
+          registerServiceWorker(retryCount - 1);
+        }, delay);
+      }
     }
   }
+  return null;
 };
 
 // Fonction pour déclencher la mise à jour du service worker
@@ -79,6 +180,42 @@ const updateServiceWorker = async () => {
       registration.update();
     }
   }
+};
+
+// Fonction pour démarrer la surveillance de l'état du réseau
+const startNetworkMonitoring = () => {
+  // Vérifier immédiatement l'état du réseau
+  window.checkNetworkStatus();
+  
+  // Mettre en place une vérification périodique adaptative
+  if (!networkStatusCheckInterval) {
+    // Vérifier plus fréquemment sur les réseaux instables/lents
+    const checkFrequency = window.isOnSlowNetwork() ? 10000 : 30000; // 10s pour réseau lent, 30s sinon
+    
+    networkStatusCheckInterval = setInterval(() => {
+      window.checkNetworkStatus();
+    }, checkFrequency);
+  }
+  
+  // Surveillance des changements de connexion (si API disponible)
+  const connection = (navigator as any).connection;
+  if (connection) {
+    connection.addEventListener('change', () => {
+      window.checkNetworkStatus();
+    });
+  }
+  
+  // Surveillance de l'état online/offline
+  window.addEventListener('online', () => {
+    console.log('Connexion rétablie');
+    window.dispatchEvent(new CustomEvent('connectionchange', { detail: { online: true } }));
+    // Synchroniser les données en attente si nécessaire
+  });
+  
+  window.addEventListener('offline', () => {
+    console.log('Connexion perdue');
+    window.dispatchEvent(new CustomEvent('connectionchange', { detail: { online: false } }));
+  });
 };
 
 // Fonction pour vider complètement le cache et forcer le rechargement
@@ -93,6 +230,7 @@ window.clearCacheAndReload = () => {
 // Enregistrer le service worker au chargement
 window.addEventListener('load', () => {
   registerServiceWorker();
+  startNetworkMonitoring();
 });
 
 // Mettre à jour le service worker lors de la reprise de l'application
@@ -100,6 +238,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     // L'utilisateur est revenu à l'application
     updateServiceWorker();
+    window.checkNetworkStatus();
     
     // Vérifier si nous sommes sur la page de login et si l'application vient d'être réactivée
     const isLoginPage = window.location.pathname.includes('login');
