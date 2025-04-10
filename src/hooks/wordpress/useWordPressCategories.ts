@@ -319,9 +319,4 @@ export const useWordPressCategories = () => {
   };
 };
 
-// Ajout d'un type global pour la détection de réseau lent
-declare global {
-  interface Window {
-    isOnSlowNetwork?: () => boolean;
-  }
-}
+// Removed the duplicate global declaration as we now use the shared type in network.d.ts

@@ -1,4 +1,3 @@
-
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
@@ -14,21 +13,7 @@ let serviceWorkerRegistration = null;
 let networkStatusCheckInterval = null;
 let lastNetworkType = '';
 
-// Define methods on the window object
-declare global {
-  interface Window {
-    clearCacheAndReload: () => void;
-    checkNetworkStatus: () => Promise<{
-      type: string; 
-      downlink: number;
-      rtt: number;
-      saveData: boolean;
-    }>;
-    getNetworkQuality: () => 'slow' | 'medium' | 'fast';
-    isOnSlowNetwork: () => boolean;
-    isSaveDataEnabled: () => boolean;
-  }
-}
+// Define methods on the window object - we're now using the shared type definition from network.d.ts
 
 // Détection intelligente du type de réseau et des performances
 window.checkNetworkStatus = async () => {
