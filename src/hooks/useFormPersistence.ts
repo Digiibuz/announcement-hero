@@ -24,40 +24,50 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
   const visibilityChangePending = useRef(false);
   const lastVisibilityChangeTime = useRef(0);
   const allFields = fields || Object.keys(getValues() || {});
+  const visibilityChangeTimerRef = useRef<number | null>(null);
+  const saveInProgressRef = useRef(false);
   
   // Fonction pour sauvegarder les données
   const saveData = () => {
-    // Si un changement de visibilité est en cours de traitement, ne pas déclencher de sauvegarde
-    if (visibilityChangePending.current) {
-      if (debug) console.log('Sauvegarde ignorée pendant le traitement du changement de visibilité');
+    // Si une sauvegarde est déjà en cours ou si un changement de visibilité est en cours de traitement, ne pas déclencher de sauvegarde
+    if (visibilityChangePending.current || saveInProgressRef.current) {
+      if (debug) console.log('Sauvegarde ignorée pendant le traitement du changement de visibilité ou sauvegarde déjà en cours');
       return;
     }
     
-    const currentValues = getValues();
+    saveInProgressRef.current = true;
     
-    if (currentValues && Object.keys(currentValues).length > 0) {
-      // Vérifier que les données ne sont pas vides avant de sauvegarder
-      let hasNonEmptyValues = false;
+    try {
+      const currentValues = getValues();
       
-      for (const key of Object.keys(currentValues)) {
-        const value = currentValues[key];
-        if (value !== undefined && value !== null && value !== '') {
-          if (Array.isArray(value) ? value.length > 0 : true) {
-            hasNonEmptyValues = true;
-            break;
+      if (currentValues && Object.keys(currentValues).length > 0) {
+        // Vérifier que les données ne sont pas vides avant de sauvegarder
+        let hasNonEmptyValues = false;
+        
+        for (const key of Object.keys(currentValues)) {
+          const value = currentValues[key];
+          if (value !== undefined && value !== null && value !== '') {
+            if (Array.isArray(value) ? value.length > 0 : true) {
+              hasNonEmptyValues = true;
+              break;
+            }
+          }
+        }
+        
+        if (hasNonEmptyValues) {
+          localStorage.setItem(storageKey, JSON.stringify(currentValues));
+          if (debug) console.log('Données du formulaire sauvegardées:', storageKey, currentValues);
+          
+          // Également sauvegarder l'étape courante si nous sommes dans un formulaire multi-étapes
+          if (currentValues.hasOwnProperty('_currentStep')) {
+            localStorage.setItem(`${storageKey}_step`, String(currentValues._currentStep));
           }
         }
       }
-      
-      if (hasNonEmptyValues) {
-        localStorage.setItem(storageKey, JSON.stringify(currentValues));
-        if (debug) console.log('Données du formulaire sauvegardées:', storageKey, currentValues);
-        
-        // Également sauvegarder l'étape courante si nous sommes dans un formulaire multi-étapes
-        if (currentValues.hasOwnProperty('_currentStep')) {
-          localStorage.setItem(`${storageKey}_step`, String(currentValues._currentStep));
-        }
-      }
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde des données:', error);
+    } finally {
+      saveInProgressRef.current = false;
     }
   };
 
@@ -85,11 +95,11 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
       // Sauvegarde à chaque changement
       const subscription = watch((formValues, { name, type }) => {
         if (formValues && Object.keys(formValues).length > 0) {
-          if (debug) console.log('Mise à jour des données du formulaire:', name, type);
+          if (debug && name) console.log('Mise à jour des données du formulaire:', name, type);
           
           // Vérifier si nous sommes en train de traiter un changement de visibilité
           // Si oui, ne pas déclencher de sauvegarde supplémentaire pour éviter les boucles
-          if (!visibilityChangePending.current) {
+          if (!visibilityChangePending.current && !saveInProgressRef.current) {
             localStorage.setItem(storageKey, JSON.stringify(formValues));
             
             // Sauvegarder l'étape courante si disponible
@@ -107,49 +117,66 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
       
       window.addEventListener('beforeunload', handleBeforeUnload);
       
-      // Gestion améliorée des changements de visibilité (onglet)
-      const handleVisibilityChange = () => {
-        const now = Date.now();
-        
-        // Anti-rate limiting: ignorer les changements trop rapprochés (moins de 300ms)
-        if (now - lastVisibilityChangeTime.current < 300) {
-          if (debug) console.log('Changement de visibilité ignoré (trop rapproché)');
-          return;
-        }
-        
-        lastVisibilityChangeTime.current = now;
-        
-        if (document.visibilityState === 'hidden') {
-          // Quand on quitte l'onglet, sauvegarder
-          if (debug) console.log('Onglet caché, sauvegarde des données');
-          saveData();
-        } else if (document.visibilityState === 'visible' && !visibilityChangePending.current) {
-          // Quand on revient sur l'onglet
-          if (debug) console.log('Onglet visible, marquage du changement de visibilité en cours');
-          visibilityChangePending.current = true;
-          
-          // Temporisateur pour éviter les boucles infinies
-          setTimeout(() => {
-            if (debug) console.log('Fin du traitement du changement de visibilité');
-            visibilityChangePending.current = false;
-          }, 1000); // Augmenté à 1000ms pour plus de sécurité
-        }
-      };
-      
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-      
       return () => {
         subscription.unsubscribe();
         window.removeEventListener('beforeunload', handleBeforeUnload);
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
       };
     }
   }, [watch, storageKey, autosaveInterval, debug, allFields]);
 
+  // Gestion améliorée des changements de visibilité (onglet) dans un effet séparé
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const now = Date.now();
+      
+      // Anti-rate limiting: ignorer les changements trop rapprochés (moins de 300ms)
+      if (now - lastVisibilityChangeTime.current < 300) {
+        if (debug) console.log('Changement de visibilité ignoré (trop rapproché)');
+        return;
+      }
+      
+      lastVisibilityChangeTime.current = now;
+      
+      // Nettoyer tout timer existant pour éviter les appels multiples
+      if (visibilityChangeTimerRef.current !== null) {
+        clearTimeout(visibilityChangeTimerRef.current);
+        visibilityChangeTimerRef.current = null;
+      }
+      
+      if (document.visibilityState === 'hidden') {
+        // Quand on quitte l'onglet, sauvegarder
+        if (debug) console.log('Onglet caché, sauvegarde des données');
+        saveData();
+        visibilityChangePending.current = false;
+      } else if (document.visibilityState === 'visible' && !visibilityChangePending.current) {
+        // Quand on revient sur l'onglet
+        if (debug) console.log('Onglet visible, marquage du changement de visibilité en cours');
+        visibilityChangePending.current = true;
+        
+        // Utiliser un timer pour l'action de visibilité pour éviter les boucles
+        visibilityChangeTimerRef.current = window.setTimeout(() => {
+          // Ici on peut effectuer des actions nécessaires au retour sur l'onglet
+          if (debug) console.log('Fin du traitement du changement de visibilité');
+          visibilityChangePending.current = false;
+          visibilityChangeTimerRef.current = null;
+        }, 1000);
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (visibilityChangeTimerRef.current !== null) {
+        clearTimeout(visibilityChangeTimerRef.current);
+      }
+    };
+  }, [debug]);
+
   // Sauvegarder aussi lorsque le composant se démonte
   useEffect(() => {
     return () => {
-      if (!visibilityChangePending.current) {  // Ne pas sauvegarder si changement de visibilité en cours
+      if (!visibilityChangePending.current && !saveInProgressRef.current) {
         saveData();
       }
     };

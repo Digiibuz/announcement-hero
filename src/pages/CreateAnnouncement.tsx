@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -77,6 +77,8 @@ const CreateAnnouncement = () => {
   const [showPublishingOverlay, setShowPublishingOverlay] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const { categories } = useWordPressCategories();
+  const visibilityChangeHandlingRef = useRef(false);
+  const lastVisibilityChangeTimeRef = useRef(0);
 
   // Get current step config
   const currentStep = stepConfigs[currentStepIndex];
@@ -125,20 +127,48 @@ const CreateAnnouncement = () => {
     setTimeout(saveData, 100);
   }, [currentStepIndex, form, saveData]);
 
-  // Handle visibility changes
+  // Optimized handler for visibility changes
   useEffect(() => {
     const handleVisibilityChange = () => {
+      const now = Date.now();
+      
+      // Prévenir les traitements multiples des changements de visibilité
+      if (now - lastVisibilityChangeTimeRef.current < 500) {
+        console.log('Changement de visibilité ignoré car trop rapproché');
+        return;
+      }
+      
+      lastVisibilityChangeTimeRef.current = now;
+      
       if (document.visibilityState === 'visible') {
+        if (visibilityChangeHandlingRef.current) {
+          console.log('Changement de visibilité déjà en cours de traitement');
+          return;
+        }
+        
+        visibilityChangeHandlingRef.current = true;
+        
         console.log('Application créer annonce visible, restauration de l\'état...');
         
-        // Force une sauvegarde supplémentaire lors du retour
-        setTimeout(saveData, 100);
-        
-        // Vérifier s'il y a une étape sauvegardée
-        const savedStep = getSavedStep();
-        if (savedStep !== null && savedStep >= 0 && savedStep < stepConfigs.length) {
-          setCurrentStepIndex(savedStep);
-        }
+        // Attendre un court instant avant de restaurer l'état
+        setTimeout(() => {
+          try {
+            // Vérifier s'il y a une étape sauvegardée
+            const savedStep = getSavedStep();
+            if (savedStep !== null && savedStep >= 0 && savedStep < stepConfigs.length) {
+              console.log(`Restauration de l'étape sauvegardée: ${savedStep}`);
+              setCurrentStepIndex(savedStep);
+            }
+            
+            // Force une sauvegarde supplémentaire lors du retour
+            setTimeout(saveData, 100);
+          } finally {
+            // Réinitialiser le flag après traitement
+            setTimeout(() => {
+              visibilityChangeHandlingRef.current = false;
+            }, 1000);
+          }
+        }, 300);
       }
     };
     

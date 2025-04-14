@@ -17,6 +17,7 @@ let lastVisibilityChange = 0;
 let visibilityChangeCount = 0;
 let lastReloadTime = 0;
 let reloadCounter = 0;
+let reloadBlockedUntil = 0; // Timestamp jusqu'auquel les rechargements sont bloqués
 
 // Define methods on the window object - we're now using the shared type definition from network.d.ts
 
@@ -237,9 +238,10 @@ const shouldPreventReload = () => {
     '/submit', // Page de soumission de formulaire
   ];
   
-  // Vérifier si le chemin actuel correspond à l'un des chemins protégés
+  // Vérifier si le chemin actuel correspond exactement à l'un des chemins protégés
+  // ou commence par l'un des chemins protégés
   for (const path of noReloadPaths) {
-    if (currentPath.includes(path)) {
+    if (currentPath === path || currentPath.startsWith(path + '/')) {
       console.log(`Protection contre le rechargement activée pour la page: ${currentPath}`);
       return true;
     }
@@ -251,11 +253,19 @@ const shouldPreventReload = () => {
 // Détection des rechargements en boucle
 const isReloadLooping = () => {
   const now = Date.now();
+  
+  // Si le rechargement est bloqué jusqu'à un certain moment
+  if (now < reloadBlockedUntil) {
+    console.log(`Rechargements bloqués pour encore ${Math.round((reloadBlockedUntil - now)/1000)}s`);
+    return true;
+  }
+  
   // Si plusieurs rechargements en moins de 3 secondes, considérer qu'il y a une boucle
   if (now - lastReloadTime < 3000) {
     reloadCounter++;
     if (reloadCounter > 2) {
-      console.log('Détection de boucle de rechargement, rechargements bloqués temporairement');
+      console.log('Détection de boucle de rechargement, rechargements bloqués pour 30 secondes');
+      reloadBlockedUntil = now + (30 * 1000); // Bloquer pour 30 secondes
       return true;
     }
   } else {
@@ -267,9 +277,30 @@ const isReloadLooping = () => {
   return false;
 };
 
+// Variable pour suivre si nous venons juste de traiter un changement de visibilité
+let justHandledVisibilityChange = false;
+let visibilityChangeTimer = null;
+
 // Mettre à jour le service worker lors de la reprise de l'application
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
+    // Eviter le traitement multiple des changements de visibilité
+    if (justHandledVisibilityChange) {
+      console.log('Changement de visibilité récent déjà traité, ignoré');
+      return;
+    }
+    
+    justHandledVisibilityChange = true;
+    
+    // Réinitialiser après un délai
+    if (visibilityChangeTimer) {
+      clearTimeout(visibilityChangeTimer);
+    }
+    
+    visibilityChangeTimer = setTimeout(() => {
+      justHandledVisibilityChange = false;
+    }, 1000);
+    
     // L'utilisateur est revenu à l'application
     updateServiceWorker();
     window.checkNetworkStatus();
