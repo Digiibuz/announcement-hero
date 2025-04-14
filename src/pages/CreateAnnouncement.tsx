@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -79,6 +78,8 @@ const CreateAnnouncement = () => {
   const { categories } = useWordPressCategories();
   const visibilityChangeHandlingRef = useRef(false);
   const lastVisibilityChangeTimeRef = useRef(0);
+  const visibilityChangeCountRef = useRef(0);
+  const isInitialMount = useRef(true);
 
   // Get current step config
   const currentStep = stepConfigs[currentStepIndex];
@@ -113,23 +114,47 @@ const CreateAnnouncement = () => {
 
   // Restore saved step if available
   useEffect(() => {
-    const savedStep = getSavedStep();
-    if (savedStep !== null && savedStep >= 0 && savedStep < stepConfigs.length) {
-      setCurrentStepIndex(savedStep);
-      form.setValue('_currentStep', savedStep);
+    if (isInitialMount.current) {
+      const savedStep = getSavedStep();
+      if (savedStep !== null && savedStep >= 0 && savedStep < stepConfigs.length) {
+        setCurrentStepIndex(savedStep);
+        form.setValue('_currentStep', savedStep);
+      }
+      isInitialMount.current = false;
     }
   }, [getSavedStep, form]);
 
   // Update _currentStep field when step changes
   useEffect(() => {
-    form.setValue('_currentStep', currentStepIndex);
-    // Force save on step change
-    setTimeout(saveData, 100);
+    // Éviter de déclencher lors du montage initial
+    if (!isInitialMount.current) {
+      form.setValue('_currentStep', currentStepIndex);
+      
+      // Enregistrer les données avec un léger délai
+      const timerId = setTimeout(() => {
+        if (document.visibilityState === 'visible') {
+          saveData();
+        }
+      }, 300);
+      
+      return () => clearTimeout(timerId);
+    }
   }, [currentStepIndex, form, saveData]);
 
   // Optimized handler for visibility changes
   useEffect(() => {
     const handleVisibilityChange = () => {
+      // Protection contre les boucles infinies
+      visibilityChangeCountRef.current += 1;
+      
+      if (visibilityChangeCountRef.current > 5) {
+        console.error("Trop de changements de visibilité détectés, protection anti-boucle activée");
+        setTimeout(() => {
+          visibilityChangeCountRef.current = 0;
+        }, 5000);
+        return;
+      }
+      
       const now = Date.now();
       
       // Prévenir les traitements multiples des changements de visibilité
@@ -157,18 +182,25 @@ const CreateAnnouncement = () => {
             const savedStep = getSavedStep();
             if (savedStep !== null && savedStep >= 0 && savedStep < stepConfigs.length) {
               console.log(`Restauration de l'étape sauvegardée: ${savedStep}`);
-              setCurrentStepIndex(savedStep);
+              // Ne mettre à jour que si l'étape est différente pour éviter des re-rendus inutiles
+              if (savedStep !== currentStepIndex) {
+                setCurrentStepIndex(savedStep);
+              }
             }
-            
-            // Force une sauvegarde supplémentaire lors du retour
-            setTimeout(saveData, 100);
           } finally {
             // Réinitialiser le flag après traitement
             setTimeout(() => {
               visibilityChangeHandlingRef.current = false;
+              // Réinitialiser le compteur après un délai plus long
+              setTimeout(() => {
+                visibilityChangeCountRef.current = 0;
+              }, 1000);
             }, 1000);
           }
-        }, 300);
+        }, 500);
+      } else if (document.visibilityState === 'hidden') {
+        // Sauvegarder l'état actuel lorsque l'utilisateur quitte la page
+        saveData();
       }
     };
     
@@ -176,7 +208,7 @@ const CreateAnnouncement = () => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [getSavedStep, saveData]);
+  }, [getSavedStep, saveData, currentStepIndex]);
 
   // Define the publishing steps
   const publishingSteps: PublishingStepType[] = [

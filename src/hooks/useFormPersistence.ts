@@ -26,14 +26,27 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
   const allFields = fields || Object.keys(getValues() || {});
   const visibilityChangeTimerRef = useRef<number | null>(null);
   const saveInProgressRef = useRef(false);
+  const saveThrottleTimerRef = useRef<number | null>(null);
+  const visibilityChangeCount = useRef(0);
   
-  // Fonction pour sauvegarder les données
+  // Fonction pour sauvegarder les données avec throttling
   const saveData = () => {
+    // Si un timer de throttling est en cours, ne pas déclencher une nouvelle sauvegarde
+    if (saveThrottleTimerRef.current !== null) {
+      if (debug) console.log('Sauvegarde throttled, timer déjà en cours');
+      return;
+    }
+    
     // Si une sauvegarde est déjà en cours ou si un changement de visibilité est en cours de traitement, ne pas déclencher de sauvegarde
     if (visibilityChangePending.current || saveInProgressRef.current) {
       if (debug) console.log('Sauvegarde ignorée pendant le traitement du changement de visibilité ou sauvegarde déjà en cours');
       return;
     }
+    
+    // Mettre en place le throttling pour éviter les sauvegardes trop fréquentes
+    saveThrottleTimerRef.current = window.setTimeout(() => {
+      saveThrottleTimerRef.current = null;
+    }, 500); // 500ms de throttling
     
     saveInProgressRef.current = true;
     
@@ -127,6 +140,17 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
   // Gestion améliorée des changements de visibilité (onglet) dans un effet séparé
   useEffect(() => {
     const handleVisibilityChange = () => {
+      // Protection contre les boucles infinies potentielles
+      visibilityChangeCount.current += 1;
+      if (visibilityChangeCount.current > 5) {
+        console.error("Trop de changements de visibilité détectés en peu de temps, ignorant cet événement");
+        // Réinitialisation du compteur après un certain temps
+        setTimeout(() => {
+          visibilityChangeCount.current = 0;
+        }, 2000);
+        return;
+      }
+      
       const now = Date.now();
       
       // Anti-rate limiting: ignorer les changements trop rapprochés (moins de 300ms)
@@ -159,6 +183,11 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
           if (debug) console.log('Fin du traitement du changement de visibilité');
           visibilityChangePending.current = false;
           visibilityChangeTimerRef.current = null;
+          
+          // Réinitialiser le compteur après un traitement réussi
+          setTimeout(() => {
+            visibilityChangeCount.current = 0;
+          }, 500);
         }, 1000);
       }
     };
@@ -169,6 +198,9 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (visibilityChangeTimerRef.current !== null) {
         clearTimeout(visibilityChangeTimerRef.current);
+      }
+      if (saveThrottleTimerRef.current !== null) {
+        clearTimeout(saveThrottleTimerRef.current);
       }
     };
   }, [debug]);

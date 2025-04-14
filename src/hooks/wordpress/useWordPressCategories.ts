@@ -26,6 +26,9 @@ export const useWordPressCategories = () => {
   const retryCountRef = useRef(0);
   const maxRetries = 3;
   const initialFetchDoneRef = useRef(false);
+  const lastFetchTimeRef = useRef(0);
+  const fetchThrottleRef = useRef(false);
+  const visibilityChangeHandlingRef = useRef(false);
 
   // Fonction pour charger les catégories depuis le cache local
   const loadCachedCategories = useCallback(() => {
@@ -74,6 +77,17 @@ export const useWordPressCategories = () => {
 
   // Fonction principale pour récupérer les catégories
   const fetchCategories = useCallback(async (forceRefresh = false) => {
+    // Vérifier le throttling
+    const now = Date.now();
+    if (now - lastFetchTimeRef.current < 2000 && !forceRefresh) { // 2 secondes minimum entre les fetchs
+      console.log("Fetch throttled, fetch trop récent");
+      fetchThrottleRef.current = true;
+      return false;
+    }
+    
+    lastFetchTimeRef.current = now;
+    fetchThrottleRef.current = false;
+    
     // Éviter les rechargements multiples lors du changement de visibilité
     if (document.visibilityState === 'hidden') {
       console.log("Page non visible, récupération des catégories reportée");
@@ -105,7 +119,10 @@ export const useWordPressCategories = () => {
       setIsLoadingFromCache(false);
       
       // Si nous avons réussi à charger depuis le cache, retourner true
-      if (loadedFromCache) return true;
+      if (loadedFromCache) {
+        initialFetchDoneRef.current = true;
+        return true;
+      }
     }
 
     try {
@@ -176,7 +193,7 @@ export const useWordPressCategories = () => {
       
       try {
         // Logique de vérification de l'état du réseau (si disponible)
-        const isSlowNetwork = typeof window.isOnSlowNetwork === 'function' && window.isOnSlowNetwork();
+        const isSlowNetwork = typeof (window as any).isOnSlowNetwork === 'function' && (window as any).isOnSlowNetwork();
         
         // Sur réseau lent, d'abord vérifier s'il existe une version mise en cache
         if (isSlowNetwork) {
@@ -219,6 +236,7 @@ export const useWordPressCategories = () => {
           console.log("Standard WordPress categories fetched successfully:", standardCategoriesData.length);
           setCategories(standardCategoriesData);
           saveCategoriesInCache(standardCategoriesData);
+          initialFetchDoneRef.current = true;
           return true;
         }
         
@@ -238,6 +256,7 @@ export const useWordPressCategories = () => {
         console.log("DipiPixel categories fetched successfully:", categoriesData.length);
         setCategories(categoriesData);
         saveCategoriesInCache(categoriesData);
+        initialFetchDoneRef.current = true;
         return true;
       } catch (fetchError: any) {
         clearTimeout(timeoutId);
@@ -324,12 +343,36 @@ export const useWordPressCategories = () => {
   // Gérer les changements de visibilité pour éviter les boucles
   useEffect(() => {
     const handleVisibilityChange = () => {
-      // Ne recharger que si la page devient visible et que nous n'avons pas de catégories
-      if (document.visibilityState === 'visible' && categories.length === 0 && user?.wordpressConfigId) {
+      if (visibilityChangeHandlingRef.current) {
+        console.log("Changement de visibilité déjà en cours de traitement");
+        return;
+      }
+      
+      // Définir un flag pour éviter les traitements multiples
+      visibilityChangeHandlingRef.current = true;
+      
+      // Ne recharger que si la page devient visible, que nous n'avons pas reçu un événement récemment
+      // et que nous n'avons pas de catégories ou qu'un fetch n'est pas déjà throttled
+      if (document.visibilityState === 'visible' && 
+          categories.length === 0 && 
+          user?.wordpressConfigId && 
+          !fetchThrottleRef.current) {
         console.log("Page visible, tentative de rechargement des catégories");
+        
+        // Utiliser un timeout pour éviter les appels trop fréquents
         setTimeout(() => {
-          fetchCategories(false);
-        }, 1000); // Délai pour éviter les appels trop fréquents
+          fetchCategories(false).finally(() => {
+            // Réinitialiser le flag après un délai pour éviter les traitements en boucle
+            setTimeout(() => {
+              visibilityChangeHandlingRef.current = false;
+            }, 2000);
+          });
+        }, 1000);
+      } else {
+        // Si nous ne rechargeons pas, réinitialiser le flag après un court délai
+        setTimeout(() => {
+          visibilityChangeHandlingRef.current = false;
+        }, 500);
       }
     };
     
