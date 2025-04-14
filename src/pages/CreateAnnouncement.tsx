@@ -121,6 +121,12 @@ const AnnouncementForm = () => {
     return category ? category.name : "Non spécifié";
   };
 
+  // Wrapper function for form submission
+  const onSubmitForm = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    handleSubmit(form.getValues());
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <CreateAnnouncementHeader 
@@ -132,7 +138,7 @@ const AnnouncementForm = () => {
     
       <div className="pt-16 pb-20 px-4 md:max-w-3xl md:mx-auto">
         <Form {...form}>
-          <form onSubmit={handleSubmit} className="h-full">
+          <form onSubmit={onSubmitForm} className="h-full">
             <div className="max-w-3xl mx-auto">
               <div className="my-6">
                 <h2 className="text-xl font-semibold mb-1">{activeStep.title}</h2>
@@ -174,33 +180,13 @@ const AnnouncementForm = () => {
       
       <PublishingLoadingOverlay 
         isOpen={showOverlay}
-        steps={[
-          {
-            id: "prepare",
-            label: "Préparation de la publication",
-            status: "idle",
-            icon: <div className="h-5 w-5 text-muted-foreground"></div>
-          },
-          {
-            id: "image",
-            label: "Téléversement de l'image principale",
-            status: "idle",
-            icon: <div className="h-5 w-5 text-muted-foreground"></div>
-          },
-          {
-            id: "wordpress",
-            label: "Publication sur WordPress",
-            status: "idle",
-            icon: <div className="h-5 w-5 text-muted-foreground"></div>
-          },
-          {
-            id: "database",
-            label: "Mise à jour de la base de données",
-            status: "idle",
-            icon: <div className="h-5 w-5 text-muted-foreground"></div>
-          }
-        ]}
-        currentStepId="prepare" 
+        steps={stepConfigs.map(step => ({
+          id: step.id,
+          label: step.title,
+          status: "idle",
+          icon: <div className="h-5 w-5 text-muted-foreground"></div>
+        }))}
+        currentStepId={activeStep.id} 
         progress={0} 
       />
     </div>
