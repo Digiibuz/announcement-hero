@@ -63,6 +63,16 @@ export const useAnnouncementForm = (onPublishingStart?: () => void) => {
     return () => subscription.unsubscribe();
   }, [form]);
 
+  // Clear form data when the user navigates away from the form
+  useEffect(() => {
+    return () => {
+      // This will run when the component unmounts
+      if (window.location.pathname !== '/create') {
+        clearSavedData();
+      }
+    };
+  }, [clearSavedData]);
+
   const saveAnnouncementDraft = async () => {
     try {
       setIsSavingDraft(true);

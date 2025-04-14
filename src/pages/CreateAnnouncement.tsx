@@ -66,8 +66,26 @@ const AnnouncementForm = () => {
     isSavingDraft,
     saveAnnouncementDraft,
     handleSubmit,
-    saveData
+    saveData,
+    clearSavedData
   } = useAnnouncementForm(() => setShowOverlay(true));
+
+  // Reset form completely
+  const resetForm = () => {
+    form.reset({
+      title: "",
+      description: "",
+      wordpressCategory: "",
+      publishDate: undefined,
+      status: "published",
+      images: [],
+      seoTitle: "",
+      seoDescription: "",
+      seoSlug: "",
+      _currentStep: 0
+    });
+    clearSavedData();
+  };
 
   useEffect(() => {
     // Sauvegarder l'étape actuelle dans le formulaire pour la persistance
@@ -133,6 +151,7 @@ const AnnouncementForm = () => {
         totalSteps={stepConfigs.length} 
         onSaveDraft={saveAnnouncementDraft}
         isSavingDraft={isSavingDraft}
+        onReset={resetForm}
       />
     
       <div className="pt-16 pb-20 px-4 md:max-w-3xl md:mx-auto">

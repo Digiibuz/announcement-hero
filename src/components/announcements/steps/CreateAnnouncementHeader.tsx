@@ -51,13 +51,15 @@ interface CreateAnnouncementHeaderProps {
   totalSteps: number;
   onSaveDraft: () => Promise<void>;
   isSavingDraft: boolean;
+  onReset: () => void;
 }
 
 const CreateAnnouncementHeader = ({ 
   currentStep, 
   totalSteps,
   onSaveDraft,
-  isSavingDraft
+  isSavingDraft,
+  onReset
 }: CreateAnnouncementHeaderProps) => {
   const navigate = useNavigate();
   const { setFormStep } = usePublishing();
@@ -74,6 +76,7 @@ const CreateAnnouncementHeader = ({
     localStorage.removeItem("announcement-form-draft");
     localStorage.removeItem("current-announcement-step");
     setFormStep(0);
+    onReset(); // Reset the form state completely
     navigate("/announcements");
   };
 
