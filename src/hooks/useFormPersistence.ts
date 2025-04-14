@@ -22,10 +22,17 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
   const { watch, reset, getValues } = form;
   const initialLoadDone = useRef(false);
   const visibilityChangePending = useRef(false);
+  const lastVisibilityChangeTime = useRef(0);
   const allFields = fields || Object.keys(getValues() || {});
   
   // Fonction pour sauvegarder les données
   const saveData = () => {
+    // Si un changement de visibilité est en cours de traitement, ne pas déclencher de sauvegarde
+    if (visibilityChangePending.current) {
+      if (debug) console.log('Sauvegarde ignorée pendant le traitement du changement de visibilité');
+      return;
+    }
+    
     const currentValues = getValues();
     
     if (currentValues && Object.keys(currentValues).length > 0) {
@@ -102,17 +109,30 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
       
       // Gestion améliorée des changements de visibilité (onglet)
       const handleVisibilityChange = () => {
+        const now = Date.now();
+        
+        // Anti-rate limiting: ignorer les changements trop rapprochés (moins de 300ms)
+        if (now - lastVisibilityChangeTime.current < 300) {
+          if (debug) console.log('Changement de visibilité ignoré (trop rapproché)');
+          return;
+        }
+        
+        lastVisibilityChangeTime.current = now;
+        
         if (document.visibilityState === 'hidden') {
           // Quand on quitte l'onglet, sauvegarder
+          if (debug) console.log('Onglet caché, sauvegarde des données');
           saveData();
-        } else if (document.visibilityState === 'visible') {
+        } else if (document.visibilityState === 'visible' && !visibilityChangePending.current) {
           // Quand on revient sur l'onglet
+          if (debug) console.log('Onglet visible, marquage du changement de visibilité en cours');
           visibilityChangePending.current = true;
           
           // Temporisateur pour éviter les boucles infinies
           setTimeout(() => {
+            if (debug) console.log('Fin du traitement du changement de visibilité');
             visibilityChangePending.current = false;
-          }, 500);
+          }, 1000); // Augmenté à 1000ms pour plus de sécurité
         }
       };
       
@@ -129,7 +149,9 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
   // Sauvegarder aussi lorsque le composant se démonte
   useEffect(() => {
     return () => {
-      saveData();
+      if (!visibilityChangePending.current) {  // Ne pas sauvegarder si changement de visibilité en cours
+        saveData();
+      }
     };
   }, []);
 

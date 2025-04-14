@@ -15,6 +15,8 @@ let networkStatusCheckInterval = null;
 let lastNetworkType = '';
 let lastVisibilityChange = 0;
 let visibilityChangeCount = 0;
+let lastReloadTime = 0;
+let reloadCounter = 0;
 
 // Define methods on the window object - we're now using the shared type definition from network.d.ts
 
@@ -228,12 +230,40 @@ let reloadInProgress = false;
 const shouldPreventReload = () => {
   const currentPath = window.location.pathname;
   
-  // Éviter les rechargements sur la page de création d'annonce
-  if (currentPath.includes('/create')) {
-    console.log('Page de création d\'annonce détectée, rechargement désactivé');
-    return true;
+  // Liste des pages où le rechargement automatique est désactivé
+  const noReloadPaths = [
+    '/create', // Page de création d'annonce
+    '/edit',   // Page d'édition d'annonce
+    '/submit', // Page de soumission de formulaire
+  ];
+  
+  // Vérifier si le chemin actuel correspond à l'un des chemins protégés
+  for (const path of noReloadPaths) {
+    if (currentPath.includes(path)) {
+      console.log(`Protection contre le rechargement activée pour la page: ${currentPath}`);
+      return true;
+    }
   }
   
+  return false;
+};
+
+// Détection des rechargements en boucle
+const isReloadLooping = () => {
+  const now = Date.now();
+  // Si plusieurs rechargements en moins de 3 secondes, considérer qu'il y a une boucle
+  if (now - lastReloadTime < 3000) {
+    reloadCounter++;
+    if (reloadCounter > 2) {
+      console.log('Détection de boucle de rechargement, rechargements bloqués temporairement');
+      return true;
+    }
+  } else {
+    // Réinitialiser le compteur si plus de 3 secondes se sont écoulées
+    reloadCounter = 0;
+  }
+  
+  lastReloadTime = now;
   return false;
 };
 
@@ -254,7 +284,7 @@ document.addEventListener('visibilitychange', () => {
     lastVisibilityChange = now;
     
     // Si trop de changements rapides, cela indique une boucle
-    if (visibilityChangeCount > 5) {
+    if (visibilityChangeCount > 3) {
       console.log('Détection de changements rapides de visibilité, possible boucle - annulation du rechargement');
       visibilityChangeCount = 0;
       return;
@@ -263,6 +293,11 @@ document.addEventListener('visibilitychange', () => {
     // NE PAS recharger la page si nous sommes sur une page sensible
     if (shouldPreventReload()) {
       console.log('Rechargement annulé pour page sensible');
+      return;
+    }
+    
+    // Détection de boucle de rechargement
+    if (isReloadLooping()) {
       return;
     }
     

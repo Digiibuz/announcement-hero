@@ -25,6 +25,7 @@ export const useWordPressCategories = () => {
   const retryTimeoutRef = useRef<number | null>(null);
   const retryCountRef = useRef(0);
   const maxRetries = 3;
+  const initialFetchDoneRef = useRef(false);
 
   // Fonction pour charger les catégories depuis le cache local
   const loadCachedCategories = useCallback(() => {
@@ -73,6 +74,12 @@ export const useWordPressCategories = () => {
 
   // Fonction principale pour récupérer les catégories
   const fetchCategories = useCallback(async (forceRefresh = false) => {
+    // Éviter les rechargements multiples lors du changement de visibilité
+    if (document.visibilityState === 'hidden') {
+      console.log("Page non visible, récupération des catégories reportée");
+      return false;
+    }
+    
     // Annuler toute requête en cours
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -298,10 +305,40 @@ export const useWordPressCategories = () => {
   // Charger les catégories au montage du composant
   useEffect(() => {
     console.log("useWordPressCategories effect running, user:", user?.id, "wordpressConfigId:", user?.wordpressConfigId);
-    if (user?.wordpressConfigId) {
-      fetchCategories(false);
+    
+    // Si déjà chargé une fois et que nous avons des catégories, ne pas recharger
+    if (initialFetchDoneRef.current && categories.length > 0) {
+      console.log("Catégories déjà chargées, ignorant l'effet");
+      return;
     }
-  }, [user?.wordpressConfigId, fetchCategories]);
+    
+    if (user?.wordpressConfigId) {
+      fetchCategories(false).then(success => {
+        if (success) {
+          initialFetchDoneRef.current = true;
+        }
+      });
+    }
+  }, [user?.wordpressConfigId, fetchCategories, categories.length]);
+
+  // Gérer les changements de visibilité pour éviter les boucles
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // Ne recharger que si la page devient visible et que nous n'avons pas de catégories
+      if (document.visibilityState === 'visible' && categories.length === 0 && user?.wordpressConfigId) {
+        console.log("Page visible, tentative de rechargement des catégories");
+        setTimeout(() => {
+          fetchCategories(false);
+        }, 1000); // Délai pour éviter les appels trop fréquents
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [categories.length, fetchCategories, user?.wordpressConfigId]);
 
   // Fonction publique pour forcer le rafraîchissement des catégories
   const refetch = useCallback(() => {
@@ -318,5 +355,3 @@ export const useWordPressCategories = () => {
     isLoadingFromCache
   };
 };
-
-// Removed the duplicate global declaration as we now use the shared type in network.d.ts
