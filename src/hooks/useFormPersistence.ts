@@ -44,6 +44,11 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
       if (hasNonEmptyValues) {
         localStorage.setItem(storageKey, JSON.stringify(currentValues));
         if (debug) console.log('Données du formulaire sauvegardées:', storageKey, currentValues);
+        
+        // Également sauvegarder l'étape courante si nous sommes dans un formulaire multi-étapes
+        if (currentValues.hasOwnProperty('_currentStep')) {
+          localStorage.setItem(`${storageKey}_step`, String(currentValues._currentStep));
+        }
       }
     }
   };
@@ -74,6 +79,11 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
         if (formValues && Object.keys(formValues).length > 0) {
           if (debug) console.log('Mise à jour des données du formulaire:', name, type);
           localStorage.setItem(storageKey, JSON.stringify(formValues));
+          
+          // Sauvegarder l'étape courante si disponible
+          if (formValues._currentStep !== undefined) {
+            localStorage.setItem(`${storageKey}_step`, String(formValues._currentStep));
+          }
         }
       });
       
@@ -84,9 +94,19 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
       
       window.addEventListener('beforeunload', handleBeforeUnload);
       
+      // Sauvegarder également lors des changements de visibilité (onglet)
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'hidden') {
+          saveData();
+        }
+      };
+      
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      
       return () => {
         subscription.unsubscribe();
         window.removeEventListener('beforeunload', handleBeforeUnload);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
       };
     }
   }, [watch, storageKey, autosaveInterval, debug, saveData, allFields]);
@@ -110,6 +130,12 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
         const parsedData = JSON.parse(savedData);
         if (parsedData && Object.keys(parsedData).length > 0) {
           if (debug) console.log('Données du formulaire restaurées:', storageKey, parsedData);
+          
+          // Vérifier s'il y a une étape sauvegardée
+          const savedStep = localStorage.getItem(`${storageKey}_step`);
+          if (savedStep) {
+            parsedData._currentStep = parseInt(savedStep, 10);
+          }
           
           // Utiliser la réinitialisation avec le second paramètre pour indiquer de préserver les valeurs par défaut
           reset(parsedData as DefaultValues<TFormValues>, { keepDefaultValues: true });
@@ -135,6 +161,7 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
   // Fonction pour effacer les données sauvegardées
   const clearSavedData = () => {
     localStorage.removeItem(storageKey);
+    localStorage.removeItem(`${storageKey}_step`);
     if (debug) console.log('Données sauvegardées effacées:', storageKey);
   };
 
@@ -144,9 +171,16 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
     return !!savedData;
   };
 
+  // Récupérer l'étape sauvegardée
+  const getSavedStep = (): number | null => {
+    const savedStep = localStorage.getItem(`${storageKey}_step`);
+    return savedStep ? parseInt(savedStep, 10) : null;
+  };
+
   return { 
     clearSavedData,
     hasSavedData,
-    saveData
+    saveData,
+    getSavedStep
   };
 }

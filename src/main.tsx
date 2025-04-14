@@ -1,3 +1,4 @@
+
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
@@ -225,9 +226,13 @@ document.addEventListener('visibilitychange', () => {
     updateServiceWorker();
     window.checkNetworkStatus();
     
-    // Vérifier si nous sommes sur la page de login et si l'application vient d'être réactivée
-    const isLoginPage = window.location.pathname.includes('login');
-    if (isLoginPage) {
+    // NE PAS recharger la page si nous sommes sur la page de création d'annonce
+    const currentPath = window.location.pathname;
+    const isCreateAnnouncementPage = currentPath.includes('/create');
+    
+    // Vérifier seulement pour la page de login ou autres pages nécessitant rechargement
+    const isLoginPage = currentPath.includes('login');
+    if (isLoginPage && !isCreateAnnouncementPage) {
       console.log('Page de login détectée lors de la reprise, vérification du cache...');
       // Attendre un court instant avant de vérifier s'il y a des problèmes
       setTimeout(() => {

@@ -81,8 +81,8 @@ const CreateAnnouncement = () => {
   // Get current step config
   const currentStep = stepConfigs[currentStepIndex];
 
-  // Initializing the form
-  const form = useForm<AnnouncementFormData>({
+  // Initializing the form with a _currentStep field to track current step
+  const form = useForm<AnnouncementFormData & { _currentStep?: number }>({
     defaultValues: {
       title: "",
       description: "",
@@ -92,36 +92,61 @@ const CreateAnnouncement = () => {
       images: [],
       seoTitle: "",
       seoDescription: "",
-      seoSlug: ""
+      seoSlug: "",
+      _currentStep: 0
     }
   });
 
-  // Clear form data when the component mounts
-  useEffect(() => {
-    localStorage.removeItem(FORM_STORAGE_KEY);
-    form.reset({
-      title: "",
-      description: "",
-      wordpressCategory: "",
-      publishDate: undefined,
-      status: "published",
-      images: [],
-      seoTitle: "",
-      seoDescription: "",
-      seoSlug: ""
-    });
-  }, [form]);
-
-  // Use the form persistence hook
+  // Use the form persistence hook with additional support for steps
   const {
     clearSavedData,
     hasSavedData,
-    saveData
+    saveData,
+    getSavedStep
   } = useFormPersistence(form, FORM_STORAGE_KEY, undefined,
-    5000, // autosave every 5 seconds
+    2000, // autosave every 2 seconds
     false, // no debug
     undefined // watch all fields
   );
+
+  // Restore saved step if available
+  useEffect(() => {
+    const savedStep = getSavedStep();
+    if (savedStep !== null && savedStep >= 0 && savedStep < stepConfigs.length) {
+      setCurrentStepIndex(savedStep);
+      form.setValue('_currentStep', savedStep);
+    }
+  }, [getSavedStep, form]);
+
+  // Update _currentStep field when step changes
+  useEffect(() => {
+    form.setValue('_currentStep', currentStepIndex);
+    // Force save on step change
+    setTimeout(saveData, 100);
+  }, [currentStepIndex, form, saveData]);
+
+  // Handle visibility changes
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Application créer annonce visible, restauration de l\'état...');
+        
+        // Force une sauvegarde supplémentaire lors du retour
+        setTimeout(saveData, 100);
+        
+        // Vérifier s'il y a une étape sauvegardée
+        const savedStep = getSavedStep();
+        if (savedStep !== null && savedStep >= 0 && savedStep < stepConfigs.length) {
+          setCurrentStepIndex(savedStep);
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [getSavedStep, saveData]);
 
   // Define the publishing steps
   const publishingSteps: PublishingStepType[] = [
@@ -253,7 +278,8 @@ const CreateAnnouncement = () => {
         images: [],
         seoTitle: "",
         seoDescription: "",
-        seoSlug: ""
+        seoSlug: "",
+        _currentStep: 0
       });
       
       // Navigate to announcements page to see the draft
@@ -349,7 +375,8 @@ const CreateAnnouncement = () => {
         images: [],
         seoTitle: "",
         seoDescription: "",
-        seoSlug: ""
+        seoSlug: "",
+        _currentStep: 0
       });
 
       setTimeout(() => {
