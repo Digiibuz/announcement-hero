@@ -8,16 +8,16 @@ interface PublishingState {
   publishingSteps: PublishingStep[];
   currentStep: string;
   progress: number;
+  updateProgress: (step: string, status: "idle" | "loading" | "success" | "error", newProgress: number) => void;
 }
 
 const PublishingContext = createContext<PublishingState | undefined>(undefined);
 
 export const PublishingProvider = ({ children }: { children: React.ReactNode }) => {
   const [showOverlay, setShowOverlay] = useState(false);
-  const [currentStep] = useState("prepare");
-  const [progress] = useState(0);
-
-  const publishingSteps: PublishingStep[] = [
+  const [currentStep, setCurrentStep] = useState("prepare");
+  const [progress, setProgress] = useState(0);
+  const [publishingSteps, setPublishingSteps] = useState<PublishingStep[]>([
     {
       id: "prepare",
       label: "Préparation de la publication",
@@ -42,7 +42,17 @@ export const PublishingProvider = ({ children }: { children: React.ReactNode }) 
       status: "idle",
       icon: <div className="h-5 w-5 text-muted-foreground"></div>
     }
-  ];
+  ]);
+
+  const updateProgress = (step: string, status: "idle" | "loading" | "success" | "error", newProgress: number) => {
+    setCurrentStep(step);
+    setProgress(newProgress);
+    setPublishingSteps(steps => steps.map(s => 
+      s.id === step 
+        ? { ...s, status } 
+        : s
+    ));
+  };
 
   return (
     <PublishingContext.Provider value={{
@@ -50,7 +60,8 @@ export const PublishingProvider = ({ children }: { children: React.ReactNode }) 
       setShowOverlay,
       publishingSteps,
       currentStep,
-      progress
+      progress,
+      updateProgress
     }}>
       {children}
     </PublishingContext.Provider>

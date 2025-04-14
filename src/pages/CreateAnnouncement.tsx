@@ -54,7 +54,7 @@ const AnnouncementForm = () => {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const isMobile = useMediaQuery("(max-width: 767px)");
   const { categories } = useWordPressCategories();
-  const { showOverlay, setShowOverlay, publishingSteps, currentStep, progress } = usePublishing();
+  const { showOverlay, setShowOverlay } = usePublishing();
   
   const {
     form,
@@ -64,7 +64,7 @@ const AnnouncementForm = () => {
     handleSubmit
   } = useAnnouncementForm(() => setShowOverlay(true));
 
-  const currentStep = stepConfigs[currentStepIndex];
+  const activeStep = stepConfigs[currentStepIndex];
 
   const handlePrevious = () => {
     if (currentStepIndex > 0) {
@@ -115,16 +115,16 @@ const AnnouncementForm = () => {
           <form onSubmit={form.handleSubmit(handleSubmit)} className="h-full">
             <div className="max-w-3xl mx-auto">
               <div className="my-6">
-                <h2 className="text-xl font-semibold mb-1">{currentStep.title}</h2>
-                <p className="text-muted-foreground text-sm">{currentStep.description}</p>
+                <h2 className="text-xl font-semibold mb-1">{activeStep.title}</h2>
+                <p className="text-muted-foreground text-sm">{activeStep.description}</p>
               </div>
               
-              {currentStep.id === "category" && <CategoryStep form={form} isMobile={isMobile} />}
-              {currentStep.id === "description" && <DescriptionStep form={form} isMobile={isMobile} />}
-              {currentStep.id === "images" && <ImagesStep form={form} isMobile={isMobile} />}
-              {currentStep.id === "seo" && <SeoStep form={form} isMobile={isMobile} />}
-              {currentStep.id === "publishing" && <PublishingStep form={form} isMobile={isMobile} />}
-              {currentStep.id === "summary" && (
+              {activeStep.id === "category" && <CategoryStep form={form} isMobile={isMobile} />}
+              {activeStep.id === "description" && <DescriptionStep form={form} isMobile={isMobile} />}
+              {activeStep.id === "images" && <ImagesStep form={form} isMobile={isMobile} />}
+              {activeStep.id === "seo" && <SeoStep form={form} isMobile={isMobile} />}
+              {activeStep.id === "publishing" && <PublishingStep form={form} isMobile={isMobile} />}
+              {activeStep.id === "summary" && (
                 <AnnouncementSummary 
                   data={form.getValues()} 
                   isMobile={isMobile} 
@@ -139,7 +139,7 @@ const AnnouncementForm = () => {
                 totalSteps={stepConfigs.length} 
                 onPrevious={handlePrevious} 
                 onNext={handleNext} 
-                onSubmit={handleSubmit}
+                onSubmit={() => form.handleSubmit(handleSubmit)()}
                 onSaveDraft={saveAnnouncementDraft}
                 isLastStep={currentStepIndex === stepConfigs.length - 1} 
                 isFirstStep={currentStepIndex === 0} 
@@ -154,9 +154,34 @@ const AnnouncementForm = () => {
       
       <PublishingLoadingOverlay 
         isOpen={showOverlay} 
-        steps={publishingSteps} 
-        currentStepId={currentStep} 
-        progress={progress} 
+        steps={[
+          {
+            id: "prepare",
+            label: "Préparation de la publication",
+            status: "idle",
+            icon: <div className="h-5 w-5 text-muted-foreground"></div>
+          },
+          {
+            id: "image",
+            label: "Téléversement de l'image principale",
+            status: "idle",
+            icon: <div className="h-5 w-5 text-muted-foreground"></div>
+          },
+          {
+            id: "wordpress",
+            label: "Publication sur WordPress",
+            status: "idle",
+            icon: <div className="h-5 w-5 text-muted-foreground"></div>
+          },
+          {
+            id: "database",
+            label: "Mise à jour de la base de données",
+            status: "idle",
+            icon: <div className="h-5 w-5 text-muted-foreground"></div>
+          }
+        ]}
+        currentStepId="prepare" 
+        progress={0} 
       />
     </div>
   );
