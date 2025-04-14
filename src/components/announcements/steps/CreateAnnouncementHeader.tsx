@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
+import { usePublishing } from "@/context/PublishingContext";
 
 interface SaveDraftDialogProps {
   onSaveDraft: () => Promise<void>;
@@ -59,14 +60,20 @@ const CreateAnnouncementHeader = ({
   isSavingDraft
 }: CreateAnnouncementHeaderProps) => {
   const navigate = useNavigate();
+  const { setFormStep } = usePublishing();
   
   const handleSaveDraft = async () => {
     await onSaveDraft();
+    localStorage.removeItem("announcement-form-draft");
+    localStorage.removeItem("current-announcement-step");
+    setFormStep(0);
     navigate("/announcements");
   };
   
   const handleDiscard = () => {
-    // On pourrait éventuellement effacer le localStorage ici
+    localStorage.removeItem("announcement-form-draft");
+    localStorage.removeItem("current-announcement-step");
+    setFormStep(0);
     navigate("/announcements");
   };
 
