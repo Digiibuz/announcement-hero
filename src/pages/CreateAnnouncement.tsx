@@ -1,16 +1,9 @@
-"use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { useForm } from "react-hook-form";
-import { toast } from "@/hooks/use-toast";
-import { Announcement } from "@/types/announcement";
-import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
-import { Button } from "@/components/ui/button";
+import React, { useState, useEffect } from "react";
+import { useAnnouncementForm } from "@/hooks/useAnnouncementForm";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import PublishingLoadingOverlay, { PublishingStep as PublishingStepType } from "@/components/announcements/PublishingLoadingOverlay";
+import { PublishingProvider, usePublishing } from "@/context/PublishingContext";
+import PublishingLoadingOverlay from "@/components/announcements/PublishingLoadingOverlay";
 import CategoryStep from "@/components/announcements/steps/CategoryStep";
 import DescriptionStep from "@/components/announcements/steps/DescriptionStep";
 import ImagesStep from "@/components/announcements/steps/ImagesStep";
@@ -19,13 +12,10 @@ import PublishingStep from "@/components/announcements/steps/PublishingStep";
 import StepNavigation from "@/components/announcements/steps/StepNavigation";
 import AnnouncementSummary from "@/components/announcements/steps/AnnouncementSummary";
 import { Form } from "@/components/ui/form";
-import { useFormPersistence } from "@/hooks/useFormPersistence";
-import { StepConfig, AnnouncementFormStep } from "@/types/steps";
+import { StepConfig } from "@/types/steps";
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
-import { AnnouncementFormData } from "@/components/announcements/AnnouncementForm";
 import CreateAnnouncementHeader from "@/components/announcements/steps/CreateAnnouncementHeader";
-
-const FORM_STORAGE_KEY = "announcement-form-draft";
+import { toast } from "@/hooks/use-toast";
 
 const stepConfigs: StepConfig[] = [
   {
@@ -60,405 +50,21 @@ const stepConfigs: StepConfig[] = [
   }
 ];
 
-const CreateAnnouncement = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { user } = useAuth();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSavingDraft, setIsSavingDraft] = useState(false);
-  const {
-    publishToWordPress,
-    isPublishing,
-    publishingState,
-    resetPublishingState
-  } = useWordPressPublishing();
-  const isMobile = useMediaQuery("(max-width: 767px)");
-  const [showPublishingOverlay, setShowPublishingOverlay] = useState(false);
+const AnnouncementForm = () => {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const isMobile = useMediaQuery("(max-width: 767px)");
   const { categories } = useWordPressCategories();
-  const visibilityChangeHandlingRef = useRef(false);
-  const lastVisibilityChangeTimeRef = useRef(0);
-  const visibilityChangeCountRef = useRef(0);
-  const isInitialMount = useRef(true);
-
-  // Get current step config
-  const currentStep = stepConfigs[currentStepIndex];
-
-  // Initializing the form with a _currentStep field to track current step
-  const form = useForm<AnnouncementFormData & { _currentStep?: number }>({
-    defaultValues: {
-      title: "",
-      description: "",
-      wordpressCategory: "",
-      publishDate: undefined,
-      status: "published",
-      images: [],
-      seoTitle: "",
-      seoDescription: "",
-      seoSlug: "",
-      _currentStep: 0
-    }
-  });
-
-  // Use the form persistence hook with additional support for steps
+  const { showOverlay, setShowOverlay, publishingSteps, currentStep, progress } = usePublishing();
+  
   const {
-    clearSavedData,
-    hasSavedData,
-    saveData,
-    getSavedStep
-  } = useFormPersistence(form, FORM_STORAGE_KEY, undefined,
-    2000, // autosave every 2 seconds
-    false, // no debug
-    undefined // watch all fields
-  );
+    form,
+    isSubmitting,
+    isSavingDraft,
+    saveAnnouncementDraft,
+    handleSubmit
+  } = useAnnouncementForm(() => setShowOverlay(true));
 
-  // Restore saved step if available
-  useEffect(() => {
-    if (isInitialMount.current) {
-      const savedStep = getSavedStep();
-      if (savedStep !== null && savedStep >= 0 && savedStep < stepConfigs.length) {
-        setCurrentStepIndex(savedStep);
-        form.setValue('_currentStep', savedStep);
-      }
-      isInitialMount.current = false;
-    }
-  }, [getSavedStep, form]);
-
-  // Update _currentStep field when step changes
-  useEffect(() => {
-    // Éviter de déclencher lors du montage initial
-    if (!isInitialMount.current) {
-      form.setValue('_currentStep', currentStepIndex);
-      
-      // Enregistrer les données avec un léger délai
-      const timerId = setTimeout(() => {
-        if (document.visibilityState === 'visible') {
-          saveData();
-        }
-      }, 300);
-      
-      return () => clearTimeout(timerId);
-    }
-  }, [currentStepIndex, form, saveData]);
-
-  // Optimized handler for visibility changes
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      // Protection contre les boucles infinies
-      visibilityChangeCountRef.current += 1;
-      
-      if (visibilityChangeCountRef.current > 5) {
-        console.error("Trop de changements de visibilité détectés, protection anti-boucle activée");
-        setTimeout(() => {
-          visibilityChangeCountRef.current = 0;
-        }, 5000);
-        return;
-      }
-      
-      const now = Date.now();
-      
-      // Prévenir les traitements multiples des changements de visibilité
-      if (now - lastVisibilityChangeTimeRef.current < 500) {
-        console.log('Changement de visibilité ignoré car trop rapproché');
-        return;
-      }
-      
-      lastVisibilityChangeTimeRef.current = now;
-      
-      if (document.visibilityState === 'visible') {
-        if (visibilityChangeHandlingRef.current) {
-          console.log('Changement de visibilité déjà en cours de traitement');
-          return;
-        }
-        
-        visibilityChangeHandlingRef.current = true;
-        
-        console.log('Application créer annonce visible, restauration de l\'état...');
-        
-        // Attendre un court instant avant de restaurer l'état
-        setTimeout(() => {
-          try {
-            // Vérifier s'il y a une étape sauvegardée
-            const savedStep = getSavedStep();
-            if (savedStep !== null && savedStep >= 0 && savedStep < stepConfigs.length) {
-              console.log(`Restauration de l'étape sauvegardée: ${savedStep}`);
-              // Ne mettre à jour que si l'étape est différente pour éviter des re-rendus inutiles
-              if (savedStep !== currentStepIndex) {
-                setCurrentStepIndex(savedStep);
-              }
-            }
-          } finally {
-            // Réinitialiser le flag après traitement
-            setTimeout(() => {
-              visibilityChangeHandlingRef.current = false;
-              // Réinitialiser le compteur après un délai plus long
-              setTimeout(() => {
-                visibilityChangeCountRef.current = 0;
-              }, 1000);
-            }, 1000);
-          }
-        }, 500);
-      } else if (document.visibilityState === 'hidden') {
-        // Sauvegarder l'état actuel lorsque l'utilisateur quitte la page
-        saveData();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [getSavedStep, saveData, currentStepIndex]);
-
-  // Define the publishing steps
-  const publishingSteps: PublishingStepType[] = [
-    {
-      id: "prepare",
-      label: "Préparation de la publication",
-      status: publishingState.steps.prepare?.status || "idle",
-      icon: <div className="h-5 w-5 text-muted-foreground"></div>
-    },
-    {
-      id: "image",
-      label: "Téléversement de l'image principale",
-      status: publishingState.steps.image?.status || "idle",
-      icon: <div className="h-5 w-5 text-muted-foreground"></div>
-    },
-    {
-      id: "wordpress",
-      label: "Publication sur WordPress",
-      status: publishingState.steps.wordpress?.status || "idle",
-      icon: <div className="h-5 w-5 text-muted-foreground"></div>
-    },
-    {
-      id: "database",
-      label: "Mise à jour de la base de données",
-      status: publishingState.steps.database?.status || "idle",
-      icon: <div className="h-5 w-5 text-muted-foreground"></div>
-    }
-  ];
-
-  // Function to handle beforeunload event when leaving the page
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      const formData = form.getValues();
-      const hasContent = formData.title || formData.description || formData.images && formData.images.length > 0;
-      if (hasContent) {
-        const message = "Vous avez un brouillon non publié. Êtes-vous sûr de vouloir quitter ?";
-        e.returnValue = message;
-        return message;
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [form]);
-
-  // Handle title changes to update SEO title and slug
-  useEffect(() => {
-    const subscription = form.watch((value, {
-      name
-    }) => {
-      if (name === 'title') {
-        const title = value.title as string;
-        if (title) {
-          if (!form.getValues("seoTitle")) {
-            form.setValue("seoTitle", title);
-          }
-          const normalizedTitle = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
-          form.setValue("seoSlug", normalizedTitle);
-        }
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [form]);
-
-  const saveAnnouncementDraft = async () => {
-    try {
-      setIsSavingDraft(true);
-      
-      if (!user?.id) {
-        toast({
-          title: "Erreur",
-          description: "Vous devez être connecté pour enregistrer un brouillon",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const formData = form.getValues();
-
-      // Vérifier si le formulaire est vide
-      if (!formData.title && !formData.description && (!formData.images || formData.images.length === 0)) {
-        toast({
-          title: "Formulaire vide",
-          description: "Veuillez remplir au moins un champ avant d'enregistrer un brouillon",
-          variant: "destructive"
-        });
-        setIsSavingDraft(false);
-        return;
-      }
-
-      // Ensure draft status for this save operation
-      const announcementData = {
-        user_id: user.id,
-        title: formData.title || "Brouillon sans titre",
-        description: formData.description,
-        status: "draft" as "draft",
-        images: formData.images || [],
-        wordpress_category_id: formData.wordpressCategory,
-        publish_date: formData.publishDate ? new Date(formData.publishDate).toISOString() : null,
-        seo_title: formData.seoTitle || null,
-        seo_description: formData.seoDescription || null,
-        seo_slug: formData.seoSlug || null
-      };
-
-      const { data: newAnnouncement, error } = await supabase
-        .from("announcements")
-        .insert(announcementData)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      toast({
-        title: "Succès",
-        description: "Brouillon enregistré avec succès"
-      });
-
-      // Clear the form data from localStorage since it's now saved in the database
-      clearSavedData();
-      
-      // Reset the form to clear all fields
-      form.reset({
-        title: "",
-        description: "",
-        wordpressCategory: "",
-        publishDate: undefined,
-        status: "published",
-        images: [],
-        seoTitle: "",
-        seoDescription: "",
-        seoSlug: "",
-        _currentStep: 0
-      });
-      
-      // Navigate to announcements page to see the draft
-      navigate("/announcements");
-    } catch (error: any) {
-      console.error("Error saving draft:", error);
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de l'enregistrement du brouillon: " + error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setIsSavingDraft(false);
-    }
-  };
-
-  const handleSubmit = async () => {
-    try {
-      setIsSubmitting(true);
-      setShowPublishingOverlay(true);
-
-      clearSavedData();
-
-      if (isMobile) {
-        toast({
-          title: "Traitement en cours",
-          description: "Enregistrement de votre annonce..."
-        });
-      }
-
-      const formData = form.getValues();
-
-      const announcementData = {
-        user_id: user?.id,
-        title: formData.title,
-        description: formData.description,
-        status: formData.status as "draft" | "published" | "scheduled",
-        images: formData.images || [],
-        wordpress_category_id: formData.wordpressCategory,
-        publish_date: formData.publishDate ? new Date(formData.publishDate).toISOString() : null,
-        seo_title: formData.seoTitle || null,
-        seo_description: formData.seoDescription || null,
-        seo_slug: formData.seoSlug || null
-      };
-
-      const {
-        data: newAnnouncement,
-        error
-      } = await supabase.from("announcements").insert(announcementData).select().single();
-      if (error) throw error;
-
-      toast({
-        title: "Succès",
-        description: "Annonce enregistrée avec succès" + (isMobile ? ", publication en cours..." : "")
-      });
-
-      let wordpressResult = {
-        success: true,
-        message: "",
-        wordpressPostId: null as number | null
-      };
-      if ((formData.status === 'published' || formData.status === 'scheduled') && formData.wordpressCategory && user?.id) {
-        if (!isMobile) {
-          toast({
-            title: "WordPress",
-            description: "Publication de l'annonce sur WordPress en cours..."
-          });
-        }
-        wordpressResult = await publishToWordPress(newAnnouncement as Announcement, formData.wordpressCategory, user.id);
-        if (wordpressResult.success) {
-          if (wordpressResult.wordpressPostId) {
-            toast({
-              title: "WordPress",
-              description: `Publication réussie (ID: ${wordpressResult.wordpressPostId})`
-            });
-          }
-        } else {
-          toast({
-            title: "Attention",
-            description: "Annonce enregistrée dans la base de données, mais la publication WordPress a échoué: " + (wordpressResult.message || "Erreur inconnue"),
-            variant: "destructive"
-          });
-        }
-      }
-
-      // Reset the form to clear all fields
-      form.reset({
-        title: "",
-        description: "",
-        wordpressCategory: "",
-        publishDate: undefined,
-        status: "published",
-        images: [],
-        seoTitle: "",
-        seoDescription: "",
-        seoSlug: "",
-        _currentStep: 0
-      });
-
-      setTimeout(() => {
-        setShowPublishingOverlay(false);
-        resetPublishingState();
-        navigate("/announcements");
-      }, 1500);
-    } catch (error: any) {
-      console.error("Error saving announcement:", error);
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de l'enregistrement: " + error.message,
-        variant: "destructive"
-      });
-      setShowPublishingOverlay(false);
-      resetPublishingState();
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const currentStep = stepConfigs[currentStepIndex];
 
   const handlePrevious = () => {
     if (currentStepIndex > 0) {
@@ -514,19 +120,20 @@ const CreateAnnouncement = () => {
               </div>
               
               {currentStep.id === "category" && <CategoryStep form={form} isMobile={isMobile} />}
-              
               {currentStep.id === "description" && <DescriptionStep form={form} isMobile={isMobile} />}
-              
               {currentStep.id === "images" && <ImagesStep form={form} isMobile={isMobile} />}
-              
               {currentStep.id === "seo" && <SeoStep form={form} isMobile={isMobile} />}
-              
               {currentStep.id === "publishing" && <PublishingStep form={form} isMobile={isMobile} />}
-              
-              {currentStep.id === "summary" && <AnnouncementSummary data={form.getValues()} isMobile={isMobile} categoryName={getCategoryName()} />}
+              {currentStep.id === "summary" && (
+                <AnnouncementSummary 
+                  data={form.getValues()} 
+                  isMobile={isMobile} 
+                  categoryName={getCategoryName()} 
+                />
+              )}
             </div>
             
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">
+            <div className={`fixed bottom-0 left-0 right-0 p-4 bg-background border-t`}>
               <StepNavigation 
                 currentStep={currentStepIndex} 
                 totalSteps={stepConfigs.length} 
@@ -536,7 +143,7 @@ const CreateAnnouncement = () => {
                 onSaveDraft={saveAnnouncementDraft}
                 isLastStep={currentStepIndex === stepConfigs.length - 1} 
                 isFirstStep={currentStepIndex === 0} 
-                isSubmitting={isSubmitting || isPublishing || isSavingDraft} 
+                isSubmitting={isSubmitting} 
                 isMobile={isMobile} 
                 className="bg-transparent border-none max-w-3xl mx-auto" 
               />
@@ -546,13 +153,19 @@ const CreateAnnouncement = () => {
       </div>
       
       <PublishingLoadingOverlay 
-        isOpen={showPublishingOverlay} 
+        isOpen={showOverlay} 
         steps={publishingSteps} 
-        currentStepId={publishingState.currentStep} 
-        progress={publishingState.progress} 
+        currentStepId={currentStep} 
+        progress={progress} 
       />
     </div>
   );
 };
+
+const CreateAnnouncement = () => (
+  <PublishingProvider>
+    <AnnouncementForm />
+  </PublishingProvider>
+);
 
 export default CreateAnnouncement;
