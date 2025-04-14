@@ -13,6 +13,8 @@ if ('scrollRestoration' in history) {
 let serviceWorkerRegistration = null;
 let networkStatusCheckInterval = null;
 let lastNetworkType = '';
+let lastVisibilityChange = 0;
+let visibilityChangeCount = 0;
 
 // Define methods on the window object - we're now using the shared type definition from network.d.ts
 
@@ -219,6 +221,22 @@ window.addEventListener('load', () => {
   startNetworkMonitoring();
 });
 
+// Variable pour suivre si un rechargement est en cours (éviter les doubles rechargements)
+let reloadInProgress = false;
+
+// Fonction pour déterminer si on doit éviter le rechargement pour la page actuelle
+const shouldPreventReload = () => {
+  const currentPath = window.location.pathname;
+  
+  // Éviter les rechargements sur la page de création d'annonce
+  if (currentPath.includes('/create')) {
+    console.log('Page de création d\'annonce détectée, rechargement désactivé');
+    return true;
+  }
+  
+  return false;
+};
+
 // Mettre à jour le service worker lors de la reprise de l'application
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
@@ -226,20 +244,45 @@ document.addEventListener('visibilitychange', () => {
     updateServiceWorker();
     window.checkNetworkStatus();
     
-    // NE PAS recharger la page si nous sommes sur la page de création d'annonce
-    const currentPath = window.location.pathname;
-    const isCreateAnnouncementPage = currentPath.includes('/create');
+    // Anti-boucle: vérifier si nous avons beaucoup de changements de visibilité dans un court laps de temps
+    const now = Date.now();
+    if (now - lastVisibilityChange < 1000) {
+      visibilityChangeCount++;
+    } else {
+      visibilityChangeCount = 0;
+    }
+    lastVisibilityChange = now;
+    
+    // Si trop de changements rapides, cela indique une boucle
+    if (visibilityChangeCount > 5) {
+      console.log('Détection de changements rapides de visibilité, possible boucle - annulation du rechargement');
+      visibilityChangeCount = 0;
+      return;
+    }
+    
+    // NE PAS recharger la page si nous sommes sur une page sensible
+    if (shouldPreventReload()) {
+      console.log('Rechargement annulé pour page sensible');
+      return;
+    }
     
     // Vérifier seulement pour la page de login ou autres pages nécessitant rechargement
+    const currentPath = window.location.pathname;
     const isLoginPage = currentPath.includes('login');
-    if (isLoginPage && !isCreateAnnouncementPage) {
+    
+    if (isLoginPage && !reloadInProgress) {
       console.log('Page de login détectée lors de la reprise, vérification du cache...');
       // Attendre un court instant avant de vérifier s'il y a des problèmes
       setTimeout(() => {
         // Si la page est vide ou incomplète, essayer de la recharger
         if (document.body.children.length < 2) {
           console.log('Page incomplète détectée, rechargement...');
+          reloadInProgress = true;
           window.clearCacheAndReload();
+          // Réinitialiser le flag après un délai
+          setTimeout(() => {
+            reloadInProgress = false;
+          }, 5000);
         }
       }, 1000);
     }

@@ -21,6 +21,7 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
 ) {
   const { watch, reset, getValues } = form;
   const initialLoadDone = useRef(false);
+  const visibilityChangePending = useRef(false);
   const allFields = fields || Object.keys(getValues() || {});
   
   // Fonction pour sauvegarder les données
@@ -78,11 +79,16 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
       const subscription = watch((formValues, { name, type }) => {
         if (formValues && Object.keys(formValues).length > 0) {
           if (debug) console.log('Mise à jour des données du formulaire:', name, type);
-          localStorage.setItem(storageKey, JSON.stringify(formValues));
           
-          // Sauvegarder l'étape courante si disponible
-          if (formValues._currentStep !== undefined) {
-            localStorage.setItem(`${storageKey}_step`, String(formValues._currentStep));
+          // Vérifier si nous sommes en train de traiter un changement de visibilité
+          // Si oui, ne pas déclencher de sauvegarde supplémentaire pour éviter les boucles
+          if (!visibilityChangePending.current) {
+            localStorage.setItem(storageKey, JSON.stringify(formValues));
+            
+            // Sauvegarder l'étape courante si disponible
+            if (formValues._currentStep !== undefined) {
+              localStorage.setItem(`${storageKey}_step`, String(formValues._currentStep));
+            }
           }
         }
       });
@@ -94,10 +100,19 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
       
       window.addEventListener('beforeunload', handleBeforeUnload);
       
-      // Sauvegarder également lors des changements de visibilité (onglet)
+      // Gestion améliorée des changements de visibilité (onglet)
       const handleVisibilityChange = () => {
         if (document.visibilityState === 'hidden') {
+          // Quand on quitte l'onglet, sauvegarder
           saveData();
+        } else if (document.visibilityState === 'visible') {
+          // Quand on revient sur l'onglet
+          visibilityChangePending.current = true;
+          
+          // Temporisateur pour éviter les boucles infinies
+          setTimeout(() => {
+            visibilityChangePending.current = false;
+          }, 500);
         }
       };
       
@@ -109,7 +124,7 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
         document.removeEventListener('visibilitychange', handleVisibilityChange);
       };
     }
-  }, [watch, storageKey, autosaveInterval, debug, saveData, allFields]);
+  }, [watch, storageKey, autosaveInterval, debug, allFields]);
 
   // Sauvegarder aussi lorsque le composant se démonte
   useEffect(() => {
