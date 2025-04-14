@@ -71,7 +71,6 @@ const AnnouncementForm = () => {
 
   useEffect(() => {
     // Sauvegarder l'étape actuelle dans le formulaire pour la persistance
-    const currentValues = form.getValues();
     form.setValue("_currentStep", formStep);
     saveData();
   }, [formStep, form, saveData]);

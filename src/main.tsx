@@ -1,4 +1,3 @@
-
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
@@ -323,7 +322,7 @@ document.addEventListener('visibilitychange', () => {
     
     // NE PAS recharger la page si nous sommes sur une page sensible
     if (shouldPreventReload()) {
-      console.log('Rechargement annulé pour page sensible');
+      console.log('Rechargement annulé pour page sensible: ' + window.location.pathname);
       return;
     }
     
@@ -337,7 +336,7 @@ document.addEventListener('visibilitychange', () => {
     const isLoginPage = currentPath.includes('login');
     
     if (isLoginPage && !reloadInProgress) {
-      console.log('Page de login détectée lors de la reprise, vérification du cache...');
+      console.log('Page de login détectée lors de la reprise, v��rification du cache...');
       // Attendre un court instant avant de vérifier s'il y a des problèmes
       setTimeout(() => {
         // Si la page est vide ou incomplète, essayer de la recharger

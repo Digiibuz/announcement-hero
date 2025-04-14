@@ -1,6 +1,7 @@
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import { PublishingStep } from "@/components/announcements/PublishingLoadingOverlay";
+import { VisibilityHandler } from "@/utils/visibilityHandler";
 
 interface PublishingState {
   showOverlay: boolean;
@@ -50,9 +51,47 @@ export const PublishingProvider = ({ children }: { children: React.ReactNode }) 
     }
   ]);
 
+  // Référence au gestionnaire de visibilité
+  const visibilityHandlerRef = useRef(new VisibilityHandler());
+
   // Sauvegarder l'étape courante lorsqu'elle change
   useEffect(() => {
     localStorage.setItem("current-announcement-step", formStep.toString());
+  }, [formStep]);
+
+  // Gestion des changements de visibilité
+  useEffect(() => {
+    const handler = visibilityHandlerRef.current;
+    
+    const handleVisibilityChange = () => {
+      handler.handleVisibilityChange(
+        // Quand l'onglet est masqué
+        () => {
+          // Rien à faire ici, nous gardons simplement l'état tel quel
+          // et nous sauvegardons déjà l'étape lorsqu'elle change
+        },
+        // Quand l'onglet redevient visible
+        () => {
+          // Pas besoin de recharger la page, l'état est déjà persisté
+          // Nous pouvons cependant restaurer l'étape si nécessaire
+          const savedStep = localStorage.getItem("current-announcement-step");
+          if (savedStep) {
+            const parsedStep = parseInt(savedStep, 10);
+            if (parsedStep !== formStep) {
+              setFormStep(parsedStep);
+            }
+          }
+        },
+        false // debug mode désactivé
+      );
+    };
+    
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      handler.cleanup();
+    };
   }, [formStep]);
 
   const updateProgress = (step: string, status: "idle" | "loading" | "success" | "error", newProgress: number) => {
