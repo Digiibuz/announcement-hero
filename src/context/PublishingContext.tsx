@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { PublishingStep } from "@/components/announcements/PublishingLoadingOverlay";
 
 interface PublishingState {
@@ -9,6 +9,8 @@ interface PublishingState {
   currentStep: string;
   progress: number;
   updateProgress: (step: string, status: "idle" | "loading" | "success" | "error", newProgress: number) => void;
+  formStep: number;
+  setFormStep: (step: number) => void;
 }
 
 const PublishingContext = createContext<PublishingState | undefined>(undefined);
@@ -17,6 +19,10 @@ export const PublishingProvider = ({ children }: { children: React.ReactNode }) 
   const [showOverlay, setShowOverlay] = useState(false);
   const [currentStep, setCurrentStep] = useState("prepare");
   const [progress, setProgress] = useState(0);
+  const [formStep, setFormStep] = useState(() => {
+    const savedStep = localStorage.getItem("current-announcement-step");
+    return savedStep ? parseInt(savedStep, 10) : 0;
+  });
   const [publishingSteps, setPublishingSteps] = useState<PublishingStep[]>([
     {
       id: "prepare",
@@ -44,6 +50,11 @@ export const PublishingProvider = ({ children }: { children: React.ReactNode }) 
     }
   ]);
 
+  // Sauvegarder l'étape courante lorsqu'elle change
+  useEffect(() => {
+    localStorage.setItem("current-announcement-step", formStep.toString());
+  }, [formStep]);
+
   const updateProgress = (step: string, status: "idle" | "loading" | "success" | "error", newProgress: number) => {
     setCurrentStep(step);
     setProgress(newProgress);
@@ -61,7 +72,9 @@ export const PublishingProvider = ({ children }: { children: React.ReactNode }) 
       publishingSteps,
       currentStep,
       progress,
-      updateProgress
+      updateProgress,
+      formStep,
+      setFormStep
     }}>
       {children}
     </PublishingContext.Provider>

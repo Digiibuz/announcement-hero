@@ -134,6 +134,8 @@ export const useAnnouncementForm = (onPublishingStart?: () => void) => {
       if (onPublishingStart) onPublishingStart();
 
       clearSavedData();
+      // Supprimer également l'étape courante de localStorage
+      localStorage.removeItem("current-announcement-step");
 
       const announcementData = {
         user_id: user?.id,

@@ -51,29 +51,49 @@ const stepConfigs: StepConfig[] = [
 ];
 
 const AnnouncementForm = () => {
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const isMobile = useMediaQuery("(max-width: 767px)");
   const { categories } = useWordPressCategories();
-  const { showOverlay, setShowOverlay } = usePublishing();
+  const { 
+    showOverlay, 
+    setShowOverlay, 
+    formStep, 
+    setFormStep 
+  } = usePublishing();
   
   const {
     form,
     isSubmitting,
     isSavingDraft,
     saveAnnouncementDraft,
-    handleSubmit
+    handleSubmit,
+    saveData
   } = useAnnouncementForm(() => setShowOverlay(true));
 
-  const activeStep = stepConfigs[currentStepIndex];
+  useEffect(() => {
+    // Sauvegarder l'étape actuelle dans le formulaire pour la persistance
+    const currentValues = form.getValues();
+    form.setValue("_currentStep", formStep);
+    saveData();
+  }, [formStep, form, saveData]);
+
+  // Récupérer l'étape sauvegardée au chargement du formulaire
+  useEffect(() => {
+    const savedStep = form.getValues()._currentStep;
+    if (savedStep !== undefined) {
+      setFormStep(savedStep);
+    }
+  }, [form, setFormStep]);
+
+  const activeStep = stepConfigs[formStep];
 
   const handlePrevious = () => {
-    if (currentStepIndex > 0) {
-      setCurrentStepIndex(current => current - 1);
+    if (formStep > 0) {
+      setFormStep(formStep - 1);
     }
   };
 
   const handleNext = () => {
-    if (currentStepIndex === 0 && !form.getValues().wordpressCategory) {
+    if (formStep === 0 && !form.getValues().wordpressCategory) {
       toast({
         title: "Champ requis",
         description: "Veuillez sélectionner une catégorie avant de continuer.",
@@ -81,7 +101,7 @@ const AnnouncementForm = () => {
       });
       return;
     }
-    if (currentStepIndex === 1 && !form.getValues().title) {
+    if (formStep === 1 && !form.getValues().title) {
       toast({
         title: "Champ requis",
         description: "Veuillez saisir un titre avant de continuer.",
@@ -89,8 +109,8 @@ const AnnouncementForm = () => {
       });
       return;
     }
-    if (currentStepIndex < stepConfigs.length - 1) {
-      setCurrentStepIndex(current => current + 1);
+    if (formStep < stepConfigs.length - 1) {
+      setFormStep(formStep + 1);
     }
   };
 
@@ -104,7 +124,7 @@ const AnnouncementForm = () => {
   return (
     <div className="min-h-screen bg-background">
       <CreateAnnouncementHeader 
-        currentStep={currentStepIndex} 
+        currentStep={formStep} 
         totalSteps={stepConfigs.length} 
         onSaveDraft={saveAnnouncementDraft}
         isSavingDraft={isSavingDraft}
@@ -112,7 +132,7 @@ const AnnouncementForm = () => {
     
       <div className="pt-16 pb-20 px-4 md:max-w-3xl md:mx-auto">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="h-full">
+          <form onSubmit={handleSubmit} className="h-full">
             <div className="max-w-3xl mx-auto">
               <div className="my-6">
                 <h2 className="text-xl font-semibold mb-1">{activeStep.title}</h2>
@@ -135,14 +155,14 @@ const AnnouncementForm = () => {
             
             <div className={`fixed bottom-0 left-0 right-0 p-4 bg-background border-t`}>
               <StepNavigation 
-                currentStep={currentStepIndex} 
+                currentStep={formStep} 
                 totalSteps={stepConfigs.length} 
                 onPrevious={handlePrevious} 
                 onNext={handleNext} 
-                onSubmit={() => form.handleSubmit(handleSubmit)()}
+                onSubmit={() => handleSubmit(form.getValues())}
                 onSaveDraft={saveAnnouncementDraft}
-                isLastStep={currentStepIndex === stepConfigs.length - 1} 
-                isFirstStep={currentStepIndex === 0} 
+                isLastStep={formStep === stepConfigs.length - 1} 
+                isFirstStep={formStep === 0} 
                 isSubmitting={isSubmitting} 
                 isMobile={isMobile} 
                 className="bg-transparent border-none max-w-3xl mx-auto" 
@@ -153,7 +173,7 @@ const AnnouncementForm = () => {
       </div>
       
       <PublishingLoadingOverlay 
-        isOpen={showOverlay} 
+        isOpen={showOverlay}
         steps={[
           {
             id: "prepare",
