@@ -1,4 +1,3 @@
-
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
@@ -6,253 +5,55 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { Toaster as UIToaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
-import { Suspense, lazy, useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { LoadingIndicator } from "./components/ui/loading-indicator";
-import { toast } from "sonner";
 import Login from "./pages/Login";
 
-// Optimized lazy loading with error boundaries and retry logic
-function lazyWithRetry(factory, fallback = null) {
-  const Component = lazy(() => {
-    return new Promise((resolve, reject) => {
-      // Fonction d'essai avec un compteur pour limiter les tentatives
-      const tryImport = (retriesLeft = 2) => {
-        factory()
-          .then(resolve)
-          .catch((error) => {
-            // Afficher l'erreur en console pour diagnostic
-            console.error("Erreur de chargement de module:", error);
-            
-            // Si nous avons dépassé le nombre de tentatives, rejeter avec l'erreur
-            if (retriesLeft <= 0) {
-              console.error("Échec du chargement après plusieurs tentatives.");
-              reject(error);
-              return;
-            }
-            
-            // Sinon attendre et réessayer avec une attente exponentielle
-            const delay = Math.pow(2, 3 - retriesLeft) * 1000; // 1s, 2s, 4s...
-            console.log(`Nouvelle tentative de chargement dans ${delay}ms...`);
-            
-            setTimeout(() => {
-              tryImport(retriesLeft - 1);
-            }, delay);
-          });
-      };
-      
-      // Première tentative
-      tryImport();
-    });
-  });
-  
-  // Renvoyer un composant qui gère les erreurs et permet une nouvelle tentative
-  return (props) => {
-    const [error, setError] = useState(null);
-    
-    if (error && !fallback) {
-      return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center">
-          <div className="rounded-lg border p-8 max-w-md">
-            <h2 className="text-xl font-semibold mb-4">Erreur de chargement</h2>
-            <p className="mb-4 text-muted-foreground">
-              Impossible de charger cette page. Cela peut être dû à une connexion internet instable.
-            </p>
-            <button 
-              onClick={() => {
-                setError(null);
-                window.location.reload();
-              }}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-            >
-              Réessayer
-            </button>
-          </div>
-        </div>
-      );
-    }
-    
-    if (error && fallback) {
-      return fallback;
-    }
-    
-    try {
-      return (
-        <Component {...props} />
-      );
-    } catch (err) {
-      setError(err);
-      return null;
-    }
-  };
-}
+// Lazy loading other pages for performance
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const CreateAnnouncement = lazy(() => import("./pages/CreateAnnouncement"));
+const Announcements = lazy(() => import("./pages/Announcements"));
+const AnnouncementDetail = lazy(() => import("./pages/AnnouncementDetail"));
+const UserManagement = lazy(() => import("./pages/UserManagement"));
+const WordPressManagement = lazy(() => import("./pages/WordPressManagement"));
+const UserProfile = lazy(() => import("./pages/UserProfile"));
+const Support = lazy(() => import("./pages/Support"));
+const GoogleBusinessPage = lazy(() => import("./pages/GoogleBusinessPage"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
-// Lazy loading other pages for performance with optimizations for slow networks
-const ForgotPassword = lazyWithRetry(() => import("./pages/ForgotPassword"));
-const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
-const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
-const CreateAnnouncement = lazyWithRetry(() => import("./pages/CreateAnnouncement"));
-const Announcements = lazyWithRetry(() => import("./pages/Announcements"));
-const AnnouncementDetail = lazyWithRetry(() => import("./pages/AnnouncementDetail"));
-const UserManagement = lazyWithRetry(() => import("./pages/UserManagement"));
-const WordPressManagement = lazyWithRetry(() => import("./pages/WordPressManagement"));
-const UserProfile = lazyWithRetry(() => import("./pages/UserProfile"));
-const Support = lazyWithRetry(() => import("./pages/Support"));
-const GoogleBusinessPage = lazyWithRetry(() => import("./pages/GoogleBusinessPage"));
-const NotFound = lazyWithRetry(() => import("./pages/NotFound"), (
-  <div className="min-h-screen flex flex-col items-center justify-center">
-    <h1 className="text-xl font-bold">Page non trouvée</h1>
-    <p className="mt-2">La page que vous recherchez n'existe pas.</p>
+// Composant de chargement amélioré avec animation
+const LoadingFallback = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <LoadingIndicator variant="dots" size={42} />
   </div>
-));
+);
 
-// Composant de chargement amélioré avec détection réseau et conseils
-const LoadingFallback = ({ message }: { message?: string }) => {
-  const [loadingTime, setLoadingTime] = useState(0);
-  const [isSlowNetwork, setIsSlowNetwork] = useState(false);
-  
-  useEffect(() => {
-    // Détecter si sur réseau lent
-    if (window.isOnSlowNetwork) {
-      setIsSlowNetwork(window.isOnSlowNetwork());
-    }
-    
-    // Minuteur pour mesurer le temps de chargement
-    const startTime = Date.now();
-    const interval = setInterval(() => {
-      setLoadingTime(Math.floor((Date.now() - startTime) / 1000));
-    }, 1000);
-    
-    return () => clearInterval(interval);
-  }, []);
-  
-  // Affichage adapté selon le temps de chargement
-  const getLoadingMessage = () => {
-    if (!message) {
-      if (isSlowNetwork) {
-        return "Chargement sur connexion lente...";
-      }
-      
-      if (loadingTime > 10) {
-        return "Le chargement prend plus de temps que prévu. Merci de patienter...";
-      }
-      
-      if (loadingTime > 5) {
-        return "Chargement en cours...";
-      }
-      
-      return "Chargement...";
-    }
-    
-    return message;
-  };
-  
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4">
-      <LoadingIndicator variant="dots" size={42} />
-      <p className="mt-4 text-center text-muted-foreground">
-        {getLoadingMessage()}
-      </p>
-      
-      {isSlowNetwork && loadingTime > 3 && (
-        <p className="max-w-xs text-center text-xs text-muted-foreground mt-2">
-          Connexion lente détectée. Optimisation des ressources en cours...
-        </p>
-      )}
-      
-      {loadingTime > 15 && (
-        <button 
-          onClick={() => window.location.reload()}
-          className="mt-4 px-4 py-2 text-sm rounded-md bg-muted hover:bg-muted/80"
-        >
-          Recharger la page
-        </button>
-      )}
-    </div>
-  );
-};
-
-// Configuration de React Query avec optimisations réseau
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Paramètres généraux
+      // Configurer React Query pour éviter les requêtes inutiles
       refetchOnWindowFocus: false,
       staleTime: 1000 * 60 * 5, // 5 minutes
-      
-      // Stratégie de retry adaptative au réseau
-      retry: (failureCount, error: any) => {
-        // Limiter le nombre de retries sur réseau lent
-        const isSlowNetwork = window.isOnSlowNetwork ? window.isOnSlowNetwork() : false;
-        const maxRetries = isSlowNetwork ? 2 : 3;
-        
-        // Ne pas réessayer pour certaines erreurs comme 404, 401, etc.
-        if (error?.response?.status === 404 || error?.response?.status === 401) {
-          return false;
-        }
-        
-        return failureCount < maxRetries;
-      },
-      
-      // Temps entre les retries adapté au réseau
-      retryDelay: (attemptIndex) => {
-        const isSlowNetwork = window.isOnSlowNetwork ? window.isOnSlowNetwork() : false;
-        const baseDelay = isSlowNetwork ? 2000 : 1000;
-        return Math.min(baseDelay * (2 ** attemptIndex), 30000);
-      },
     },
   },
 });
 
-// Écouteur d'état réseau pour afficher des notifications réseau
-const NetworkListener = () => {
-  useEffect(() => {
-    const handleConnectionChange = (event: Event) => {
-      const detail = (event as CustomEvent).detail;
-      
-      if (detail?.online === false) {
-        toast.warning("Connexion internet perdue", {
-          description: "Vous êtes hors ligne. Certaines fonctionnalités peuvent être limitées.",
-          duration: 5000,
-        });
-      } else if (detail?.online === true) {
-        toast.success("Connexion internet rétablie", {
-          duration: 3000,
-        });
-      }
-    };
-    
-    window.addEventListener('connectionchange', handleConnectionChange);
-    
-    // Nettoyer l'écouteur
-    return () => {
-      window.removeEventListener('connectionchange', handleConnectionChange);
-    };
-  }, []);
-  
-  return null;
-};
-
-// Protected route component with improved memory and network awareness
+// Protected route component with improved memory
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading, isOnResetPasswordPage } = useAuth();
   const location = useLocation();
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Ne pas vérifier l'authentification si nous sommes sur la page de réinitialisation de mot de passe
   useEffect(() => {
     if (isAuthenticated && !isLoading && !isOnResetPasswordPage) {
       sessionStorage.setItem('lastAuthenticatedPath', location.pathname);
     }
-    
-    // Marquer la fin du chargement initial
-    if (!isLoading && isInitialLoad) {
-      setIsInitialLoad(false);
-    }
-  }, [location.pathname, isAuthenticated, isLoading, isOnResetPasswordPage, isInitialLoad]);
+  }, [location.pathname, isAuthenticated, isLoading, isOnResetPasswordPage]);
 
-  // Affichage pendant le chargement adapté au réseau
   if (isLoading) {
-    return <LoadingFallback message={isInitialLoad ? "Vérification de l'authentification..." : undefined} />;
+    return <LoadingFallback />;
   }
 
   // Si on est sur la page de réinitialisation, on laisse passer même si non authentifié
@@ -306,41 +107,12 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  
-  // Surveillance de l'état de la connexion
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-  
-  // Affichage d'une bannière offline si l'utilisateur est hors ligne
-  const OfflineBanner = () => {
-    if (isOnline) return null;
-    
-    return (
-      <div className="bg-amber-500 text-white px-4 py-2 text-center text-sm">
-        <span className="font-medium">Mode hors ligne activé</span> - Certaines fonctionnalités sont limitées
-      </div>
-    );
-  };
-
   return (
     <BrowserRouter>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <TooltipProvider>
-              <OfflineBanner />
-              <NetworkListener />
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>
                   {/* Redirect root to dashboard if logged in, otherwise to login */}

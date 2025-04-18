@@ -21,27 +21,5 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "screenshots": [
-    {
-      "src": "/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ],
-  "prefer_related_applications": false,
-  "related_applications": [],
-  "shortcuts": [],
-  "categories": ["business", "productivity"],
-  "dir": "ltr",
-  "lang": "fr",
-  "iarc_rating_id": "",
-  "permissions": [
-    "storage"
-  ],
-  "file_handlers": [],
-  "protocol_handlers": [],
-  "scope": "/",
-  "id": "digiibuz",
-  "edge_side_panel": {}
+  ]
 }

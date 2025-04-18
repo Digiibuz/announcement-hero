@@ -5,7 +5,6 @@ import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { usePublishing } from "@/context/PublishingContext";
 
 interface SaveDraftDialogProps {
   onSaveDraft: () => Promise<void>;
@@ -51,32 +50,23 @@ interface CreateAnnouncementHeaderProps {
   totalSteps: number;
   onSaveDraft: () => Promise<void>;
   isSavingDraft: boolean;
-  onReset: () => void;
 }
 
 const CreateAnnouncementHeader = ({ 
   currentStep, 
   totalSteps,
   onSaveDraft,
-  isSavingDraft,
-  onReset
+  isSavingDraft
 }: CreateAnnouncementHeaderProps) => {
   const navigate = useNavigate();
-  const { setFormStep } = usePublishing();
   
   const handleSaveDraft = async () => {
     await onSaveDraft();
-    localStorage.removeItem("announcement-form-draft");
-    localStorage.removeItem("current-announcement-step");
-    setFormStep(0);
     navigate("/announcements");
   };
   
   const handleDiscard = () => {
-    localStorage.removeItem("announcement-form-draft");
-    localStorage.removeItem("current-announcement-step");
-    setFormStep(0);
-    onReset(); // Reset the form state completely
+    // On pourrait éventuellement effacer le localStorage ici
     navigate("/announcements");
   };
 
