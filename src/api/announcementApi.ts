@@ -169,6 +169,8 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
  * Publish an announcement
  */
 export const publishAnnouncement = async (id: string): Promise<void> => {
+  console.log("Starting publishAnnouncement function for ID:", id);
+  
   // Récupérer les informations de l'annonce
   const { data: announcement, error: fetchError } = await supabase
     .from("announcements")
@@ -178,29 +180,48 @@ export const publishAnnouncement = async (id: string): Promise<void> => {
 
   if (fetchError) {
     console.error("Error fetching announcement for publishing:", fetchError);
-    throw new Error('Failed to fetch announcement details');
+    throw new Error('Failed to fetch announcement details: ' + fetchError.message);
   }
 
-  const response = await fetch(`/api/announcements/${id}/publish`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ 
-      status: 'published',  // Directement publié sans étapes intermédiaires
-      skip_draft: true,     // Flag pour indiquer de sauter l'étape brouillon
-      announcement: announcement // Envoyer les données complètes de l'annonce pour traitement
-    })
-  });
+  if (!announcement) {
+    console.error("No announcement found with ID:", id);
+    throw new Error('Annonce introuvable');
+  }
   
-  // Vérification détaillée de la réponse
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Error publishing announcement:", response.status, errorText);
-    throw new Error(`Failed to publish announcement: ${response.status} ${errorText}`);
+  console.log("Announcement data retrieved:", announcement);
+
+  try {
+    console.log("Sending publication request to API endpoint");
+    const response = await fetch(`/api/announcements/${id}/publish`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ 
+        status: 'published',  // Directement publié sans étapes intermédiaires
+        skip_draft: true,     // Flag pour indiquer de sauter l'étape brouillon
+        announcement: announcement // Envoyer les données complètes de l'annonce pour traitement
+      })
+    });
+    
+    // Vérification détaillée de la réponse
+    console.log("API response status:", response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Error publishing announcement:", response.status, errorText);
+      throw new Error(`Échec de la publication: ${response.status} ${errorText}`);
+    }
+    
+    const responseData = await response.json();
+    console.log("Publication API response:", responseData);
+  } catch (error: any) {
+    console.error("Exception during publication process:", error);
+    throw error;
   }
 
   // Mettre à jour le status dans la base de données locale si l'API a réussi
+  console.log("Updating announcement status in database");
   const { error: updateError } = await supabase
     .from("announcements")
     .update({ status: "published" })
@@ -210,6 +231,8 @@ export const publishAnnouncement = async (id: string): Promise<void> => {
     console.error("Error updating local announcement status:", updateError);
     toast.warning("L'annonce a été publiée sur WordPress mais son statut n'a pas été mis à jour localement");
   }
+  
+  console.log("Publication process completed successfully");
 };
 
 /**
@@ -218,7 +241,7 @@ export const publishAnnouncement = async (id: string): Promise<void> => {
  */
 export const publishAnnouncementDirect = async (id: string, userId: string): Promise<void> => {
   try {
-    console.log("Attempting direct WordPress publication for announcement:", id);
+    console.log("Starting direct WordPress publication for announcement:", id);
     
     // Récupérer l'annonce
     const { data: announcement, error: fetchError } = await supabase
@@ -231,6 +254,8 @@ export const publishAnnouncementDirect = async (id: string, userId: string): Pro
       console.error("Error fetching announcement:", fetchError);
       throw new Error('Failed to fetch announcement');
     }
+    
+    console.log("Announcement data retrieved for direct publishing:", announcement);
 
     // Récupérer la configuration WordPress
     const { data: userProfile, error: profileError } = await supabase
@@ -240,8 +265,11 @@ export const publishAnnouncementDirect = async (id: string, userId: string): Pro
       .single();
 
     if (profileError || !userProfile?.wordpress_config_id) {
-      throw new Error("Configuration WordPress introuvable");
+      console.error("Error fetching user profile or WordPress config ID:", profileError);
+      throw new Error("Configuration WordPress introuvable pour cet utilisateur");
     }
+    
+    console.log("User profile with WordPress config retrieved");
     
     // Récupérer les détails de la configuration
     const { data: wpConfig, error: wpConfigError } = await supabase
@@ -251,8 +279,15 @@ export const publishAnnouncementDirect = async (id: string, userId: string): Pro
       .single();
 
     if (wpConfigError || !wpConfig) {
+      console.error("Error fetching WordPress config details:", wpConfigError);
       throw new Error("Détails de configuration WordPress introuvables");
     }
+    
+    console.log("WordPress configuration retrieved:", {
+      site_url: wpConfig.site_url,
+      hasUsername: !!wpConfig.app_username,
+      hasPassword: !!wpConfig.app_password
+    });
 
     // Normaliser l'URL
     const siteUrl = wpConfig.site_url.endsWith('/')
@@ -262,14 +297,19 @@ export const publishAnnouncementDirect = async (id: string, userId: string): Pro
     // Déterminer le point d'accès
     let apiEndpoint = 'dipi_cpt';
     try {
-      const response = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt`, {
+      console.log("Testing dipi_cpt endpoint availability");
+      const testResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt`, {
         method: 'HEAD',
       });
       
-      if (response.status === 404) {
+      console.log("Test response status:", testResponse.status);
+      
+      if (testResponse.status === 404) {
+        console.log("dipi_cpt endpoint not found, using pages endpoint");
         apiEndpoint = 'pages';
       }
     } catch (error) {
+      console.log("Error testing endpoint, using pages as fallback:", error);
       apiEndpoint = 'pages';
     }
     
@@ -283,7 +323,9 @@ export const publishAnnouncementDirect = async (id: string, userId: string): Pro
     if (wpConfig.app_username && wpConfig.app_password) {
       const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
       headers['Authorization'] = `Basic ${basicAuth}`;
+      console.log("Basic auth header prepared (credentials hidden)");
     } else {
+      console.error("No WordPress credentials available");
       throw new Error("Identifiants WordPress manquants");
     }
     
@@ -296,11 +338,13 @@ export const publishAnnouncementDirect = async (id: string, userId: string): Pro
     
     // Ajouter la catégorie si disponible
     if (announcement.wordpress_category_id) {
+      console.log("Adding category to post data:", announcement.wordpress_category_id);
       wpPostData.dipi_cpt_category = [parseInt(announcement.wordpress_category_id)];
     }
     
     // Ajouter les métadonnées SEO si disponibles
     if (announcement.seo_title || announcement.seo_description || announcement.seo_slug) {
+      console.log("Adding SEO metadata to post");
       wpPostData.meta = {
         _yoast_wpseo_title: announcement.seo_title || "",
         _yoast_wpseo_metadesc: announcement.seo_description || "",
@@ -313,7 +357,8 @@ export const publishAnnouncementDirect = async (id: string, userId: string): Pro
     
     // Envoyer la requête à WordPress
     const apiUrl = `${siteUrl}/wp-json/wp/v2/${apiEndpoint}`;
-    console.log("Sending POST request to WordPress:", apiUrl);
+    console.log("Sending POST request to WordPress API:", apiUrl);
+    console.log("Post data:", JSON.stringify(wpPostData, null, 2));
     
     const postResponse = await fetch(apiUrl, {
       method: 'POST',
@@ -321,16 +366,20 @@ export const publishAnnouncementDirect = async (id: string, userId: string): Pro
       body: JSON.stringify(wpPostData)
     });
     
+    console.log("WordPress API response status:", postResponse.status);
+    
     if (!postResponse.ok) {
       const errorText = await postResponse.text();
+      console.error("WordPress API error response:", errorText);
       throw new Error(`WordPress API error (${postResponse.status}): ${errorText}`);
     }
     
     const wpResponseData = await postResponse.json();
-    console.log("WordPress response:", wpResponseData);
+    console.log("WordPress response data:", wpResponseData);
     
     // Mettre à jour l'annonce avec l'ID du post WordPress
     if (wpResponseData && wpResponseData.id) {
+      console.log("Updating announcement with WordPress post ID:", wpResponseData.id);
       const { error: updateError } = await supabase
         .from("announcements")
         .update({ 
@@ -345,6 +394,7 @@ export const publishAnnouncementDirect = async (id: string, userId: string): Pro
       }
     }
     
+    console.log("Direct publication process completed successfully");
     toast.success("Annonce publiée avec succès sur WordPress");
   } catch (error: any) {
     console.error("Error in direct WordPress publication:", error);

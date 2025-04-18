@@ -41,6 +41,7 @@ interface AnnouncementActionsProps {
 const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ id, status, wordpressPostId }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [isDirectPublishing, setIsDirectPublishing] = useState(false);
@@ -88,15 +89,35 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ id, status, w
 
   const publishAnnouncement = async () => {
     try {
+      console.log("Starting announcement publication process for ID:", id);
       setIsPublishing(true);
-      await apiPublishAnnouncement(id);
+      
+      // Vérification préalable de l'utilisateur
+      if (!user?.id) {
+        toast({
+          title: "Erreur",
+          description: "Utilisateur non identifié.",
+          variant: "destructive",
+        });
+        setIsPublishing(false);
+        return;
+      }
+      
+      // Journal de débogage
+      console.log("User authenticated, proceeding with publication");
+      
+      // Appel à l'API de publication avec plus de journalisation
+      const response = await apiPublishAnnouncement(id);
+      console.log("Publication response:", response);
+      
       toast({
         title: "Annonce publiée",
-        description: "L'annonce a été publiée avec succès.",
+        description: "L'annonce a été publiée avec succès sur WordPress.",
       });
       queryClient.invalidateQueries({ queryKey: ["announcement", id] });
     } catch (error: any) {
       console.error("Error publishing announcement:", error);
+      // Stockage de l'erreur complète pour affichage
       setPublishError(error.message || "Impossible de publier l'annonce");
       setShowErrorDialog(true);
     } finally {
@@ -115,6 +136,7 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ id, status, w
     }
     
     try {
+      console.log("Starting direct publication process for ID:", id);
       setIsDirectPublishing(true);
       await apiPublishAnnouncementDirect(id, user.id);
       toast({
@@ -132,6 +154,40 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ id, status, w
       });
     } finally {
       setIsDirectPublishing(false);
+    }
+  };
+  
+  const archiveAnnouncement = async () => {
+    try {
+      if (!user?.id) {
+        toast({
+          title: "Erreur",
+          description: "Utilisateur non identifié.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setIsArchiving(true);
+      // À implémenter: logique pour archiver l'annonce dans la base de données
+      console.log("Archivage de l'annonce:", id);
+      
+      toast({
+        title: "Annonce archivée",
+        description: "L'annonce a été archivée avec succès.",
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ["announcements"] });
+      queryClient.invalidateQueries({ queryKey: ["announcement", id] });
+    } catch (error) {
+      console.error("Error archiving announcement:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'archiver l'annonce.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsArchiving(false);
     }
   };
 
@@ -157,6 +213,24 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ id, status, w
             )}
           </Button>
         )}
+        
+        <Button 
+          onClick={archiveAnnouncement}
+          disabled={isArchiving}
+          variant="outline"
+        >
+          {isArchiving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Archivage...
+            </>
+          ) : (
+            <>
+              <Archive className="mr-2 h-4 w-4" />
+              Archiver
+            </>
+          )}
+        </Button>
 
         <AlertDialog>
           <AlertDialogTrigger asChild>

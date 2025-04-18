@@ -97,6 +97,8 @@ export const useAnnouncementForm = (onPublishingStart?: () => void) => {
         return;
       }
 
+      console.log("Saving draft with data:", formData);
+
       const announcementData = {
         user_id: user.id,
         title: formData.title || "Brouillon sans titre",
@@ -110,13 +112,18 @@ export const useAnnouncementForm = (onPublishingStart?: () => void) => {
         seo_slug: formData.seoSlug || null
       };
 
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from("announcements")
         .insert(announcementData)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error saving draft:", error);
+        throw error;
+      }
+
+      console.log("Draft saved successfully:", data);
 
       toast({
         title: "Succès",
@@ -140,6 +147,7 @@ export const useAnnouncementForm = (onPublishingStart?: () => void) => {
 
   const handleSubmit = async (data: AnnouncementFormData) => {
     try {
+      console.log("Submitting announcement with data:", data);
       setIsSubmitting(true);
       if (onPublishingStart) onPublishingStart();
 
@@ -147,8 +155,17 @@ export const useAnnouncementForm = (onPublishingStart?: () => void) => {
       // Supprimer également l'étape courante de localStorage
       localStorage.removeItem("current-announcement-step");
 
+      if (!user?.id) {
+        toast({
+          title: "Erreur",
+          description: "Vous devez être connecté pour publier une annonce",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const announcementData = {
-        user_id: user?.id,
+        user_id: user.id,
         title: data.title,
         description: data.description,
         status: data.status as "draft" | "published" | "scheduled",
@@ -160,13 +177,20 @@ export const useAnnouncementForm = (onPublishingStart?: () => void) => {
         seo_slug: data.seoSlug || null
       };
 
-      const { error } = await supabase
+      console.log("Inserting announcement into database:", announcementData);
+
+      const { error, data: insertedData } = await supabase
         .from("announcements")
         .insert(announcementData)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error saving announcement:", error);
+        throw error;
+      }
+
+      console.log("Announcement saved successfully:", insertedData);
 
       toast({
         title: "Succès",
