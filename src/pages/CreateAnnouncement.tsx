@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -117,11 +116,7 @@ const CreateAnnouncement = () => {
     clearSavedData,
     hasSavedData,
     saveData
-  } = useFormPersistence(form, FORM_STORAGE_KEY, undefined,
-    5000, // autosave every 5 seconds
-    false, // no debug
-    undefined // watch all fields
-  );
+  } = useFormPersistence(form, FORM_STORAGE_KEY);
 
   // Define the publishing steps
   const publishingSteps: PublishingStepType[] = [
