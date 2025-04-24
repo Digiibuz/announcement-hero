@@ -3,25 +3,13 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// These values are configured to be replaced by environment variables
-// during the build process through import.meta.env (Vite's approach)
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-// Check if the environment variables are defined
-if (!SUPABASE_URL) {
-  console.error("ERROR: VITE_SUPABASE_URL is not defined in your environment variables.");
-}
-
-if (!SUPABASE_PUBLISHABLE_KEY) {
-  console.error("ERROR: VITE_SUPABASE_ANON_KEY is not defined in your environment variables.");
-}
-
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
-
-// Use a fallback value for development only - these will be replaced with actual environment variables in production
+// Create a Supabase client that relies on the edge functions for sensitive operations
+// The public URL and anon key are required for client-side operations only
+// Any sensitive operations should be handled via edge functions
 export const supabase = createClient<Database>(
-  SUPABASE_URL || "http://placeholder-url.example", 
-  SUPABASE_PUBLISHABLE_KEY || "placeholder-key"
+  import.meta.env.VITE_SUPABASE_URL || "https://rdwqedmvzicerwotjseg.supabase.co", 
+  import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkd3FlZG12emljZXJ3b3Rqc2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwNzg4MzEsImV4cCI6MjA1ODY1NDgzMX0.Ohle_vVvdoCvsObP9A_AdyM52XdzisIvHvH1D1a88zk"
 );
+
+// Note: This key is safe to use client-side as it only has anon permissions
+// For any sensitive operations, use edge functions that can access service role keys securely

@@ -5,14 +5,17 @@ import type { Database } from '@/integrations/supabase/types';
 // This client should only be used in server-side contexts
 // like Edge Functions, and never exposed to the client
 
-// For Vite-based apps using Edge Functions, we use import.meta.env
+// For Edge Functions, we rely on environment variables set in Supabase
 export const createServerSupabaseClient = () => {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+  // These variables are set in the Supabase Edge Functions environment
+  // and are never exposed to the client
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Missing Supabase environment variables');
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Missing Supabase environment variables in Edge Function');
   }
   
-  return createClient<Database>(supabaseUrl, supabaseKey);
+  // Create a client with the service role key for admin operations
+  return createClient<Database>(supabaseUrl, supabaseServiceKey);
 };
