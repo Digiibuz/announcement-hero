@@ -8,7 +8,20 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// Check if the environment variables are defined
+if (!SUPABASE_URL) {
+  console.error("ERROR: VITE_SUPABASE_URL is not defined in your environment variables.");
+}
+
+if (!SUPABASE_PUBLISHABLE_KEY) {
+  console.error("ERROR: VITE_SUPABASE_ANON_KEY is not defined in your environment variables.");
+}
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+// Use a fallback value for development only - these will be replaced with actual environment variables in production
+export const supabase = createClient<Database>(
+  SUPABASE_URL || "http://placeholder-url.example", 
+  SUPABASE_PUBLISHABLE_KEY || "placeholder-key"
+);

@@ -5,7 +5,6 @@ import type { Database } from '@/integrations/supabase/types';
 // This client should only be used in server-side contexts
 // like Edge Functions, and never exposed to the client
 
-// In a real server environment, these would be process.env variables
 // For Vite-based apps using Edge Functions, we use import.meta.env
 export const createServerSupabaseClient = () => {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
