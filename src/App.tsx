@@ -23,7 +23,11 @@ const AppLifecycleManager = () => {
   useAppLifecycle({
     onResume: () => {
       // Rafraîchir les données si nécessaire sans recharger la page
+      console.log('Application reprise, rafraîchissement des données...');
       queryClient.invalidateQueries();
+    },
+    onHide: () => {
+      console.log('Application masquée, sauvegarde de l\'état...');
     }
   });
   return null;

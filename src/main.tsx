@@ -3,6 +3,12 @@ import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 
+// Variables pour stocker l'état de l'application
+let lastAppState = {
+  path: null as string | null,
+  scroll: { x: 0, y: 0 }
+};
+
 // Configuration pour éviter les rechargements complets
 if ('scrollRestoration' in history) {
   // Utiliser 'manual' au lieu de 'auto' pour empêcher le défilement automatique lors du rechargement
@@ -17,8 +23,12 @@ let serviceWorkerRegistration = null;
 declare global {
   interface Window {
     clearCacheAndReload: () => void;
+    preventReload: boolean;
   }
 }
+
+// Initialiser la préférence de rechargement
+window.preventReload = true;
 
 // Fonction pour enregistrer le service worker de manière plus robuste
 const registerServiceWorker = async () => {
@@ -115,18 +125,40 @@ window.addEventListener('load', () => {
         window.scrollTo(x, y);
       }, 100);
     }
+    
+    // Sauvegarder l'état actuel
+    lastAppState.path = currentPath;
+    
   } catch (error) {
     console.warn('Erreur lors de la restauration de l\'état:', error);
   }
 });
 
-// Ne plus recharger lors de la reprise, mais mettre à jour le service worker
+// Intercepter le comportement par défaut lors des changements de visibilité
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     // L'utilisateur est revenu à l'application
     updateServiceWorker();
     
     // Ne plus recharger automatiquement, cela sera géré par useAppLifecycle
+    if (window.preventReload) {
+      // Empêcher le rechargement automatique que certains navigateurs effectuent
+      const currentPath = window.location.pathname + window.location.search + window.location.hash;
+      
+      // Vérifier si nous sommes toujours sur le même chemin
+      if (lastAppState.path && lastAppState.path === currentPath) {
+        // Nous sommes sur le même chemin, aucune action de navigation n'est nécessaire
+        console.log('Reprise de l\'application sur le même chemin, pas de navigation.');
+      }
+    }
+  } else {
+    // L'utilisateur quitte l'application
+    // Sauvegarde de l'état actuel
+    lastAppState.path = window.location.pathname + window.location.search + window.location.hash;
+    lastAppState.scroll = {
+      x: window.scrollX,
+      y: window.scrollY
+    };
   }
 });
 
