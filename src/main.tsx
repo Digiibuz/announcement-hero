@@ -93,27 +93,40 @@ window.clearCacheAndReload = () => {
 // Enregistrer le service worker au chargement
 window.addEventListener('load', () => {
   registerServiceWorker();
+  
+  // Restaurer l'état de l'application si nécessaire
+  try {
+    const lastPath = sessionStorage.getItem('app_last_path');
+    const currentPath = window.location.pathname + window.location.search + window.location.hash;
+    
+    // Si l'utilisateur est sur la page de login et qu'il y avait une page précédente,
+    // nous ne restaurons pas l'état pour éviter des redirections en boucle
+    if (lastPath && currentPath !== lastPath && !currentPath.includes('/login')) {
+      console.log('Restauration de la navigation vers:', lastPath);
+      // Utiliser history.replaceState pour éviter d'ajouter une entrée dans l'historique
+      window.history.replaceState(null, '', lastPath);
+    }
+    
+    // Restaurer la position de défilement
+    const savedScroll = sessionStorage.getItem('app_last_scroll');
+    if (savedScroll) {
+      const { x, y } = JSON.parse(savedScroll);
+      setTimeout(() => {
+        window.scrollTo(x, y);
+      }, 100);
+    }
+  } catch (error) {
+    console.warn('Erreur lors de la restauration de l\'état:', error);
+  }
 });
 
-// Mettre à jour le service worker lors de la reprise de l'application
+// Ne plus recharger lors de la reprise, mais mettre à jour le service worker
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     // L'utilisateur est revenu à l'application
     updateServiceWorker();
     
-    // Vérifier si nous sommes sur la page de login et si l'application vient d'être réactivée
-    const isLoginPage = window.location.pathname.includes('login');
-    if (isLoginPage) {
-      console.log('Page de login détectée lors de la reprise, vérification du cache...');
-      // Attendre un court instant avant de vérifier s'il y a des problèmes
-      setTimeout(() => {
-        // Si la page est vide ou incomplète, essayer de la recharger
-        if (document.body.children.length < 2) {
-          console.log('Page incomplète détectée, rechargement...');
-          window.clearCacheAndReload();
-        }
-      }, 1000);
-    }
+    // Ne plus recharger automatiquement, cela sera géré par useAppLifecycle
   }
 });
 

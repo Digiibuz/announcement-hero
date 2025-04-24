@@ -7,6 +7,7 @@ import { Toaster as UIToaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
 import { Routes } from "@/components/routing/Routes";
+import { useAppLifecycle } from "./hooks/useAppLifecycle";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,6 +18,17 @@ const queryClient = new QueryClient({
   },
 });
 
+// Composant qui gère les événements du cycle de vie de l'application
+const AppLifecycleManager = () => {
+  useAppLifecycle({
+    onResume: () => {
+      // Rafraîchir les données si nécessaire sans recharger la page
+      queryClient.invalidateQueries();
+    }
+  });
+  return null;
+};
+
 function App() {
   return (
     <BrowserRouter>
@@ -24,6 +36,7 @@ function App() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <TooltipProvider>
+              <AppLifecycleManager />
               <Routes />
               <SonnerToaster />
               <UIToaster />
