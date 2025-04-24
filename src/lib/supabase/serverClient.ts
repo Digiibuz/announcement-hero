@@ -11,6 +11,17 @@ import type { Database } from '@/integrations/supabase/types';
  * Do not import this file in client-side code.
  */
 
+// TypeScript declaration for Deno global
+declare global {
+  interface DenoNamespace {
+    env: {
+      get(key: string): string | undefined;
+    }
+  }
+  
+  const Deno: DenoNamespace | undefined;
+}
+
 // This function should only be called within Edge Functions
 export const createServerSupabaseClient = () => {
   // Check if running in Deno environment
