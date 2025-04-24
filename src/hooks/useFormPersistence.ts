@@ -1,152 +1,61 @@
 
-import { useEffect, useRef } from 'react';
-import { UseFormReturn, DefaultValues } from 'react-hook-form';
+import { useCallback, useEffect } from 'react';
+import { UseFormReturn } from 'react-hook-form';
+import { debounce } from 'lodash';
 
-/**
- * Hook pour persister les données du formulaire dans le localStorage
- * @param form - Formulaire react-hook-form
- * @param storageKey - Clé de stockage dans le localStorage
- * @param initialValues - Valeurs initiales (optionnelles) pour le formulaire
- * @param autosaveInterval - Intervalle en millisecondes pour la sauvegarde automatique (par défaut: null = sauvegarde à chaque changement)
- * @param debug - Afficher les logs de debug (par défaut: false)
- * @param fields - Liste des champs spécifiques à surveiller (par défaut: tous les champs)
- */
-export function useFormPersistence<TFormValues extends Record<string, any>>(
-  form: UseFormReturn<TFormValues>,
-  storageKey: string,
-  initialValues?: DefaultValues<TFormValues>,
-  autosaveInterval: number | null = null,
-  debug: boolean = false,
-  fields?: string[]
+export function useFormPersistence<T extends Record<string, any>>(
+  form: UseFormReturn<T>,
+  formKey: string,
+  options = { debounceTime: 1000 }
 ) {
-  const { watch, reset, getValues } = form;
-  const initialLoadDone = useRef(false);
-  const allFields = fields || Object.keys(getValues() || {});
-  
-  // Fonction pour sauvegarder les données
-  const saveData = () => {
-    const currentValues = getValues();
-    
-    if (currentValues && Object.keys(currentValues).length > 0) {
-      // Vérifier que les données ne sont pas vides avant de sauvegarder
-      let hasNonEmptyValues = false;
-      
-      for (const key of Object.keys(currentValues)) {
-        const value = currentValues[key];
-        if (value !== undefined && value !== null && value !== '') {
-          if (Array.isArray(value) ? value.length > 0 : true) {
-            hasNonEmptyValues = true;
-            break;
-          }
-        }
-      }
-      
-      if (hasNonEmptyValues) {
-        localStorage.setItem(storageKey, JSON.stringify(currentValues));
-        if (debug) console.log('Données du formulaire sauvegardées:', storageKey, currentValues);
-      }
-    }
-  };
+  const storageKey = `app_form_${formKey}`;
+  const { watch, reset } = form;
 
-  // Sauvegarder les données dans le localStorage à chaque changement ou à intervalle régulier
-  useEffect(() => {
-    // Configuration de la sauvegarde (par changement ou intervalle)
-    if (autosaveInterval) {
-      // Sauvegarde à intervalle régulier
-      const intervalId = setInterval(saveData, autosaveInterval);
-      
-      // Aussi sauvegarder sur les changements importants
-      const subscription = watch((formValues, { name }) => {
-        // Si un champ important a changé, sauvegarder immédiatement
-        if (name && allFields.includes(name)) {
-          if (debug) console.log('Changement détecté dans le champ:', name);
-          saveData();
-        }
-      });
-      
-      return () => {
-        clearInterval(intervalId);
-        subscription.unsubscribe();
-      };
-    } else {
-      // Sauvegarde à chaque changement
-      const subscription = watch((formValues, { name, type }) => {
-        if (formValues && Object.keys(formValues).length > 0) {
-          if (debug) console.log('Mise à jour des données du formulaire:', name, type);
-          localStorage.setItem(storageKey, JSON.stringify(formValues));
-        }
-      });
-      
-      // Sauvegarde également avant de quitter la page
-      const handleBeforeUnload = () => {
-        saveData();
-      };
-      
-      window.addEventListener('beforeunload', handleBeforeUnload);
-      
-      return () => {
-        subscription.unsubscribe();
-        window.removeEventListener('beforeunload', handleBeforeUnload);
-      };
-    }
-  }, [watch, storageKey, autosaveInterval, debug, saveData, allFields]);
-
-  // Sauvegarder aussi lorsque le composant se démonte
-  useEffect(() => {
-    return () => {
-      saveData();
-    };
-  }, []);
-
-  // Charger les données depuis le localStorage ou utiliser les valeurs initiales
-  useEffect(() => {
-    // Ne charger les données qu'une seule fois au montage du composant
-    if (initialLoadDone.current) return;
-    
-    const savedData = localStorage.getItem(storageKey);
-    
-    if (savedData) {
+  const saveForm = useCallback(
+    debounce((data: T) => {
       try {
-        const parsedData = JSON.parse(savedData);
-        if (parsedData && Object.keys(parsedData).length > 0) {
-          if (debug) console.log('Données du formulaire restaurées:', storageKey, parsedData);
-          
-          // Utiliser la réinitialisation avec le second paramètre pour indiquer de préserver les valeurs par défaut
-          reset(parsedData as DefaultValues<TFormValues>, { keepDefaultValues: true });
-          
-          initialLoadDone.current = true;
-          return;
-        }
-      } catch (e) {
-        console.error('Erreur lors de la récupération des données sauvegardées:', e);
-        localStorage.removeItem(storageKey);
+        localStorage.setItem(storageKey, JSON.stringify(data));
+      } catch (error) {
+        console.warn(`Error saving form data for ${formKey}:`, error);
       }
+    }, options.debounceTime),
+    [storageKey]
+  );
+
+  const loadForm = useCallback(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const data = JSON.parse(saved);
+        reset(data);
+        return true;
+      }
+    } catch (error) {
+      console.warn(`Error loading form data for ${formKey}:`, error);
     }
-    
-    // Si pas de données sauvegardées valides, utiliser les valeurs initiales
-    if (initialValues && Object.keys(initialValues).length > 0) {
-      if (debug) console.log('Utilisation des valeurs initiales');
-      reset(initialValues);
+    return false;
+  }, [storageKey, reset]);
+
+  const clearSavedForm = useCallback(() => {
+    try {
+      localStorage.removeItem(storageKey);
+    } catch (error) {
+      console.warn(`Error clearing form data for ${formKey}:`, error);
     }
-    
-    initialLoadDone.current = true;
-  }, [reset, storageKey, initialValues, debug]);
+  }, [storageKey]);
 
-  // Fonction pour effacer les données sauvegardées
-  const clearSavedData = () => {
-    localStorage.removeItem(storageKey);
-    if (debug) console.log('Données sauvegardées effacées:', storageKey);
-  };
+  useEffect(() => {
+    const subscription = watch((data) => {
+      if (Object.keys(data).length > 0) {
+        saveForm(data as T);
+      }
+    });
 
-  // Vérifier si des données sont sauvegardées
-  const hasSavedData = () => {
-    const savedData = localStorage.getItem(storageKey);
-    return !!savedData;
-  };
+    return () => subscription.unsubscribe();
+  }, [watch, saveForm]);
 
-  return { 
-    clearSavedData,
-    hasSavedData,
-    saveData
+  return {
+    loadForm,
+    clearSavedForm
   };
 }

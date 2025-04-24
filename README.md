@@ -1,4 +1,3 @@
-
 # Welcome to your Lovable project
 
 ## Project info
@@ -101,3 +100,55 @@ Simply open [Lovable](https://lovable.dev/projects/64c2702a-3a05-4d0d-bbba-3f293
 ## I want to use a custom domain - is that possible?
 
 We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+
+## State Persistence
+
+This application implements automatic state persistence using localStorage to provide a seamless user experience across page reloads and tab switches.
+
+### Available Persistence Hooks
+
+1. `usePersistedState`: Generic state persistence
+```typescript
+const [value, setValue, clearValue] = usePersistedState('my-key', defaultValue);
+```
+
+2. `useFormPersistence`: Form data persistence
+```typescript
+const { loadForm, clearSavedForm } = useFormPersistence(form, 'form-key');
+```
+
+3. `useScrollRestoration`: Automatic scroll position restoration
+```typescript
+useScrollRestoration();
+```
+
+### LocalStorage Keys Used
+
+All persistence keys are prefixed with `app_` to avoid conflicts:
+
+- `app_form_*`: Form data
+- `app_scroll_*`: Scroll positions per route
+- `app_*`: Generic persisted states
+
+### Best Practices
+
+1. **Security**: Never store sensitive data (tokens, passwords) in localStorage
+2. **Performance**: Use debouncing for frequent updates (default: 1000ms)
+3. **Fallbacks**: Always provide default values for persisted states
+4. **Error Handling**: All hooks include built-in error handling and fallbacks
+5. **Cleanup**: Use clear functions when data is no longer needed
+
+### Example Usage
+
+```typescript
+import { usePersistedState } from '@/hooks/usePersistedState';
+
+function MyComponent() {
+  const [filters, setFilters, clearFilters] = usePersistedState('filters', {
+    category: 'all',
+    sortBy: 'date'
+  });
+
+  // ... rest of component logic
+}
+```
