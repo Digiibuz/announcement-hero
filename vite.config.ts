@@ -25,5 +25,7 @@ export default defineConfig(({ mode }) => ({
     // Use empty strings as fallbacks for build time to prevent embedding sensitive data
     "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(process.env.VITE_SUPABASE_URL || ""),
     "import.meta.env.VITE_SUPABASE_ANON_KEY": JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY || ""),
+    // Add this to handle the Deno global in browser builds
+    "Deno": "undefined"
   },
 }));

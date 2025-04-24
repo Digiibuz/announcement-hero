@@ -3,13 +3,11 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// Create a Supabase client that relies on the edge functions for sensitive operations
-// The public URL and anon key are required for client-side operations only
-// Any sensitive operations should be handled via edge functions
+// Create a Supabase client for client-side operations only
 export const supabase = createClient<Database>(
-  import.meta.env.VITE_SUPABASE_URL || "https://rdwqedmvzicerwotjseg.supabase.co", 
-  import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkd3FlZG12emljZXJ3b3Rqc2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwNzg4MzEsImV4cCI6MjA1ODY1NDgzMX0.Ohle_vVvdoCvsObP9A_AdyM52XdzisIvHvH1D1a88zk"
+  import.meta.env.VITE_SUPABASE_URL || "", 
+  import.meta.env.VITE_SUPABASE_ANON_KEY || ""
 );
 
-// Note: This key is safe to use client-side as it only has anon permissions
+// Note: This client only has anon permissions
 // For any sensitive operations, use edge functions that can access service role keys securely
