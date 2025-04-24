@@ -4,6 +4,8 @@ import { useAuth } from "@/context/AuthContext";
 import { Suspense, lazy } from 'react';
 import { LoadingIndicator } from "@/components/ui/loading-indicator";
 import Login from "@/pages/Login";
+import { ProtectedRoute } from "./ProtectedRoute";
+import { AdminRoute } from "./AdminRoute";
 
 // Lazy loading pages
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
