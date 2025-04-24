@@ -4,6 +4,29 @@
 
 **URL**: https://lovable.dev/projects/64c2702a-3a05-4d0d-bbba-3f29359bfeba
 
+## Environment Variables Configuration
+
+This project requires the following environment variables to be configured:
+
+```env
+# Supabase Configuration
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
+
+### For Local Development
+
+1. Create a `.env` file in the root directory based on `.env.example`
+2. Add your actual Supabase URL and anonymous key
+
+### For Production Deployment
+
+If deploying to a hosting service like Vercel or Netlify:
+- Add these environment variables in your deployment platform's settings panel
+- For Supabase Edge Functions, set these secrets in the Supabase dashboard under Project Settings > API
+
+**IMPORTANT**: Never commit your actual `.env` file containing real credentials to your repository.
+
 ## How can I edit this code?
 
 There are several ways of editing your application.

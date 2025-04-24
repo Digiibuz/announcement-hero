@@ -92,45 +92,6 @@ export type Database = {
           },
         ]
       }
-      notification_templates: {
-        Row: {
-          content: string
-          created_at: string
-          created_by: string | null
-          event_trigger: string | null
-          frequency_days: number | null
-          id: string
-          is_active: boolean
-          title: string
-          type: string
-          updated_at: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          created_by?: string | null
-          event_trigger?: string | null
-          frequency_days?: number | null
-          id?: string
-          is_active?: boolean
-          title: string
-          type: string
-          updated_at?: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          created_by?: string | null
-          event_trigger?: string | null
-          frequency_days?: number | null
-          id?: string
-          is_active?: boolean
-          title?: string
-          type?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       profiles: {
         Row: {
           client_id: string | null
@@ -310,53 +271,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
-      }
-      user_notifications: {
-        Row: {
-          content: string
-          created_at: string
-          id: string
-          is_read: boolean
-          metadata: Json | null
-          read_at: string | null
-          template_id: string | null
-          title: string
-          type: string
-          user_id: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          id?: string
-          is_read?: boolean
-          metadata?: Json | null
-          read_at?: string | null
-          template_id?: string | null
-          title: string
-          type: string
-          user_id: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          id?: string
-          is_read?: boolean
-          metadata?: Json | null
-          read_at?: string | null
-          template_id?: string | null
-          title?: string
-          type?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_notifications_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "notification_templates"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       wordpress_configs: {
         Row: {
