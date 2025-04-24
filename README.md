@@ -1,3 +1,4 @@
+
 # Welcome to your Lovable project
 
 ## Project info
@@ -12,6 +13,10 @@ This project requires the following environment variables to be configured:
 # Supabase Configuration
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
+
+# OpenAI Configuration (for Supabase Edge Functions)
+# Note: Configure this in Supabase Edge Functions secrets
+OPENAI_API_KEY=your_openai_api_key
 ```
 
 ### For Local Development
@@ -23,7 +28,13 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 
 If deploying to a hosting service like Vercel or Netlify:
 - Add these environment variables in your deployment platform's settings panel
-- For Supabase Edge Functions, set these secrets in the Supabase dashboard under Project Settings > API
+- For Supabase Edge Functions, set these secrets in the Supabase dashboard under Project Settings > API > Edge Functions > Secrets
+
+**For Supabase Edge Functions:**
+```bash
+# Configure Edge Function secrets (required for the optimize-content function)
+supabase secrets set OPENAI_API_KEY=your_openai_api_key
+```
 
 **IMPORTANT**: Never commit your actual `.env` file containing real credentials to your repository.
 
