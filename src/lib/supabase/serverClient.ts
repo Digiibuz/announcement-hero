@@ -6,10 +6,10 @@ import type { Database } from '@/integrations/supabase/types';
 // like Edge Functions, and never exposed to the client
 
 // In a real server environment, these would be process.env variables
-// For Vite-based apps using Edge Functions, we use Deno.env
+// For Vite-based apps using Edge Functions, we use import.meta.env
 export const createServerSupabaseClient = () => {
-  const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY'); 
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
   
   if (!supabaseUrl || !supabaseKey) {
     throw new Error('Missing Supabase environment variables');
