@@ -3,24 +3,14 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// Ensure we have values for Supabase URL and anon key
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-// Check if we have the required values and provide helpful error messages
-if (!supabaseUrl) {
-  console.error("VITE_SUPABASE_URL environment variable is missing. Please check your .env file.");
-}
-
-if (!supabaseAnonKey) {
-  console.error("VITE_SUPABASE_ANON_KEY environment variable is missing. Please check your .env file.");
-}
+// Hardcode the actual Supabase URL and anon key for this project
+const supabaseUrl = "https://rdwqedmvzicerwotjseg.supabase.co";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkd3FlZG12emljZXJ3b3Rqc2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwNzg4MzEsImV4cCI6MjA1ODY1NDgzMX0.Ohle_vVvdoCvsObP9A_AdyM52XdzisIvHvH1D1a88zk";
 
 // Create a Supabase client for client-side operations only
-// Use empty string fallbacks to prevent build-time errors, but we'll show console errors
 export const supabase = createClient<Database>(
-  supabaseUrl || "", 
-  supabaseAnonKey || ""
+  supabaseUrl, 
+  supabaseAnonKey
 );
 
 // Note: This client only has anon permissions
