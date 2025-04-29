@@ -3,20 +3,20 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// La variable supabase sera définie par le contexte SupabaseConfigContext
-let supabase: SupabaseClient<Database> | null = null;
+// La variable supabaseClient sera définie par le contexte SupabaseConfigContext
+let supabaseClient: SupabaseClient<Database> | null = null;
 
 // Cette fonction sera utilisée pour définir le client Supabase
 export function setSupabaseClient(client: SupabaseClient<Database> | null): void {
-  supabase = client;
+  supabaseClient = client;
 }
 
 // Fonction pour accéder au client Supabase
 export function getSupabase(): SupabaseClient<Database> {
-  if (!supabase) {
+  if (!supabaseClient) {
     throw new Error('Client Supabase non initialisé. Assurez-vous que SupabaseConfigProvider est correctement configuré.');
   }
-  return supabase;
+  return supabaseClient;
 }
 
 // Export de la façon traditionnelle pour maintenir la compatibilité avec le code existant
