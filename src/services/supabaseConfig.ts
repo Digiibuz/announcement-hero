@@ -1,6 +1,7 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../integrations/supabase/types';
+import { setSupabaseClient } from '../integrations/supabase/client';
 
 // Interface pour la configuration Supabase
 interface SupabaseConfig {
@@ -32,9 +33,9 @@ export async function initializeSupabase(): Promise<ConfigState> {
   }
 
   try {
-    // Construire l'URL de l'Edge Function pour récupérer la configuration
-    const projectRef = 'rdwqedmvzicerwotjseg'; // Référence du projet (hardcodée car immuable)
-    const configUrl = `https://${projectRef}.supabase.co/functions/v1/get-config`;
+    // Au lieu d'utiliser directement l'URL du projet (qui serait visible dans le build),
+    // nous utilisons une URL relative pour l'Edge Function
+    const configUrl = `/api/get-config`;
 
     // Appel à l'Edge Function pour récupérer la configuration
     console.log("Récupération de la configuration Supabase depuis l'Edge Function...");
@@ -66,6 +67,9 @@ export async function initializeSupabase(): Promise<ConfigState> {
       config.supabaseAnonKey
     );
 
+    // Définir le client Supabase pour qu'il soit accessible partout
+    setSupabaseClient(supabaseInstance);
+
     return {
       isLoading: false,
       error: null,
@@ -86,4 +90,5 @@ export async function initializeSupabase(): Promise<ConfigState> {
  */
 export function resetSupabaseClient(): void {
   supabaseInstance = null;
+  setSupabaseClient(null);
 }

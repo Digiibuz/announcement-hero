@@ -1,5 +1,6 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import * as jose from 'https://esm.sh/jose@5.2.3';
 
 // Définition des headers CORS pour permettre l'accès depuis le frontend
 const corsHeaders = {

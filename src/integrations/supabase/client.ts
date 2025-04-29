@@ -20,4 +20,11 @@ export function getSupabase(): SupabaseClient<Database> {
 }
 
 // Export de la façon traditionnelle pour maintenir la compatibilité avec le code existant
-export { supabase };
+// Proxy pour éviter l'erreur "undefined" lors de l'initialisation
+export const supabase = new Proxy({} as SupabaseClient<Database>, {
+  get(target, prop) {
+    const client = getSupabase();
+    // @ts-ignore - nous savons que prop est une clé valide de SupabaseClient
+    return client[prop];
+  }
+});
