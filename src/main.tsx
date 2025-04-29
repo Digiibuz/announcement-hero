@@ -3,7 +3,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
-import { initConsoleOverrides, testSecureLogs } from './utils/consoleOverride.ts'
+import { initConsoleOverrides, testSecureLogs } from './utils/console'
 
 // Initialiser la sécurisation des logs console AVANT tout autre code
 initConsoleOverrides();
