@@ -6,9 +6,11 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { hasRole } from "./types";
 import { toast } from "sonner";
 import { setSupabaseClient } from "@/integrations/supabase/client";
+import { UserProfile } from "@/types/auth";
+import { createProfileFromMetadata } from "@/hooks/useUserProfile";
 
 export const useAuthState = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const location = useLocation();
@@ -45,7 +47,7 @@ export const useAuthState = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN") {
         console.log("User signed in:", session?.user);
-        setUser(session?.user || null);
+        setUser(createProfileFromMetadata(session?.user || null));
         setSession(session || null);
       } else if (event === "SIGNED_OUT") {
         console.log("User signed out");
@@ -54,7 +56,7 @@ export const useAuthState = () => {
         navigate('/login');
       } else if (event === "USER_UPDATED") {
         console.log("User profile updated:", session?.user);
-        setUser(session?.user || null);
+        setUser(createProfileFromMetadata(session?.user || null));
         setSession(session || null);
       } else if (event === "PASSWORD_RECOVERY") {
         console.log("Password recovery initiated");
@@ -64,7 +66,7 @@ export const useAuthState = () => {
 
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user || null);
+      setUser(createProfileFromMetadata(session?.user || null));
       setSession(session || null);
     }).finally(() => {
       setIsLoading(false);
@@ -94,7 +96,7 @@ export const useAuthState = () => {
     }
 
     console.log("Login successful:", data);
-    setUser(data.user);
+    setUser(createProfileFromMetadata(data.user));
     setSession(data.session);
   };
 
