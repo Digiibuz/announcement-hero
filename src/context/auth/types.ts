@@ -3,7 +3,7 @@ import { User, Session } from "@supabase/supabase-js";
 import { UserProfile } from "@/types/auth";
 
 export interface AuthContextType {
-  user: User | null;
+  user: UserProfile | null;
   session: Session | null;
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -24,7 +24,7 @@ export interface AuthContextType {
 export type Role = 'admin' | 'client' | 'user';
 
 // Helper function to check user roles
-export const hasRole = (user: User | null, role: Role): boolean => {
+export const hasRole = (user: UserProfile | null, role: Role): boolean => {
   if (!user) return false;
-  return user.app_metadata?.roles?.includes(role) ?? false;
+  return user.role === role;
 };
