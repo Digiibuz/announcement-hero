@@ -99,11 +99,10 @@ export async function initializeSupabase(): Promise<ConfigState> {
       config.supabaseAnonKey,
       {
         auth: {
-          // Ajouter des options pour éviter les erreurs exposées
+          // Options de sécurité améliorées
           persistSession: true,
           autoRefreshToken: true,
           detectSessionInUrl: false,
-          // Intercepter les erreurs réseau
           flowType: 'pkce',
           debug: false // Désactiver le mode debug pour réduire les logs
         },
@@ -111,6 +110,15 @@ export async function initializeSupabase(): Promise<ConfigState> {
           // Personnaliser les headers pour masquer l'origine
           headers: {
             'X-Client-Info': 'DigiiBuz Web App'
+          }
+        },
+        // Désactiver les logs de requêtes
+        logger: {
+          debug: () => {},
+          info: () => {},
+          warn: () => {},
+          error: (error) => {
+            safeConsoleError("Erreur Supabase sécurisée:", error);
           }
         }
       }

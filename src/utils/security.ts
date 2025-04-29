@@ -25,11 +25,16 @@ const SENSITIVE_KEYWORDS = [
   'secret',
   'supabase',
   'preview',
-  'login'
+  'login',
+  'grant',
+  'credentials'
 ];
 
 // Liste des protocoles à détecter
 const PROTOCOLS = ['http://', 'https://'];
+
+// Liste des méthodes HTTP à masquer
+const HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'];
 
 // Patterns regex pour identifier les formats sensibles
 const SENSITIVE_PATTERNS = [
@@ -51,19 +56,25 @@ const SENSITIVE_PATTERNS = [
   /eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/g,
   // Masquer les codes d'erreur qui pourraient contenir des informations sensibles
   /(supabase|auth).*error.*code[^\s"]*/gi,
-  // Masquer POST/GET suivi d'une URL
-  /(?:POST|GET)\s+https?:\/\/[^\s]+/gi,
+  // Masquer toute requête HTTP (méthode + URL)
+  /(GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD)\s+https?:\/\/[^\s]+/gi,
 ];
 
 /**
- * Masque toutes les URLs dans un texte
+ * Masque toutes les URLs dans un texte, y compris les requêtes HTTP
  * @param text Le texte à nettoyer
  * @returns Le texte nettoyé
  */
 function maskAllUrls(text: string): string {
   if (!text) return text;
   
-  // Pour chaque protocole
+  // Masquer toutes les requêtes HTTP (MÉTHODE URL)
+  HTTP_METHODS.forEach(method => {
+    const methodRegex = new RegExp(`${method}\\s+https?:\\/\\/[^\\s]+`, 'gi');
+    text = text.replace(methodRegex, `${method} [URL_MASQUÉE]`);
+  });
+  
+  // Pour chaque protocole, masquer toutes les URLs
   PROTOCOLS.forEach(protocol => {
     let startIndex = text.indexOf(protocol);
     while (startIndex !== -1) {
@@ -83,7 +94,7 @@ function maskAllUrls(text: string): string {
       text = text.replace(url, '[URL_MASQUÉE]');
       
       // Chercher la prochaine occurrence
-      startIndex = text.indexOf(protocol);
+      startIndex = text.indexOf(protocol, startIndex + 1);
     }
   });
   
@@ -143,14 +154,21 @@ export function sanitizeErrorMessage(message: string): string {
     sanitizedMessage = sanitizedMessage.replace(/[a-z0-9-_]+\.supabase\.co/gi, "[PROJET_MASQUÉ].supabase.co");
     
     // Masquer spécifiquement les requêtes HTTP qui contiennent les URLs supabase
-    sanitizedMessage = sanitizedMessage.replace(/POST https?:\/\/[^\s]*supabase[^\s]*/gi, "POST [URL_SUPABASE_MASQUÉE]");
-    sanitizedMessage = sanitizedMessage.replace(/GET https?:\/\/[^\s]*supabase[^\s]*/gi, "GET [URL_SUPABASE_MASQUÉE]");
+    HTTP_METHODS.forEach(method => {
+      sanitizedMessage = sanitizedMessage.replace(
+        new RegExp(`${method}\\s+https?:\\/\\/[^\\s]*supabase[^\\s]*`, 'gi'), 
+        `${method} [URL_SUPABASE_MASQUÉE]`
+      );
+    });
     
     // Masquer les préfixes preview
     sanitizedMessage = sanitizedMessage.replace(/preview-[a-z0-9-]+/gi, "preview-[ID_MASQUÉ]");
     
     // Masquer les messages d'erreur d'authentification qui pourraient révéler des informations
     sanitizedMessage = sanitizedMessage.replace(/(AuthApiError|AuthError)[^\n]*/gi, "Erreur d'authentification (détails masqués)");
+    
+    // Masquer spécifiquement les erreurs de connexion avec credentials
+    sanitizedMessage = sanitizedMessage.replace(/invalid[_\s]credentials/gi, "[ERREUR_AUTHENTIFICATION]");
     
   } catch (e) {
     // En cas d'erreur dans le masquage, retourner un message générique
