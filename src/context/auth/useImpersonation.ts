@@ -1,10 +1,8 @@
 
 import { useState, useEffect } from "react";
-import { User } from "@supabase/supabase-js";
 import { UserProfile } from "@/types/auth";
-import { createProfileFromMetadata } from "@/hooks/useUserProfile";
 
-export const useImpersonation = (currentUser: User | null) => {
+export const useImpersonation = (currentUser: UserProfile | null) => {
   const [originalUser, setOriginalUser] = useState<UserProfile | null>(null);
   const [isImpersonating, setIsImpersonating] = useState(false);
 
@@ -20,12 +18,11 @@ export const useImpersonation = (currentUser: User | null) => {
   // Function to start impersonating a user
   const impersonateUser = (userToImpersonate: UserProfile) => {
     // Only allow admins to impersonate
-    const currentProfile = createProfileFromMetadata(currentUser);
-    if (!currentProfile || currentProfile.role !== "admin") return;
+    if (!currentUser || currentUser.role !== "admin") return;
     
     // Store the original user
-    setOriginalUser(currentProfile);
-    localStorage.setItem("originalUser", JSON.stringify(currentProfile));
+    setOriginalUser(currentUser);
+    localStorage.setItem("originalUser", JSON.stringify(currentUser));
     setIsImpersonating(true);
     
     return userToImpersonate;
