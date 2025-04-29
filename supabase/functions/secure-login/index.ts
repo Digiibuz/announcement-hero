@@ -45,10 +45,10 @@ serve(async (req) => {
       );
     }
 
-    // Development-only logging - very limited information
-    if (Deno.env.get("ENVIRONMENT") === "development") {
-      console.debug(`Login attempt received (email obfuscated)`);
-    }
+    // Pas de logging en production - supprimer ou commenter cette ligne
+    // if (Deno.env.get("ENVIRONMENT") === "development") {
+    //   console.debug(`Login attempt received (email obfuscated)`);
+    // }
 
     // Attempt to sign in using Supabase admin client
     const { data, error } = await supabaseAdmin.auth.signInWithPassword({
@@ -58,10 +58,10 @@ serve(async (req) => {
 
     // Handle authentication errors without exposing sensitive details
     if (error) {
-      if (Deno.env.get("ENVIRONMENT") === "development") {
-        // Limited logging in development
-        console.debug(`Auth error status: secure`);
-      }
+      // Pas de logging - même en développement
+      // if (Deno.env.get("ENVIRONMENT") === "development") {
+      //   console.debug(`Auth error status: secure`);
+      // }
       
       // Return standardized error response
       return new Response(
@@ -80,10 +80,7 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
-    // Handle unexpected errors
-    if (Deno.env.get("ENVIRONMENT") === "development") {
-      console.error("Login error:", sanitizeErrorMessage("Secure error"));
-    }
+    // Pas de logging - même en cas d'erreur
     
     return new Response(
       JSON.stringify({ error: 'SERVER_ERROR' }),

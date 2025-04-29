@@ -10,6 +10,16 @@ import { sanitizeErrorMessage } from '../urlSanitizer';
 export function setupGlobalErrorHandlers(): void {
   // Intercepter les erreurs globales
   window.addEventListener('error', (event) => {
+    // Bloquer complètement les erreurs HTTP 400/401
+    if (event.message?.includes('400') || 
+        event.message?.includes('401') || 
+        event.message?.includes('Bad Request') || 
+        event.message?.includes('Unauthorized') ||
+        event.message?.includes('POST') && event.message?.includes('supabase')) {
+      event.preventDefault();
+      return true;
+    }
+    
     // Déterminer si c'est une erreur liée à l'authentification ou aux requêtes réseau
     const errorMessage = event.message || '';
     const errorStack = event.error?.stack || '';
@@ -29,10 +39,6 @@ export function setupGlobalErrorHandlers(): void {
     if (isAuthOrNetworkError) {
       // Stopper la propagation de l'erreur originale pour les erreurs d'authentification
       event.preventDefault();
-      
-      // Logger une version générique et sécurisée
-      console.error("[ERREUR_AUTHENTIFICATION_SÉCURISÉE]");
-      
       return true;
     }
     
@@ -49,6 +55,17 @@ export function setupGlobalErrorHandlers(): void {
 
   // Intercepter les rejets de promesses non gérés
   window.addEventListener('unhandledrejection', (event) => {
+    // Bloquer complètement les erreurs HTTP 400/401
+    if (typeof event.reason?.message === 'string' && 
+        (event.reason.message.includes('400') || 
+        event.reason.message.includes('401') || 
+        event.reason.message.includes('Bad Request') || 
+        event.reason.message.includes('Unauthorized') ||
+        event.reason.message.includes('POST') && event.reason.message.includes('supabase'))) {
+      event.preventDefault();
+      return true;
+    }
+    
     // Déterminer si c'est un rejet lié à l'authentification
     const reason = event.reason;
     const reasonMessage = reason?.message || '';
@@ -66,10 +83,6 @@ export function setupGlobalErrorHandlers(): void {
     if (isAuthRelated) {
       // Stopper la propagation du rejet original pour l'authentification
       event.preventDefault();
-      
-      // Logger une version générique et sécurisée
-      console.error("[ERREUR_AUTHENTIFICATION_NON_GÉRÉE]");
-      
       return true;
     }
     

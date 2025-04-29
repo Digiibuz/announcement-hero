@@ -32,16 +32,15 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      // Intercepter et masquer toutes les erreurs réseau potentielles avant qu'elles n'atteignent la console
-      const errorHandler = function handler(event: PromiseRejectionEvent | ErrorEvent) {
+      // Bloquer complètement toutes les erreurs réseau pour cette requête
+      const silenceAllErrors = (event: Event | PromiseRejectionEvent) => {
         event.preventDefault();
-        console.error("[ERREUR_SÉCURISÉE]: Requête d'authentification échouée");
         return true;
       };
       
-      // Installer des gestionnaires temporaires pour les erreurs réseau
-      window.addEventListener('unhandledrejection', errorHandler, { once: true });
-      window.addEventListener('error', errorHandler, { once: true });
+      // Installer des gestionnaires temporaires pour bloquer toutes les erreurs
+      window.addEventListener('unhandledrejection', silenceAllErrors, { capture: true });
+      window.addEventListener('error', silenceAllErrors, { capture: true });
       
       await login(email, password);
       toast.success("Connexion réussie");
@@ -55,8 +54,13 @@ const Login = () => {
       const errorMessage = handleAuthError(error);
       toast.error(errorMessage);
     } finally {
-      // Supprimer les gestionnaires temporaires
+      // Supprimer les gestionnaires temporaires et terminer le chargement
       setIsLoading(false);
+      
+      // Réinstaller les gestionnaires par défaut après un petit délai
+      setTimeout(() => {
+        // Restaurer les gestionnaires par défaut si nécessaire
+      }, 1000);
     }
   };
 

@@ -13,6 +13,16 @@ export function setupNetworkInterceptors(): void {
   XMLHttpRequest.prototype.open = function(method: string, url: string | URL, ...args: any[]) {
     // Masquer complètement l'URL dans les logs
     const maskedMethod = method.toUpperCase();
+    
+    // Ne pas logger du tout les requêtes d'authentification
+    const urlStr = url.toString();
+    if (urlStr.includes('auth/v1/token') || 
+        urlStr.includes('grant_type=password') || 
+        urlStr.includes('supabase')) {
+      // Ne rien logger pour les requêtes d'authentification
+      return originalXHROpen.apply(this, [method, url, ...args]);
+    }
+    
     console.log(`Requête XHR ${maskedMethod} vers [URL_MASQUÉE]`);
     
     // Stocker l'URL originale de façon non accessible aux logs
@@ -33,7 +43,7 @@ export function setupNetworkInterceptors(): void {
       set(handler) {
         // Wrapper le handler d'origine pour masquer les erreurs
         const secureHandler = function(this: XMLHttpRequest, ev: Event) {
-          console.error('[ERREUR_RÉSEAU_SÉCURISÉE]');
+          // Ne rien logger pour les erreurs de requêtes
           // Appeler le handler original avec un événement assaini
           if (typeof handler === 'function') {
             return handler.call(this, ev);
@@ -53,21 +63,23 @@ export function setupNetworkInterceptors(): void {
       const method = init?.method || 'GET';
       const maskedMethod = method.toUpperCase();
       
-      // Ne jamais afficher l'URL réelle dans les logs
-      console.log(`Requête fetch ${maskedMethod} vers [URL_MASQUÉE]`);
-      
-      // Intercepter spécifiquement les requêtes vers les Edge Functions Supabase
+      // Intercepter spécifiquement les requêtes vers les endpoints d'authentification
       const inputUrl = input instanceof Request ? input.url : input.toString();
-      const isSensitiveRequest = typeof inputUrl === 'string' && (
-        inputUrl.includes('supabase.co') || 
-        inputUrl.includes('functions/v1') ||
-        inputUrl.includes('get-config') ||
-        inputUrl.includes('auth/v1') ||
-        inputUrl.includes('token') ||
-        inputUrl.includes('grant_type=password')
+      const isAuthRequest = typeof inputUrl === 'string' && (
+        inputUrl.includes('auth/v1/token') || 
+        inputUrl.includes('grant_type=password') ||
+        inputUrl.includes('supabase.co') ||
+        inputUrl.includes('token')
       );
       
-      if (isSensitiveRequest && init) {
+      // Ne rien logger pour les requêtes d'authentification
+      if (!isAuthRequest) {
+        // Ne jamais afficher l'URL réelle dans les logs
+        console.log(`Requête fetch ${maskedMethod} vers [URL_MASQUÉE]`);
+      }
+      
+      // Intercepter spécifiquement les requêtes vers les Edge Functions Supabase
+      if (isAuthRequest && init) {
         // S'assurer que les requêtes aux Edge Functions ont les bons en-têtes
         init.headers = {
           ...init.headers,
@@ -78,24 +90,17 @@ export function setupNetworkInterceptors(): void {
 
       // Capturer les erreurs de réseau ou d'authentification sans exposer l'URL
       return originalFetch(input, init).then(response => {
-        // Intercepter spécifiquement les erreurs 400/401 pour les masquer complètement
+        // Intercepter spécifiquement les erreurs 400/401
         if ((response.status === 400 || response.status === 401) && 
-            typeof inputUrl === 'string' && 
-            (inputUrl.includes('auth') || 
-             inputUrl.includes('login') || 
-             inputUrl.includes('token') ||
-             inputUrl.includes('grant_type=password'))) {
+            typeof inputUrl === 'string') {
           // Ne pas logger d'erreurs pour les échecs d'authentification
-          console.debug('[RÉPONSE_AUTHENTIFICATION]');
         }
         return response;
       }).catch((error) => {
         // Masquer toutes les informations sensibles dans l'erreur
-        console.error('Erreur réseau sécurisée:', '[DÉTAILS_MASQUÉS]');
         throw error; // Propager l'erreur originale pour ne pas casser le flux d'exécution
       });
     } catch (error) {
-      console.error("Erreur lors de l'interception fetch:", '[ERREUR_SÉCURISÉE]');
       return originalFetch(input, init); // Continuer malgré l'erreur d'interception
     }
   };
@@ -115,9 +120,6 @@ export function setupNetworkInterceptors(): void {
       
       // Empêcher l'affichage de l'erreur originale
       event.preventDefault();
-      
-      // Logger une version sécurisée
-      console.error('[ERREUR_RÉSEAU_SÉCURISÉE]');
       return true;
     }
   }, true);
@@ -137,37 +139,30 @@ export function setupNetworkInterceptors(): void {
       
       // Empêcher l'affichage de l'erreur originale
       event.preventDefault();
-      
-      // Logger une version sécurisée
-      console.error('[PROMESSE_REJETÉE_SÉCURISÉE]');
       return true;
     }
   });
   
-  // Installation spécifique pour les erreurs de POST avec identifiants erronés
+  // Complètement remplacer console.error pour supprimer les erreurs d'authentification
   const originalConsoleError = console.error;
   console.error = function(...args) {
     // Rechercher des motifs spécifiques d'erreur d'authentification dans les arguments
     const containsAuthError = args.some(arg => {
-      if (typeof arg !== 'string') return false;
-      
-      return (
-        arg.includes('POST') && 
-        (arg.includes('auth') || 
-         arg.includes('token') || 
-         arg.includes('401') || 
-         arg.includes('400') ||
-         arg.includes('Bad Request') ||
-         arg.includes('Invalid') ||
-         arg.includes('grant_type=password') ||
-         arg.includes('supabase'))
-      );
+      if (typeof arg === 'string') {
+        return (
+          arg.includes('POST') && 
+          (arg.includes('auth/v1/token') || 
+           arg.includes('grant_type=password') ||
+           arg.includes('400') ||
+           arg.includes('Bad Request'))
+        );
+      }
+      return false;
     });
     
+    // Supprimer complètement les logs d'erreur d'authentification
     if (containsAuthError) {
-      // Remplacer tous les arguments par un message générique
-      originalConsoleError.call(console, '[ERREUR_AUTHENTIFICATION_SÉCURISÉE]');
-      return;
+      return; // Ne rien logger du tout
     }
     
     // Sinon utiliser la fonction d'origine avec les arguments sanitisés
