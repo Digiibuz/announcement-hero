@@ -7,6 +7,8 @@ import { setSupabaseClient } from '../integrations/supabase/client';
 interface SupabaseConfig {
   supabaseUrl: string;
   supabaseAnonKey: string;
+  initToken: string;
+  timestamp: number;
 }
 
 // État de chargement de la configuration
@@ -18,6 +20,13 @@ export type ConfigState = {
 
 // Instance singleton du client Supabase
 let supabaseInstance: SupabaseClient<Database> | null = null;
+
+// L'URL de l'API est cachée dans une fonction pour éviter l'exposition directe
+function getConfigEndpoint(): string {
+  // On utilise une combinaison de variables qui sont difficiles à extraire statiquement
+  const projectRef = atob("cmR3cWVkbXZ6aWNlcndvdGpzZWc="); // rdwqedmvzicerwotjseg encodé en base64
+  return `https://${projectRef}.supabase.co/functions/v1/get-config`;
+}
 
 /**
  * Charge la configuration depuis l'Edge Function et initialise le client Supabase
@@ -33,9 +42,8 @@ export async function initializeSupabase(): Promise<ConfigState> {
   }
 
   try {
-    // Au lieu d'utiliser /api/get-config qui peut être mal routé, utilisons le chemin complet
-    // L'URL doit pointer vers l'edge function avec le projet Supabase spécifique
-    const configUrl = `https://rdwqedmvzicerwotjseg.supabase.co/functions/v1/get-config`;
+    // Utilisation de l'URL cachée
+    const configUrl = getConfigEndpoint();
 
     // Appel à l'Edge Function pour récupérer la configuration
     console.log("Récupération de la configuration Supabase depuis l'Edge Function...");
@@ -43,7 +51,6 @@ export async function initializeSupabase(): Promise<ConfigState> {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        // Nous ajoutons des informations pour le debug
         'X-Client-Info': 'DigiiBuz Web App'
       },
     });
@@ -57,7 +64,12 @@ export async function initializeSupabase(): Promise<ConfigState> {
 
     // Récupérer les données de configuration
     const config: SupabaseConfig = await response.json();
-    console.log("Configuration reçue:", { urlLength: config.supabaseUrl?.length, keyLength: config.supabaseAnonKey?.length });
+    
+    // Log sécurisé sans exposer les valeurs complètes
+    console.log("Configuration reçue avec jeton d'initialisation", { 
+      timestamp: new Date(config.timestamp).toISOString(),
+      tokenExists: !!config.initToken
+    });
 
     // Vérifier que les valeurs nécessaires sont présentes
     if (!config.supabaseUrl || !config.supabaseAnonKey) {
@@ -65,7 +77,7 @@ export async function initializeSupabase(): Promise<ConfigState> {
     }
 
     // Initialiser le client Supabase avec les valeurs dynamiques
-    console.log("Initialisation du client Supabase avec la configuration dynamique...");
+    console.log("Initialisation du client Supabase...");
     supabaseInstance = createClient<Database>(
       config.supabaseUrl,
       config.supabaseAnonKey

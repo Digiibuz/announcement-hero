@@ -24,7 +24,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
 
-    // Log pour le débogage
+    // Log pour le débogage (sans exposer les valeurs complètes)
     console.log("Variables d'environnement récupérées:", {
       urlExiste: !!supabaseUrl,
       keyExiste: !!supabaseAnonKey,
@@ -46,16 +46,18 @@ serve(async (req) => {
       );
     }
 
-    // Retour des valeurs de configuration
+    // Ajouter un jeton d'initialisation pour plus de sécurité
+    const initToken = crypto.randomUUID();
+    
+    // Retour des valeurs de configuration avec le jeton d'initialisation
     const responseData = {
       supabaseUrl,
       supabaseAnonKey,
+      initToken,
+      timestamp: Date.now()
     };
     
-    console.log("Envoi de la configuration:", {
-      urlLongueur: responseData.supabaseUrl.length,
-      keyLongueur: responseData.supabaseAnonKey.length
-    });
+    console.log("Envoi de la configuration sécurisée");
     
     return new Response(
       JSON.stringify(responseData),

@@ -31,6 +31,19 @@ export const StartupScreen: React.FC<StartupScreenProps> = ({ className }) => {
   }
   
   const toggleDebug = () => setShowDebug(prev => !prev);
+
+  // Fonction pour masquer les informations sensibles dans les messages d'erreur
+  const sanitizeErrorMessage = (message: string) => {
+    if (!message) return "Erreur inconnue";
+    
+    // Masquer les URLs de projet Supabase potentielles
+    message = message.replace(/https:\/\/[a-z0-9]+\.supabase\.co/gi, "https://[PROJET].supabase.co");
+    
+    // Masquer les jetons potentiels
+    message = message.replace(/eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/g, "[JETON_MASQUÉ]");
+    
+    return message;
+  };
   
   return (
     <div className={cn(
@@ -48,7 +61,7 @@ export const StartupScreen: React.FC<StartupScreenProps> = ({ className }) => {
           <div className="mt-8 rounded-lg border p-6">
             <h2 className="text-xl font-semibold mb-3">Erreur d'initialisation</h2>
             <p className="mb-4 text-muted-foreground">
-              {error.message || "Impossible de charger la configuration de l'application."}
+              {sanitizeErrorMessage(error.message) || "Impossible de charger la configuration de l'application."}
             </p>
             <button 
               onClick={() => window.location.reload()}
@@ -66,7 +79,7 @@ export const StartupScreen: React.FC<StartupScreenProps> = ({ className }) => {
             
             {showDebug && (
               <div className="mt-4 p-3 bg-muted text-left rounded-md overflow-auto max-h-56 text-xs">
-                <pre>{JSON.stringify(error, null, 2)}</pre>
+                <pre>{sanitizeErrorMessage(JSON.stringify(error, null, 2))}</pre>
               </div>
             )}
             
@@ -94,4 +107,4 @@ export const StartupScreen: React.FC<StartupScreenProps> = ({ className }) => {
       </div>
     </div>
   );
-};
+}
