@@ -2,7 +2,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../integrations/supabase/types';
 import { setSupabaseClient } from '../integrations/supabase/client';
-import { safeConsoleError } from '@/utils/security';
+import { safeConsoleError } from '@/utils/logSanitizer';
 
 // Interface pour la configuration Supabase
 interface SupabaseConfig {
@@ -110,15 +110,6 @@ export async function initializeSupabase(): Promise<ConfigState> {
           // Personnaliser les headers pour masquer l'origine
           headers: {
             'X-Client-Info': 'DigiiBuz Web App'
-          }
-        },
-        // Désactiver les logs de requêtes
-        logger: {
-          debug: () => {},
-          info: () => {},
-          warn: () => {},
-          error: (error) => {
-            safeConsoleError("Erreur Supabase sécurisée:", error);
           }
         }
       }
