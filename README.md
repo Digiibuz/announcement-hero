@@ -4,39 +4,6 @@
 
 **URL**: https://lovable.dev/projects/64c2702a-3a05-4d0d-bbba-3f29359bfeba
 
-## Environment Variables Configuration
-
-This project requires the following environment variables to be configured:
-
-```env
-# Supabase Configuration
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-
-# OpenAI Configuration (for Supabase Edge Functions)
-# Note: Configure this in Supabase Edge Functions secrets
-OPENAI_API_KEY=your_openai_api_key
-```
-
-### For Local Development
-
-1. Create a `.env` file in the root directory based on `.env.example`
-2. Add your actual Supabase URL and anonymous key
-
-### For Production Deployment
-
-If deploying to a hosting service like Vercel or Netlify:
-- Add these environment variables in your deployment platform's settings panel
-- For Supabase Edge Functions, set these secrets in the Supabase dashboard under Project Settings > API > Edge Functions > Secrets
-
-**For Supabase Edge Functions:**
-```bash
-# Configure Edge Function secrets (required for the optimize-content function)
-supabase secrets set OPENAI_API_KEY=your_openai_api_key
-```
-
-**IMPORTANT**: Never commit your actual `.env` file containing real credentials to your repository.
-
 ## How can I edit this code?
 
 There are several ways of editing your application.
@@ -100,55 +67,3 @@ Simply open [Lovable](https://lovable.dev/projects/64c2702a-3a05-4d0d-bbba-3f293
 ## I want to use a custom domain - is that possible?
 
 We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
-
-## State Persistence
-
-This application implements automatic state persistence using localStorage to provide a seamless user experience across page reloads and tab switches.
-
-### Available Persistence Hooks
-
-1. `usePersistedState`: Generic state persistence
-```typescript
-const [value, setValue, clearValue] = usePersistedState('my-key', defaultValue);
-```
-
-2. `useFormPersistence`: Form data persistence
-```typescript
-const { loadForm, clearSavedForm } = useFormPersistence(form, 'form-key');
-```
-
-3. `useScrollRestoration`: Automatic scroll position restoration
-```typescript
-useScrollRestoration();
-```
-
-### LocalStorage Keys Used
-
-All persistence keys are prefixed with `app_` to avoid conflicts:
-
-- `app_form_*`: Form data
-- `app_scroll_*`: Scroll positions per route
-- `app_*`: Generic persisted states
-
-### Best Practices
-
-1. **Security**: Never store sensitive data (tokens, passwords) in localStorage
-2. **Performance**: Use debouncing for frequent updates (default: 1000ms)
-3. **Fallbacks**: Always provide default values for persisted states
-4. **Error Handling**: All hooks include built-in error handling and fallbacks
-5. **Cleanup**: Use clear functions when data is no longer needed
-
-### Example Usage
-
-```typescript
-import { usePersistedState } from '@/hooks/usePersistedState';
-
-function MyComponent() {
-  const [filters, setFilters, clearFilters] = usePersistedState('filters', {
-    category: 'all',
-    sortBy: 'date'
-  });
-
-  // ... rest of component logic
-}
-```

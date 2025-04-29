@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -76,12 +76,16 @@ const CreateAnnouncement = () => {
   const [showPublishingOverlay, setShowPublishingOverlay] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const { categories } = useWordPressCategories();
+  const visibilityChangeHandlingRef = useRef(false);
+  const lastVisibilityChangeTimeRef = useRef(0);
+  const visibilityChangeCountRef = useRef(0);
+  const isInitialMount = useRef(true);
 
   // Get current step config
   const currentStep = stepConfigs[currentStepIndex];
 
-  // Initializing the form
-  const form = useForm<AnnouncementFormData>({
+  // Initializing the form with a _currentStep field to track current step
+  const form = useForm<AnnouncementFormData & { _currentStep?: number }>({
     defaultValues: {
       title: "",
       description: "",
@@ -91,32 +95,120 @@ const CreateAnnouncement = () => {
       images: [],
       seoTitle: "",
       seoDescription: "",
-      seoSlug: ""
+      seoSlug: "",
+      _currentStep: 0
     }
   });
 
-  // Clear form data when the component mounts
-  useEffect(() => {
-    localStorage.removeItem(FORM_STORAGE_KEY);
-    form.reset({
-      title: "",
-      description: "",
-      wordpressCategory: "",
-      publishDate: undefined,
-      status: "published",
-      images: [],
-      seoTitle: "",
-      seoDescription: "",
-      seoSlug: ""
-    });
-  }, [form]);
-
-  // Use the form persistence hook
+  // Use the form persistence hook with additional support for steps
   const {
     clearSavedData,
     hasSavedData,
-    saveData
-  } = useFormPersistence(form, FORM_STORAGE_KEY);
+    saveData,
+    getSavedStep
+  } = useFormPersistence(form, FORM_STORAGE_KEY, undefined,
+    2000, // autosave every 2 seconds
+    false, // no debug
+    undefined // watch all fields
+  );
+
+  // Restore saved step if available
+  useEffect(() => {
+    if (isInitialMount.current) {
+      const savedStep = getSavedStep();
+      if (savedStep !== null && savedStep >= 0 && savedStep < stepConfigs.length) {
+        setCurrentStepIndex(savedStep);
+        form.setValue('_currentStep', savedStep);
+      }
+      isInitialMount.current = false;
+    }
+  }, [getSavedStep, form]);
+
+  // Update _currentStep field when step changes
+  useEffect(() => {
+    // Éviter de déclencher lors du montage initial
+    if (!isInitialMount.current) {
+      form.setValue('_currentStep', currentStepIndex);
+      
+      // Enregistrer les données avec un léger délai
+      const timerId = setTimeout(() => {
+        if (document.visibilityState === 'visible') {
+          saveData();
+        }
+      }, 300);
+      
+      return () => clearTimeout(timerId);
+    }
+  }, [currentStepIndex, form, saveData]);
+
+  // Optimized handler for visibility changes
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // Protection contre les boucles infinies
+      visibilityChangeCountRef.current += 1;
+      
+      if (visibilityChangeCountRef.current > 5) {
+        console.error("Trop de changements de visibilité détectés, protection anti-boucle activée");
+        setTimeout(() => {
+          visibilityChangeCountRef.current = 0;
+        }, 5000);
+        return;
+      }
+      
+      const now = Date.now();
+      
+      // Prévenir les traitements multiples des changements de visibilité
+      if (now - lastVisibilityChangeTimeRef.current < 500) {
+        console.log('Changement de visibilité ignoré car trop rapproché');
+        return;
+      }
+      
+      lastVisibilityChangeTimeRef.current = now;
+      
+      if (document.visibilityState === 'visible') {
+        if (visibilityChangeHandlingRef.current) {
+          console.log('Changement de visibilité déjà en cours de traitement');
+          return;
+        }
+        
+        visibilityChangeHandlingRef.current = true;
+        
+        console.log('Application créer annonce visible, restauration de l\'état...');
+        
+        // Attendre un court instant avant de restaurer l'état
+        setTimeout(() => {
+          try {
+            // Vérifier s'il y a une étape sauvegardée
+            const savedStep = getSavedStep();
+            if (savedStep !== null && savedStep >= 0 && savedStep < stepConfigs.length) {
+              console.log(`Restauration de l'étape sauvegardée: ${savedStep}`);
+              // Ne mettre à jour que si l'étape est différente pour éviter des re-rendus inutiles
+              if (savedStep !== currentStepIndex) {
+                setCurrentStepIndex(savedStep);
+              }
+            }
+          } finally {
+            // Réinitialiser le flag après traitement
+            setTimeout(() => {
+              visibilityChangeHandlingRef.current = false;
+              // Réinitialiser le compteur après un délai plus long
+              setTimeout(() => {
+                visibilityChangeCountRef.current = 0;
+              }, 1000);
+            }, 1000);
+          }
+        }, 500);
+      } else if (document.visibilityState === 'hidden') {
+        // Sauvegarder l'état actuel lorsque l'utilisateur quitte la page
+        saveData();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [getSavedStep, saveData, currentStepIndex]);
 
   // Define the publishing steps
   const publishingSteps: PublishingStepType[] = [
@@ -248,7 +340,8 @@ const CreateAnnouncement = () => {
         images: [],
         seoTitle: "",
         seoDescription: "",
-        seoSlug: ""
+        seoSlug: "",
+        _currentStep: 0
       });
       
       // Navigate to announcements page to see the draft
@@ -344,7 +437,8 @@ const CreateAnnouncement = () => {
         images: [],
         seoTitle: "",
         seoDescription: "",
-        seoSlug: ""
+        seoSlug: "",
+        _currentStep: 0
       });
 
       setTimeout(() => {
