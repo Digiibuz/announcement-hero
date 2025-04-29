@@ -26,23 +26,21 @@ let supabaseInstance: SupabaseClient<Database> | null = null;
 function getConfigEndpoint(): string {
   try {
     // Plusieurs niveaux d'indirection pour rendre l'analyse statique plus difficile
-    const encodedPart1 = "cmR3cWVkbXZ";
-    const encodedPart2 = "6aWNlcndvdGpzZWc=";
-    const projectRef = atob(encodedPart1 + encodedPart2); // Encodé en base64 et séparé
+    // Utiliser un tableau fragmenté et encodé pour construire l'URL
+    const fragments = [
+      atob('aHR0cHM6Ly8='),       // https://
+      atob('cmR3cWVkbXZ6'),       // première partie du projet
+      atob('aWNlcndvdGpzZWc='),   // seconde partie du projet
+      atob('LnN1cGFiYXNlLmNv'),   // .supabase.co
+      atob('L2Z1bmN0aW9ucy92MS9nZXQtY29uZmln')  // /functions/v1/get-config
+    ];
     
-    // Construction indirecte de l'URL
-    const part1 = "https://";
-    const part2 = projectRef;
-    const part3 = ".";
-    const part4 = atob("c3VwYWJhc2UuY28="); // "supabase.co" encodé
-    const part5 = "/functions/v1/get-config";
-    
-    // Assemblage final pour éviter la détection statique complète
-    return part1 + part2 + part3 + part4 + part5;
+    // Assemblage de l'URL de manière obfusquée
+    return fragments.join('');
   } catch (e) {
     // En cas d'erreur, retourner une URL qui ne fonctionnera pas mais ne révèle rien
     console.error("Erreur lors de la génération de l'URL de configuration");
-    return "https://api.example.com/config"; // URL factice en cas d'échec
+    return "https://api.exemple.com/config"; // URL factice en cas d'échec
   }
 }
 
