@@ -9,6 +9,14 @@ const SENSITIVE_DOMAINS = [
   'rdwqedmvzicerwotjseg'
 ];
 
+// Liste des mots-clés sensibles à détecter
+const SENSITIVE_KEYWORDS = [
+  'token',
+  'password',
+  'auth',
+  'key'
+];
+
 /**
  * Masque les URLs sensibles dans un message d'erreur
  * @param message Le message d'erreur à nettoyer
@@ -21,13 +29,22 @@ export function sanitizeErrorMessage(message: string): string {
   
   // Masquer les URLs de projet Supabase potentielles
   SENSITIVE_DOMAINS.forEach(domain => {
-    // Utilisation de regex pour trouver toutes les occurrences du domaine sensible
+    // Utilisation de regex plus strictes pour trouver toutes les occurrences du domaine sensible
     const regex = new RegExp(`https?://[a-zA-Z0-9-_.]*${domain}[a-zA-Z0-9-_.:/]*`, 'gi');
     sanitizedMessage = sanitizedMessage.replace(regex, "https://[PROJET_MASQUÉ]");
   });
   
   // Masquer les jetons d'authentification potentiels (format JWT)
   sanitizedMessage = sanitizedMessage.replace(/eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/g, "[JETON_MASQUÉ]");
+  
+  // Masquer les URLs qui contiennent des mots-clés sensibles
+  SENSITIVE_KEYWORDS.forEach(keyword => {
+    const regex = new RegExp(`https?://[^\\s]*${keyword}[^\\s]*`, 'gi');
+    sanitizedMessage = sanitizedMessage.replace(regex, `https://[URL_AVEC_${keyword.toUpperCase()}_MASQUÉE]`);
+  });
+  
+  // Masquer les requêtes contenant le mot "token" ou "auth"
+  sanitizedMessage = sanitizedMessage.replace(/\/auth\/[^\s"',)]*|\/token[^\s"',)]*/gi, "/[ENDPOINT_AUTH_MASQUÉ]");
   
   return sanitizedMessage;
 }

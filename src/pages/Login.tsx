@@ -40,7 +40,7 @@ const Login = () => {
         navigate("/dashboard");
       }, 300);
     } catch (error: any) {
-      // Utiliser la nouvelle fonction de gestion sécurisée des erreurs
+      // Utiliser la fonction de gestion sécurisée des erreurs
       const errorMessage = handleAuthError(error);
       toast.error(errorMessage);
     } finally {
