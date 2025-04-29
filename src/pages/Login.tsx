@@ -32,6 +32,16 @@ const Login = () => {
     setIsLoading(true);
     
     try {
+      // Intercepter et masquer toutes les erreurs réseau potentielles avant qu'elles n'atteignent la console
+      window.addEventListener('unhandledrejection', function handler(event) {
+        if (event.reason && typeof event.reason === 'object' && 'message' in event.reason) {
+          event.preventDefault();
+          console.error("[ERREUR_SÉCURISÉE]: Requête d'authentification échouée");
+          // On supprime le handler après la première interception pour éviter les fuites mémoire
+          window.removeEventListener('unhandledrejection', handler);
+        }
+      }, { once: true });
+      
       await login(email, password);
       toast.success("Connexion réussie");
       

@@ -26,6 +26,25 @@ export function setupNetworkInterceptors(): void {
     return originalXHRSend.apply(this, [body]);
   };
 
+  // Ajouter un gestionnaire pour intercepter les erreurs XMLHttpRequest
+  const originalXHRSetOnError = Object.getOwnPropertyDescriptor(XMLHttpRequest.prototype, 'onerror');
+  if (originalXHRSetOnError && originalXHRSetOnError.set) {
+    Object.defineProperty(XMLHttpRequest.prototype, 'onerror', {
+      set(handler) {
+        // Wrapper le handler d'origine pour masquer les erreurs
+        const secureHandler = function(this: XMLHttpRequest, ev: Event) {
+          console.error('[ERREUR_RÉSEAU_SÉCURISÉE]');
+          // Appeler le handler original avec un événement assaini
+          if (typeof handler === 'function') {
+            return handler.call(this, ev);
+          }
+        };
+        originalXHRSetOnError.set.call(this, secureHandler);
+      },
+      get: originalXHRSetOnError.get
+    });
+  }
+
   // Hook fetch pour masquer les URLs des requêtes
   const originalFetch = window.fetch;
   window.fetch = function(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
@@ -55,125 +74,95 @@ export function setupNetworkInterceptors(): void {
           'Content-Type': 'application/json'
         };
       }
-      
-      // Capturer les erreurs de réseau sans exposer l'URL
-      return originalFetch(input, init).catch((error) => {
+
+      // Capturer les erreurs de réseau ou d'authentification sans exposer l'URL
+      return originalFetch(input, init).then(response => {
+        // Intercepter spécifiquement les erreurs 400/401 pour les masquer complètement
+        if ((response.status === 400 || response.status === 401) && 
+            typeof inputUrl === 'string' && 
+            (inputUrl.includes('auth') || inputUrl.includes('login') || inputUrl.includes('token'))) {
+          // Ne pas logger d'erreurs pour les échecs d'authentification
+          console.debug('[RÉPONSE_AUTHENTIFICATION]');
+        }
+        return response;
+      }).catch((error) => {
         // Masquer toutes les informations sensibles dans l'erreur
-        console.error(`Erreur réseau lors d'une requête ${maskedMethod}:`, sanitizeErrorMessage(error.message));
+        console.error(`Erreur réseau sécurisée:`, '[DÉTAILS_MASQUÉS]');
         throw error; // Propager l'erreur originale pour ne pas casser le flux d'exécution
       });
     } catch (error) {
-      console.error("Erreur lors de l'interception fetch:", sanitizeErrorMessage(String(error)));
+      console.error("Erreur lors de l'interception fetch:", '[ERREUR_SÉCURISÉE]');
       return originalFetch(input, init); // Continuer malgré l'erreur d'interception
     }
   };
 
-  // Surveiller les erreurs de console pour masquer les URL en direct
-  const originalConsoleError = console.error;
-  console.error = function(...args) {
-    // Masquer les URLs dans tous les arguments d'erreur
-    const sanitizedArgs = args.map(arg => {
-      if (typeof arg === 'string') {
-        // Masquer toutes les URLs d'authentification ou avec token
-        if (arg.includes("token") || arg.includes("auth") || 
-            arg.includes("POST") || arg.includes("http")) {
-          return "[ERREUR_AUTHENTIFICATION]";
-        }
-
-        // Masquer les requêtes POST spécifiques qui semblent ne pas être interceptées
-        if (arg.includes('POST') && arg.includes('http')) {
-          arg = arg.replace(/POST\s+https?:\/\/[^\s]*/gi, "POST [URL_MASQUÉE]");
-        }
-
-        // Masquer toutes les URLs dans la chaîne (particulièrement celles liées à l'authentification)
-        arg = arg.replace(/https?:\/\/[^\s]*/gi, "[URL_MASQUÉE]");
-        
-        // Masquer les requêtes HTTP qui pourraient être loggées
-        arg = arg.replace(/\b(GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD)\s+https?:\/\/[^\s"']+/gi, '$1 [URL_MASQUÉE]');
-        
-        // Masquer les erreurs d'authentification en français
-        if (arg.includes("Erreur d'authentification") || arg.includes("Missing authorization header") ||
-            arg.includes("authentification") || arg.includes("ERREUR_AUTHENTIFICATION")) {
-          arg = "[ERREUR_AUTHENTIFICATION]";
-        }
-        
-        // Masquer spécifiquement l'erreur 401 - Missing authorization header
-        if ((arg.includes("401") && arg.includes("Missing authorization")) || 
-            arg.includes("400") || arg.includes("Bad Request")) {
-          arg = "[ERREUR_AUTHENTIFICATION_401]";
-        }
-
-        // Double vérification pour les JSON Web Tokens
-        arg = arg.replace(/eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/g, "[JWT_MASQUÉ]");
-        
-        // Masquer les indices dans la console
-        arg = arg.replace(/index-[a-zA-Z0-9]+/gi, "[INDEX_MASQUÉ]");
-        
-        // Masquer les URLs intégrées dans le texte
-        arg = sanitizeErrorMessage(arg);
-      } else if (arg instanceof Error) {
-        // Créer une nouvelle erreur avec un message sanitisé
-        const newError = new Error("[ERREUR_MASQUÉE]");
-        newError.name = "SecurityError";
-        newError.stack = "Stack trace masquée pour des raisons de sécurité";
-        return newError;
-      }
-      return arg;
-    });
-    
-    // Utiliser l'implémentation originale de console.error avec les arguments nettoyés
-    originalConsoleError.apply(console, sanitizedArgs);
-  };
-
-  // Override console.log pour intercepter également les messages qui pourraient contenir des URLs
-  const originalConsoleLog = console.log;
-  console.log = function(...args) {
-    // Nettoyer les arguments qui pourraient contenir des informations sensibles
-    const sanitizedArgs = args.map(arg => {
-      if (typeof arg === 'string') {
-        // Masquer les requêtes POST spécifiques
-        if (arg.includes('POST') && arg.includes('http')) {
-          arg = arg.replace(/POST\s+https?:\/\/[^\s]*/gi, "POST [URL_MASQUÉE]");
-        }
-        
-        // Masquer toutes les URLs sensibles
-        arg = sanitizeErrorMessage(arg);
-      }
-      return arg;
-    });
-    
-    originalConsoleLog.apply(console, sanitizedArgs);
-  };
-
-  // Injecter un gestionnaire global pour masquer les erreurs non gérées
+  // Installer un gestionnaire global pour les erreurs réseau non gérées
   window.addEventListener('error', function(event) {
-    if (event.message && (
-      event.message.includes('http') || 
-      event.message.includes('auth') || 
-      event.message.includes('token') || 
-      event.message.includes('401') || 
-      event.message.includes('400'))) {
-      // Empêcher l'affichage de l'erreur originale si elle contient une URL ou auth
+    // Si l'erreur concerne une requête réseau
+    if (event.error && (
+        event.message?.includes('http') || 
+        event.message?.includes('fetch') || 
+        event.message?.includes('auth') || 
+        event.message?.includes('token') || 
+        event.message?.includes('401') || 
+        event.message?.includes('400'))) {
+      
+      // Empêcher l'affichage de l'erreur originale
       event.preventDefault();
       
-      // Afficher une version sécurisée de l'erreur
+      // Logger une version sécurisée
       console.error('[ERREUR_RÉSEAU_SÉCURISÉE]');
       return true;
     }
   }, true);
 
-  // Masquer les erreurs dans les requêtes réseau non gérées
+  // Gestionnaire pour les rejets de promesses non gérés (comme les fetch)
   window.addEventListener('unhandledrejection', function(event) {
-    if (event.reason && (typeof event.reason.message === 'string' && (
+    // Si l'erreur concerne une requête réseau ou d'authentification
+    if (event.reason && typeof event.reason.message === 'string' && (
         event.reason.message.includes('http') || 
+        event.reason.message.includes('fetch') ||
         event.reason.message.includes('auth') || 
-        event.reason.message.includes('token')))) {
-      // Empêcher l'affichage de l'erreur originale si elle contient une URL
+        event.reason.message.includes('token') ||
+        event.reason.message.includes('401') ||
+        event.reason.message.includes('400'))) {
+      
+      // Empêcher l'affichage de l'erreur originale
       event.preventDefault();
       
-      // Afficher une version sécurisée de l'erreur
+      // Logger une version sécurisée
       console.error('[PROMESSE_REJETÉE_SÉCURISÉE]');
       return true;
     }
   });
+  
+  // Installation spécifique pour les erreurs de POST avec identifiants erronés
+  const originalConsoleError = console.error;
+  console.error = function(...args) {
+    // Rechercher des motifs spécifiques d'erreur d'authentification dans les arguments
+    const containsAuthError = args.some(arg => 
+      typeof arg === 'string' && (
+        arg.includes('POST') && arg.includes('auth') || 
+        arg.includes('token') || 
+        arg.includes('401') || 
+        arg.includes('400') ||
+        arg.includes('Bad Request') ||
+        arg.includes('Invalid')
+      )
+    );
+    
+    if (containsAuthError) {
+      // Remplacer tous les arguments par un message générique
+      originalConsoleError.call(console, '[ERREUR_AUTHENTIFICATION_SÉCURISÉE]');
+      return;
+    }
+    
+    // Sinon utiliser la fonction d'origine avec les arguments sanitisés
+    originalConsoleError.apply(console, args.map(arg => {
+      if (typeof arg === 'string') {
+        return sanitizeErrorMessage(arg);
+      }
+      return arg;
+    }));
+  };
 }

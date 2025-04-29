@@ -18,12 +18,16 @@ export function handleAuthError(error: any): string {
   if (error?.message?.includes('Invalid login credentials') || 
       error?.message?.includes('invalid') ||
       error?.status === 400 || 
-      error?.message?.includes('Bad Request')) {
+      error?.message?.includes('Bad Request') ||
+      error?.code === 'INVALID_CREDENTIALS' ||
+      error?.error === 'INVALID_CREDENTIALS') {
     return "Identifiants invalides. Veuillez vérifier votre email et mot de passe.";
   } else if (error?.message?.includes('Email not confirmed')) {
     return "Email non confirmé. Veuillez vérifier votre boîte de réception.";
   } else if (error?.message?.includes('rate limit')) {
     return "Trop de tentatives de connexion. Veuillez réessayer plus tard.";
+  } else if (error?.status === 401 || error?.message?.includes('Unauthorized')) {
+    return "Session expirée. Veuillez vous reconnecter.";
   }
   
   // Message générique pour toute autre erreur - ne jamais donner de détails spécifiques

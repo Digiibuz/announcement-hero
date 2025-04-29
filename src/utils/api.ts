@@ -1,4 +1,3 @@
-
 /**
  * Secure API client for communicating with Supabase via Edge Functions
  * - Handles authentication flows
@@ -47,12 +46,27 @@ export async function fetchAPI<T>(
   }
   
   try {
+    // Intercepter les erreurs réseau avant qu'elles n'atteignent la console
+    const tempErrorHandler = (event: Event | PromiseRejectionEvent) => {
+      event.preventDefault();
+      // Ne rien afficher, l'erreur sera traitée dans le bloc catch ci-dessous
+      return true;
+    };
+    
+    // Installer des gestionnaires temporaires pour les erreurs réseau
+    window.addEventListener('error', tempErrorHandler, { once: true });
+    window.addEventListener('unhandledrejection', tempErrorHandler, { once: true });
+    
     const response = await fetch(url, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
       ...options,
       credentials: 'omit', // Don't send cookies
+    }).finally(() => {
+      // Supprimer les gestionnaires temporaires
+      window.removeEventListener('error', tempErrorHandler);
+      window.removeEventListener('unhandledrejection', tempErrorHandler);
     });
     
     // Parse JSON response
@@ -84,9 +98,9 @@ export async function fetchAPI<T>(
       throw error; // Re-throw if it's already our custom error
     }
     
-    // Only log in development mode
+    // Only log in development mode with des informations sécurisées
     if (import.meta.env.DEV) {
-      console.error('API request failed:', error.message);
+      console.error('API request failed:', error instanceof Error ? error.message : 'Unknown error');
     }
     
     // Show error in UI
@@ -105,11 +119,22 @@ export async function fetchAPI<T>(
  */
 export async function login(email: string, password: string) {
   try {
+    // Ajouter un gestionnaire temporaire avant l'appel réseau
+    const tempErrorHandler = (event: PromiseRejectionEvent) => {
+      event.preventDefault();
+      // L'erreur sera traitée dans le bloc catch ci-dessous
+      return true;
+    };
+    
+    window.addEventListener('unhandledrejection', tempErrorHandler, { once: true });
+    
     const response = await fetchAPI<{ access_token: string; refresh_token: string; user: any }>(
       'POST',
       '/secure-login',
       { email, password }
-    );
+    ).finally(() => {
+      window.removeEventListener('unhandledrejection', tempErrorHandler);
+    });
     
     // Store tokens in localStorage
     localStorage.setItem('access_token', response.access_token);
@@ -117,8 +142,11 @@ export async function login(email: string, password: string) {
     
     return response;
   } catch (error) {
-    // Handle login specific errors
-    throw error;
+    // Assurer qu'aucun détail sensible n'est exposé
+    if (import.meta.env.DEV) {
+      console.error('Erreur d\'authentification sécurisée');
+    }
+    throw new ApiError('INVALID_CREDENTIALS', 401, 'INVALID_CREDENTIALS');
   }
 }
 
@@ -195,16 +223,16 @@ export async function request<T>(
  */
 function getHumanReadableError(errorCode: string): string {
   const errorMessages: Record<string, string> = {
-    'INVALID_CREDENTIALS': 'Invalid email or password',
-    'INVALID_REFRESH_TOKEN': 'Your session has expired',
-    'REQUEST_FAILED': 'The operation could not be completed',
-    'UNAUTHORIZED': 'You need to log in to access this content',
-    'SERVER_ERROR': 'An unexpected error occurred',
-    'INVALID_REQUEST': 'Invalid request parameters',
-    'METHOD_NOT_ALLOWED': 'Operation not supported',
-    'ID_REQUIRED': 'Record identifier is required',
-    'INVALID_PATH': 'Invalid resource path',
+    'INVALID_CREDENTIALS': 'Identifiants invalides',
+    'INVALID_REFRESH_TOKEN': 'Votre session a expiré',
+    'REQUEST_FAILED': 'L\'opération n\'a pas pu être effectuée',
+    'UNAUTHORIZED': 'Vous devez être connecté pour accéder à ce contenu',
+    'SERVER_ERROR': 'Une erreur inattendue s\'est produite',
+    'INVALID_REQUEST': 'Paramètres de requête invalides',
+    'METHOD_NOT_ALLOWED': 'Opération non supportée',
+    'ID_REQUIRED': 'L\'identifiant de l\'enregistrement est requis',
+    'INVALID_PATH': 'Chemin de ressource invalide',
   };
   
-  return errorMessages[errorCode] || 'An error occurred';
+  return errorMessages[errorCode] || 'Une erreur est survenue';
 }
