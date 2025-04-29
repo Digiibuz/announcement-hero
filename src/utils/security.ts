@@ -27,11 +27,17 @@ const SENSITIVE_KEYWORDS = [
 const SENSITIVE_PATTERNS = [
   // Format d'ID de projet Supabase (séquence de lettres et chiffres de longueur typique)
   /[a-z0-9]{20,22}\.supabase\.co/gi,
+  // Format plus précis avec HTTP(S)
+  /https?:\/\/[a-z0-9]{10,50}\.supabase\.co[^\s]*/gi,
+  // Format pour les chemins d'API Supabase
+  /supabase\.co\/auth\/v1/gi,
   // URLs avec auth ou token dans le chemin
   /https?:\/\/[^/]+\/auth\/[^/\s"]*/gi,
   /https?:\/\/[^/]+\/token[^/\s"]*/gi,
   // Format des jetons JWT
   /eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/g,
+  // Masquer les codes d'erreur qui pourraient contenir des informations sensibles
+  /(supabase|auth).*error.*code[^\s"]*/gi,
 ];
 
 /**
@@ -44,27 +50,52 @@ export function sanitizeErrorMessage(message: string): string {
   
   let sanitizedMessage = message;
   
-  // Appliquer les patterns de masquage sensibles
-  SENSITIVE_PATTERNS.forEach(pattern => {
-    sanitizedMessage = sanitizedMessage.replace(pattern, "[INFORMATION_SENSIBLE_MASQUÉE]");
-  });
-  
-  // Masquer les URLs de domaines sensibles
-  getSensitiveDomains().forEach(domain => {
-    // Utilisation de regex plus strictes pour trouver toutes les occurrences du domaine sensible
-    const regex = new RegExp(`https?://[a-zA-Z0-9-_.]*${domain}[a-zA-Z0-9-_.:/]*`, 'gi');
-    sanitizedMessage = sanitizedMessage.replace(regex, "https://[PROJET_MASQUÉ]");
-  });
-  
-  // Masquer les URLs qui contiennent des mots-clés sensibles
-  SENSITIVE_KEYWORDS.forEach(keyword => {
-    const regex = new RegExp(`https?://[^\\s]*${keyword}[^\\s]*`, 'gi');
-    sanitizedMessage = sanitizedMessage.replace(regex, `https://[URL_SENSIBLE_MASQUÉE]`);
+  try {
+    // Protection spéciale pour les objets JSON (pour éviter les erreurs sur des objets circulaires)
+    if (typeof message === 'object') {
+      try {
+        sanitizedMessage = JSON.stringify(message);
+      } catch (e) {
+        return "Objet d'erreur complexe (détails masqués)";
+      }
+    }
     
-    // Masquer aussi les chemins d'URL contenant le mot-clé
-    const pathRegex = new RegExp(`\/${keyword}[^\\s"',)]*`, 'gi');
-    sanitizedMessage = sanitizedMessage.replace(pathRegex, `/[CHEMIN_SENSIBLE_MASQUÉ]`);
-  });
+    // Appliquer les patterns de masquage sensibles
+    SENSITIVE_PATTERNS.forEach(pattern => {
+      sanitizedMessage = sanitizedMessage.replace(pattern, "[INFORMATION_SENSIBLE_MASQUÉE]");
+    });
+    
+    // Masquer les URLs de domaines sensibles
+    getSensitiveDomains().forEach(domain => {
+      // Utilisation de regex plus strictes pour trouver toutes les occurrences du domaine sensible
+      const regex = new RegExp(`https?://[a-zA-Z0-9-_.]*${domain}[a-zA-Z0-9-_.:/]*`, 'gi');
+      sanitizedMessage = sanitizedMessage.replace(regex, "https://[PROJET_MASQUÉ]");
+    });
+    
+    // Masquer les URLs qui contiennent des mots-clés sensibles
+    SENSITIVE_KEYWORDS.forEach(keyword => {
+      const regex = new RegExp(`https?://[^\\s]*${keyword}[^\\s]*`, 'gi');
+      sanitizedMessage = sanitizedMessage.replace(regex, `https://[URL_SENSIBLE_MASQUÉE]`);
+      
+      // Masquer aussi les chemins d'URL contenant le mot-clé
+      const pathRegex = new RegExp(`\/${keyword}[^\\s"',)]*`, 'gi');
+      sanitizedMessage = sanitizedMessage.replace(pathRegex, `/[CHEMIN_SENSIBLE_MASQUÉ]`);
+    });
+    
+    // Masquer toute adresse avec supabase.co, même partielle
+    sanitizedMessage = sanitizedMessage.replace(/[a-z0-9-_]+\.supabase\.co/gi, "[PROJET_MASQUÉ].supabase.co");
+    
+    // Masquer spécifiquement les requêtes HTTP qui contiennent les URLs supabase
+    sanitizedMessage = sanitizedMessage.replace(/POST https?:\/\/[^\s]*supabase[^\s]*/gi, "POST https://[PROJET_MASQUÉ].supabase.co/[CHEMIN_MASQUÉ]");
+    sanitizedMessage = sanitizedMessage.replace(/GET https?:\/\/[^\s]*supabase[^\s]*/gi, "GET https://[PROJET_MASQUÉ].supabase.co/[CHEMIN_MASQUÉ]");
+    
+    // Masquer les messages d'erreur d'authentification qui pourraient révéler des informations
+    sanitizedMessage = sanitizedMessage.replace(/(AuthApiError|AuthError)[^\n]*/gi, "Erreur d'authentification (détails masqués)");
+    
+  } catch (e) {
+    // En cas d'erreur dans le masquage, retourner un message générique
+    return "Erreur inconnue (détails masqués pour sécurité)";
+  }
   
   return sanitizedMessage;
 }
@@ -89,13 +120,15 @@ export function safeConsoleError(message: string, ...args: any[]): void {
         const sanitizedJson = sanitizeErrorMessage(jsonString);
         return JSON.parse(sanitizedJson);
       } catch {
-        // En cas d'échec, retourner l'objet original
-        return arg;
+        // En cas d'échec, retourner un objet générique
+        return {"message": "Objet masqué pour raisons de sécurité"};
       }
     }
     return arg;
   });
   
+  // Utiliser console.error directement ici pour éviter les boucles infinies
+  // La version globale de console.error est déjà écrasée
   console.error(sanitizedMessage, ...sanitizedArgs);
 }
 

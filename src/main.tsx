@@ -5,7 +5,7 @@ import App from './App.tsx'
 import './index.css'
 import { initConsoleOverrides } from './utils/consoleOverride.ts'
 
-// Initialiser la sécurisation des logs console
+// Initialiser la sécurisation des logs console AVANT tout autre code
 initConsoleOverrides();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
