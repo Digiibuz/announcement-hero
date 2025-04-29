@@ -10,10 +10,33 @@ import { sanitizeErrorMessage } from '../urlSanitizer';
 export function setupGlobalErrorHandlers(): void {
   // Intercepter les erreurs globales
   window.addEventListener('error', (event) => {
-    // Stopper la propagation de l'erreur originale
-    event.preventDefault();
+    // Déterminer si c'est une erreur liée à l'authentification ou aux requêtes réseau
+    const errorMessage = event.message || '';
+    const errorStack = event.error?.stack || '';
+    const isAuthOrNetworkError = 
+      errorMessage.includes('auth') || 
+      errorMessage.includes('token') || 
+      errorMessage.includes('401') || 
+      errorMessage.includes('400') ||
+      errorMessage.includes('supabase') ||
+      errorStack.includes('auth') ||
+      errorStack.includes('token') ||
+      errorStack.includes('login') ||
+      errorMessage.includes('fetch') ||
+      errorMessage.includes('http') ||
+      errorMessage.includes('request');
     
-    // Créer une erreur sécurisée
+    if (isAuthOrNetworkError) {
+      // Stopper la propagation de l'erreur originale pour les erreurs d'authentification
+      event.preventDefault();
+      
+      // Logger une version générique et sécurisée
+      console.error("[ERREUR_AUTHENTIFICATION_SÉCURISÉE]");
+      
+      return true;
+    }
+    
+    // Pour les autres erreurs, logger une version sécurisée sans bloquer
     const securedErrorMessage = sanitizeErrorMessage(event.message);
     const securedErrorStack = event.error?.stack ? sanitizeErrorMessage(event.error.stack) : "";
     
@@ -22,17 +45,35 @@ export function setupGlobalErrorHandlers(): void {
     if (securedErrorStack) {
       console.error("Stack sécurisée:", securedErrorStack);
     }
-    
-    return true;
   });
 
   // Intercepter les rejets de promesses non gérés
   window.addEventListener('unhandledrejection', (event) => {
-    // Stopper la propagation du rejet original
-    event.preventDefault();
-    
-    // Créer un rejet sécurisé
+    // Déterminer si c'est un rejet lié à l'authentification
     const reason = event.reason;
+    const reasonMessage = reason?.message || '';
+    const reasonStack = reason?.stack || '';
+    const isAuthRelated = 
+      reasonMessage.includes('auth') || 
+      reasonMessage.includes('token') || 
+      reasonMessage.includes('401') || 
+      reasonMessage.includes('400') ||
+      reasonMessage.includes('supabase') ||
+      reasonStack.includes('auth') ||
+      reasonStack.includes('token') ||
+      reasonStack.includes('login');
+    
+    if (isAuthRelated) {
+      // Stopper la propagation du rejet original pour l'authentification
+      event.preventDefault();
+      
+      // Logger une version générique et sécurisée
+      console.error("[ERREUR_AUTHENTIFICATION_NON_GÉRÉE]");
+      
+      return true;
+    }
+    
+    // Pour les autres rejets, logger une version sécurisée sans bloquer
     const securedReason = typeof reason === 'string' 
       ? sanitizeErrorMessage(reason) 
       : reason instanceof Error 
@@ -41,7 +82,5 @@ export function setupGlobalErrorHandlers(): void {
     
     // Loguer le rejet sécurisé
     console.error("Rejet de promesse non géré (sécurisé):", securedReason);
-    
-    return true;
   });
 }

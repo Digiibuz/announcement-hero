@@ -63,7 +63,8 @@ export function setupNetworkInterceptors(): void {
         inputUrl.includes('functions/v1') ||
         inputUrl.includes('get-config') ||
         inputUrl.includes('auth/v1') ||
-        inputUrl.includes('token')
+        inputUrl.includes('token') ||
+        inputUrl.includes('grant_type=password')
       );
       
       if (isSensitiveRequest && init) {
@@ -80,14 +81,17 @@ export function setupNetworkInterceptors(): void {
         // Intercepter spécifiquement les erreurs 400/401 pour les masquer complètement
         if ((response.status === 400 || response.status === 401) && 
             typeof inputUrl === 'string' && 
-            (inputUrl.includes('auth') || inputUrl.includes('login') || inputUrl.includes('token'))) {
+            (inputUrl.includes('auth') || 
+             inputUrl.includes('login') || 
+             inputUrl.includes('token') ||
+             inputUrl.includes('grant_type=password'))) {
           // Ne pas logger d'erreurs pour les échecs d'authentification
           console.debug('[RÉPONSE_AUTHENTIFICATION]');
         }
         return response;
       }).catch((error) => {
         // Masquer toutes les informations sensibles dans l'erreur
-        console.error(`Erreur réseau sécurisée:`, '[DÉTAILS_MASQUÉS]');
+        console.error('Erreur réseau sécurisée:', '[DÉTAILS_MASQUÉS]');
         throw error; // Propager l'erreur originale pour ne pas casser le flux d'exécution
       });
     } catch (error) {
@@ -98,14 +102,16 @@ export function setupNetworkInterceptors(): void {
 
   // Installer un gestionnaire global pour les erreurs réseau non gérées
   window.addEventListener('error', function(event) {
-    // Si l'erreur concerne une requête réseau
+    // Si l'erreur concerne une requête réseau ou d'authentification
     if (event.error && (
-        event.message?.includes('http') || 
-        event.message?.includes('fetch') || 
-        event.message?.includes('auth') || 
-        event.message?.includes('token') || 
-        event.message?.includes('401') || 
-        event.message?.includes('400'))) {
+        String(event.message).includes('http') || 
+        String(event.message).includes('fetch') || 
+        String(event.message).includes('auth') || 
+        String(event.message).includes('token') || 
+        String(event.message).includes('401') || 
+        String(event.message).includes('400') ||
+        String(event.message).includes('supabase') ||
+        String(event.message).includes('grant_type=password'))) {
       
       // Empêcher l'affichage de l'erreur originale
       event.preventDefault();
@@ -125,7 +131,9 @@ export function setupNetworkInterceptors(): void {
         event.reason.message.includes('auth') || 
         event.reason.message.includes('token') ||
         event.reason.message.includes('401') ||
-        event.reason.message.includes('400'))) {
+        event.reason.message.includes('400') ||
+        event.reason.message.includes('supabase') ||
+        event.reason.message.includes('grant_type=password'))) {
       
       // Empêcher l'affichage de l'erreur originale
       event.preventDefault();
@@ -140,16 +148,21 @@ export function setupNetworkInterceptors(): void {
   const originalConsoleError = console.error;
   console.error = function(...args) {
     // Rechercher des motifs spécifiques d'erreur d'authentification dans les arguments
-    const containsAuthError = args.some(arg => 
-      typeof arg === 'string' && (
-        arg.includes('POST') && arg.includes('auth') || 
-        arg.includes('token') || 
-        arg.includes('401') || 
-        arg.includes('400') ||
-        arg.includes('Bad Request') ||
-        arg.includes('Invalid')
-      )
-    );
+    const containsAuthError = args.some(arg => {
+      if (typeof arg !== 'string') return false;
+      
+      return (
+        arg.includes('POST') && 
+        (arg.includes('auth') || 
+         arg.includes('token') || 
+         arg.includes('401') || 
+         arg.includes('400') ||
+         arg.includes('Bad Request') ||
+         arg.includes('Invalid') ||
+         arg.includes('grant_type=password') ||
+         arg.includes('supabase'))
+      );
+    });
     
     if (containsAuthError) {
       // Remplacer tous les arguments par un message générique

@@ -75,7 +75,10 @@ export function sanitizeErrorMessage(message: string): string {
     if (sanitizedMessage.includes("token?grant_type=password") || 
         sanitizedMessage.includes("/auth/v1/token") || 
         sanitizedMessage.includes("401") || 
-        sanitizedMessage.includes("400")) {
+        sanitizedMessage.includes("400") || 
+        sanitizedMessage.includes("grant_type=password") ||
+        sanitizedMessage.includes("Bad Request") ||
+        sanitizedMessage.includes("Invalid login credentials")) {
       return "[ERREUR_AUTHENTIFICATION]";
     }
     
@@ -127,6 +130,7 @@ export function sanitizeErrorMessage(message: string): string {
     
     // Masquer spécifiquement les erreurs de connexion avec credentials
     sanitizedMessage = sanitizedMessage.replace(/invalid[_\s]credentials/gi, "[ERREUR_AUTHENTIFICATION]");
+    sanitizedMessage = sanitizedMessage.replace(/Invalid login credentials/gi, "[ERREUR_AUTHENTIFICATION]");
     
     // Masquer les erreurs d'authentification en français
     sanitizedMessage = sanitizedMessage.replace(/Erreur d['']authentification/gi, "[ERREUR_AUTHENTIFICATION]");

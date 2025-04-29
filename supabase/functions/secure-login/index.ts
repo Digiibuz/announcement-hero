@@ -45,9 +45,9 @@ serve(async (req) => {
       );
     }
 
-    // Development-only logging
+    // Development-only logging - very limited information
     if (Deno.env.get("ENVIRONMENT") === "development") {
-      console.debug(`Login attempt for email: ${email.slice(0, 3)}***@${email.split('@')[1]}`);
+      console.debug(`Login attempt received (email obfuscated)`);
     }
 
     // Attempt to sign in using Supabase admin client
@@ -60,7 +60,7 @@ serve(async (req) => {
     if (error) {
       if (Deno.env.get("ENVIRONMENT") === "development") {
         // Limited logging in development
-        console.debug(`Auth error type: ${error.status}`);
+        console.debug(`Auth error status: secure`);
       }
       
       // Return standardized error response
@@ -82,7 +82,7 @@ serve(async (req) => {
   } catch (err) {
     // Handle unexpected errors
     if (Deno.env.get("ENVIRONMENT") === "development") {
-      console.error("Login error:", sanitizeErrorMessage(err.message));
+      console.error("Login error:", sanitizeErrorMessage("Secure error"));
     }
     
     return new Response(

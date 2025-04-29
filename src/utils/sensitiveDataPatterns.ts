@@ -51,9 +51,11 @@ export const SENSITIVE_KEYWORDS = [
   'auth/v1',
   'token?grant',
   'type=password',
+  'grant_type=password',
   'get-config',
   'functions/v1',
   '401',
+  '400',
   'authorization',
   'header',
   'missing'
@@ -103,6 +105,7 @@ export const SENSITIVE_PATTERNS = [
   /https?:\/\/[^\s]*token\?grant[^\s]*/gi,
   // Masquer l'ID du projet dans token?grant
   /\?grant_type=password/gi,
+  /grant_type=password/gi,
   // Masquer spécifiquement les requêtes POST sensibles
   /POST\s+https?:\/\/[^\s]*/gi,
   // Masquer l'URL complète du projet avec l'ID
@@ -139,6 +142,8 @@ export function getSecureAuthErrorMessage(errorCode: string | number): string {
       return '[ERREUR_AUTORISATION]';
     case '401':
       return '[ERREUR_AUTHENTIFICATION_401]';
+    case '400':
+      return '[ERREUR_AUTHENTIFICATION_400]';
     default:
       return '[ERREUR_SÉCURISÉE]';
   }

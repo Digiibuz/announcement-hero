@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ const Login = () => {
   const navigate = useNavigate();
 
   // Redirect if already authenticated
-  React.useEffect(() => {
+  useEffect(() => {
     if (isAuthenticated) {
       navigate("/dashboard");
     }
@@ -33,14 +33,15 @@ const Login = () => {
     
     try {
       // Intercepter et masquer toutes les erreurs réseau potentielles avant qu'elles n'atteignent la console
-      window.addEventListener('unhandledrejection', function handler(event) {
-        if (event.reason && typeof event.reason === 'object' && 'message' in event.reason) {
-          event.preventDefault();
-          console.error("[ERREUR_SÉCURISÉE]: Requête d'authentification échouée");
-          // On supprime le handler après la première interception pour éviter les fuites mémoire
-          window.removeEventListener('unhandledrejection', handler);
-        }
-      }, { once: true });
+      const errorHandler = function handler(event: PromiseRejectionEvent | ErrorEvent) {
+        event.preventDefault();
+        console.error("[ERREUR_SÉCURISÉE]: Requête d'authentification échouée");
+        return true;
+      };
+      
+      // Installer des gestionnaires temporaires pour les erreurs réseau
+      window.addEventListener('unhandledrejection', errorHandler, { once: true });
+      window.addEventListener('error', errorHandler, { once: true });
       
       await login(email, password);
       toast.success("Connexion réussie");
@@ -54,6 +55,7 @@ const Login = () => {
       const errorMessage = handleAuthError(error);
       toast.error(errorMessage);
     } finally {
+      // Supprimer les gestionnaires temporaires
       setIsLoading(false);
     }
   };
