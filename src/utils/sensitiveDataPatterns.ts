@@ -11,6 +11,8 @@ export function getSensitiveDomains(): string[] {
     atob('c3VwYWJhc2UuY28='), // supabase.co encodé en base64
     'lovable.app',
     'lovableproject.com',
+    'digiibuz.fr',
+    'digii.app',
     // Ne pas stocker directement l'ID du projet, il sera détecté par regex pattern
   ];
   return domains;
@@ -27,11 +29,13 @@ export const SENSITIVE_KEYWORDS = [
   'preview',
   'login',
   'grant',
-  'credentials'
+  'credentials',
+  'v1',
+  'authentification'
 ];
 
 // Liste des protocoles à détecter
-export const PROTOCOLS = ['http://', 'https://'];
+export const PROTOCOLS = ['http://', 'https://', 'ws://', 'wss://'];
 
 // Liste des méthodes HTTP à masquer
 export const HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'];
@@ -45,11 +49,15 @@ export const SENSITIVE_PATTERNS = [
   // URLs avec auth ou token dans le chemin
   /https?:\/\/[^/]+\/auth\/[^/\s"]*/gi,
   /https?:\/\/[^/]+\/token[^/\s"]*/gi,
+  /https?:\/\/[^/]+\/v1\/token[^/\s"]*/gi,
   // URLs contenant le mot login
   /https?:\/\/[^/]+\/login[^/\s"]*/gi,
   // Masquer les URLs Lovable
   /https?:\/\/[a-z0-9-]+\.lovable\.app[^\s]*/gi,
   /https?:\/\/[a-z0-9-]+\.lovableproject\.com[^\s]*/gi,
+  // Masquer les URLs DigiBuz
+  /https?:\/\/[a-z0-9.-]+\.digiibuz\.fr[^\s]*/gi,
+  /https?:\/\/[a-z0-9.-]+\.digii\.app[^\s]*/gi,
   // Masquer les preview URLs
   /https?:\/\/preview-[a-z0-9-]+\.[^\s\/"]*/gi,
   // Format des jetons JWT
@@ -58,4 +66,21 @@ export const SENSITIVE_PATTERNS = [
   /(supabase|auth).*error.*code[^\s"]*/gi,
   // Masquer toute requête HTTP (méthode + URL)
   /(GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD)\s+https?:\/\/[^\s]+/gi,
+  // Masquer les requêtes spécifiques à auth
+  /POST\s+https?:\/\/[^\s]*\/auth\/v1\/token[^\s]*/gi,
 ];
+
+// Fonction pour sécuriser l'affichage de toute erreur d'authentification 
+export function getSecureAuthErrorMessage(errorCode: string): string {
+  // Masquer les détails spécifiques des erreurs d'authentification
+  switch (errorCode) {
+    case 'invalid_credentials':
+      return '[ERREUR_AUTHENTIFICATION]';
+    case 'invalid_grant':
+      return '[ERREUR_AUTHENTIFICATION]';
+    case 'access_denied':
+      return '[ACCÈS_REFUSÉ]';
+    default:
+      return '[ERREUR_SÉCURISÉE]';
+  }
+}

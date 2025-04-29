@@ -2,7 +2,7 @@
 /**
  * Utilitaires pour masquer les URLs et informations sensibles
  */
-import { PROTOCOLS, HTTP_METHODS, SENSITIVE_PATTERNS, SENSITIVE_KEYWORDS, getSensitiveDomains } from './sensitiveDataPatterns';
+import { PROTOCOLS, HTTP_METHODS, SENSITIVE_PATTERNS, SENSITIVE_KEYWORDS, getSensitiveDomains, getSecureAuthErrorMessage } from './sensitiveDataPatterns';
 
 /**
  * Masque toutes les URLs dans un texte, y compris les requêtes HTTP
@@ -12,7 +12,7 @@ import { PROTOCOLS, HTTP_METHODS, SENSITIVE_PATTERNS, SENSITIVE_KEYWORDS, getSen
 export function maskAllUrls(text: string): string {
   if (!text) return text;
   
-  // Masquer toutes les requêtes HTTP (MÉTHODE URL)
+  // Masquer toutes les requêtes HTTP (MÉTHODE URL) en priorité
   HTTP_METHODS.forEach(method => {
     const methodRegex = new RegExp(`${method}\\s+https?:\\/\\/[^\\s]+`, 'gi');
     text = text.replace(methodRegex, `${method} [URL_MASQUÉE]`);
@@ -114,10 +114,58 @@ export function sanitizeErrorMessage(message: string): string {
     // Masquer spécifiquement les erreurs de connexion avec credentials
     sanitizedMessage = sanitizedMessage.replace(/invalid[_\s]credentials/gi, "[ERREUR_AUTHENTIFICATION]");
     
+    // Masquer l'erreur d'authentification en français
+    sanitizedMessage = sanitizedMessage.replace(/Erreur d['']authentification/gi, "[ERREUR_AUTHENTIFICATION]");
+    
+    // Masquer les codes d'état et les réponses
+    sanitizedMessage = sanitizedMessage.replace(/\d{3} \(Bad Request\)/gi, "[CODE_ÉTAT]");
+    sanitizedMessage = sanitizedMessage.replace(/\d{3} \(Unauthorized\)/gi, "[CODE_ÉTAT]");
+    
   } catch (e) {
     // En cas d'erreur dans le masquage, retourner un message générique
     return "Erreur inconnue (détails masqués pour sécurité)";
   }
   
   return sanitizedMessage;
+}
+
+/**
+ * Masque les paramètres sensibles dans les URLs
+ * @param url L'URL à nettoyer
+ * @returns L'URL nettoyée ou une chaîne générique
+ */
+export function maskSensitiveUrlParams(url: string): string {
+  try {
+    if (!url) return "[URL_VIDE]";
+    
+    // Masquer complètement l'URL si elle contient des mots-clés sensibles
+    for (const keyword of SENSITIVE_KEYWORDS) {
+      if (url.toLowerCase().includes(keyword.toLowerCase())) {
+        return "[URL_SENSIBLE_MASQUÉE]";
+      }
+    }
+    
+    // Sinon essayer de parser l'URL pour masquer seulement les paramètres sensibles
+    const urlObj = new URL(url);
+    
+    // Masquer le chemin s'il contient des segments sensibles
+    if (SENSITIVE_KEYWORDS.some(keyword => urlObj.pathname.toLowerCase().includes(keyword.toLowerCase()))) {
+      urlObj.pathname = "/[CHEMIN_MASQUÉ]";
+    }
+    
+    // Masquer tous les paramètres de requête (query parameters)
+    if (urlObj.search) {
+      urlObj.search = "?[PARAMÈTRES_MASQUÉS]";
+    }
+    
+    // Masquer le hash
+    if (urlObj.hash) {
+      urlObj.hash = "#[HASH_MASQUÉ]";
+    }
+    
+    return urlObj.toString();
+  } catch (e) {
+    // En cas d'erreur de parsing, masquer complètement l'URL
+    return "[URL_MASQUÉE]";
+  }
 }
