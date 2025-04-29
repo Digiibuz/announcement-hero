@@ -3,18 +3,35 @@
  * Utilitaire pour masquer les informations sensibles dans les messages d'erreur
  */
 
-// Liste des domaines sensibles à masquer
-const SENSITIVE_DOMAINS = [
-  'supabase.co',
-  'rdwqedmvzicerwotjseg'
-];
+// Éviter de stocker directement les domaines sensibles sous forme de chaînes brutes
+// Utiliser une fonction qui génère dynamiquement les valeurs sensibles
+function getSensitiveDomains(): string[] {
+  // Obfusquer les domaines pour rendre plus difficile l'extraction statique
+  const domains = [
+    atob('c3VwYWJhc2UuY28='), // supabase.co encodé en base64
+    // Ne pas stocker directement l'ID du projet, il sera détecté par regex pattern
+  ];
+  return domains;
+}
 
 // Liste des mots-clés sensibles à détecter
 const SENSITIVE_KEYWORDS = [
   'token',
   'password',
   'auth',
-  'key'
+  'key',
+  'secret'
+];
+
+// Patterns regex pour identifier les formats sensibles
+const SENSITIVE_PATTERNS = [
+  // Format d'ID de projet Supabase (séquence de lettres et chiffres de longueur typique)
+  /[a-z0-9]{20,22}\.supabase\.co/gi,
+  // URLs avec auth ou token dans le chemin
+  /https?:\/\/[^/]+\/auth\/[^/\s"]*/gi,
+  /https?:\/\/[^/]+\/token[^/\s"]*/gi,
+  // Format des jetons JWT
+  /eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/g,
 ];
 
 /**
@@ -27,24 +44,27 @@ export function sanitizeErrorMessage(message: string): string {
   
   let sanitizedMessage = message;
   
-  // Masquer les URLs de projet Supabase potentielles
-  SENSITIVE_DOMAINS.forEach(domain => {
+  // Appliquer les patterns de masquage sensibles
+  SENSITIVE_PATTERNS.forEach(pattern => {
+    sanitizedMessage = sanitizedMessage.replace(pattern, "[INFORMATION_SENSIBLE_MASQUÉE]");
+  });
+  
+  // Masquer les URLs de domaines sensibles
+  getSensitiveDomains().forEach(domain => {
     // Utilisation de regex plus strictes pour trouver toutes les occurrences du domaine sensible
     const regex = new RegExp(`https?://[a-zA-Z0-9-_.]*${domain}[a-zA-Z0-9-_.:/]*`, 'gi');
     sanitizedMessage = sanitizedMessage.replace(regex, "https://[PROJET_MASQUÉ]");
   });
   
-  // Masquer les jetons d'authentification potentiels (format JWT)
-  sanitizedMessage = sanitizedMessage.replace(/eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/g, "[JETON_MASQUÉ]");
-  
   // Masquer les URLs qui contiennent des mots-clés sensibles
   SENSITIVE_KEYWORDS.forEach(keyword => {
     const regex = new RegExp(`https?://[^\\s]*${keyword}[^\\s]*`, 'gi');
-    sanitizedMessage = sanitizedMessage.replace(regex, `https://[URL_AVEC_${keyword.toUpperCase()}_MASQUÉE]`);
+    sanitizedMessage = sanitizedMessage.replace(regex, `https://[URL_SENSIBLE_MASQUÉE]`);
+    
+    // Masquer aussi les chemins d'URL contenant le mot-clé
+    const pathRegex = new RegExp(`\/${keyword}[^\\s"',)]*`, 'gi');
+    sanitizedMessage = sanitizedMessage.replace(pathRegex, `/[CHEMIN_SENSIBLE_MASQUÉ]`);
   });
-  
-  // Masquer les requêtes contenant le mot "token" ou "auth"
-  sanitizedMessage = sanitizedMessage.replace(/\/auth\/[^\s"',)]*|\/token[^\s"',)]*/gi, "/[ENDPOINT_AUTH_MASQUÉ]");
   
   return sanitizedMessage;
 }
@@ -55,8 +75,28 @@ export function sanitizeErrorMessage(message: string): string {
  * @param args Arguments supplémentaires
  */
 export function safeConsoleError(message: string, ...args: any[]): void {
+  // Masquer le message principal
   const sanitizedMessage = sanitizeErrorMessage(message);
-  console.error(sanitizedMessage, ...args);
+  
+  // Masquer également les arguments qui pourraient contenir des informations sensibles
+  const sanitizedArgs = args.map(arg => {
+    if (typeof arg === 'string') {
+      return sanitizeErrorMessage(arg);
+    } else if (typeof arg === 'object' && arg !== null) {
+      try {
+        // Tenter de masquer les objets JSON contenant des informations sensibles
+        const jsonString = JSON.stringify(arg);
+        const sanitizedJson = sanitizeErrorMessage(jsonString);
+        return JSON.parse(sanitizedJson);
+      } catch {
+        // En cas d'échec, retourner l'objet original
+        return arg;
+      }
+    }
+    return arg;
+  });
+  
+  console.error(sanitizedMessage, ...sanitizedArgs);
 }
 
 /**

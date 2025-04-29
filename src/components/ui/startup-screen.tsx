@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { LoadingIndicator } from './loading-indicator';
 import { useSupabaseConfig } from '@/context/SupabaseConfigContext';
 import { cn } from '@/lib/utils';
+import { sanitizeErrorMessage } from '@/utils/security';
 
 interface StartupScreenProps {
   className?: string;
@@ -31,19 +32,6 @@ export const StartupScreen: React.FC<StartupScreenProps> = ({ className }) => {
   }
   
   const toggleDebug = () => setShowDebug(prev => !prev);
-
-  // Fonction pour masquer les informations sensibles dans les messages d'erreur
-  const sanitizeErrorMessage = (message: string) => {
-    if (!message) return "Erreur inconnue";
-    
-    // Masquer les URLs de projet Supabase potentielles
-    message = message.replace(/https:\/\/[a-z0-9]+\.supabase\.co/gi, "https://[PROJET].supabase.co");
-    
-    // Masquer les jetons potentiels
-    message = message.replace(/eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/g, "[JETON_MASQUÉ]");
-    
-    return message;
-  };
   
   return (
     <div className={cn(

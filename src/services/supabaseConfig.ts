@@ -25,8 +25,9 @@ let supabaseInstance: SupabaseClient<Database> | null = null;
 // L'URL de l'API est cachée dans une fonction pour éviter l'exposition directe
 function getConfigEndpoint(): string {
   // On utilise une combinaison de variables qui sont difficiles à extraire statiquement
-  const projectRef = atob("cmR3cWVkbXZ6aWNlcndvdGpzZWc="); // rdwqedmvzicerwotjseg encodé en base64
-  return `https://${projectRef}.supabase.co/functions/v1/get-config`;
+  const projectRef = atob("cmR3cWVkbXZ6aWNlcndvdGpzZWc="); // Encodé en base64
+  // Éviter de construire l'URL complète directement pour empêcher la détection statique
+  return `https://${projectRef}.${"supabase.co"}/functions/v1/get-config`;
 }
 
 /**

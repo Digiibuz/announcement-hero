@@ -1,83 +1,55 @@
 
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import * as jose from 'https://esm.sh/jose@5.2.3';
+// Ce fichier ne sera pas dans le bundle frontend final
 
-// Définition des headers CORS pour permettre l'accès depuis n'importe quelle origine
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Content-Type': 'application/json'
 };
 
-// Fonction principale qui sera servie
 serve(async (req) => {
+  // Log de réception pour débogage
   console.log("Réception d'une requête get-config:", req.url);
+
+  // Vérifier les variables d'environnement
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
   
-  // Gestion des requêtes OPTIONS pour CORS
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders, status: 204 });
-  }
+  // Journaliser la disponibilité des variables sans exposer leur contenu
+  console.log("Variables d'environnement récupérées:", { 
+    urlExiste: !!supabaseUrl, 
+    keyExiste: !!supabaseAnonKey,
+    urlLongueur: supabaseUrl.length,
+    keyLongueur: supabaseAnonKey.length
+  });
+  
+  // Générer un jeton d'initialisation unique pour cette session
+  const initToken = crypto.randomUUID();
+  
+  // Ajouter un timestamp pour empêcher la mise en cache de la réponse
+  const timestamp = Date.now();
 
-  try {
-    // Récupération des variables d'environnement depuis les Secrets Supabase
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
-
-    // Log pour le débogage (sans exposer les valeurs complètes)
-    console.log("Variables d'environnement récupérées:", {
-      urlExiste: !!supabaseUrl,
-      keyExiste: !!supabaseAnonKey,
-      urlLongueur: supabaseUrl?.length,
-      keyLongueur: supabaseAnonKey?.length
-    });
-
-    // Vérification que les valeurs existent
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('Erreur de configuration: SUPABASE_URL ou SUPABASE_ANON_KEY non définis');
-      return new Response(
-        JSON.stringify({ 
-          error: 'Configuration incomplète sur le serveur' 
-        }),
-        { 
-          headers: corsHeaders,
-          status: 500 
-        }
-      );
+  // Préparer la réponse
+  const responseData = {
+    supabaseUrl,
+    supabaseAnonKey,
+    initToken,
+    timestamp
+  };
+  
+  console.log("Envoi de la configuration sécurisée");
+  
+  return new Response(
+    JSON.stringify(responseData),
+    {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
     }
-
-    // Ajouter un jeton d'initialisation pour plus de sécurité
-    const initToken = crypto.randomUUID();
-    
-    // Retour des valeurs de configuration avec le jeton d'initialisation
-    const responseData = {
-      supabaseUrl,
-      supabaseAnonKey,
-      initToken,
-      timestamp: Date.now()
-    };
-    
-    console.log("Envoi de la configuration sécurisée");
-    
-    return new Response(
-      JSON.stringify(responseData),
-      { 
-        headers: corsHeaders,
-        status: 200
-      }
-    );
-  } catch (error) {
-    // Gestion des erreurs avec plus de détails
-    console.error('Erreur lors de la récupération de la configuration:', error);
-    return new Response(
-      JSON.stringify({ 
-        error: 'Erreur serveur lors de la récupération de la configuration',
-        details: error.message || 'Pas de détails disponibles'
-      }),
-      { 
-        headers: corsHeaders,
-        status: 500 
-      }
-    );
-  }
+  );
 });
