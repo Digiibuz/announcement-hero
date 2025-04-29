@@ -8,37 +8,89 @@ import { sanitizeErrorMessage } from '../urlSanitizer';
  * Configure les écouteurs d'événements pour les erreurs globales
  */
 export function setupGlobalErrorHandlers(): void {
-  // Intercepter les erreurs globales
+  // Sauvegardes des fonctions console originales pour les restaurer si nécessaire
+  const originalConsoleError = console.error;
+  const originalConsoleWarn = console.warn;
+  const originalConsoleLog = console.log;
+  
+  // Remplacer console.error pour bloquer les erreurs d'authentification
+  console.error = function(...args) {
+    // Détecter si les arguments contiennent des mots liés à l'authentification
+    const containsAuthPattern = args.some(arg => {
+      if (arg === undefined || arg === null) return false;
+      const str = String(arg);
+      return str.includes('auth') || 
+             str.includes('token') || 
+             str.includes('supabase.co') || 
+             str.includes('400') || 
+             str.includes('401') ||
+             str.includes('Bad Request') ||
+             str.includes('POST') && str.includes('grant_type=password') ||
+             str.includes('Invalid login credentials') ||
+             str.includes('token?grant_type=password');
+    });
+    
+    // Si c'est lié à l'authentification, ne rien afficher
+    if (containsAuthPattern) {
+      return; // Supprime complètement le message d'erreur
+    }
+    
+    // Pour les autres types d'erreurs, utiliser la fonction originale
+    originalConsoleError.apply(console, args);
+  };
+  
+  // Même logique pour console.warn
+  console.warn = function(...args) {
+    const containsAuthPattern = args.some(arg => {
+      if (arg === undefined || arg === null) return false;
+      const str = String(arg);
+      return str.includes('auth') || 
+             str.includes('token') || 
+             str.includes('supabase.co') || 
+             str.includes('400') || 
+             str.includes('401');
+    });
+    
+    if (containsAuthPattern) {
+      return;
+    }
+    
+    originalConsoleWarn.apply(console, args);
+  };
+  
+  // Même logique pour console.log
+  console.log = function(...args) {
+    const containsAuthPattern = args.some(arg => {
+      if (arg === undefined || arg === null) return false;
+      const str = String(arg);
+      return str.includes('auth/v1/token') || 
+             str.includes('token?grant_type=password') || 
+             str.includes('rdwqedmvzicerwotjseg.supabase.co') && str.includes('auth');
+    });
+    
+    if (containsAuthPattern) {
+      return;
+    }
+    
+    originalConsoleLog.apply(console, args);
+  };
+
+  // Intercepter les erreurs globales avec capture très haut niveau
   window.addEventListener('error', (event) => {
-    // Bloquer complètement les erreurs HTTP 400/401
+    // Bloquer complètement les erreurs HTTP 400/401 ou liées à l'authentification
     if (event.message?.includes('400') || 
         event.message?.includes('401') || 
         event.message?.includes('Bad Request') || 
         event.message?.includes('Unauthorized') ||
-        event.message?.includes('POST') && event.message?.includes('supabase')) {
+        event.message?.includes('POST') && (
+          event.message?.includes('supabase') || 
+          event.message?.includes('token') || 
+          event.message?.includes('auth/v1')
+        ) ||
+        event.message?.includes('rdwqedmvzicerwotjseg') ||
+        event.error?.stack?.includes('token?grant_type=password')) {
       event.preventDefault();
-      return true;
-    }
-    
-    // Déterminer si c'est une erreur liée à l'authentification ou aux requêtes réseau
-    const errorMessage = event.message || '';
-    const errorStack = event.error?.stack || '';
-    const isAuthOrNetworkError = 
-      errorMessage.includes('auth') || 
-      errorMessage.includes('token') || 
-      errorMessage.includes('401') || 
-      errorMessage.includes('400') ||
-      errorMessage.includes('supabase') ||
-      errorStack.includes('auth') ||
-      errorStack.includes('token') ||
-      errorStack.includes('login') ||
-      errorMessage.includes('fetch') ||
-      errorMessage.includes('http') ||
-      errorMessage.includes('request');
-    
-    if (isAuthOrNetworkError) {
-      // Stopper la propagation de l'erreur originale pour les erreurs d'authentification
-      event.preventDefault();
+      event.stopPropagation();
       return true;
     }
     
@@ -51,49 +103,39 @@ export function setupGlobalErrorHandlers(): void {
     if (securedErrorStack) {
       console.error("Stack sécurisée:", securedErrorStack);
     }
-  });
+  }, true); // Utiliser la phase de capture pour intercepter les erreurs avant qu'elles n'atteignent d'autres gestionnaires
 
-  // Intercepter les rejets de promesses non gérés
+  // Intercepter les rejets de promesses non gérés - également en phase de capture
   window.addEventListener('unhandledrejection', (event) => {
-    // Bloquer complètement les erreurs HTTP 400/401
+    // Bloquer complètement les erreurs HTTP 400/401 ou liées à l'authentification
     if (typeof event.reason?.message === 'string' && 
         (event.reason.message.includes('400') || 
         event.reason.message.includes('401') || 
         event.reason.message.includes('Bad Request') || 
         event.reason.message.includes('Unauthorized') ||
-        event.reason.message.includes('POST') && event.reason.message.includes('supabase'))) {
+        event.reason.message.includes('POST') && 
+          (event.reason.message.includes('supabase') ||
+           event.reason.message.includes('token') ||
+           event.reason.message.includes('auth/v1')) ||
+        event.reason.message.includes('rdwqedmvzicerwotjseg') ||
+        event.reason?.stack?.includes('token?grant_type=password'))) {
       event.preventDefault();
-      return true;
-    }
-    
-    // Déterminer si c'est un rejet lié à l'authentification
-    const reason = event.reason;
-    const reasonMessage = reason?.message || '';
-    const reasonStack = reason?.stack || '';
-    const isAuthRelated = 
-      reasonMessage.includes('auth') || 
-      reasonMessage.includes('token') || 
-      reasonMessage.includes('401') || 
-      reasonMessage.includes('400') ||
-      reasonMessage.includes('supabase') ||
-      reasonStack.includes('auth') ||
-      reasonStack.includes('token') ||
-      reasonStack.includes('login');
-    
-    if (isAuthRelated) {
-      // Stopper la propagation du rejet original pour l'authentification
-      event.preventDefault();
+      event.stopPropagation();
       return true;
     }
     
     // Pour les autres rejets, logger une version sécurisée sans bloquer
+    const reason = event.reason;
+    const reasonMessage = reason?.message || '';
+    const reasonStack = reason?.stack || '';
+    
+    // Pour les autres rejets, logger une version sécurisée
     const securedReason = typeof reason === 'string' 
       ? sanitizeErrorMessage(reason) 
       : reason instanceof Error 
         ? new Error(sanitizeErrorMessage(reason.message))
         : "Rejet de promesse non géré (détails masqués)";
     
-    // Loguer le rejet sécurisé
     console.error("Rejet de promesse non géré (sécurisé):", securedReason);
-  });
+  }, true); // Utiliser la phase de capture
 }

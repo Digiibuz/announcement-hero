@@ -40,15 +40,12 @@ serve(async (req) => {
     // Validate request data
     if (!email || !password) {
       return new Response(
-        JSON.stringify({ error: 'INVALID_REQUEST' }),
+        JSON.stringify({ error: 'INVALID_REQUEST', code: 'INVALID_REQUEST' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Pas de logging en production - supprimer ou commenter cette ligne
-    // if (Deno.env.get("ENVIRONMENT") === "development") {
-    //   console.debug(`Login attempt received (email obfuscated)`);
-    // }
+    // Suppression complète de tous les logs
 
     // Attempt to sign in using Supabase admin client
     const { data, error } = await supabaseAdmin.auth.signInWithPassword({
@@ -58,14 +55,11 @@ serve(async (req) => {
 
     // Handle authentication errors without exposing sensitive details
     if (error) {
-      // Pas de logging - même en développement
-      // if (Deno.env.get("ENVIRONMENT") === "development") {
-      //   console.debug(`Auth error status: secure`);
-      // }
+      // Suppression complète des logs même en cas d'erreur
       
-      // Return standardized error response
+      // Return standardized error response with specific code for frontend handling
       return new Response(
-        JSON.stringify({ error: 'INVALID_CREDENTIALS' }),
+        JSON.stringify({ error: 'INVALID_CREDENTIALS', code: 'INVALID_CREDENTIALS' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -80,10 +74,10 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
-    // Pas de logging - même en cas d'erreur
+    // Suppression complète des logs même en cas d'erreur
     
     return new Response(
-      JSON.stringify({ error: 'SERVER_ERROR' }),
+      JSON.stringify({ error: 'SERVER_ERROR', code: 'SERVER_ERROR' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
