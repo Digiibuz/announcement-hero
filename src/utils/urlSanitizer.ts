@@ -22,6 +22,7 @@ export function maskAllUrls(text: string): string {
   text = text.replace(/POST https?:\/\/[^\s]*supabase[^\s]*/gi, "POST [URL_MASQUÉE]");
   text = text.replace(/POST https?:\/\/[^\s]*auth\/v1\/token[^\s]*/gi, "POST [URL_MASQUÉE]");
   text = text.replace(/POST https?:\/\/[^\s]*token\?grant[^\s]*/gi, "POST [URL_MASQUÉE]");
+  text = text.replace(/POST https?:\/\/[^\s]*grant_type=password[^\s]*/gi, "POST [URL_MASQUÉE]");
   
   // Pour chaque protocole, masquer toutes les URLs
   PROTOCOLS.forEach(protocol => {
@@ -68,6 +69,14 @@ export function sanitizeErrorMessage(message: string): string {
       } catch (e) {
         return "Objet d'erreur complexe (détails masqués)";
       }
+    }
+    
+    // Masquer complètement les messages d'erreur d'authentification
+    if (sanitizedMessage.includes("token?grant_type=password") || 
+        sanitizedMessage.includes("/auth/v1/token") || 
+        sanitizedMessage.includes("401") || 
+        sanitizedMessage.includes("400")) {
+      return "[ERREUR_AUTHENTIFICATION]";
     }
     
     // Appliquer maskAllUrls pour un premier niveau de protection
@@ -119,16 +128,20 @@ export function sanitizeErrorMessage(message: string): string {
     // Masquer spécifiquement les erreurs de connexion avec credentials
     sanitizedMessage = sanitizedMessage.replace(/invalid[_\s]credentials/gi, "[ERREUR_AUTHENTIFICATION]");
     
-    // Masquer l'erreur d'authentification en français
+    // Masquer les erreurs d'authentification en français
     sanitizedMessage = sanitizedMessage.replace(/Erreur d['']authentification/gi, "[ERREUR_AUTHENTIFICATION]");
     sanitizedMessage = sanitizedMessage.replace(/Erreur d'authentification sécurisée/gi, "[ERREUR_AUTHENTIFICATION]");
+    sanitizedMessage = sanitizedMessage.replace(/\[ERREUR_AUTHENTIFICATION\]/gi, "[ERREUR_AUTHENTIFICATION]");
     
-    // Masquer les messages d'authentification français spécifiques (comme vus dans la capture d'écran)
-    sanitizedMessage = sanitizedMessage.replace(/Erreur d'authentification sécurisée:/gi, "[ERREUR_AUTHENTIFICATION]");
-    
-    // Masquer les codes d'état et les réponses
+    // Masquer les codes d'état HTTP et les réponses
     sanitizedMessage = sanitizedMessage.replace(/\d{3} \(Bad Request\)/gi, "[CODE_ÉTAT]");
     sanitizedMessage = sanitizedMessage.replace(/\d{3} \(Unauthorized\)/gi, "[CODE_ÉTAT]");
+    
+    // Masquer les messages d'erreur spécifiques en français
+    sanitizedMessage = sanitizedMessage.replace(/identifiants invalides/gi, "[ERREUR_AUTHENTIFICATION]");
+    
+    // Masquer tout ce qui pourrait ressembler à un nom de domaine
+    sanitizedMessage = sanitizedMessage.replace(/index-[a-zA-Z0-9]+/gi, "[INDEX_MASQUÉ]");
     
   } catch (e) {
     // En cas d'erreur dans le masquage, retourner un message générique

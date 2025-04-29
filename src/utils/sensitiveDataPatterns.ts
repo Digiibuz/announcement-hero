@@ -101,12 +101,25 @@ export const SENSITIVE_PATTERNS = [
   /POST\s+https?:\/\/[^\s]*\/auth\/v1\/token[^\s]*/gi,
   // Masquer les URLs avec token?grant
   /https?:\/\/[^\s]*token\?grant[^\s]*/gi,
+  // Masquer l'ID du projet dans token?grant
+  /\?grant_type=password/gi,
   // Masquer spécifiquement les requêtes POST sensibles
   /POST\s+https?:\/\/[^\s]*/gi,
   // Masquer l'URL complète du projet avec l'ID
   /https?:\/\/rdwqedmvzicerwotjseg\.supabase\.co[^\s]*/gi,
   // Masquer les Edge Functions URLs
   /https?:\/\/rdwqedmvzicerwotjseg\.supabase\.co\/functions\/v1\/[^\s]*/gi,
+  // Masquer les messages d'erreur d'authentification
+  /\[ERREUR_AUTHENTIFICATION\]/gi,
+  /authentification/gi,
+  /\[ERREUR_AUTHENTIFICATION\]:/gi,
+  // Masquer les erreurs 400 et 401
+  /400\s+\(Bad Request\)/gi,
+  /401\s+\(Unauthorized\)/gi,
+  // Masquer les messages d'erreur spécifiques en français
+  /Erreur d'authentification/gi,
+  /Erreur lors de la connexion/gi,
+  /Échec de la connexion/gi,
 ];
 
 // Fonction pour sécuriser l'affichage de toute erreur d'authentification 

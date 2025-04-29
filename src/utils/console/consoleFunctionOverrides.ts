@@ -20,6 +20,20 @@ export function overrideConsoleMethods(): void {
     // Masquer les informations sensibles dans tous les arguments
     const sanitizedArgs = sanitizeAllArgs(args);
     
+    // Masquer spécifiquement les messages liés à l'authentification
+    if (sanitizedArgs.some(arg => 
+      typeof arg === 'string' && (
+        arg.includes('auth') || 
+        arg.includes('token') || 
+        arg.includes('401') ||
+        arg.includes('400')
+      )
+    )) {
+      // Remplacer par un message générique pour l'authentification
+      originalConsoleError.apply(console, ["[ERREUR_AUTHENTIFICATION]"]);
+      return;
+    }
+    
     // Appel à la fonction console.error originale avec les arguments masqués
     originalConsoleError.apply(console, sanitizedArgs);
   };

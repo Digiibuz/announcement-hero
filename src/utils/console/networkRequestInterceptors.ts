@@ -43,7 +43,8 @@ export function setupNetworkInterceptors(): void {
         inputUrl.includes('supabase.co') || 
         inputUrl.includes('functions/v1') ||
         inputUrl.includes('get-config') ||
-        inputUrl.includes('auth/v1')
+        inputUrl.includes('auth/v1') ||
+        inputUrl.includes('token')
       );
       
       if (isSensitiveRequest && init) {
@@ -73,32 +74,49 @@ export function setupNetworkInterceptors(): void {
     // Masquer les URLs dans tous les arguments d'erreur
     const sanitizedArgs = args.map(arg => {
       if (typeof arg === 'string') {
+        // Masquer toutes les URLs d'authentification ou avec token
+        if (arg.includes("token") || arg.includes("auth") || 
+            arg.includes("POST") || arg.includes("http")) {
+          return "[ERREUR_AUTHENTIFICATION]";
+        }
+
         // Masquer les requêtes POST spécifiques qui semblent ne pas être interceptées
         if (arg.includes('POST') && arg.includes('http')) {
           arg = arg.replace(/POST\s+https?:\/\/[^\s]*/gi, "POST [URL_MASQUÉE]");
         }
 
         // Masquer toutes les URLs dans la chaîne (particulièrement celles liées à l'authentification)
-        arg = arg.replace(/https:\/\/[^\s]*/gi, "[URL_MASQUÉE]");
+        arg = arg.replace(/https?:\/\/[^\s]*/gi, "[URL_MASQUÉE]");
         
         // Masquer les requêtes HTTP qui pourraient être loggées
         arg = arg.replace(/\b(GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD)\s+https?:\/\/[^\s"']+/gi, '$1 [URL_MASQUÉE]');
         
         // Masquer les erreurs d'authentification en français
-        if (arg.includes("Erreur d'authentification") || arg.includes("Missing authorization header")) {
+        if (arg.includes("Erreur d'authentification") || arg.includes("Missing authorization header") ||
+            arg.includes("authentification") || arg.includes("ERREUR_AUTHENTIFICATION")) {
           arg = "[ERREUR_AUTHENTIFICATION]";
         }
         
         // Masquer spécifiquement l'erreur 401 - Missing authorization header
-        if (arg.includes("401") && arg.includes("Missing authorization")) {
+        if ((arg.includes("401") && arg.includes("Missing authorization")) || 
+            arg.includes("400") || arg.includes("Bad Request")) {
           arg = "[ERREUR_AUTHENTIFICATION_401]";
         }
 
         // Double vérification pour les JSON Web Tokens
         arg = arg.replace(/eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/g, "[JWT_MASQUÉ]");
         
+        // Masquer les indices dans la console
+        arg = arg.replace(/index-[a-zA-Z0-9]+/gi, "[INDEX_MASQUÉ]");
+        
         // Masquer les URLs intégrées dans le texte
         arg = sanitizeErrorMessage(arg);
+      } else if (arg instanceof Error) {
+        // Créer une nouvelle erreur avec un message sanitisé
+        const newError = new Error("[ERREUR_MASQUÉE]");
+        newError.name = "SecurityError";
+        newError.stack = "Stack trace masquée pour des raisons de sécurité";
+        return newError;
       }
       return arg;
     });
@@ -129,25 +147,32 @@ export function setupNetworkInterceptors(): void {
 
   // Injecter un gestionnaire global pour masquer les erreurs non gérées
   window.addEventListener('error', function(event) {
-    if (event.message && (event.message.includes('http') || event.message.includes('auth'))) {
+    if (event.message && (
+      event.message.includes('http') || 
+      event.message.includes('auth') || 
+      event.message.includes('token') || 
+      event.message.includes('401') || 
+      event.message.includes('400'))) {
       // Empêcher l'affichage de l'erreur originale si elle contient une URL ou auth
       event.preventDefault();
       
       // Afficher une version sécurisée de l'erreur
-      console.error('Erreur réseau sécurisée (détails masqués)');
+      console.error('[ERREUR_RÉSEAU_SÉCURISÉE]');
       return true;
     }
   }, true);
 
   // Masquer les erreurs dans les requêtes réseau non gérées
   window.addEventListener('unhandledrejection', function(event) {
-    if (event.reason && (typeof event.reason.message === 'string' && 
-        (event.reason.message.includes('http') || event.reason.message.includes('auth')))) {
+    if (event.reason && (typeof event.reason.message === 'string' && (
+        event.reason.message.includes('http') || 
+        event.reason.message.includes('auth') || 
+        event.reason.message.includes('token')))) {
       // Empêcher l'affichage de l'erreur originale si elle contient une URL
       event.preventDefault();
       
       // Afficher une version sécurisée de l'erreur
-      console.error('Promesse rejetée (URL masquée):', sanitizeErrorMessage(String(event.reason)));
+      console.error('[PROMESSE_REJETÉE_SÉCURISÉE]');
       return true;
     }
   });

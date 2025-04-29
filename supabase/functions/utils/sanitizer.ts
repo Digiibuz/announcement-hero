@@ -25,6 +25,7 @@ const SENSITIVE_KEYWORDS = [
   "login",
   "grant",
   "credentials",
+  "grant_type",
 ];
 
 // Motifs de regex pour identifier les formats sensibles
@@ -53,6 +54,9 @@ const SENSITIVE_PATTERNS = [
   /(GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD)\s+https?:\/\/[^\s]+/gi,
   // Masquer les requêtes d'auth
   /POST\s+https?:\/\/[^\s]*\/auth\/v1\/token[^\s]*/gi,
+  // Masquer les URLs avec grant_type=password
+  /\?grant_type=password/gi,
+  /grant_type=password/gi,
 ];
 
 /**
@@ -66,6 +70,14 @@ export function sanitizeErrorMessage(message: string): string {
   let sanitizedMessage = message;
   
   try {
+    // Traitement spécifique pour les messages d'authentification
+    if (sanitizedMessage.includes("auth") || 
+        sanitizedMessage.includes("token") || 
+        sanitizedMessage.includes("401") || 
+        sanitizedMessage.includes("grant_type=password")) {
+      return "[ERREUR_AUTHENTIFICATION]";
+    }
+    
     // Appliquer les patterns de masquage sensibles
     SENSITIVE_PATTERNS.forEach(pattern => {
       sanitizedMessage = sanitizedMessage.replace(pattern, "[INFORMATION_SENSIBLE_MASQUÉE]");
@@ -100,8 +112,11 @@ export function sanitizeErrorMessage(message: string): string {
     // Masquer les erreurs d'authentification
     sanitizedMessage = sanitizedMessage.replace(/invalid[_\s]credentials/gi, "[ERREUR_AUTHENTIFICATION]");
     sanitizedMessage = sanitizedMessage.replace(/Erreur d['']authentification/gi, "[ERREUR_AUTHENTIFICATION]");
+    
+    // Masquer les indices dans les erreurs
+    sanitizedMessage = sanitizedMessage.replace(/index-[a-zA-Z0-9]+/gi, "[INDEX_MASQUÉ]");
   } catch (e) {
-    return "Erreur inconnue (détails masqués pour sécurité)";
+    return "[ERREUR_INCONNUE]";
   }
   
   return sanitizedMessage;
