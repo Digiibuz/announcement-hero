@@ -8,7 +8,7 @@ project_id = "rdwqedmvzicerwotjseg"
 [db]
 # Configurations de la base de données
 
-# Configurations des Edge Functions
+# Configurations des Edge Functions - Original Functions
 [functions.login]
 verify_jwt = false
 import_map = "./import_map.json"
@@ -26,5 +26,18 @@ verify_jwt = false
 import_map = "./import_map.json"
 
 [functions.get-config]
+verify_jwt = false
+import_map = "./import_map.json"
+
+# New secure edge functions (proxy layer)
+[functions.secure-login]
+verify_jwt = false
+import_map = "./import_map.json"
+
+[functions.secure-db]
+verify_jwt = false # We handle authentication manually
+import_map = "./import_map.json"
+
+[functions.secure-refresh]
 verify_jwt = false
 import_map = "./import_map.json"
