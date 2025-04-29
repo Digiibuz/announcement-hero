@@ -1,4 +1,3 @@
-
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
@@ -10,6 +9,8 @@ import { Suspense, lazy, useEffect, useState } from 'react';
 import { LoadingIndicator } from "./components/ui/loading-indicator";
 import { toast } from "sonner";
 import Login from "./pages/Login";
+import { SupabaseConfigProvider } from "./context/SupabaseConfigContext";
+import { StartupScreen } from "./components/ui/startup-screen";
 
 // Optimized lazy loading with error boundaries and retry logic
 function lazyWithRetry(factory, fallback = null) {
@@ -337,106 +338,112 @@ function App() {
     <BrowserRouter>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <TooltipProvider>
-              <OfflineBanner />
-              <NetworkListener />
-              <Suspense fallback={<LoadingFallback />}>
-                <Routes>
-                  {/* Redirect root to dashboard if logged in, otherwise to login */}
-                  <Route path="/" element={
-                    <Navigate to="/dashboard" replace />
-                  } />
-                  
-                  {/* Public routes - accessibles sans authentification */}
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/forgot-password" element={<ForgotPassword />} />
-                  <Route path="/reset-password" element={<ResetPassword />} />
-                  
-                  {/* Protected routes */}
-                  <Route 
-                    path="/dashboard" 
-                    element={
-                      <ProtectedRoute>
-                        <Dashboard />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/announcements" 
-                    element={
-                      <ProtectedRoute>
-                        <Announcements />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/announcements/:id" 
-                    element={
-                      <ProtectedRoute>
-                        <AnnouncementDetail />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/create" 
-                    element={
-                      <ProtectedRoute>
-                        <CreateAnnouncement />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/profile" 
-                    element={
-                      <ProtectedRoute>
-                        <UserProfile />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/support" 
-                    element={
-                      <ProtectedRoute>
-                        <Support />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/google-business" 
-                    element={
-                      <ProtectedRoute>
-                        <GoogleBusinessPage />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  
-                  {/* Admin/Client only routes */}
-                  <Route 
-                    path="/users" 
-                    element={
-                      <AdminRoute>
-                        <UserManagement />
-                      </AdminRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/wordpress" 
-                    element={
-                      <AdminRoute>
-                        <WordPressManagement />
-                      </AdminRoute>
-                    } 
-                  />
-                  
-                  {/* Fallback route */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                <SonnerToaster />
-                <UIToaster />
-              </Suspense>
-            </TooltipProvider>
-          </AuthProvider>
+          {/* Ajout du SupabaseConfigProvider avant AuthProvider */}
+          <SupabaseConfigProvider>
+            {/* Écran de démarrage pour la configuration initiale */}
+            <StartupScreen />
+            
+            <AuthProvider>
+              <TooltipProvider>
+                <OfflineBanner />
+                <NetworkListener />
+                <Suspense fallback={<LoadingFallback />}>
+                  <Routes>
+                    {/* Redirect root to dashboard if logged in, otherwise to login */}
+                    <Route path="/" element={
+                      <Navigate to="/dashboard" replace />
+                    } />
+                    
+                    {/* Public routes - accessibles sans authentification */}
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
+                    
+                    {/* Protected routes */}
+                    <Route 
+                      path="/dashboard" 
+                      element={
+                        <ProtectedRoute>
+                          <Dashboard />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/announcements" 
+                      element={
+                        <ProtectedRoute>
+                          <Announcements />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/announcements/:id" 
+                      element={
+                        <ProtectedRoute>
+                          <AnnouncementDetail />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/create" 
+                      element={
+                        <ProtectedRoute>
+                          <CreateAnnouncement />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/profile" 
+                      element={
+                        <ProtectedRoute>
+                          <UserProfile />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/support" 
+                      element={
+                        <ProtectedRoute>
+                          <Support />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/google-business" 
+                      element={
+                        <ProtectedRoute>
+                          <GoogleBusinessPage />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    
+                    {/* Admin/Client only routes */}
+                    <Route 
+                      path="/users" 
+                      element={
+                        <AdminRoute>
+                          <UserManagement />
+                        </AdminRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/wordpress" 
+                      element={
+                        <AdminRoute>
+                          <WordPressManagement />
+                        </AdminRoute>
+                      } 
+                    />
+                    
+                    {/* Fallback route */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                  <SonnerToaster />
+                  <UIToaster />
+                </Suspense>
+              </TooltipProvider>
+            </AuthProvider>
+          </SupabaseConfigProvider>
         </QueryClientProvider>
       </ThemeProvider>
     </BrowserRouter>

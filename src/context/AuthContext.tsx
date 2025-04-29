@@ -1,196 +1,233 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
+import { User, Session } from "@supabase/supabase-js";
+import { useLocation } from "react-router-dom";
+import { useSupabaseConfig } from "./SupabaseConfigContext";
+import { setSupabaseClient } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useUserProfile, createProfileFromMetadata } from "@/hooks/useUserProfile";
-import { useImpersonation } from "@/hooks/useImpersonation";
-import { UserProfile, AuthContextType } from "@/types/auth";
+import { useNavigate } from 'react-router-dom';
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// Définition des types pour le contexte
+interface AuthContextType {
+  user: User | null;
+  session: Session | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  isAdmin: boolean;
+  isClient: boolean;
+  isOnResetPasswordPage: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
+}
 
+// Définition des types pour les rôles
+type Role = 'admin' | 'client' | 'user';
+
+// Fonction utilitaire pour déterminer si un utilisateur a un rôle spécifique
+const hasRole = (user: User | null, role: Role): boolean => {
+  if (!user) return false;
+  return user.app_metadata?.roles?.includes(role) ?? false;
+};
+
+// Création du contexte avec des valeurs par défaut
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  session: null,
+  isLoading: false,
+  isAuthenticated: false,
+  isAdmin: false,
+  isClient: false,
+  isOnResetPasswordPage: false,
+  login: async () => {},
+  logout: async () => {},
+  resetPassword: async () => {},
+  updatePassword: async () => {},
+});
+
+// Provider qui encapsule la logique d'authentification
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isLoading, setIsLoading] = useState(true);
-  const { userProfile, setUserProfile, fetchFullProfile } = useUserProfile();
-  const { originalUser, isImpersonating, impersonateUser: startImpersonation, stopImpersonating: endImpersonation } = useImpersonation(userProfile);
-  // État pour suivre si nous sommes sur une page de réinitialisation de mot de passe
-  const [isOnResetPasswordPage, setIsOnResetPasswordPage] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [isOnResetPasswordPage, setIsOnResetPasswordPage] = useState(location.pathname.includes('reset-password'));
 
-  // Vérifier si nous sommes sur la page de réinitialisation de mot de passe
+  // Accès au client Supabase via le contexte de configuration
+  const { client: supabase, isLoading: isConfigLoading, error: configError } = useSupabaseConfig();
+
+  // Mise à jour du singleton Supabase quand le client est prêt
   useEffect(() => {
-    // Vérifier si nous sommes sur la page de réinitialisation ET si nous avons des tokens dans l'URL
-    const isResetPasswordPage = window.location.pathname === '/reset-password';
-    const hasRecoveryToken = window.location.hash.includes('type=recovery');
-    
-    setIsOnResetPasswordPage(isResetPasswordPage && (hasRecoveryToken || isResetPasswordPage));
-    console.log("Is on reset password page:", isResetPasswordPage, "Has recovery token:", hasRecoveryToken);
-  }, [window.location.pathname, window.location.hash]);
+    if (supabase) {
+      setSupabaseClient(supabase);
+    }
+  }, [supabase]);
 
-  // Initialize auth state and set up listeners with improved persistence
+  // Détermine si l'utilisateur est un administrateur
+  const isAdmin = React.useMemo(() => hasRole(user, 'admin'), [user]);
+
+  // Détermine si l'utilisateur est un client
+  const isClient = React.useMemo(() => hasRole(user, 'client'), [user]);
+
+  // Chargement de l'utilisateur actuel et de la session
   useEffect(() => {
-    console.log("Setting up auth state listener");
-    // Set up the auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("Auth state changed:", event);
-        setIsLoading(true);
-        
-        if (session?.user) {
-          // First set user from metadata for immediate UI feedback
-          const initialProfile = createProfileFromMetadata(session.user);
-          setUserProfile(initialProfile);
-          console.log("Initial profile from metadata:", initialProfile);
-          
-          // Then asynchronously fetch the complete profile
-          setTimeout(() => {
-            fetchFullProfile(session.user.id).then((success) => {
-              if (!success) {
-                console.warn("Failed to fetch complete profile, using metadata only");
-              }
-              setIsLoading(false);
-            });
-          }, 100);
-        } else {
-          setUserProfile(null);
-          setIsLoading(false);
-        }
-      }
-    );
+    // Ne pas tenter de charger l'utilisateur si le client Supabase n'est pas prêt
+    if (!supabase) {
+      return;
+    }
 
-    // Get initial session with improved caching
-    const initializeAuth = async () => {
-      // First check if we have a locally cached user role
-      const cachedUserRole = localStorage.getItem('userRole');
-      const cachedUserId = localStorage.getItem('userId');
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        console.log("Session found during initialization");
-        // First set user from metadata
-        const initialProfile = createProfileFromMetadata(session.user);
-        
-        // Apply cached role if available for immediate UI
-        if (cachedUserRole && cachedUserId === session.user.id) {
-          initialProfile.role = cachedUserRole as any;
-          console.log("Applied cached role:", cachedUserRole);
-        }
-        
-        setUserProfile(initialProfile);
-        
-        // Then get complete profile
-        setTimeout(() => {
-          fetchFullProfile(session.user.id).then((success) => {
-            if (success) {
-              console.log("Successfully fetched complete profile");
-            } else {
-              console.warn("Failed to fetch complete profile, using metadata only");
-            }
-            setIsLoading(false);
-          });
-        }, 100);
-      } else {
-        console.log("No session found during initialization");
-        setUserProfile(null);
-        setIsLoading(false);
-      }
-    };
+    setIsLoading(true);
 
-    initializeAuth();
+    // Définir le gestionnaire d'événements pour les changements d'état d'authentification
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN") {
+        console.log("Utilisateur connecté:", session?.user);
+        setUser(session?.user || null);
+        setSession(session || null);
+      } else if (event === "SIGNED_OUT") {
+        console.log("Utilisateur déconnecté");
+        setUser(null);
+        setSession(null);
+        navigate('/login');
+      } else if (event === "USER_UPDATED") {
+        console.log("Profil utilisateur mis à jour:", session?.user);
+        setUser(session?.user || null);
+        setSession(session || null);
+      } else if (event === "PASSWORD_RECOVERY") {
+        console.log("Récupération de mot de passe initiée");
+        setIsOnResetPasswordPage(true);
+      }
+    });
+
+    // Récupérer la session initiale
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user || null);
+      setSession(session || null);
+    }).finally(() => {
+      setIsLoading(false);
+    });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [supabase, location.pathname, navigate]); // Dépendance sur supabase pour réexécuter quand le client est prêt
 
-  // Cache the user role when it changes
-  useEffect(() => {
-    if (userProfile) {
-      localStorage.setItem('userRole', userProfile.role);
-      localStorage.setItem('userId', userProfile.id);
-      console.log("Cached user role:", userProfile.role);
-    } else {
-      localStorage.removeItem('userRole');
-      localStorage.removeItem('userId');
-    }
-  }, [userProfile?.role, userProfile?.id]);
-
+  // Fonction de connexion
   const login = async (email: string, password: string) => {
-    setIsLoading(true);
-    
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-      
-      if (error) {
-        throw error;
-      }
-      
-      // User will be set by the auth state change listener
-    } catch (error: any) {
-      setIsLoading(false);
-      throw new Error(error.message || "Login error");
+    if (!supabase) throw new Error("Client Supabase non initialisé");
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password,
+    });
+
+    if (error) {
+      console.error("Erreur de connexion:", error);
+      throw new Error(error.message);
     }
+
+    console.log("Connexion réussie:", data);
+    setUser(data.user);
+    setSession(data.session);
   };
 
+  // Fonction de déconnexion
   const logout = async () => {
-    try {
-      localStorage.removeItem('userRole');
-      localStorage.removeItem('userId');
-      sessionStorage.removeItem('lastAdminPath');
-      sessionStorage.removeItem('lastAuthenticatedPath');
-      
-      await supabase.auth.signOut();
-      setUserProfile(null);
-      localStorage.removeItem("originalUser");
-    } catch (error) {
-      console.error("Error during logout:", error);
+    if (!supabase) throw new Error("Client Supabase non initialisé");
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error("Erreur de déconnexion:", error);
+      throw new Error(error.message);
     }
+
+    console.log("Déconnexion réussie");
+    setUser(null);
+    setSession(null);
   };
 
-  // Impersonation wrappers
-  const impersonateUser = (userToImpersonate: UserProfile) => {
-    const impersonatedUser = startImpersonation(userToImpersonate);
-    if (impersonatedUser) {
-      setUserProfile(impersonatedUser);
-      localStorage.setItem('userRole', impersonatedUser.role);
-      localStorage.setItem('userId', impersonatedUser.id);
+  // Fonction de réinitialisation du mot de passe
+  const resetPassword = async (email: string) => {
+    if (!supabase) throw new Error("Client Supabase non initialisé");
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+    if (error) {
+      console.error("Erreur de réinitialisation du mot de passe:", error);
+      throw new Error(error.message);
     }
+
+    console.log("Demande de réinitialisation envoyée:", data);
+    toast.success("Un email de réinitialisation a été envoyé.");
   };
 
-  const stopImpersonating = () => {
-    const originalUserProfile = endImpersonation();
-    if (originalUserProfile) {
-      setUserProfile(originalUserProfile);
-      localStorage.setItem('userRole', originalUserProfile.role);
-      localStorage.setItem('userId', originalUserProfile.id);
+  // Fonction de mise à jour du mot de passe
+  const updatePassword = async (newPassword: string) => {
+    if (!supabase) throw new Error("Client Supabase non initialisé");
+    const { data, error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (error) {
+      console.error("Erreur de mise à jour du mot de passe:", error);
+      throw new Error(error.message);
     }
+
+    console.log("Mot de passe mis à jour:", data);
+    toast.success("Mot de passe mis à jour avec succès.");
   };
 
-  const value: AuthContextType = {
-    user: userProfile,
-    isLoading,
-    login,
-    logout,
-    isAuthenticated: !!userProfile,
-    isAdmin: userProfile?.role === "admin",
-    isClient: userProfile?.role === "client",
-    impersonateUser,
-    stopImpersonating,
-    originalUser,
-    isImpersonating,
-    isOnResetPasswordPage,
-  };
+  // Détermine si l'utilisateur est authentifié
+  const isAuthenticated = React.useMemo(() => {
+    return !!user && !!session;
+  }, [user, session]);
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  // Rendu du provider
+  return (
+    <AuthContext.Provider value={{
+      user,
+      session,
+      isLoading: isLoading || isConfigLoading, // Inclure le chargement de la config
+      isAuthenticated,
+      isAdmin,
+      isClient,
+      isOnResetPasswordPage,
+      login,
+      logout,
+      resetPassword,
+      updatePassword
+    }}>
+      {/* Afficher un chargement si la configuration Supabase est en cours de chargement */}
+      {isConfigLoading ? (
+        <div className="min-h-screen flex flex-col items-center justify-center">
+          <LoadingIndicator variant="dots" size={42} />
+          <p className="mt-4 text-center text-muted-foreground">
+            Initialisation de la configuration...
+          </p>
+        </div>
+      ) : configError ? (
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center">
+          <div className="rounded-lg border p-8 max-w-md">
+            <h2 className="text-xl font-semibold mb-4">Erreur de configuration</h2>
+            <p className="mb-4 text-muted-foreground">
+              {configError.message || "Impossible de charger la configuration Supabase."}
+            </p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+            >
+              Réessayer
+            </button>
+          </div>
+        </div>
+      ) : children}
+    </AuthContext.Provider>
+  );
 };
 
+// Hook pour utiliser le contexte d'authentification
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
+  return useContext(AuthContext);
 };
