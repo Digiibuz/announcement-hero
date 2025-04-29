@@ -18,6 +18,11 @@ export function maskAllUrls(text: string): string {
     text = text.replace(methodRegex, `${method} [URL_MASQUÉE]`);
   });
   
+  // Masquer spécifiquement les requêtes POST sensibles (vues dans la console)
+  text = text.replace(/POST https?:\/\/[^\s]*supabase[^\s]*/gi, "POST [URL_MASQUÉE]");
+  text = text.replace(/POST https?:\/\/[^\s]*auth\/v1\/token[^\s]*/gi, "POST [URL_MASQUÉE]");
+  text = text.replace(/POST https?:\/\/[^\s]*token\?grant[^\s]*/gi, "POST [URL_MASQUÉE]");
+  
   // Pour chaque protocole, masquer toutes les URLs
   PROTOCOLS.forEach(protocol => {
     let startIndex = text.indexOf(protocol);
@@ -116,6 +121,10 @@ export function sanitizeErrorMessage(message: string): string {
     
     // Masquer l'erreur d'authentification en français
     sanitizedMessage = sanitizedMessage.replace(/Erreur d['']authentification/gi, "[ERREUR_AUTHENTIFICATION]");
+    sanitizedMessage = sanitizedMessage.replace(/Erreur d'authentification sécurisée/gi, "[ERREUR_AUTHENTIFICATION]");
+    
+    // Masquer les messages d'authentification français spécifiques (comme vus dans la capture d'écran)
+    sanitizedMessage = sanitizedMessage.replace(/Erreur d'authentification sécurisée:/gi, "[ERREUR_AUTHENTIFICATION]");
     
     // Masquer les codes d'état et les réponses
     sanitizedMessage = sanitizedMessage.replace(/\d{3} \(Bad Request\)/gi, "[CODE_ÉTAT]");

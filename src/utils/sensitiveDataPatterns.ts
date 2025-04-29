@@ -13,6 +13,8 @@ export function getSensitiveDomains(): string[] {
     'lovableproject.com',
     'digiibuz.fr',
     'digii.app',
+    'digi.app',
+    'beta.digii.app',
     // Ne pas stocker directement l'ID du projet, il sera détecté par regex pattern
   ];
   return domains;
@@ -31,7 +33,10 @@ export const SENSITIVE_KEYWORDS = [
   'grant',
   'credentials',
   'v1',
-  'authentification'
+  'authentification',
+  'auth/v1',
+  'token?grant',
+  'type=password'
 ];
 
 // Liste des protocoles à détecter
@@ -58,6 +63,7 @@ export const SENSITIVE_PATTERNS = [
   // Masquer les URLs DigiBuz
   /https?:\/\/[a-z0-9.-]+\.digiibuz\.fr[^\s]*/gi,
   /https?:\/\/[a-z0-9.-]+\.digii\.app[^\s]*/gi,
+  /https?:\/\/beta\.digii\.app[^\s]*/gi,
   // Masquer les preview URLs
   /https?:\/\/preview-[a-z0-9-]+\.[^\s\/"]*/gi,
   // Format des jetons JWT
@@ -68,6 +74,10 @@ export const SENSITIVE_PATTERNS = [
   /(GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD)\s+https?:\/\/[^\s]+/gi,
   // Masquer les requêtes spécifiques à auth
   /POST\s+https?:\/\/[^\s]*\/auth\/v1\/token[^\s]*/gi,
+  // Masquer les URLs avec token?grant
+  /https?:\/\/[^\s]*token\?grant[^\s]*/gi,
+  // Masquer spécifiquement les requêtes POST sensibles
+  /POST\s+https?:\/\/[^\s]*/gi,
 ];
 
 // Fonction pour sécuriser l'affichage de toute erreur d'authentification 

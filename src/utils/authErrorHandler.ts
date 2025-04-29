@@ -20,6 +20,8 @@ export function handleAuthError(error: any): string {
     return "Email non confirmé. Veuillez vérifier votre boîte de réception.";
   } else if (error?.message?.includes('rate limit')) {
     return "Trop de tentatives de connexion. Veuillez réessayer plus tard.";
+  } else if (error?.status === 400 || error?.message?.includes('Bad Request')) {
+    return "Identifiants invalides. Veuillez vérifier votre email et mot de passe.";
   }
   
   // Message générique pour toute autre erreur

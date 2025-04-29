@@ -11,9 +11,10 @@ import { sanitizeErrorMessage } from '../urlSanitizer';
  * Initialise toutes les fonctionnalités de sécurisation des logs
  */
 export function initConsoleOverrides(): void {
-  overrideConsoleFunctions();
-  setupGlobalErrorHandlers();
+  // L'ordre est important: d'abord les interceptions réseau, puis les gestionnaires globaux
   setupNetworkInterceptors();
+  setupGlobalErrorHandlers();
+  overrideConsoleFunctions();
   console.log("Sécurisation des logs console initialisée");
 }
 
@@ -25,6 +26,8 @@ export function testSecureLogs(): void {
   console.error("Erreur avec URL: https://preview-c18074be--announcement-hero.lovable.app/login");
   console.log("Test de masquage d'une requête HTTP: POST https://rdwqedmvzicerwotjseg.supabase.co/auth/v1/token?grant_type=password");
   console.error("Erreur d'authentification: invalid_credentials");
+  // Test spécifique pour vérifier le masquage des requêtes POST
+  console.error("POST https://rdwqedmvzicerwotjseg.supabase.co/auth/v1/token?grant_type=password 400 (Bad Request)");
 }
 
 // Re-exporter la fonction de sanitization pour la compatibilité
