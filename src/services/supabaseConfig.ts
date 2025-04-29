@@ -33,9 +33,9 @@ export async function initializeSupabase(): Promise<ConfigState> {
   }
 
   try {
-    // Au lieu d'utiliser directement l'URL du projet (qui serait visible dans le build),
-    // nous utilisons une URL relative pour l'Edge Function
-    const configUrl = `/api/get-config`;
+    // Au lieu d'utiliser /api/get-config qui peut être mal routé, utilisons le chemin complet
+    // L'URL doit pointer vers l'edge function avec le projet Supabase spécifique
+    const configUrl = `https://rdwqedmvzicerwotjseg.supabase.co/functions/v1/get-config`;
 
     // Appel à l'Edge Function pour récupérer la configuration
     console.log("Récupération de la configuration Supabase depuis l'Edge Function...");
@@ -43,17 +43,21 @@ export async function initializeSupabase(): Promise<ConfigState> {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        // Nous ajoutons des informations pour le debug
+        'X-Client-Info': 'DigiiBuz Web App'
       },
     });
 
-    // Si la requête échoue, lever une erreur
+    // Si la requête échoue, lever une erreur avec plus de détails
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(`Échec de récupération de la configuration: ${response.status} ${JSON.stringify(errorData)}`);
+      const responseText = await response.text();
+      console.error(`Réponse d'erreur: ${response.status} ${response.statusText}`, responseText);
+      throw new Error(`Échec de récupération de la configuration: ${response.status} ${response.statusText}`);
     }
 
     // Récupérer les données de configuration
     const config: SupabaseConfig = await response.json();
+    console.log("Configuration reçue:", { urlLength: config.supabaseUrl?.length, keyLength: config.supabaseAnonKey?.length });
 
     // Vérifier que les valeurs nécessaires sont présentes
     if (!config.supabaseUrl || !config.supabaseAnonKey) {

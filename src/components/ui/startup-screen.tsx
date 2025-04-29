@@ -11,6 +11,7 @@ interface StartupScreenProps {
 export const StartupScreen: React.FC<StartupScreenProps> = ({ className }) => {
   const { isLoading, error, client } = useSupabaseConfig();
   const [loadingTime, setLoadingTime] = useState(0);
+  const [showDebug, setShowDebug] = useState(false);
   
   // Mesurer le temps de chargement
   useEffect(() => {
@@ -28,6 +29,8 @@ export const StartupScreen: React.FC<StartupScreenProps> = ({ className }) => {
   if (!isLoading && client) {
     return null;
   }
+  
+  const toggleDebug = () => setShowDebug(prev => !prev);
   
   return (
     <div className={cn(
@@ -53,6 +56,19 @@ export const StartupScreen: React.FC<StartupScreenProps> = ({ className }) => {
             >
               Réessayer
             </button>
+            
+            <button 
+              onClick={toggleDebug}
+              className="px-4 py-2 ml-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90"
+            >
+              {showDebug ? "Masquer détails" : "Afficher détails"}
+            </button>
+            
+            {showDebug && (
+              <div className="mt-4 p-3 bg-muted text-left rounded-md overflow-auto max-h-56 text-xs">
+                <pre>{JSON.stringify(error, null, 2)}</pre>
+              </div>
+            )}
             
             {loadingTime > 10 && (
               <p className="mt-4 text-sm text-muted-foreground">
