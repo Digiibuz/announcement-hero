@@ -2,6 +2,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../integrations/supabase/types';
 import { setSupabaseClient } from '../integrations/supabase/client';
+import { safeConsoleError } from '@/utils/security';
 
 // Interface pour la configuration Supabase
 interface SupabaseConfig {
@@ -58,7 +59,7 @@ export async function initializeSupabase(): Promise<ConfigState> {
     // Si la requête échoue, lever une erreur avec plus de détails
     if (!response.ok) {
       const responseText = await response.text();
-      console.error(`Réponse d'erreur: ${response.status} ${response.statusText}`, responseText);
+      safeConsoleError(`Réponse d'erreur: ${response.status} ${response.statusText}`, responseText);
       throw new Error(`Échec de récupération de la configuration: ${response.status} ${response.statusText}`);
     }
 
@@ -92,7 +93,7 @@ export async function initializeSupabase(): Promise<ConfigState> {
       client: supabaseInstance
     };
   } catch (error) {
-    console.error("Erreur lors de l'initialisation de Supabase:", error);
+    safeConsoleError("Erreur lors de l'initialisation de Supabase:", error);
     return {
       isLoading: false,
       error: error instanceof Error ? error : new Error('Erreur inconnue'),

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { setSupabaseClient } from "@/integrations/supabase/client";
 import { UserProfile } from "@/types/auth";
 import { createProfileFromMetadata } from "@/hooks/useUserProfile";
+import { safeConsoleError } from "@/utils/security";
 
 export const useAuthState = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -46,20 +47,21 @@ export const useAuthState = () => {
     // Set up auth state change handler
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN") {
-        console.log("User signed in:", session?.user);
+        // Utiliser un log sécurisé
+        safeConsoleError("User signed in:", session?.user?.id);
         setUser(createProfileFromMetadata(session?.user || null));
         setSession(session || null);
       } else if (event === "SIGNED_OUT") {
-        console.log("User signed out");
+        safeConsoleError("User signed out");
         setUser(null);
         setSession(null);
         navigate('/login');
       } else if (event === "USER_UPDATED") {
-        console.log("User profile updated:", session?.user);
+        safeConsoleError("User profile updated:", session?.user?.id);
         setUser(createProfileFromMetadata(session?.user || null));
         setSession(session || null);
       } else if (event === "PASSWORD_RECOVERY") {
-        console.log("Password recovery initiated");
+        safeConsoleError("Password recovery initiated");
         setIsOnResetPasswordPage(true);
       }
     });
@@ -91,11 +93,11 @@ export const useAuthState = () => {
     });
 
     if (error) {
-      console.error("Login error:", error);
-      throw new Error(error.message);
+      // Ne pas loguer l'erreur complète ici, elle sera traitée par handleAuthError
+      throw error;
     }
 
-    console.log("Login successful:", data);
+    safeConsoleError("Login successful:", data.user?.id);
     setUser(createProfileFromMetadata(data.user));
     setSession(data.session);
   };

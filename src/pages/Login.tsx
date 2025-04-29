@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
+import { handleAuthError } from "@/utils/security";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -39,8 +40,9 @@ const Login = () => {
         navigate("/dashboard");
       }, 300);
     } catch (error: any) {
-      console.error("Erreur de connexion:", error);
-      toast.error(error.message || "Échec de la connexion");
+      // Utiliser la nouvelle fonction de gestion sécurisée des erreurs
+      const errorMessage = handleAuthError(error);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
