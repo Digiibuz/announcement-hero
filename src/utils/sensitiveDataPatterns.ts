@@ -6,16 +6,30 @@
 // Éviter de stocker directement les domaines sensibles sous forme de chaînes brutes
 // Utiliser une fonction qui génère dynamiquement les valeurs sensibles
 export function getSensitiveDomains(): string[] {
-  // Obfusquer les domaines pour rendre plus difficile l'extraction statique
+  // Liste complète des domaines à masquer
   const domains = [
+    // Domaines Supabase (encodés en base64 pour plus de sécurité)
     atob('c3VwYWJhc2UuY28='), // supabase.co encodé en base64
+    atob('c3VwYWJhc2UuaW4='), // supabase.in encodé en base64
+    
+    // Domaines de l'application (internes et de production)
     'lovable.app',
     'lovableproject.com',
     'digiibuz.fr',
     'digii.app',
     'digi.app',
     'beta.digii.app',
-    // Ne pas stocker directement l'ID du projet, il sera détecté par regex pattern
+    'beta.digi.app',
+    'api.digii.app',
+    'api.digiibuz.fr',
+    'app.digii.app',
+    'app.digiibuz.fr',
+    
+    // URL de déploiement et de développement
+    'localhost',
+    'localhost:3000',
+    'localhost:5173',
+    'rdwqedmvzicerwotjseg.supabase.co'
   ];
   return domains;
 }
@@ -36,7 +50,13 @@ export const SENSITIVE_KEYWORDS = [
   'authentification',
   'auth/v1',
   'token?grant',
-  'type=password'
+  'type=password',
+  'get-config',
+  'functions/v1',
+  '401',
+  'authorization',
+  'header',
+  'missing'
 ];
 
 // Liste des protocoles à détecter
@@ -57,6 +77,8 @@ export const SENSITIVE_PATTERNS = [
   /https?:\/\/[^/]+\/v1\/token[^/\s"]*/gi,
   // URLs contenant le mot login
   /https?:\/\/[^/]+\/login[^/\s"]*/gi,
+  // Masquer les URLs Edge Functions
+  /https?:\/\/[^/]+\/functions\/v1\/[^/\s"]*/gi,
   // Masquer les URLs Lovable
   /https?:\/\/[a-z0-9-]+\.lovable\.app[^\s]*/gi,
   /https?:\/\/[a-z0-9-]+\.lovableproject\.com[^\s]*/gi,
@@ -70,6 +92,9 @@ export const SENSITIVE_PATTERNS = [
   /eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/g,
   // Masquer les codes d'erreur qui pourraient contenir des informations sensibles
   /(supabase|auth).*error.*code[^\s"]*/gi,
+  // Messages d'erreur 401
+  /401.*missing authorization header/gi,
+  /missing authorization header/gi,
   // Masquer toute requête HTTP (méthode + URL)
   /(GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD)\s+https?:\/\/[^\s]+/gi,
   // Masquer les requêtes spécifiques à auth
@@ -78,6 +103,10 @@ export const SENSITIVE_PATTERNS = [
   /https?:\/\/[^\s]*token\?grant[^\s]*/gi,
   // Masquer spécifiquement les requêtes POST sensibles
   /POST\s+https?:\/\/[^\s]*/gi,
+  // Masquer l'URL complète du projet avec l'ID
+  /https?:\/\/rdwqedmvzicerwotjseg\.supabase\.co[^\s]*/gi,
+  // Masquer les Edge Functions URLs
+  /https?:\/\/rdwqedmvzicerwotjseg\.supabase\.co\/functions\/v1\/[^\s]*/gi,
 ];
 
 // Fonction pour sécuriser l'affichage de toute erreur d'authentification 
@@ -90,6 +119,11 @@ export function getSecureAuthErrorMessage(errorCode: string): string {
       return '[ERREUR_AUTHENTIFICATION]';
     case 'access_denied':
       return '[ACCÈS_REFUSÉ]';
+    case 'missing authorization header':
+      return '[ERREUR_AUTORISATION]';
+    case '401':
+    case 401:
+      return '[ERREUR_AUTHENTIFICATION_401]';
     default:
       return '[ERREUR_SÉCURISÉE]';
   }

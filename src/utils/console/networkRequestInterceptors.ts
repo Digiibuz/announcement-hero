@@ -29,19 +29,42 @@ export function setupNetworkInterceptors(): void {
   // Hook fetch pour masquer les URLs des requêtes
   const originalFetch = window.fetch;
   window.fetch = function(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-    // Masquer complètement l'URL dans les logs
-    const method = init?.method || 'GET';
-    const maskedMethod = method.toUpperCase();
-    
-    // Ne jamais afficher l'URL réelle dans les logs
-    console.log(`Requête fetch ${maskedMethod} vers [URL_MASQUÉE]`);
-    
-    // Capturer les erreurs de réseau sans exposer l'URL
-    return originalFetch(input, init).catch((error) => {
-      // Masquer toutes les informations sensibles dans l'erreur
-      console.error(`Erreur réseau lors d'une requête ${maskedMethod}:`, sanitizeErrorMessage(error.message));
-      throw error; // Propager l'erreur originale pour ne pas casser le flux d'exécution
-    });
+    try {
+      // Masquer complètement l'URL dans les logs
+      const method = init?.method || 'GET';
+      const maskedMethod = method.toUpperCase();
+      
+      // Ne jamais afficher l'URL réelle dans les logs
+      console.log(`Requête fetch ${maskedMethod} vers [URL_MASQUÉE]`);
+      
+      // Intercepter spécifiquement les requêtes vers les Edge Functions Supabase
+      const inputUrl = input instanceof Request ? input.url : input.toString();
+      const isSensitiveRequest = typeof inputUrl === 'string' && (
+        inputUrl.includes('supabase.co') || 
+        inputUrl.includes('functions/v1') ||
+        inputUrl.includes('get-config') ||
+        inputUrl.includes('auth/v1')
+      );
+      
+      if (isSensitiveRequest && init) {
+        // S'assurer que les requêtes aux Edge Functions ont les bons en-têtes
+        init.headers = {
+          ...init.headers,
+          'X-Client-Info': 'DigiiBuz Web App',
+          'Content-Type': 'application/json'
+        };
+      }
+      
+      // Capturer les erreurs de réseau sans exposer l'URL
+      return originalFetch(input, init).catch((error) => {
+        // Masquer toutes les informations sensibles dans l'erreur
+        console.error(`Erreur réseau lors d'une requête ${maskedMethod}:`, sanitizeErrorMessage(error.message));
+        throw error; // Propager l'erreur originale pour ne pas casser le flux d'exécution
+      });
+    } catch (error) {
+      console.error("Erreur lors de l'interception fetch:", sanitizeErrorMessage(String(error)));
+      return originalFetch(input, init); // Continuer malgré l'erreur d'interception
+    }
   };
 
   // Surveiller les erreurs de console pour masquer les URL en direct
@@ -62,8 +85,13 @@ export function setupNetworkInterceptors(): void {
         arg = arg.replace(/\b(GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD)\s+https?:\/\/[^\s"']+/gi, '$1 [URL_MASQUÉE]');
         
         // Masquer les erreurs d'authentification en français
-        if (arg.includes("Erreur d'authentification")) {
+        if (arg.includes("Erreur d'authentification") || arg.includes("Missing authorization header")) {
           arg = "[ERREUR_AUTHENTIFICATION]";
+        }
+        
+        // Masquer spécifiquement l'erreur 401 - Missing authorization header
+        if (arg.includes("401") && arg.includes("Missing authorization")) {
+          arg = "[ERREUR_AUTHENTIFICATION_401]";
         }
 
         // Double vérification pour les JSON Web Tokens

@@ -26,17 +26,9 @@ let supabaseInstance: SupabaseClient<Database> | null = null;
 function getConfigEndpoint(): string {
   try {
     // Plusieurs niveaux d'indirection pour rendre l'analyse statique plus difficile
-    // Utiliser un tableau fragmenté et encodé pour construire l'URL
-    const fragments = [
-      atob('aHR0cHM6Ly8='),       // https://
-      atob('cmR3cWVkbXZ6'),       // première partie du projet
-      atob('aWNlcndvdGpzZWc='),   // seconde partie du projet
-      atob('LnN1cGFiYXNlLmNv'),   // .supabase.co
-      atob('L2Z1bmN0aW9ucy92MS9nZXQtY29uZmln')  // /functions/v1/get-config
-    ];
-    
-    // Assemblage de l'URL de manière obfusquée
-    return fragments.join('');
+    // Construction de l'URL sécurisée
+    const projectId = 'rdwqedmvzicerwotjseg';
+    return `https://${projectId}.supabase.co/functions/v1/get-config`;
   } catch (e) {
     // En cas d'erreur, retourner une URL qui ne fonctionnera pas mais ne révèle rien
     console.error("Erreur lors de la génération de l'URL de configuration");
