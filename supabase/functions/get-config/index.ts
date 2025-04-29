@@ -48,7 +48,10 @@ serve(async (req) => {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
         'Pragma': 'no-cache',
-        'Expires': '0'
+        'Expires': '0',
+        'X-Content-Type-Options': 'nosniff', // Empêcher le sniffing de contenu
+        'X-Frame-Options': 'DENY', // Empêcher l'inclusion dans des iframes
+        'Referrer-Policy': 'no-referrer' // Ne pas envoyer de referrer
       }
     }
   );

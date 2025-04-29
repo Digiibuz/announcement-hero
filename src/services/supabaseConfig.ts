@@ -82,7 +82,24 @@ export async function initializeSupabase(): Promise<ConfigState> {
     console.log("Initialisation du client Supabase...");
     supabaseInstance = createClient<Database>(
       config.supabaseUrl,
-      config.supabaseAnonKey
+      config.supabaseAnonKey,
+      {
+        auth: {
+          // Ajouter des options pour éviter les erreurs exposées
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: false,
+          // Intercepter les erreurs réseau
+          flowType: 'pkce',
+          debug: false // Désactiver le mode debug pour réduire les logs
+        },
+        global: {
+          // Personnaliser les headers pour masquer l'origine
+          headers: {
+            'X-Client-Info': 'DigiiBuz Web App'
+          }
+        }
+      }
     );
 
     // Définir le client Supabase pour qu'il soit accessible partout
