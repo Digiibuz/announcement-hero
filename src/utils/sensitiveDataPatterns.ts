@@ -110,9 +110,12 @@ export const SENSITIVE_PATTERNS = [
 ];
 
 // Fonction pour sécuriser l'affichage de toute erreur d'authentification 
-export function getSecureAuthErrorMessage(errorCode: string): string {
+export function getSecureAuthErrorMessage(errorCode: string | number): string {
   // Masquer les détails spécifiques des erreurs d'authentification
-  switch (errorCode) {
+  // Convertir errorCode en string si c'est un nombre
+  const code = String(errorCode);
+  
+  switch (code) {
     case 'invalid_credentials':
       return '[ERREUR_AUTHENTIFICATION]';
     case 'invalid_grant':
@@ -122,7 +125,6 @@ export function getSecureAuthErrorMessage(errorCode: string): string {
     case 'missing authorization header':
       return '[ERREUR_AUTORISATION]';
     case '401':
-    case 401:
       return '[ERREUR_AUTHENTIFICATION_401]';
     default:
       return '[ERREUR_SÉCURISÉE]';

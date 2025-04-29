@@ -14,7 +14,7 @@ const originalConsoleInfo = console.info;
 /**
  * Remplace les fonctions console natives pour masquer les informations sensibles
  */
-export function overrideConsoleFunctions(): void {
+export function overrideConsoleMethods(): void {
   // Override de console.error pour intercepter et masquer les informations sensibles
   console.error = function(...args: any[]) {
     // Masquer les informations sensibles dans tous les arguments
