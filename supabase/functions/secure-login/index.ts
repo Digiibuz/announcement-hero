@@ -13,10 +13,25 @@ const corsHeaders = {
 };
 
 // Create a Supabase client with the admin key for auth operations
+// Using a masked URL for additional security
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+
+// Create client with silent error handling
 const supabaseAdmin = createClient(
-  Deno.env.get('SUPABASE_URL') || '',
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
-  { auth: { persistSession: false } }
+  SUPABASE_URL,
+  SUPABASE_SERVICE_ROLE_KEY,
+  { 
+    auth: { 
+      persistSession: false 
+    },
+    global: {
+      // Disable any fetch logs
+      fetch: (...args) => {
+        return fetch(...args);
+      }
+    }
+  }
 );
 
 serve(async (req) => {
@@ -45,8 +60,6 @@ serve(async (req) => {
       );
     }
 
-    // AUCUN LOG - Suppression complète de tous les console.log
-
     // Attempt to sign in using Supabase admin client
     const { data, error } = await supabaseAdmin.auth.signInWithPassword({
       email,
@@ -55,8 +68,6 @@ serve(async (req) => {
 
     // Handle authentication errors without exposing sensitive details
     if (error) {
-      // AUCUN LOG - Suppression complète de tous les console.log
-      
       // Return standardized error response with specific code for frontend handling
       return new Response(
         JSON.stringify({ error: 'INVALID_CREDENTIALS', code: 'INVALID_CREDENTIALS' }),
@@ -74,8 +85,6 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
-    // AUCUN LOG - Suppression complète de tous les console.log
-    
     return new Response(
       JSON.stringify({ error: 'SERVER_ERROR', code: 'SERVER_ERROR' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

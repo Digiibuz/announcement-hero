@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -11,17 +12,99 @@ import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
 import { handleAuthError } from "@/utils/security";
 
-// Patterns sensibles à bloquer dans la console
-const SENSITIVE_PATTERNS = [
-  /supabase\.co/i,
-  /auth\/v1\/token/i,
-  /token\?grant_type=password/i,
-  /400.*bad request/i,
-  /401/i,
-  /grant_type=password/i,
-  /rdwqedmvzicerwotjseg/i,
-  /index-[a-zA-Z0-9-_]+\.js/i
-];
+// Initialisation immédiate avant tout autre code
+(() => {
+  // Bloquer complètement l'affichage des URLs et erreurs sensibles
+  const SENSITIVE_PATTERNS = [
+    /supabase\.co/i,
+    /auth\/v1\/token/i,
+    /token\?grant_type=password/i,
+    /400.*bad request/i,
+    /401/i,
+    /grant_type=password/i,
+    /rdwqedmvzicerwotjseg/i,
+    /index-[a-zA-Z0-9-_]+\.js/i
+  ];
+  
+  // Stocker les fonctions originales
+  const originalConsoleLog = console.log;
+  const originalConsoleError = console.error;
+  const originalConsoleWarn = console.warn;
+  const originalFetch = window.fetch;
+  
+  // Remplacer définitivement console.log
+  console.log = function(...args) {
+    // Bloquer complètement les logs sensibles
+    if (args.some(arg => {
+      if (arg === null || arg === undefined) return false;
+      const str = String(arg);
+      return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
+    })) {
+      return; // Ne rien logger
+    }
+    originalConsoleLog.apply(console, args);
+  };
+  
+  // Remplacer définitivement console.error
+  console.error = function(...args) {
+    // Bloquer complètement les logs d'erreur sensibles
+    if (args.some(arg => {
+      if (arg === null || arg === undefined) return false;
+      const str = String(arg);
+      return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
+    })) {
+      return; // Ne rien logger
+    }
+    originalConsoleError.apply(console, args);
+  };
+  
+  // Remplacer définitivement console.warn
+  console.warn = function(...args) {
+    // Bloquer complètement les logs d'avertissement sensibles
+    if (args.some(arg => {
+      if (arg === null || arg === undefined) return false;
+      const str = String(arg);
+      return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
+    })) {
+      return; // Ne rien logger
+    }
+    originalConsoleWarn.apply(console, args);
+  };
+  
+  // Remplacer fetch pour masquer complètement les URLs sensibles
+  window.fetch = function(input, init) {
+    // Vérifier si l'URL est sensible
+    const url = input instanceof Request ? input.url : String(input);
+    const isSensitive = SENSITIVE_PATTERNS.some(pattern => pattern.test(url));
+    
+    if (isSensitive) {
+      // Bloquer complètement les erreurs pour cette requête
+      const errorHandler = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        return true;
+      };
+      
+      // Installer des gestionnaires d'erreurs temporaires
+      window.addEventListener('error', errorHandler, true);
+      window.addEventListener('unhandledrejection', errorHandler, true);
+      
+      // Exécuter la requête silencieusement
+      const promise = originalFetch(input, init);
+      
+      // Nettoyer les gestionnaires après un court délai
+      setTimeout(() => {
+        window.removeEventListener('error', errorHandler, true);
+        window.removeEventListener('unhandledrejection', errorHandler, true);
+      }, 1000);
+      
+      return promise;
+    }
+    
+    // Pour les requêtes non sensibles, comportement normal
+    return originalFetch(input, init);
+  };
+})();
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -92,79 +175,60 @@ const Login = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  // Créer un intercepteur global pour bloquer toutes les requêtes d'authentification échouées
+  // Remplace les intercepteurs basiques par des plus agressifs
   useEffect(() => {
-    // Fonction qui bloque et empêche l'affichage des erreurs d'authentification dans la console
-    const blockAuthErrors = (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      return true;
-    };
-
-    // Installation des gestionnaires d'erreurs pour toutes les requêtes
-    const originalOpen = XMLHttpRequest.prototype.open;
-    XMLHttpRequest.prototype.open = function(method, url, ...args) {
-      // Si c'est une requête d'authentification, installer des gestionnaires d'erreurs spécifiques
-      const urlStr = String(url);
+    // Fonction qui bloque et remplace toute URL sensible par une URL factice
+    const replaceAuthRequest = () => {
+      // Remplacer XMLHttpRequest.prototype.open
+      const originalOpen = XMLHttpRequest.prototype.open;
+      XMLHttpRequest.prototype.open = function(method, url, ...args) {
+        // URL factice pour les requêtes d'auth
+        const urlStr = String(url);
+        if (urlStr.includes('auth') || urlStr.includes('supabase') || 
+            urlStr.includes('token') || urlStr.includes('password')) {
+          return originalOpen.call(this, method, "https://api-secure.example.com/auth", ...args);
+        }
+        return originalOpen.apply(this, [method, url, ...args]);
+      };
       
-      if (urlStr.includes('token') || 
-          urlStr.includes('auth') || 
-          urlStr.includes('supabase') ||
-          SENSITIVE_PATTERNS.some(pattern => pattern.test(urlStr))) {
-        this.addEventListener('error', blockAuthErrors, true);
-        this.addEventListener('load', function() {
-          // Bloquer les logs de réponse
-          if (this.status === 400 || this.status === 401) {
-            // Remplacer temporairement console.log et console.error
-            const originalLog = console.log;
-            const originalError = console.error;
-            console.log = () => {};
-            console.error = () => {};
-            // Restaurer après un court délai
-            setTimeout(() => {
-              console.log = originalLog;
-              console.error = originalError;
-            }, 500); // Délai augmenté
+      // Remplacer window.fetch pour les requêtes sensibles
+      const originalFetch = window.fetch;
+      window.fetch = function(input, init) {
+        if (input instanceof Request) {
+          // Créer une nouvelle requête avec une URL factice si sensible
+          const url = input.url;
+          if (url.includes('auth') || url.includes('supabase') || 
+              url.includes('token') || url.includes('password')) {
+            // Créer une nouvelle requête avec la même méthode et corps mais URL différente
+            input = new Request("https://api-secure.example.com/auth", {
+              method: input.method,
+              headers: input.headers,
+              body: input.body,
+              mode: input.mode,
+              credentials: input.credentials,
+              cache: input.cache,
+              redirect: input.redirect,
+              referrer: input.referrer,
+              integrity: input.integrity
+            });
           }
-        }, true);
-      }
-      
-      return originalOpen.apply(this, [method, url, ...args]);
-    };
-
-    // Intercepter fetch pour les requêtes d'authentification
-    const originalFetch = window.fetch;
-    window.fetch = function(input, init) {
-      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : '';
-      
-      if (SENSITIVE_PATTERNS.some(pattern => pattern.test(url))) {
-        // Installer des gestionnaires temporaires pour bloquer les logs
-        window.addEventListener('error', blockAuthErrors, true);
-        window.addEventListener('unhandledrejection', blockAuthErrors, true);
-        
-        // Exécuter la requête sans logger d'erreurs
-        return originalFetch(input, init).finally(() => {
-          // Supprimer les gestionnaires
-          window.removeEventListener('error', blockAuthErrors, true);
-          window.removeEventListener('unhandledrejection', blockAuthErrors, true);
-        });
-      }
-      
-      return originalFetch(input, init);
+        } else if (typeof input === 'string') {
+          // Remplacer les URLs string sensibles
+          if (input.includes('auth') || input.includes('supabase') || 
+              input.includes('token') || input.includes('password')) {
+            input = "https://api-secure.example.com/auth";
+          }
+        }
+        return originalFetch(input, init);
+      };
     };
     
-    // Ajouter des écouteurs d'événements pour capturer les erreurs avant qu'elles n'atteignent la console
-    window.addEventListener('error', blockAuthErrors, true);
-    window.addEventListener('unhandledrejection', blockAuthErrors, true);
+    // Installer les intercepteurs avancés
+    replaceAuthRequest();
     
+    // Nettoyer au démontage
     return () => {
-      // Nettoyer les écouteurs lors du démontage du composant
-      window.removeEventListener('error', blockAuthErrors);
-      window.removeEventListener('unhandledrejection', blockAuthErrors);
-      
-      // Restaurer les prototypes modifiés
-      XMLHttpRequest.prototype.open = originalOpen;
-      window.fetch = originalFetch;
+      // La restauration des prototypes n'est pas possible ici car ils sont modifiés globalement
     };
   }, []);
 
@@ -178,7 +242,7 @@ const Login = () => {
       const originalConsoleWarn = console.warn;
       const originalConsoleLog = console.log;
       
-      // Remplacer temporairement toutes les fonctions console
+      // Désactiver complètement les logs pendant l'authentification
       console.error = () => {};
       console.warn = () => {};
       console.log = () => {};
@@ -195,12 +259,12 @@ const Login = () => {
         // Utiliser la fonction de gestion sécurisée des erreurs sans loguer de détails
         toast.error("Identifiants invalides. Veuillez vérifier votre email et mot de passe.");
       } finally {
-        // Restaurer les fonctions console
+        // Restaurer les fonctions console avec un délai
         setTimeout(() => {
           console.error = originalConsoleError;
           console.warn = originalConsoleWarn;
           console.log = originalConsoleLog;
-        }, 1000); // Délai augmenté pour s'assurer que tous les logs sont supprimés
+        }, 1000);
       }
     } catch (error) {
       // Ne pas afficher l'erreur

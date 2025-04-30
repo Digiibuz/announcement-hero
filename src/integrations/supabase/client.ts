@@ -1,30 +1,29 @@
 
-// Ne pas modifier directement ce fichier - il est généré dynamiquement.
-import { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from './types';
+import { createClient } from '@supabase/supabase-js'
 
-// La variable supabaseClient sera définie par le contexte SupabaseConfigContext
-let supabaseClient: SupabaseClient<Database> | null = null;
+// Remplacer les URLs sensibles par des URLs génériques
+// Plus tard, les vraies URLs seront utilisées mais pas affichées en console
+const SUPABASE_URL = 'https://api-secure.example.com'
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'anon-key' 
 
-// Cette fonction sera utilisée pour définir le client Supabase
-export function setSupabaseClient(client: SupabaseClient<Database> | null): void {
-  supabaseClient = client;
-}
-
-// Fonction pour accéder au client Supabase
-export function getSupabase(): SupabaseClient<Database> {
-  if (!supabaseClient) {
-    throw new Error('Client Supabase non initialisé. Assurez-vous que SupabaseConfigProvider est correctement configuré.');
+// Créer un client Supabase sécurisé
+export const supabase = createClient(
+  // Utiliser les vraies valeurs d'environnement, mais seulement en interne
+  import.meta.env.VITE_SUPABASE_URL || SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY || SUPABASE_KEY,
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true
+    }
   }
-  return supabaseClient;
-}
+)
 
-// Export de la façon traditionnelle pour maintenir la compatibilité avec le code existant
-// Proxy pour éviter l'erreur "undefined" lors de l'initialisation
-export const supabase = new Proxy({} as SupabaseClient<Database>, {
-  get(target, prop) {
-    const client = getSupabase();
-    // @ts-ignore - nous savons que prop est une clé valide de SupabaseClient
-    return client[prop];
-  }
-});
+// Intercepter toutes les opérations qui pourraient exposer l'URL de Supabase
+Object.defineProperty(supabase, 'supabaseUrl', {
+  get: function() {
+    return SUPABASE_URL
+  },
+  configurable: false
+})
