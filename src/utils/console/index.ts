@@ -6,6 +6,31 @@ import './consoleFunctionOverrides';
 import './networkRequestInterceptors';
 import './globalErrorHandlers';
 
+// Exporter les fonctions principales dont nous avons besoin dans main.tsx
+export { overrideConsoleMethods as initConsoleOverrides } from './consoleFunctionOverrides';
+
+/**
+ * Fonction pour tester la sécurisation des logs en mode développement
+ */
+export function testSecureLogs() {
+  console.log("Test de sécurisation des logs - Information normale");
+  
+  // Tester avec des URLs sensibles
+  console.log("URL sensible: https://rdwqedmvzicerwotjseg.supabase.co/auth/v1/token?grant_type=password");
+  console.log("Autre URL sensible: https://api.digiibuz.fr/auth/login");
+  console.error("Erreur avec URL: https://rdwqedmvzicerwotjseg.supabase.co/auth/v1/token");
+  
+  // Tester avec des codes d'erreur
+  console.error("Erreur 401 - Unauthorized");
+  console.error("Erreur 400 - Bad Request");
+  
+  // Test d'interception de requête (simulation)
+  console.log("Test interception POST https://rdwqedmvzicerwotjseg.supabase.co/auth/v1/token");
+  
+  // Message de confirmation
+  console.log("✅ Tests de sécurité des logs terminés - Si vous ne voyez pas d'URLs sensibles ci-dessus, la protection fonctionne !");
+}
+
 // Fonction pour initialiser toutes les protections au démarrage de l'application
 export function initializeConsoleSecurity() {
   // Cette fonction est appelée automatiquement au démarrage de l'application

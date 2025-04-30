@@ -1,3 +1,4 @@
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -12,9 +13,6 @@ initConsoleOverrides();
 if (process.env.NODE_ENV === 'development') {
   testSecureLogs();
 }
-
-// Importer les protections de console dès le démarrage de l'application
-import './utils/console/index';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
