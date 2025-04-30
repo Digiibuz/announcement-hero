@@ -14,7 +14,7 @@ interface TicketReadStatus {
 
 export const useTicketNotifications = () => {
   const { user, isAdmin } = useAuth();
-  const { data: userTickets = [] } = useTickets(user?.id);
+  const { data: userTickets = [] } = useTickets();
   const { data: allTickets = [] } = useAllTickets();
   const [unreadCount, setUnreadCount] = useState(0);
   const [readTicketIds, setReadTicketIds] = useState<Record<string, Date>>({});
@@ -120,10 +120,14 @@ export const useTicketNotifications = () => {
       
       if (isAdmin) {
         // Pour les admins, vérifier tous les tickets
-        count = checkUnreadTicketsForAdmin(allTickets, readTicketIds);
+        if (Array.isArray(allTickets)) {
+          count = checkUnreadTicketsForAdmin(allTickets as Ticket[], readTicketIds);
+        }
       } else {
         // Pour les clients, vérifier uniquement leurs tickets
-        count = checkUnreadResponsesForClient(userTickets, readTicketIds);
+        if (Array.isArray(userTickets)) {
+          count = checkUnreadResponsesForClient(userTickets as Ticket[], readTicketIds);
+        }
       }
       
       setUnreadCount(count);

@@ -3,11 +3,7 @@
  * Main entry point for console enhancements and security measures
  */
 import { setupGlobalListeners } from './globalListeners';
-import { 
-  initializeConsoleSecurity, 
-  overrideConsoleFunctions,
-  overrideNetworkRequests
-} from './consoleOverrides';
+import { setupConsoleOverrides } from './consoleOverrides';
 import { SENSITIVE_PATTERNS } from './constants';
 
 /**
@@ -15,13 +11,7 @@ import { SENSITIVE_PATTERNS } from './constants';
  */
 export function initConsoleOverrides(): void {
   // Initialize console security features
-  initializeConsoleSecurity();
-  
-  // Override console functions to sanitize output
-  overrideConsoleFunctions();
-  
-  // Override network requests to sanitize URLs
-  overrideNetworkRequests();
+  setupConsoleOverrides();
   
   // Set up global error listeners
   setupGlobalListeners();

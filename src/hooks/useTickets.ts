@@ -1,47 +1,77 @@
 
-// If this file doesn't exist in the codebase, we'll create it with proper null checks
-
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+
+export interface TicketResponse {
+  id: string;
+  ticket_id: string;
+  user_id: string;
+  message: string;
+  created_at: string;
+  is_admin: boolean;
+  username: string;
+}
 
 export interface Ticket {
   id: string;
   subject: string;
-  description: string;
+  description?: string;
   status: 'open' | 'in_progress' | 'closed';
   user_id: string;
   username?: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
+  priority: string;
+  message: string;
+  responses?: TicketResponse[];
 }
 
-export const useTickets = () => {
+// Hook pour récupérer les tickets d'un utilisateur
+export const useTickets = (userId?: string | null) => {
   const { user } = useAuth();
+  const currentUserId = userId || user?.id;
   
   return useQuery({
-    queryKey: ['tickets', user?.id],
+    queryKey: ['tickets', currentUserId],
     queryFn: async () => {
-      if (!user?.id) return [];
+      if (!currentUserId) return [];
       
       const { data, error } = await supabase
         .from('tickets')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', currentUserId)
         .order('created_at', { ascending: false });
       
       if (error) {
         console.error('Error fetching tickets:', error);
         return [];
       }
+
+      // Récupérer les réponses pour chaque ticket
+      const ticketsWithResponses = await Promise.all((data || []).map(async (ticket) => {
+        const { data: responses, error: responsesError } = await supabase
+          .from('ticket_responses')
+          .select('*')
+          .eq('ticket_id', ticket.id)
+          .order('created_at', { ascending: true });
+        
+        if (responsesError) {
+          console.error('Error fetching ticket responses:', responsesError);
+          return { ...ticket, responses: [] };
+        }
+        
+        return { ...ticket, responses: responses || [] };
+      }));
       
-      return data || [];
+      return ticketsWithResponses;
     },
-    enabled: !!user?.id,
+    enabled: !!currentUserId,
   });
 };
 
+// Hook pour récupérer tous les tickets (pour les admins)
 export const useAllTickets = () => {
   const { isAdmin } = useAuth();
   
@@ -61,10 +91,23 @@ export const useAllTickets = () => {
         return [];
       }
       
-      // Transform data to include username
-      const ticketsWithUsernames = (data || []).map(ticket => ({
-        ...ticket,
-        username: ticket.profiles?.name || ticket.profiles?.email || 'Unknown'
+      // Transform data to include username and fetch responses
+      const ticketsWithUsernames = await Promise.all((data || []).map(async (ticket) => {
+        const { data: responses, error: responsesError } = await supabase
+          .from('ticket_responses')
+          .select('*')
+          .eq('ticket_id', ticket.id)
+          .order('created_at', { ascending: true });
+        
+        if (responsesError) {
+          console.error('Error fetching ticket responses:', responsesError);
+        }
+        
+        return {
+          ...ticket,
+          username: ticket.profiles?.name || ticket.profiles?.email || ticket.username || 'Unknown',
+          responses: responses || []
+        };
       }));
       
       return ticketsWithUsernames;
@@ -73,13 +116,15 @@ export const useAllTickets = () => {
   });
 };
 
+// Hook pour récupérer un ticket spécifique
 export const useTicket = (ticketId: string | null) => {
   return useQuery({
     queryKey: ['ticket', ticketId],
     queryFn: async () => {
       if (!ticketId) return null;
       
-      const { data, error } = await supabase
+      // Récupérer le ticket
+      const { data: ticket, error } = await supabase
         .from('tickets')
         .select(`
           *,
@@ -93,11 +138,108 @@ export const useTicket = (ticketId: string | null) => {
         return null;
       }
       
+      // Récupérer les réponses du ticket
+      const { data: responses, error: responsesError } = await supabase
+        .from('ticket_responses')
+        .select('*')
+        .eq('ticket_id', ticketId)
+        .order('created_at', { ascending: true });
+      
+      if (responsesError) {
+        console.error('Error fetching ticket responses:', responsesError);
+      }
+      
       return {
-        ...data,
-        username: data.profiles?.name || data.profiles?.email || 'Unknown'
+        ...ticket,
+        username: ticket.profiles?.name || ticket.profiles?.email || ticket.username || 'Unknown',
+        responses: responses || []
       };
     },
     enabled: !!ticketId,
+  });
+};
+
+// Hook pour créer un nouveau ticket
+export const useCreateTicket = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  
+  return useMutation({
+    mutationFn: async (ticketData: Omit<Ticket, 'id' | 'created_at' | 'updated_at'>) => {
+      const { data, error } = await supabase
+        .from('tickets')
+        .insert([ticketData])
+        .select();
+      
+      if (error) {
+        throw error;
+      }
+      
+      return data[0];
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['all-tickets'] });
+    },
+  });
+};
+
+// Hook pour répondre à un ticket
+export const useReplyToTicket = () => {
+  const queryClient = useQueryClient();
+  const { user, isAdmin } = useAuth();
+  
+  return useMutation({
+    mutationFn: async ({ ticketId, message }: { ticketId: string; message: string }) => {
+      const responseData = {
+        ticket_id: ticketId,
+        user_id: user?.id,
+        message,
+        is_admin: isAdmin,
+        username: user?.name || user?.email || 'Unknown'
+      };
+      
+      const { data, error } = await supabase
+        .from('ticket_responses')
+        .insert([responseData])
+        .select();
+      
+      if (error) {
+        throw error;
+      }
+      
+      return data[0];
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['ticket', variables.ticketId] });
+      queryClient.invalidateQueries({ queryKey: ['tickets', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['all-tickets'] });
+    },
+  });
+};
+
+// Hook pour mettre à jour le statut d'un ticket
+export const useUpdateTicketStatus = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ ticketId, status }: { ticketId: string; status: string }) => {
+      const { data, error } = await supabase
+        .from('tickets')
+        .update({ status })
+        .eq('id', ticketId)
+        .select();
+      
+      if (error) {
+        throw error;
+      }
+      
+      return data[0];
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['ticket', variables.ticketId] });
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['all-tickets'] });
+    },
   });
 };
