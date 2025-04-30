@@ -1,4 +1,3 @@
-
 // Point d'entrée principal pour les protections de console
 
 // Importer toutes les protections
@@ -9,7 +8,7 @@ import './globalErrorHandlers';
 // Re-exporter les constantes sensibles pour être utilisées ailleurs
 export { SENSITIVE_PATTERNS } from './constants';
 
-// Exporter les fonctions principales dont nous avons besoin dans main.tsx
+// Exporter les fonctions principales
 export { overrideConsoleMethods as initConsoleOverrides } from './consoleFunctionOverrides';
 
 /**
