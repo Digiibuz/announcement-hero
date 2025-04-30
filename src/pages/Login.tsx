@@ -11,6 +11,18 @@ import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
 import { handleAuthError } from "@/utils/security";
 
+// Patterns sensibles à bloquer dans la console
+const SENSITIVE_PATTERNS = [
+  /supabase\.co/i,
+  /auth\/v1\/token/i,
+  /token\?grant_type=password/i,
+  /400.*bad request/i,
+  /401/i,
+  /grant_type=password/i,
+  /rdwqedmvzicerwotjseg/i,
+  /index-[a-zA-Z0-9-_]+\.js/i
+];
+
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,6 +30,60 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  // Bloquer complètement les logs console standard
+  useEffect(() => {
+    const originalConsoleLog = console.log;
+    const originalConsoleError = console.error;
+    const originalConsoleWarn = console.warn;
+    
+    // Remplacer toutes les méthodes console pour bloquer les logs sensibles
+    console.log = function(...args) {
+      // Bloquer tous les logs liés à l'authentification ou aux URLs sensibles
+      if (args.some(arg => {
+        if (arg === undefined || arg === null) return false;
+        const str = String(arg);
+        return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
+      })) {
+        return; // Ne rien logger
+      }
+      
+      originalConsoleLog.apply(console, args);
+    };
+    
+    console.error = function(...args) {
+      // Bloquer tous les logs d'erreur liés à l'authentification ou aux URLs sensibles
+      if (args.some(arg => {
+        if (arg === undefined || arg === null) return false;
+        const str = String(arg);
+        return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
+      })) {
+        return; // Ne rien logger
+      }
+      
+      originalConsoleError.apply(console, args);
+    };
+    
+    console.warn = function(...args) {
+      // Bloquer tous les logs d'avertissement liés à l'authentification ou aux URLs sensibles
+      if (args.some(arg => {
+        if (arg === undefined || arg === null) return false;
+        const str = String(arg);
+        return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
+      })) {
+        return; // Ne rien logger
+      }
+      
+      originalConsoleWarn.apply(console, args);
+    };
+    
+    // Nettoyer lors du démontage du composant
+    return () => {
+      console.log = originalConsoleLog;
+      console.error = originalConsoleError;
+      console.warn = originalConsoleWarn;
+    };
+  }, []);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -30,38 +96,63 @@ const Login = () => {
   useEffect(() => {
     // Fonction qui bloque et empêche l'affichage des erreurs d'authentification dans la console
     const blockAuthErrors = (event) => {
-      // Vérifier si c'est une erreur d'authentification
-      if (event.type === 'error' || event.type === 'unhandledrejection') {
-        const message = (event.message || (event.reason && event.reason.message) || '').toString();
-        const stack = (event.error && event.error.stack || (event.reason && event.reason.stack) || '').toString();
-        
-        // Bloquer complètement les erreurs liées à l'authentification ou à Supabase
-        if (message.includes('token') || 
-            message.includes('auth') || 
-            message.includes('supabase') ||
-            message.includes('401') ||
-            message.includes('400') ||
-            stack.includes('token') || 
-            stack.includes('auth') || 
-            stack.includes('supabase')) {
-          event.preventDefault();
-          event.stopPropagation();
-          return true;
-        }
-      }
-      return false;
+      event.preventDefault();
+      event.stopPropagation();
+      return true;
     };
 
-    // Installation des gestionnaires d'erreurs pour les requêtes XHR
+    // Installation des gestionnaires d'erreurs pour toutes les requêtes
     const originalOpen = XMLHttpRequest.prototype.open;
     XMLHttpRequest.prototype.open = function(method, url, ...args) {
       // Si c'est une requête d'authentification, installer des gestionnaires d'erreurs spécifiques
-      if (String(url).includes('token') || String(url).includes('auth') || String(url).includes('supabase')) {
-        // Ne rien faire de spécial, mais l'URL sera masquée par les autres intercepteurs
+      const urlStr = String(url);
+      
+      if (urlStr.includes('token') || 
+          urlStr.includes('auth') || 
+          urlStr.includes('supabase') ||
+          SENSITIVE_PATTERNS.some(pattern => pattern.test(urlStr))) {
+        this.addEventListener('error', blockAuthErrors, true);
+        this.addEventListener('load', function() {
+          // Bloquer les logs de réponse
+          if (this.status === 400 || this.status === 401) {
+            // Remplacer temporairement console.log et console.error
+            const originalLog = console.log;
+            const originalError = console.error;
+            console.log = () => {};
+            console.error = () => {};
+            // Restaurer après un court délai
+            setTimeout(() => {
+              console.log = originalLog;
+              console.error = originalError;
+            }, 500); // Délai augmenté
+          }
+        }, true);
       }
+      
       return originalOpen.apply(this, [method, url, ...args]);
     };
 
+    // Intercepter fetch pour les requêtes d'authentification
+    const originalFetch = window.fetch;
+    window.fetch = function(input, init) {
+      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : '';
+      
+      if (SENSITIVE_PATTERNS.some(pattern => pattern.test(url))) {
+        // Installer des gestionnaires temporaires pour bloquer les logs
+        window.addEventListener('error', blockAuthErrors, true);
+        window.addEventListener('unhandledrejection', blockAuthErrors, true);
+        
+        // Exécuter la requête sans logger d'erreurs
+        return originalFetch(input, init).finally(() => {
+          // Supprimer les gestionnaires
+          window.removeEventListener('error', blockAuthErrors, true);
+          window.removeEventListener('unhandledrejection', blockAuthErrors, true);
+        });
+      }
+      
+      return originalFetch(input, init);
+    };
+    
     // Ajouter des écouteurs d'événements pour capturer les erreurs avant qu'elles n'atteignent la console
     window.addEventListener('error', blockAuthErrors, true);
     window.addEventListener('unhandledrejection', blockAuthErrors, true);
@@ -73,6 +164,7 @@ const Login = () => {
       
       // Restaurer les prototypes modifiés
       XMLHttpRequest.prototype.open = originalOpen;
+      window.fetch = originalFetch;
     };
   }, []);
 
@@ -81,52 +173,15 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      // Installer des gestionnaires temporaires pour bloquer toutes les erreurs liées à cette requête
-      const silenceAllErrors = (event: Event | PromiseRejectionEvent) => {
-        // Bloquer toutes les erreurs pendant la tentative de connexion
-        event.preventDefault();
-        event.stopPropagation();
-        return true;
-      };
-      
-      // Installer des gestionnaires de haut niveau pour capturer les erreurs avant console
-      window.addEventListener('unhandledrejection', silenceAllErrors, { capture: true });
-      window.addEventListener('error', silenceAllErrors, { capture: true });
-      
+      // Bloquer toutes les erreurs et logs pendant l'authentification
       const originalConsoleError = console.error;
       const originalConsoleWarn = console.warn;
       const originalConsoleLog = console.log;
       
-      // Remplacer temporairement console.error et console.warn pour masquer les erreurs d'authentification
-      console.error = function(...args) {
-        // Ne rien loguer si lié à l'authentification
-        if (!args.some(arg => 
-          typeof arg === 'string' && (arg.includes('auth') || arg.includes('supabase') || 
-          arg.includes('token') || arg.includes('400') || arg.includes('401'))
-        )) {
-          originalConsoleError.apply(console, args);
-        }
-      };
-      
-      console.warn = function(...args) {
-        // Ne rien loguer si lié à l'authentification
-        if (!args.some(arg => 
-          typeof arg === 'string' && (arg.includes('auth') || arg.includes('supabase') || 
-          arg.includes('token') || arg.includes('400') || arg.includes('401'))
-        )) {
-          originalConsoleWarn.apply(console, args);
-        }
-      };
-      
-      console.log = function(...args) {
-        // Ne rien loguer si lié à l'authentification
-        if (!args.some(arg => 
-          typeof arg === 'string' && (arg.includes('auth') || arg.includes('supabase') || 
-          arg.includes('token') || arg.includes('400') || arg.includes('401'))
-        )) {
-          originalConsoleLog.apply(console, args);
-        }
-      };
+      // Remplacer temporairement toutes les fonctions console
+      console.error = () => {};
+      console.warn = () => {};
+      console.log = () => {};
       
       try {
         await login(email, password);
@@ -137,19 +192,18 @@ const Login = () => {
           navigate("/dashboard");
         }, 300);
       } catch (error: any) {
-        // Utiliser la fonction de gestion sécurisée des erreurs
-        const errorMessage = handleAuthError(error);
-        toast.error(errorMessage);
+        // Utiliser la fonction de gestion sécurisée des erreurs sans loguer de détails
+        toast.error("Identifiants invalides. Veuillez vérifier votre email et mot de passe.");
       } finally {
-        // Restaurer les fonctions console originales et supprimer les gestionnaires d'événements
-        console.error = originalConsoleError;
-        console.warn = originalConsoleWarn;
-        console.log = originalConsoleLog;
-        window.removeEventListener('unhandledrejection', silenceAllErrors);
-        window.removeEventListener('error', silenceAllErrors);
+        // Restaurer les fonctions console
+        setTimeout(() => {
+          console.error = originalConsoleError;
+          console.warn = originalConsoleWarn;
+          console.log = originalConsoleLog;
+        }, 1000); // Délai augmenté pour s'assurer que tous les logs sont supprimés
       }
     } catch (error) {
-      // Ne pas afficher l'erreur - déjà gérée ci-dessus
+      // Ne pas afficher l'erreur
       toast.error("Identifiants invalides. Veuillez vérifier votre email et mot de passe.");
     } finally {
       setIsLoading(false);

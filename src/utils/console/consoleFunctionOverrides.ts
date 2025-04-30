@@ -2,7 +2,6 @@
 /**
  * Module pour gérer les remplacements des fonctions console
  */
-import { sanitizeAllArgs } from '../logSanitizer';
 
 // Sauvegarde des fonctions console originales
 const originalConsoleError = console.error;
@@ -11,55 +10,82 @@ const originalConsoleLog = console.log;
 const originalConsoleDebug = console.debug;
 const originalConsoleInfo = console.info;
 
+// Liste des patterns sensibles à bloquer complètement
+const SENSITIVE_PATTERNS = [
+  /supabase\.co/i,
+  /auth\/v1\/token/i,
+  /token\?grant_type=password/i,
+  /400.*bad request/i,
+  /401/i,
+  /grant_type=password/i,
+  /rdwqedmvzicerwotjseg/i,
+  /index-[a-zA-Z0-9-_]+\.js/i
+];
+
+// Fonction pour vérifier si un message contient des informations sensibles
+function containsSensitiveInfo(args) {
+  if (!args || args.length === 0) return false;
+  
+  return args.some(arg => {
+    if (arg === null || arg === undefined) return false;
+    const str = String(arg);
+    return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
+  });
+}
+
 /**
  * Remplace les fonctions console natives pour masquer les informations sensibles
  */
 export function overrideConsoleMethods(): void {
-  // Override de console.error pour intercepter et masquer les informations sensibles
-  console.error = function(...args: any[]) {
-    // Masquer les informations sensibles dans tous les arguments
-    const sanitizedArgs = sanitizeAllArgs(args);
-    
-    // Masquer spécifiquement les messages liés à l'authentification
-    if (sanitizedArgs.some(arg => 
-      typeof arg === 'string' && (
-        arg.includes('auth') || 
-        arg.includes('token') || 
-        arg.includes('401') ||
-        arg.includes('400')
-      )
-    )) {
-      // Remplacer par un message générique pour l'authentification
-      originalConsoleError.apply(console, ["[ERREUR_AUTHENTIFICATION]"]);
-      return;
+  // Override de console.error pour bloquer complètement les informations sensibles
+  console.error = function(...args) {
+    // Bloquer complètement les logs contenant des informations sensibles
+    if (containsSensitiveInfo(args)) {
+      return; // Ne rien afficher
     }
     
-    // Appel à la fonction console.error originale avec les arguments masqués
-    originalConsoleError.apply(console, sanitizedArgs);
+    // Appel à la fonction console.error originale uniquement pour les messages non sensibles
+    originalConsoleError.apply(console, args);
   };
 
   // Override de console.warn
-  console.warn = function(...args: any[]) {
-    const sanitizedArgs = sanitizeAllArgs(args);
-    originalConsoleWarn.apply(console, sanitizedArgs);
+  console.warn = function(...args) {
+    // Bloquer complètement les logs contenant des informations sensibles
+    if (containsSensitiveInfo(args)) {
+      return; // Ne rien afficher
+    }
+    
+    originalConsoleWarn.apply(console, args);
   };
 
   // Override de console.log
-  console.log = function(...args: any[]) {
-    const sanitizedArgs = sanitizeAllArgs(args);
-    originalConsoleLog.apply(console, sanitizedArgs);
+  console.log = function(...args) {
+    // Bloquer complètement les logs contenant des informations sensibles
+    if (containsSensitiveInfo(args)) {
+      return; // Ne rien afficher
+    }
+    
+    originalConsoleLog.apply(console, args);
   };
 
   // Override de console.debug
-  console.debug = function(...args: any[]) {
-    const sanitizedArgs = sanitizeAllArgs(args);
-    originalConsoleDebug.apply(console, sanitizedArgs);
+  console.debug = function(...args) {
+    // Bloquer complètement les logs contenant des informations sensibles
+    if (containsSensitiveInfo(args)) {
+      return; // Ne rien afficher
+    }
+    
+    originalConsoleDebug.apply(console, args);
   };
 
   // Override de console.info
-  console.info = function(...args: any[]) {
-    const sanitizedArgs = sanitizeAllArgs(args);
-    originalConsoleInfo.apply(console, sanitizedArgs);
+  console.info = function(...args) {
+    // Bloquer complètement les logs contenant des informations sensibles
+    if (containsSensitiveInfo(args)) {
+      return; // Ne rien afficher
+    }
+    
+    originalConsoleInfo.apply(console, args);
   };
 }
 

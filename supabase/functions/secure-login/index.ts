@@ -45,7 +45,7 @@ serve(async (req) => {
       );
     }
 
-    // Suppression complète de tous les logs
+    // AUCUN LOG - Suppression complète de tous les console.log
 
     // Attempt to sign in using Supabase admin client
     const { data, error } = await supabaseAdmin.auth.signInWithPassword({
@@ -55,7 +55,7 @@ serve(async (req) => {
 
     // Handle authentication errors without exposing sensitive details
     if (error) {
-      // Suppression complète des logs même en cas d'erreur
+      // AUCUN LOG - Suppression complète de tous les console.log
       
       // Return standardized error response with specific code for frontend handling
       return new Response(
@@ -74,7 +74,7 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
-    // Suppression complète des logs même en cas d'erreur
+    // AUCUN LOG - Suppression complète de tous les console.log
     
     return new Response(
       JSON.stringify({ error: 'SERVER_ERROR', code: 'SERVER_ERROR' }),

@@ -2,188 +2,126 @@
 /**
  * Module pour intercepter et sécuriser les requêtes réseau
  */
-import { sanitizeErrorMessage } from '../urlSanitizer';
+
+// Liste des patterns sensibles à bloquer complètement
+const SENSITIVE_PATTERNS = [
+  /supabase\.co/i,
+  /auth\/v1\/token/i,
+  /token\?grant_type=password/i,
+  /400.*bad request/i,
+  /401/i,
+  /grant_type=password/i,
+  /rdwqedmvzicerwotjseg/i,
+  /index-[a-zA-Z0-9-_]+\.js/i
+];
 
 /**
  * Configure les interceptions pour XMLHttpRequest et fetch
  */
 export function setupNetworkInterceptors(): void {
-  // Bloquer complètement les erreurs spécifiques d'authentification dans la console
-  const originalConsoleError = console.error;
-  console.error = function(...args) {
-    // Bloquer complètement les erreurs d'authentification
-    const isAuthError = args.some(arg => {
-      if (arg === undefined || arg === null) return false;
-      const str = String(arg);
-      return (str.includes('POST') && (
-                str.includes('auth/v1/token') ||
-                str.includes('token?grant_type=password') ||
-                str.includes('supabase.co')
-              )) ||
-             str.includes('400') || 
-             str.includes('401') || 
-             str.includes('Bad Request') ||
-             str.includes('Invalid login credentials');
-    });
-    
-    if (isAuthError) {
-      return; // Ne rien logger du tout
-    }
-    
-    originalConsoleError.apply(console, args.map(arg => {
-      if (typeof arg === 'string') {
-        return sanitizeErrorMessage(arg);
-      }
-      return arg;
-    }));
-  };
-
-  // Intercepter fetch pour masquer les URLs des requêtes
+  // Intercepter fetch pour supprimer les logs des requêtes sensibles
   const originalFetch = window.fetch;
-  window.fetch = function(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  window.fetch = function(input, init): Promise<Response> {
     try {
-      // Intercepter spécifiquement les requêtes vers les endpoints d'authentification
-      const inputUrl = input instanceof Request ? input.url : input.toString();
-      const isAuthRequest = typeof inputUrl === 'string' && (
-        inputUrl.includes('auth/v1/token') || 
-        inputUrl.includes('grant_type=password') ||
-        inputUrl.includes('supabase.co') ||
-        inputUrl.includes('token')
-      );
+      const inputUrl = input instanceof Request ? input.url : String(input);
       
-      // Ne rien logger pour les requêtes d'authentification
-      if (!isAuthRequest) {
-        // Ne jamais afficher l'URL réelle dans les logs
-        console.log(`Requête fetch vers [URL_MASQUÉE]`);
-      }
+      // Bloquer complètement les logs pour les requêtes sensibles
+      const isSensitive = SENSITIVE_PATTERNS.some(pattern => pattern.test(inputUrl));
       
-      // Bloquer les erreurs liées à l'authentification
-      if (isAuthRequest) {
-        // Installer un intercepteur d'erreurs spécifique pour cette requête
-        const errorHandler = (event: Event) => {
-          // Bloquer complètement les erreurs liées à cette requête
+      if (isSensitive) {
+        // Ajout d'un intercepteur d'erreurs temporaire pour cette requête sensible
+        const errorHandler = (event) => {
           event.preventDefault();
           event.stopPropagation();
           return true;
         };
         
-        // Ajouter des gestionnaires d'erreurs temporaires
+        // Ajouter temporairement des gestionnaires d'événements pour bloquer les erreurs
         window.addEventListener('error', errorHandler, true);
         window.addEventListener('unhandledrejection', errorHandler, true);
         
-        // Exécuter la requête avec les gestionnaires d'erreurs
+        // Exécuter la requête silencieusement
         return originalFetch(input, init)
-          .catch(error => {
-            // Supprimer toute trace d'erreur dans la console
-            throw new Error("Erreur d'authentification");
-          })
           .finally(() => {
-            // Supprimer les gestionnaires d'erreurs
+            // Supprimer les gestionnaires après la requête
             window.removeEventListener('error', errorHandler, true);
             window.removeEventListener('unhandledrejection', errorHandler, true);
           });
       }
-
-      // Pour les autres requêtes, continuer normalement
+      
+      // Pour les requêtes non sensibles, continuer normalement
       return originalFetch(input, init);
-    } catch (error) {
+    } catch (e) {
+      // En cas d'erreur, laisser passer la requête mais bloquer les logs
       return originalFetch(input, init);
     }
   };
 
-  // Hook XMLHttpRequest pour bloquer les URLs des requêtes sensibles
+  // Intercepter XMLHttpRequest pour bloquer les logs des requêtes sensibles
   const originalXHROpen = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function(method: string, url: string | URL, ...args: any[]) {
-    // Bloquer complètement les logs pour les requêtes d'authentification
-    const urlStr = url.toString();
-    const isAuthRequest = urlStr.includes('auth/v1/token') || 
-                         urlStr.includes('grant_type=password') || 
-                         urlStr.includes('supabase.co');
+  XMLHttpRequest.prototype.open = function(method, url, ...args) {
+    const urlStr = String(url);
     
-    if (isAuthRequest) {
+    // Vérifier si l'URL est sensible
+    const isSensitive = SENSITIVE_PATTERNS.some(pattern => pattern.test(urlStr));
+    
+    if (isSensitive) {
       // Intercepter et bloquer les erreurs pour cette requête
       this.addEventListener('error', (event) => {
         event.preventDefault();
         event.stopPropagation();
         return true;
-      });
+      }, true);
       
-      // Intercepter également l'événement load pour bloquer les erreurs dans la réponse
+      // Bloquer également les événements load qui pourraient logger des erreurs
       this.addEventListener('load', () => {
         if (this.status === 400 || this.status === 401) {
-          // Ne pas logger les réponses d'erreur
-          const originalConsoleLog = console.log;
-          const originalConsoleError = console.error;
+          const originalLog = console.log;
+          const originalError = console.error;
+          const originalWarn = console.warn;
+          
+          // Désactiver temporairement tous les logs console
           console.log = () => {};
           console.error = () => {};
+          console.warn = () => {};
           
-          // Restaurer après un court délai
+          // Restaurer après un délai
           setTimeout(() => {
-            console.log = originalConsoleLog;
-            console.error = originalConsoleError;
-          }, 100);
+            console.log = originalLog;
+            console.error = originalError;
+            console.warn = originalWarn;
+          }, 500); // Délai plus long pour s'assurer que tous les logs sont bloqués
         }
-      });
-    } else {
-      // Ne pas logger les URLs sensibles
-      console.log(`Requête XHR ${method.toUpperCase()} vers [URL_MASQUÉE]`);
+      }, true);
     }
     
     return originalXHROpen.apply(this, [method, url, ...args]);
   };
 
-  // Bloquer spécifiquement les affichages d'URLs supabase dans la console
-  // Cette partie est critique car c'est ce qui est visible dans votre capture d'écran
-  const originalConsoleLog = console.log;
-  console.log = function(...args) {
-    // Bloquer spécifiquement les logs contenant des URLs Supabase ou des messages d'erreur d'authentification
-    const shouldBlock = args.some(arg => {
-      if (arg === undefined || arg === null) return false;
-      const str = String(arg);
-      return str.includes('rdwqedmvzicerwotjseg.supabase.co') || 
-             str.includes('auth/v1/token') ||
-             str.includes('token?grant_type=password');
-    });
-    
-    if (shouldBlock) {
-      return; // Ne rien logger du tout
-    }
-    
-    originalConsoleLog.apply(console, args);
-  };
-  
-  // Installer des gestionnaires d'erreur pour les requêtes qui pourraient échouer
+  // Installer des intercepteurs d'erreurs globaux
   window.addEventListener('error', function(event) {
-    // Vérifier si l'événement contient des URL sensibles
-    if (event.message && (
-        event.message.includes('supabase.co') ||
-        event.message.includes('auth/v1/token') ||
-        event.message.includes('token?grant_type=password') ||
-        event.message.includes('400') || 
-        event.message.includes('401'))) {
-      // Bloquer complètement l'affichage de ces erreurs
+    const eventData = event.message || event.error?.stack || '';
+    
+    // Bloquer les événements d'erreur liés aux patterns sensibles
+    if (SENSITIVE_PATTERNS.some(pattern => pattern.test(eventData))) {
       event.preventDefault();
       event.stopPropagation();
       return true;
     }
-  }, true); // Utiliser la phase de capture
+  }, true);
   
   // Même chose pour les rejets de promesses
   window.addEventListener('unhandledrejection', function(event) {
-    // Vérifier si le rejet contient des URL sensibles
     const reasonStr = String(event.reason || '');
-    if (reasonStr.includes('supabase.co') ||
-        reasonStr.includes('auth/v1/token') ||
-        reasonStr.includes('token?grant_type=password') ||
-        reasonStr.includes('400') || 
-        reasonStr.includes('401')) {
-      // Bloquer complètement l'affichage de ces erreurs
+    
+    // Bloquer les rejets de promesses liés aux patterns sensibles
+    if (SENSITIVE_PATTERNS.some(pattern => pattern.test(reasonStr))) {
       event.preventDefault();
       event.stopPropagation();
       return true;
     }
-  }, true); // Utiliser la phase de capture
+  }, true);
 }
 
-// Installez immédiatement les intercepteurs pour être sûr qu'ils sont actifs
+// Initialiser immédiatement les intercepteurs
 setupNetworkInterceptors();

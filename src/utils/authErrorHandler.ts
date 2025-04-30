@@ -1,35 +1,42 @@
 
 /**
- * Gestionnaire d'erreurs d'authentification
+ * Gestion sécurisée des erreurs d'authentification
+ * - Ne contient aucun log vers la console
+ * - Ne révèle pas d'URLs ou d'informations sensibles
  */
-import { safeConsoleError } from './logSanitizer';
 
 /**
- * Intercepte une erreur et la traite de manière sécurisée
+ * Gère les erreurs d'authentification de manière sécurisée
  * @param error L'erreur à traiter
- * @returns Un message d'erreur convivial et sécurisé
+ * @returns Un message d'erreur générique
  */
 export function handleAuthError(error: any): string {
-  // Ne pas afficher l'erreur complète dans la console
-  safeConsoleError("[ERREUR_AUTHENTIFICATION]:", error);
+  // Ne jamais logger l'erreur originale, retourner un message générique
+  return "Identifiants invalides. Veuillez vérifier votre email et mot de passe.";
+}
+
+/**
+ * Version sécurisée de console.error qui ne permet pas d'afficher d'informations sensibles
+ * @param message Message d'erreur
+ */
+export function safeConsoleError(message: string): void {
+  // Bloquer complètement les logs contenant des termes sensibles
+  const sensitivePatterns = [
+    /supabase\.co/i,
+    /auth\/v1\/token/i,
+    /token\?grant_type=password/i,
+    /400.*bad request/i,
+    /401/i,
+    /grant_type=password/i,
+    /rdwqedmvzicerwotjseg/i,
+    /index-[a-zA-Z0-9-_]+\.js/i
+  ];
   
-  // Ne jamais afficher de messages d'erreur trop spécifiques
-  // Traduire les codes d'erreur communs de Supabase
-  if (error?.message?.includes('Invalid login credentials') || 
-      error?.message?.includes('invalid') ||
-      error?.status === 400 || 
-      error?.message?.includes('Bad Request') ||
-      error?.code === 'INVALID_CREDENTIALS' ||
-      error?.error === 'INVALID_CREDENTIALS') {
-    return "Identifiants invalides. Veuillez vérifier votre email et mot de passe.";
-  } else if (error?.message?.includes('Email not confirmed')) {
-    return "Email non confirmé. Veuillez vérifier votre boîte de réception.";
-  } else if (error?.message?.includes('rate limit')) {
-    return "Trop de tentatives de connexion. Veuillez réessayer plus tard.";
-  } else if (error?.status === 401 || error?.message?.includes('Unauthorized')) {
-    return "Session expirée. Veuillez vous reconnecter.";
+  // Vérifier si le message contient des informations sensibles
+  if (sensitivePatterns.some(pattern => pattern.test(message))) {
+    return; // Ne rien afficher
   }
   
-  // Message générique pour toute autre erreur - ne jamais donner de détails spécifiques
-  return "Échec de la connexion. Veuillez réessayer.";
+  // Pour les messages non sensibles uniquement
+  console.error("[ERREUR_SÉCURISÉE]");
 }
