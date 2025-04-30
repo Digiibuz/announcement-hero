@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -11,20 +10,11 @@ import { toast } from "sonner";
 import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
 import { handleAuthError } from "@/utils/security";
+import { SENSITIVE_PATTERNS } from "@/integrations/supabase/client";
 
 // Initialisation immédiate avant tout autre code
 (() => {
   // Bloquer complètement l'affichage des URLs et erreurs sensibles
-  const SENSITIVE_PATTERNS = [
-    /supabase\.co/i,
-    /auth\/v1\/token/i,
-    /token\?grant_type=password/i,
-    /400.*bad request/i,
-    /401/i,
-    /grant_type=password/i,
-    /rdwqedmvzicerwotjseg/i,
-    /index-[a-zA-Z0-9-_]+\.js/i
-  ];
   
   // Stocker les fonctions originales
   const originalConsoleLog = console.log;

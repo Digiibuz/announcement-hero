@@ -19,9 +19,6 @@ export type ConfigState = {
   client: SupabaseClient<Database> | null;
 };
 
-// Instance singleton du client Supabase
-let supabaseInstance: SupabaseClient<Database> | null = null;
-
 // L'URL de l'API est cachée dans une fonction pour éviter l'exposition directe
 function getConfigEndpoint(): string {
   try {
@@ -40,15 +37,6 @@ function getConfigEndpoint(): string {
  * Charge la configuration depuis l'Edge Function et initialise le client Supabase
  */
 export async function initializeSupabase(): Promise<ConfigState> {
-  // Si le client est déjà initialisé, le retourner
-  if (supabaseInstance) {
-    return {
-      isLoading: false,
-      error: null,
-      client: supabaseInstance
-    };
-  }
-
   try {
     // Utilisation de l'URL cachée
     const configUrl = getConfigEndpoint();
@@ -86,7 +74,7 @@ export async function initializeSupabase(): Promise<ConfigState> {
 
     // Initialiser le client Supabase avec les valeurs dynamiques
     console.log("Initialisation du client Supabase...");
-    supabaseInstance = createClient<Database>(
+    const supabaseInstance = createClient<Database>(
       config.supabaseUrl,
       config.supabaseAnonKey,
       {
@@ -129,6 +117,5 @@ export async function initializeSupabase(): Promise<ConfigState> {
  * Réinitialise le client Supabase (utile pour les tests ou après déconnexion)
  */
 export function resetSupabaseClient(): void {
-  supabaseInstance = null;
   setSupabaseClient(null);
 }

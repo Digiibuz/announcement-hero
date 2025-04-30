@@ -1,14 +1,12 @@
-
-import { useState, useEffect, useMemo } from "react";
-import { User, Session } from "@supabase/supabase-js";
-import { useSupabaseConfig } from "../SupabaseConfigContext";
-import { useLocation, useNavigate } from "react-router-dom";
-import { hasRole } from "./types";
-import { toast } from "sonner";
-import { setSupabaseClient } from "@/integrations/supabase/client";
-import { UserProfile } from "@/types/auth";
-import { createProfileFromMetadata } from "@/hooks/useUserProfile";
-import { safeConsoleError } from "@/utils/security";
+import { useState, useEffect, useCallback } from 'react';
+import { Session, User } from '@supabase/supabase-js';
+import { toast } from 'sonner';
+import { 
+  getSupabaseClient,
+  supabase 
+} from '@/integrations/supabase/client';
+import { safeConsoleError } from '@/utils/logSanitizer';
+import { handleAuthError } from '@/utils/security';
 
 export const useAuthState = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
