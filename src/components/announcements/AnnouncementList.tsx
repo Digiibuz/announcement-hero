@@ -1,4 +1,3 @@
-
 import React from "react";
 import { 
   Table, 
@@ -48,7 +47,7 @@ interface AnnouncementListProps {
 }
 
 const AnnouncementList = ({ 
-  announcements, 
+  announcements = [], // Provide default empty array to prevent null
   isLoading,
   onDelete,
   viewMode = "table"
@@ -120,7 +119,7 @@ const AnnouncementList = ({
     );
   }
 
-  if (announcements.length === 0) {
+  if (!announcements || announcements.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center bg-muted/20 rounded-lg border border-dashed">
         <div className="mb-4">

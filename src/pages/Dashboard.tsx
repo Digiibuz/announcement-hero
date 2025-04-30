@@ -53,15 +53,16 @@ const Dashboard = () => {
           };
         }
         
-        const published = data.filter(a => a.status === "published").length;
-        const scheduled = data.filter(a => a.status === "scheduled").length;
-        const draft = data.filter(a => a.status === "draft").length;
+        // Initialize default values in case data is null
+        const published = data ? data.filter(a => a.status === "published").length : 0;
+        const scheduled = data ? data.filter(a => a.status === "scheduled").length : 0;
+        const draft = data ? data.filter(a => a.status === "draft").length : 0;
         
         return {
           published,
           scheduled,
           draft,
-          total: data.length
+          total: data ? data.length : 0
         };
       } else {
         const { data, error } = await query;
@@ -76,15 +77,16 @@ const Dashboard = () => {
           };
         }
         
-        const published = data.filter(a => a.status === "published").length;
-        const scheduled = data.filter(a => a.status === "scheduled").length;
-        const draft = data.filter(a => a.status === "draft").length;
+        // Initialize default values in case data is null
+        const published = data ? data.filter(a => a.status === "published").length : 0;
+        const scheduled = data ? data.filter(a => a.status === "scheduled").length : 0;
+        const draft = data ? data.filter(a => a.status === "draft").length : 0;
         
         return {
           published,
           scheduled,
           draft,
-          total: data.length
+          total: data ? data.length : 0
         };
       }
     },
@@ -128,8 +130,17 @@ const Dashboard = () => {
   });
 
   // Admin stats - support tickets
-  const { data: allTickets = [] } = useAllTickets();
+  const { data: allTickets = [], isLoading: isLoadingAllTickets } = useAllTickets();
   const ticketStats = React.useMemo(() => {
+    if (!allTickets) {
+      return {
+        open: 0,
+        inProgress: 0,
+        closed: 0,
+        total: 0
+      };
+    }
+    
     const openTickets = allTickets.filter(t => t.status === "open").length;
     const inProgressTickets = allTickets.filter(t => t.status === "in_progress").length;
     const closedTickets = allTickets.filter(t => t.status === "closed").length;
@@ -163,6 +174,8 @@ const Dashboard = () => {
         return [];
       }
       
+      if (!data) return [];
+      
       return data.map(announcement => {
         const processed: Announcement = { ...announcement } as Announcement;
         
@@ -191,7 +204,7 @@ const Dashboard = () => {
         return [];
       }
       
-      return data;
+      return data || [];
     },
     enabled: !!user && isAdmin,
   });
@@ -221,7 +234,7 @@ const Dashboard = () => {
         return [];
       }
       
-      return data;
+      return data || [];
     },
     enabled: !!user && !isAdmin,
   });
