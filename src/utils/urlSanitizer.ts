@@ -1,4 +1,3 @@
-
 /**
  * Utilitaires pour masquer les URLs et informations sensibles
  */
@@ -62,7 +61,7 @@ export function sanitizeErrorMessage(message: string): string {
   let sanitizedMessage = message;
   
   try {
-    // Protection spéciale pour les objets JSON (pour éviter les erreurs sur des objets circulaires)
+    // Protection spéciale pour les objets JSON
     if (typeof message === 'object') {
       try {
         sanitizedMessage = JSON.stringify(message);
@@ -71,13 +70,14 @@ export function sanitizeErrorMessage(message: string): string {
       }
     }
     
-    // Masquer complètement les messages d'erreur d'authentification
+    // Bloquer COMPLÈTEMENT les messages d'erreur d'authentification spécifiques
     if (sanitizedMessage.includes("token?grant_type=password") || 
         sanitizedMessage.includes("/auth/v1/token") || 
         sanitizedMessage.includes("401") || 
         sanitizedMessage.includes("400") || 
         sanitizedMessage.includes("grant_type=password") ||
         sanitizedMessage.includes("Bad Request") ||
+        sanitizedMessage.includes("rdwqedmvzicerwotjseg") ||
         sanitizedMessage.includes("Invalid login credentials")) {
       return "[ERREUR_AUTHENTIFICATION]";
     }

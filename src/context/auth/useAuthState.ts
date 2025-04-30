@@ -6,7 +6,8 @@ import { toast } from 'sonner';
 import { 
   getSupabaseClient,
   supabase,
-  setSupabaseClient
+  setSupabaseClient,
+  SENSITIVE_PATTERNS
 } from '@/integrations/supabase/client';
 import { safeConsoleError } from '@/utils/logSanitizer';
 import { handleAuthError } from '@/utils/security';
@@ -49,6 +50,46 @@ export const useAuthState = () => {
 
     setIsLoading(true);
 
+    // Bloquer les logs pendant l'authentification
+    const originalConsoleError = console.error;
+    const originalConsoleWarn = console.warn;
+    const originalConsoleLog = console.log;
+    
+    // Désactiver temporairement les logs pour éviter de montrer les URLs sensibles
+    console.error = function(...args) {
+      // Bloquer les logs contenant des informations sensibles
+      if (args.some(arg => {
+        if (arg === null || arg === undefined) return false;
+        const str = String(arg);
+        return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
+      })) {
+        return;
+      }
+      originalConsoleError.apply(console, args);
+    };
+    
+    console.warn = function(...args) {
+      if (args.some(arg => {
+        if (arg === null || arg === undefined) return false;
+        const str = String(arg);
+        return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
+      })) {
+        return;
+      }
+      originalConsoleWarn.apply(console, args);
+    };
+    
+    console.log = function(...args) {
+      if (args.some(arg => {
+        if (arg === null || arg === undefined) return false;
+        const str = String(arg);
+        return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
+      })) {
+        return;
+      }
+      originalConsoleLog.apply(console, args);
+    };
+
     // Set up auth state change handler
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN") {
@@ -77,10 +118,22 @@ export const useAuthState = () => {
       setSession(session || null);
     }).finally(() => {
       setIsLoading(false);
+      
+      // Restaurer les fonctions de console
+      setTimeout(() => {
+        console.error = originalConsoleError;
+        console.warn = originalConsoleWarn;
+        console.log = originalConsoleLog;
+      }, 1000);
     });
 
     return () => {
       subscription.unsubscribe();
+      
+      // Restaurer les fonctions de console
+      console.error = originalConsoleError;
+      console.warn = originalConsoleWarn;
+      console.log = originalConsoleLog;
     };
   }, [supabase, location.pathname, navigate]); 
 
@@ -92,19 +145,41 @@ export const useAuthState = () => {
   // Login function
   const login = async (email: string, password: string) => {
     if (!supabase) throw new Error("Supabase client not initialized");
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password,
-    });
+    
+    // Bloquer les logs pendant l'authentification
+    const originalConsoleError = console.error;
+    const originalConsoleWarn = console.warn;
+    const originalConsoleLog = console.log;
+    
+    // Désactiver temporairement tous les logs
+    console.error = function() {};
+    console.warn = function() {};
+    console.log = function() {};
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
 
-    if (error) {
-      // Ne pas loguer l'erreur complète ici, elle sera traitée par handleAuthError
-      throw error;
+      if (error) {
+        // Ne pas loguer l'erreur complète, utiliser un message générique
+        throw new Error("Identifiants invalides");
+      }
+
+      setUser(createProfileFromMetadata(data.user));
+      setSession(data.session);
+    } catch (error) {
+      // Utiliser un message d'erreur générique pour ne pas exposer de détails
+      throw new Error("Identifiants invalides");
+    } finally {
+      // Restaurer les fonctions de console après un délai
+      setTimeout(() => {
+        console.error = originalConsoleError;
+        console.warn = originalConsoleWarn;
+        console.log = originalConsoleLog;
+      }, 1000);
     }
-
-    safeConsoleError("Login successful:", data.user?.id);
-    setUser(createProfileFromMetadata(data.user));
-    setSession(data.session);
   };
 
   // Logout function

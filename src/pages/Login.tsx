@@ -232,10 +232,10 @@ const Login = () => {
       const originalConsoleWarn = console.warn;
       const originalConsoleLog = console.log;
       
-      // Désactiver complètement les logs pendant l'authentification
-      console.error = () => {};
-      console.warn = () => {};
-      console.log = () => {};
+      // Désactiver complètement TOUS les logs pendant l'authentification
+      console.error = function(){};
+      console.warn = function(){};
+      console.log = function(){};
       
       try {
         await login(email, password);
