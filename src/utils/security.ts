@@ -1,16 +1,14 @@
 
 /**
- * Module principal de sécurité - Point d'entrée pour les fonctions de sécurité
+ * Main security module - Entry point for security functions
  */
 
-// Re-exporter toutes les fonctions pertinentes pour maintenir la compatibilité avec le code existant
-export { sanitizeErrorMessage } from './urlSanitizer';
-export { safeConsoleError, sanitizeAllArgs } from './logSanitizer';
-export { handleAuthError } from './authErrorHandler';
+// Re-export all relevant functions to maintain compatibility with existing code
+export { sanitizeErrorMessage, safeConsoleError, sanitizeAllArgs, handleAuthError } from './sanitization';
 
-// Protection avancée pour bloquer complètement les URLs sensibles dans les erreurs
+// Advanced protection to completely block sensitive URLs in errors
 (function() {
-  // Patterns sensibles à bloquer complètement
+  // Sensitive patterns to block completely
   const sensitivePatterns = [
     /supabase\.co/i,
     /auth\/v1\/token/i,
@@ -22,11 +20,11 @@ export { handleAuthError } from './authErrorHandler';
     /index-[a-zA-Z0-9-_]+\.js/i
   ];
   
-  // Bloquer complètement les erreurs non gérées qui contiennent des informations sensibles
+  // Completely block unhandled errors containing sensitive information
   window.addEventListener('error', function(event) {
     const errorText = event.message || event.error?.stack || '';
     
-    // Bloquer et masquer les erreurs liées à l'authentification
+    // Block and mask errors related to authentication
     if (sensitivePatterns.some(pattern => pattern.test(errorText))) {
       event.preventDefault();
       event.stopPropagation();
@@ -34,11 +32,11 @@ export { handleAuthError } from './authErrorHandler';
     }
   }, true);
   
-  // Même chose pour les rejets de promesses non gérés
+  // Same for unhandled promise rejections
   window.addEventListener('unhandledrejection', function(event) {
     const reasonText = String(event.reason || '');
     
-    // Bloquer et masquer les rejets liés à l'authentification
+    // Block and mask rejections related to authentication
     if (sensitivePatterns.some(pattern => pattern.test(reasonText))) {
       event.preventDefault();
       event.stopPropagation();
@@ -46,46 +44,46 @@ export { handleAuthError } from './authErrorHandler';
     }
   }, true);
   
-  // Pour les console.log et console.error provenant de l'extérieur
+  // For console.log and console.error from outside
   const originalConsoleLog = console.log;
   const originalConsoleError = console.error;
   const originalConsoleWarn = console.warn;
   
-  // Remplacer définitivement console.log
+  // Permanently replace console.log
   console.log = function(...args) {
-    // Bloquer complètement les logs sensibles
+    // Completely block sensitive logs
     if (args.some(arg => {
       if (arg === null || arg === undefined) return false;
       const str = String(arg);
       return sensitivePatterns.some(pattern => pattern.test(str));
     })) {
-      return; // Ne rien logger
+      return; // Don't log anything
     }
     originalConsoleLog.apply(console, args);
   };
   
-  // Remplacer définitivement console.error
+  // Permanently replace console.error
   console.error = function(...args) {
-    // Bloquer complètement les logs d'erreur sensibles
+    // Completely block sensitive error logs
     if (args.some(arg => {
       if (arg === null || arg === undefined) return false;
       const str = String(arg);
       return sensitivePatterns.some(pattern => pattern.test(str));
     })) {
-      return; // Ne rien logger
+      return; // Don't log anything
     }
     originalConsoleError.apply(console, args);
   };
   
-  // Remplacer définitivement console.warn
+  // Permanently replace console.warn
   console.warn = function(...args) {
-    // Bloquer complètement les logs d'avertissement sensibles
+    // Completely block sensitive warning logs
     if (args.some(arg => {
       if (arg === null || arg === undefined) return false;
       const str = String(arg);
       return sensitivePatterns.some(pattern => pattern.test(str));
     })) {
-      return; // Ne rien logger
+      return; // Don't log anything
     }
     originalConsoleWarn.apply(console, args);
   };
