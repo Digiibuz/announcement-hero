@@ -6,6 +6,9 @@ import './consoleFunctionOverrides';
 import './networkRequestInterceptors';
 import './globalErrorHandlers';
 
+// Re-exporter les constantes sensibles pour être utilisées ailleurs
+export { SENSITIVE_PATTERNS } from './constants';
+
 // Exporter les fonctions principales dont nous avons besoin dans main.tsx
 export { overrideConsoleMethods as initConsoleOverrides } from './consoleFunctionOverrides';
 
