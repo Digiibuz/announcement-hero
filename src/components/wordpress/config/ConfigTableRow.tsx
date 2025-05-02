@@ -1,45 +1,36 @@
 
 import React from "react";
 import { TableCell, TableRow } from "@/components/ui/table";
+import { ConfigActions } from "@/components/wordpress/config";
 import { WordPressConfig } from "@/types/wordpress";
 import WordPressConnectionStatus from "@/components/wordpress/WordPressConnectionStatus";
-import ConfigActions from "./ConfigActions";
 
 interface ConfigTableRowProps {
   config: WordPressConfig;
-  readOnly: boolean;
   onEdit: (config: WordPressConfig) => void;
   onDelete: (id: string) => Promise<void>;
+  readOnly?: boolean;
 }
 
 const ConfigTableRow: React.FC<ConfigTableRowProps> = ({
   config,
-  readOnly,
   onEdit,
   onDelete,
+  readOnly = false
 }) => {
   return (
-    <TableRow key={config.id}>
-      <TableCell>{config.name}</TableCell>
-      <TableCell>
-        <a
-          href={config.site_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-500 hover:underline"
-        >
-          {config.site_url}
-        </a>
-      </TableCell>
+    <TableRow>
+      <TableCell className="font-medium">{config.name}</TableCell>
+      <TableCell>{config.site_url}</TableCell>
       <TableCell className="text-center">
-        <WordPressConnectionStatus configId={config.id} showDetails={true} />
+        <WordPressConnectionStatus configId={config.id} />
       </TableCell>
       {!readOnly && (
-        <TableCell className="text-right">
-          <ConfigActions
-            config={config}
-            onEdit={onEdit}
-            onDelete={onDelete}
+        <TableCell>
+          <ConfigActions 
+            config={config} 
+            onEdit={onEdit} 
+            onDelete={onDelete} 
           />
         </TableCell>
       )}

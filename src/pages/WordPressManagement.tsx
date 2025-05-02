@@ -1,8 +1,8 @@
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import { Button } from "@/components/ui/button";
-import { Plus, AlertCircle } from "lucide-react";
+import { Plus, AlertCircle, RefreshCw } from "lucide-react";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import WordPressConfigForm from "@/components/wordpress/WordPressConfigForm";
 import WordPressConfigList from "@/components/wordpress/WordPressConfigList";
@@ -20,6 +20,7 @@ import { WordPressConfig } from "@/types/wordpress";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
 
 const WordPressManagement = () => {
   const { isAdmin, isClient, userProfile } = useAuth();
@@ -27,32 +28,44 @@ const WordPressManagement = () => {
     configs,
     isLoading,
     isSubmitting,
+    error: configError,
     createConfig,
     updateConfig,
     deleteConfig,
     fetchConfigs,
   } = useWordPressConfigs();
 
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
 
   // Effet pour s'assurer que les données sont chargées dès le montage du composant
-  React.useEffect(() => {
-    console.log("WordPressManagement - Fetching configs");
-    try {
-      fetchConfigs();
-      setError(null);
-    } catch (err: any) {
-      console.error("Error fetching configs:", err);
-      setError(err.message || "Erreur lors du chargement des configurations WordPress");
+  useEffect(() => {
+    console.log("WordPressManagement - Composant monté");
+    // Seulement si le statut d'authentification est déterminé
+    if (isAdmin !== undefined || isClient !== undefined) {
+      console.log("WordPressManagement - Fetching configs");
+      try {
+        fetchConfigs();
+        setError(null);
+      } catch (err: any) {
+        console.error("Error fetching configs:", err);
+        setError(err.message || "Erreur lors du chargement des configurations WordPress");
+      }
     }
-  }, [fetchConfigs]);
+  }, [fetchConfigs, isAdmin, isClient]);
+  
+  // Mise à jour de l'erreur quand configError change
+  useEffect(() => {
+    if (configError) {
+      setError(configError);
+    }
+  }, [configError]);
 
   const handleCreateConfig = async (data: any) => {
     try {
       await createConfig(data);
       setIsDialogOpen(false);
-      fetchConfigs(); // Call fetchConfigs after creating a new config
       toast.success("Configuration WordPress créée avec succès");
     } catch (err: any) {
       console.error("Error creating config:", err);
@@ -74,6 +87,7 @@ const WordPressManagement = () => {
   // Fonction de rafraîchissement pour le bouton
   const handleRefresh = () => {
     try {
+      setIsFetching(true);
       fetchConfigs();
       setError(null);
       toast.success("Configurations WordPress mises à jour");
@@ -81,6 +95,8 @@ const WordPressManagement = () => {
       console.error("Error refreshing configs:", err);
       setError(err.message || "Erreur lors du rafraîchissement des configurations");
       toast.error("Erreur lors du rafraîchissement des configurations");
+    } finally {
+      setIsFetching(false);
     }
   };
 
@@ -122,19 +138,42 @@ const WordPressManagement = () => {
     </Card>
   );
 
+  // Composant de chargement
+  const LoadingContent = () => (
+    <Card className="mt-4">
+      <CardContent className="py-8 flex justify-center">
+        <LoadingIndicator size={32} variant="dots" />
+      </CardContent>
+    </Card>
+  );
+
   // Debug info
-  React.useEffect(() => {
+  useEffect(() => {
     console.log("WordPressManagement - Current user:", userProfile);
     console.log("WordPressManagement - isClient:", isClient);
     console.log("WordPressManagement - isAdmin:", isAdmin);
     console.log("WordPressManagement - configs:", configs);
   }, [userProfile, isClient, isAdmin, configs]);
 
+  // Si les rôles ne sont pas encore déterminés, afficher un indicateur de chargement
+  if (isAdmin === undefined && isClient === undefined) {
+    return (
+      <PageLayout 
+        title="Chargement..."
+      >
+        <div className="h-64 flex items-center justify-center">
+          <LoadingIndicator variant="dots" size={42} />
+        </div>
+      </PageLayout>
+    );
+  }
+
   return (
     <PageLayout 
       title={pageTitle} 
       titleAction={titleAction}
       onRefresh={handleRefresh}
+      refreshButtonProps={{ disabled: isFetching }}
     >
       {!(isAdmin || isClient) ? (
         <AccessDenied />
@@ -149,12 +188,14 @@ const WordPressManagement = () => {
               </Alert>
             )}
             
-            {isClient && configs.length === 0 ? (
+            {isLoading || isFetching ? (
+              <LoadingContent />
+            ) : isClient && configs.length === 0 ? (
               <NoSiteMessage />
             ) : (
               <WordPressConfigList
                 configs={configs}
-                isLoading={isLoading}
+                isLoading={isLoading || isFetching}
                 isSubmitting={isSubmitting}
                 onUpdateConfig={handleUpdateConfig}
                 onDeleteConfig={deleteConfig}

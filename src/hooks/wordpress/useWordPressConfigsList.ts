@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { WordPressConfig, ClientWordPressConfig } from "@/types/wordpress";
@@ -12,11 +12,13 @@ export const useWordPressConfigsList = () => {
   const [configs, setConfigs] = useState<WordPressConfig[]>([]);
   const [clientConfigs, setClientConfigs] = useState<ClientWordPressConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { userProfile, isClient, isAdmin } = useAuth();
 
-  const fetchConfigs = async () => {
+  const fetchConfigs = useCallback(async () => {
     try {
       setIsLoading(true);
+      setError(null);
       
       console.log("useWordPressConfigsList - fetchConfigs - userProfile:", userProfile);
       console.log("useWordPressConfigsList - fetchConfigs - isClient:", isClient);
@@ -34,7 +36,7 @@ export const useWordPressConfigsList = () => {
         }
         
         console.log("Admin - Fetched WordPress configs:", data?.length || 0);
-        setConfigs(data as WordPressConfig[]);
+        setConfigs(data as WordPressConfig[] || []);
       }
       // Pour les clients, on ne récupère que leur configuration WordPress attribuée
       else if (isClient && userProfile) {
@@ -53,7 +55,7 @@ export const useWordPressConfigsList = () => {
           }
           
           console.log("Client - Fetched WordPress configs:", data?.length || 0);
-          setConfigs(data as WordPressConfig[]);
+          setConfigs(data as WordPressConfig[] || []);
         } else {
           // Si le client n'a pas de wordpressConfigId, on renvoie un tableau vide
           setConfigs([]);
@@ -63,16 +65,18 @@ export const useWordPressConfigsList = () => {
       else {
         setConfigs([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching WordPress configs:', error);
+      setError(error.message || "Erreur lors de la récupération des configurations WordPress");
       toast.error("Erreur lors de la récupération des configurations WordPress");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isClient, isAdmin, userProfile]);
 
-  const fetchClientConfigs = async () => {
+  const fetchClientConfigs = useCallback(async () => {
     try {
+      setError(null);
       // Les clients n'ont pas besoin de récupérer toutes les associations
       if (isClient) {
         setClientConfigs([]);
@@ -87,12 +91,13 @@ export const useWordPressConfigsList = () => {
         throw error;
       }
       
-      setClientConfigs(data as ClientWordPressConfig[]);
-    } catch (error) {
+      setClientConfigs(data as ClientWordPressConfig[] || []);
+    } catch (error: any) {
       console.error('Error fetching client WordPress configs:', error);
-      toast.error("Erreur lors de la récupération des associations client-WordPress");
+      setError(error.message || "Erreur lors de la récupération des associations client-WordPress");
+      // Ne pas afficher de toast ici pour éviter une double notification
     }
-  };
+  }, [isClient]);
 
   useEffect(() => {
     console.log("useWordPressConfigsList - Effect triggered", {
@@ -101,22 +106,27 @@ export const useWordPressConfigsList = () => {
       isAdmin,
       configId: userProfile?.wordpressConfigId
     });
-    fetchConfigs();
-    fetchClientConfigs();
-  }, [isClient, isAdmin, userProfile?.wordpressConfigId]);
+    
+    // Assurons-nous que les valeurs isClient, isAdmin et userProfile sont définies avant de faire des appels API
+    if (isClient !== undefined && isAdmin !== undefined) {
+      fetchConfigs();
+      fetchClientConfigs();
+    }
+  }, [isClient, isAdmin, userProfile?.wordpressConfigId, fetchConfigs, fetchClientConfigs]);
 
-  const getConfigsForClient = (clientId: string) => {
+  const getConfigsForClient = useCallback((clientId: string) => {
     const clientConfigIds = clientConfigs
       .filter(cc => cc.client_id === clientId)
       .map(cc => cc.wordpress_config_id);
     
     return configs.filter(config => clientConfigIds.includes(config.id));
-  };
+  }, [configs, clientConfigs]);
 
   return {
     configs,
     clientConfigs,
     isLoading,
+    error,
     fetchConfigs,
     fetchClientConfigs,
     getConfigsForClient

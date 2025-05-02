@@ -23,6 +23,7 @@ export const useWordPressConfigs = () => {
     configs, 
     clientConfigs, 
     isLoading, 
+    error,
     fetchConfigs, 
     fetchClientConfigs, 
     getConfigsForClient 
@@ -48,31 +49,56 @@ export const useWordPressConfigs = () => {
 
   // Wrapped functions to ensure data refreshes
   const createConfig = async (config: Omit<WordPressConfig, 'id' | 'created_at' | 'updated_at'>) => {
-    const result = await createConfigBase(config);
-    await fetchConfigs();
-    return result;
+    try {
+      const result = await createConfigBase(config);
+      await fetchConfigs();
+      return result;
+    } catch (error) {
+      console.error("Error in createConfig:", error);
+      throw error;
+    }
   };
 
   const updateConfig = async (id: string, config: Partial<WordPressConfig>) => {
-    const result = await updateConfigBase(id, config);
-    await fetchConfigs();
-    return result;
+    try {
+      const result = await updateConfigBase(id, config);
+      await fetchConfigs();
+      return result;
+    } catch (error) {
+      console.error("Error in updateConfig:", error);
+      throw error;
+    }
   };
 
   const deleteConfig = async (id: string) => {
-    await deleteConfigBase(id);
-    await fetchConfigs();
+    try {
+      await deleteConfigBase(id);
+      await fetchConfigs();
+    } catch (error) {
+      console.error("Error in deleteConfig:", error);
+      throw error;
+    }
   };
 
   const associateClientToConfig = async (clientId: string, configId: string) => {
-    const result = await associateClientToConfigBase(clientId, configId);
-    await fetchClientConfigs();
-    return result;
+    try {
+      const result = await associateClientToConfigBase(clientId, configId);
+      await fetchClientConfigs();
+      return result;
+    } catch (error) {
+      console.error("Error in associateClientToConfig:", error);
+      throw error;
+    }
   };
 
   const removeClientConfigAssociation = async (id: string) => {
-    await removeClientConfigAssociationBase(id);
-    await fetchClientConfigs();
+    try {
+      await removeClientConfigAssociationBase(id);
+      await fetchClientConfigs();
+    } catch (error) {
+      console.error("Error in removeClientConfigAssociation:", error);
+      throw error;
+    }
   };
 
   return {
@@ -80,6 +106,7 @@ export const useWordPressConfigs = () => {
     clientConfigs,
     isLoading,
     isSubmitting,
+    error,
     fetchConfigs,
     fetchClientConfigs,
     createConfig,
