@@ -24,8 +24,8 @@ export const useAuthFunctions = (
     } catch (error: any) {
       setIsLoading(false);
       
-      // Éviter que l'erreur ne s'affiche dans la console
-      const customError = new Error(error?.message || "Échec de connexion");
+      // Silence complète des erreurs pour éviter toute fuite d'informations
+      const customError = new Error("Échec de connexion");
       customError.name = "AuthError";
       throw customError;
     }
@@ -38,7 +38,7 @@ export const useAuthFunctions = (
       sessionStorage.removeItem('lastAdminPath');
       sessionStorage.removeItem('lastAuthenticatedPath');
       
-      await supabase.auth.signOut().catch(() => null); // Capture silencieuse des erreurs de déconnexion
+      await supabase.auth.signOut().catch(() => null);
       setUserProfile(null);
       localStorage.removeItem("originalUser");
     } catch (error) {

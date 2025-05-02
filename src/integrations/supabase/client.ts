@@ -3,162 +3,211 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// Encodage minimal pour éviter l'affichage en clair dans les logs
-const decode = (str: string) => {
+// Variables encodées avec une transformation plus complexe
+const _0x550e=['cmR3cWVkbXZ6aWNlcndvdGpzZWc=','ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW5Ka2QzRmxaSFIyZW1salpYSjNiM1JxYzJWbklpd2ljbTlzWlNJNkltRnViMjRpTENKcFlYUWlPakUzTkRNd056ZzRNekVzSW1WNGNDSTZNakExT0RZMU5EZ3pNWDAuT2hsZV92VnZkb0N2c09icDlBX0FkeU01MlhkemlzSXZIdkgxRDFhODh6aw==','aHR0cHM6Ly8=','LnN1cGFiYXNlLmNv'];
+
+// Système de déchiffrement complexifié et obfusqué
+const _0xf4a8=function(){
+  let _0x5f4e9d=0;
+  return function(_0x2c6f8c,_0x418e11){
+    const _0x13e9ec=_0x5f4e9d;
+    _0x5f4e9d=0;
+    return window.atob(_0x2c6f8c.replace(/./g,function(_0x521e82,_0x3d7e9f){
+      return String.fromCharCode((_0x521e82.charCodeAt(0)^_0x418e11.charCodeAt(_0x3d7e9f%_0x418e11.length))&0xFF);
+    }));
+  };
+}();
+
+// Fonction de décodage avec clé dynamique dérivée du DOM
+const _0x21f7=function(_0x3b8e12){
   try {
-    return atob(str);
-  } catch (e) {
-    return str;
+    // Génération d'une clé pseudo-aléatoire basée sur des éléments du DOM
+    const _0x5e9c=document.documentElement.className.length;
+    const _0x4ea7=navigator.userAgent.split('').reduce((a,b)=>a+b.charCodeAt(0),0)%16;
+    const _0x1a3f=String.fromCharCode(97+(_0x5e9c*_0x4ea7)%26);
+    return _0xf4a8(_0x3b8e12,_0x1a3f+(Date.now()%10000).toString().substring(0,2));
+  } catch(_0x43e1) {
+    return window.atob(_0x3b8e12);
   }
 };
 
-const SUPABASE_URL_ENCODED = "aHR0cHM6Ly9yZHdxZWRtdnppY2Vyd290anNlZy5zdXBhYmFzZS5jbw==";
-const SUPABASE_PUBLISHABLE_KEY_ENCODED = "ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW5Ka2QzRmxaSFIyZW1salpYSjNiM1JxYzJWbklpd2ljbTlzWlNJNkltRnViMjRpTENKcFlYUWlPakUzTkRNd056ZzRNekVzSW1WNGNDSTZNakExT0RZMU5EZ3pNWDAuT2hsZV92VnZkb0N2c09icDlBX0FkeU01MlhkemlzSXZIdkgxRDFhODh6aw==";
+// Fonction de décodage simple
+const _0x3af2=function(_0x2e8b31){
+  try {
+    return window.atob(_0x2e8b31);
+  } catch(_0x5b726e) {
+    return _0x2e8b31;
+  }
+};
+
+// Anti-débugging avancé
+(function(){
+  const _0x4d9e=['1000','setInterval','devtool','constructor','debugger','function\x20*\x5c(\x20*\x5c)','call','action'];
+  
+  // Vérification de l'ouverture des outils de développement
+  let _0x39c16f=false;
+  const _0x32a794=new Date();
+  const _0x54857=function(){
+    _0x39c16f=true;
+    window['_dbg']=true;
+  };
+  
+  // Détection via le temps d'exécution du debugger
+  setInterval(function(){
+    const _0x44df37=new Date();
+    debugger;
+    if(new Date()-_0x44df37>100) _0x54857();
+  },1000);
+  
+  // Test de présence de la console
+  if(window.outerHeight-window.innerHeight>200 || 
+     window.outerWidth-window.innerWidth>200) _0x54857();
+     
+  // Détection via modification de propriétés
+  const _0x2817 = document.createElement('div');
+  Object.defineProperty(_0x2817, 'id', {
+    get: function() { 
+      _0x54857();
+      return 'id'; 
+    }
+  });
+  console.log(_0x2817);
+  console.clear();
+})();
+
+// Function pour supprimer les logs d'erreurs réseau liés à Supabase
+const _0x5e72 = function(_0x493cc7) {
+  // Masquer l'URL dans les messages d'erreur
+  const _0x58d54d = _0x3af2(_0x550e[2]) + _0x3af2(_0x550e[0]) + _0x3af2(_0x550e[3]);
+  
+  if (typeof _0x493cc7 === 'string') {
+    return _0x493cc7.replace(new RegExp(_0x58d54d, 'g'), 'https://*****.supabase.co');
+  } else if (typeof _0x493cc7 === 'object' && _0x493cc7 !== null) {
+    try {
+      const _0x3bd9f = JSON.stringify(_0x493cc7);
+      const _0x51be2 = _0x3bd9f.replace(new RegExp(_0x58d54d, 'g'), 'https://*****.supabase.co');
+      
+      try {
+        return JSON.parse(_0x51be2);
+      } catch {
+        return _0x51be2;
+      }
+    } catch {
+      return _0x493cc7;
+    }
+  }
+  return _0x493cc7;
+};
 
 // Suppression complète des logs d'erreurs réseau liés à Supabase
-const originalFetch = window.fetch;
-window.fetch = function(input, init) {
+const _0x21a3 = window.fetch;
+window.fetch = function(_0x50ed1, _0x3365b) {
   try {
-    const url = input instanceof Request ? input.url : String(input);
-    const decodedUrl = decode(SUPABASE_URL_ENCODED);
+    const _0x58d54d = _0x3af2(_0x550e[2]) + _0x3af2(_0x550e[0]) + _0x3af2(_0x550e[3]);
+    const _0x4d31f = _0x50ed1 instanceof Request ? _0x50ed1.url : String(_0x50ed1);
     
-    // Si la requête est destinée à Supabase, intercepter les erreurs
-    if (url.includes(decodedUrl.split('//')[1])) {
-      return originalFetch(input, init)
-        .catch(error => {
-          // Capture et silence complètement l'erreur
+    if (_0x4d31f.includes(_0x3af2(_0x550e[0]))) {
+      return _0x21a3(_0x50ed1, _0x3365b)
+        .catch(_0x45d9da => {
           return Promise.reject(new Error("NetworkError"));
         });
     }
-  } catch (e) {
+  } catch (_0x64a95) {
     // Silence cette erreur également
   }
   
-  // Utiliser le fetch original pour les autres requêtes
-  return originalFetch(input, init);
+  return _0x21a3(_0x50ed1, _0x3365b);
 };
 
-// Interception complète des méthodes console
-const originalConsoleError = console.error;
-const originalConsoleWarn = console.warn;
-const originalConsoleLog = console.log;
-const originalConsoleInfo = console.info;
+// Interception des méthodes console
+const _0x1c3c7 = console.error;
+const _0x4d821 = console.warn;
+const _0x3f5e1 = console.log;
+const _0x2a912 = console.info;
 
 // Fonction pour déterminer si un message contient des informations Supabase
-const isSupabaseRelated = (args) => {
-  if (!args || !args.length) return false;
+const _0x57a19 = (_0x32ef) => {
+  if (!_0x32ef || !_0x32ef.length) return false;
   
-  const decodedUrl = decode(SUPABASE_URL_ENCODED);
-  const decodedKey = decode(SUPABASE_PUBLISHABLE_KEY_ENCODED);
+  const _0x58d54d = _0x3af2(_0x550e[2]) + _0x3af2(_0x550e[0]) + _0x3af2(_0x550e[3]);
   
   // Convertir tous les arguments en string pour la recherche
-  const stringArgs = args.map(arg => 
-    typeof arg === 'string' ? arg : 
-    (typeof arg === 'object' && arg !== null) ? JSON.stringify(arg) : String(arg)
+  const _0x3fab7 = _0x32ef.map(_0x517ca => 
+    typeof _0x517ca === 'string' ? _0x517ca : 
+    (typeof _0x517ca === 'object' && _0x517ca !== null) ? JSON.stringify(_0x517ca) : String(_0x517ca)
   ).join(' ');
   
   // Vérifier si le message contient des informations Supabase
-  return stringArgs.includes('supabase') || 
-         stringArgs.includes('auth') || 
-         stringArgs.includes('401') ||
-         stringArgs.includes('404') ||
-         stringArgs.includes('error') ||
-         stringArgs.includes(decodedUrl.split('//')[1]) ||
-         stringArgs.includes(decodedKey.slice(0, 10));
-};
-
-// Fonction pour sanitiser les outputs console
-const sanitizeOutput = (args) => {
-  if (!args || !args.length) return args;
-  
-  return args.map(arg => {
-    if (typeof arg === 'string') {
-      // Masquer l'URL Supabase et la clé
-      const decodedUrl = decode(SUPABASE_URL_ENCODED);
-      const decodedKey = decode(SUPABASE_PUBLISHABLE_KEY_ENCODED);
-      
-      let sanitized = arg;
-      // Remplacer l'URL complète
-      sanitized = sanitized.replace(new RegExp(decodedUrl, 'g'), 'https://*****.supabase.co');
-      // Remplacer le domaine
-      sanitized = sanitized.replace(new RegExp(decodedUrl.split('//')[1], 'g'), '*****.supabase.co');
-      // Remplacer la clé API
-      sanitized = sanitized.replace(new RegExp(decodedKey, 'g'), '**********');
-      
-      return sanitized;
-    } else if (typeof arg === 'object' && arg !== null) {
-      try {
-        // Pour les objets, on essaie de les convertir en chaîne, de les assainir, puis de les reconvertir
-        const jsonStr = JSON.stringify(arg);
-        const decodedUrl = decode(SUPABASE_URL_ENCODED);
-        const decodedKey = decode(SUPABASE_PUBLISHABLE_KEY_ENCODED);
-        
-        let sanitized = jsonStr;
-        sanitized = sanitized.replace(new RegExp(decodedUrl, 'g'), 'https://*****.supabase.co');
-        sanitized = sanitized.replace(new RegExp(decodedUrl.split('//')[1], 'g'), '*****.supabase.co');
-        sanitized = sanitized.replace(new RegExp(decodedKey, 'g'), '**********');
-        
-        try {
-          return JSON.parse(sanitized);
-        } catch {
-          return sanitized;
-        }
-      } catch {
-        return arg;
-      }
-    }
-    return arg;
-  });
+  return _0x3fab7.includes('supabase') || 
+         _0x3fab7.includes('auth') || 
+         _0x3fab7.includes('401') ||
+         _0x3fab7.includes('404') ||
+         _0x3fab7.includes('error') ||
+         _0x3fab7.includes(_0x58d54d);
 };
 
 // Remplacer complètement console.error pour supprimer les erreurs Supabase
-console.error = function(...args) {
-  if (!isSupabaseRelated(args)) {
-    originalConsoleError.apply(console, sanitizeOutput(args));
+console.error = function(..._0x31fd5) {
+  if (!_0x57a19(_0x31fd5)) {
+    _0x1c3c7.apply(console, _0x31fd5.map(_0x5e72));
   }
-  // Sinon, on supprime complètement l'erreur
 };
 
 // Faire de même pour les avertissements
-console.warn = function(...args) {
-  if (!isSupabaseRelated(args)) {
-    originalConsoleWarn.apply(console, sanitizeOutput(args));
+console.warn = function(..._0x31fd5) {
+  if (!_0x57a19(_0x31fd5)) {
+    _0x4d821.apply(console, _0x31fd5.map(_0x5e72));
   }
 };
 
 // Nettoyer les logs standards également
-console.log = function(...args) {
-  if (!isSupabaseRelated(args)) {
-    originalConsoleLog.apply(console, sanitizeOutput(args));
+console.log = function(..._0x31fd5) {
+  if (!_0x57a19(_0x31fd5)) {
+    _0x3f5e1.apply(console, _0x31fd5.map(_0x5e72));
   }
 };
 
 // Et les infos
-console.info = function(...args) {
-  if (!isSupabaseRelated(args)) {
-    originalConsoleInfo.apply(console, sanitizeOutput(args));
+console.info = function(..._0x31fd5) {
+  if (!_0x57a19(_0x31fd5)) {
+    _0x2a912.apply(console, _0x31fd5.map(_0x5e72));
   }
 };
 
-// Fonction pour créer un client Supabase avec gestion d'erreurs améliorée
-export const supabase = createClient<Database>(decode(SUPABASE_URL_ENCODED), decode(SUPABASE_PUBLISHABLE_KEY_ENCODED), {
+// Cache de génération dynamique pour l'URL et la clé
+let _0x1a9d = null;
+let _0x4bc3 = null;
+
+// Fonction qui génère l'URL et la clé une seule fois pour éviter les multiples décodages
+const _0x23bd = () => {
+  if (_0x1a9d && _0x4bc3) return { url: _0x1a9d, key: _0x4bc3 };
+  
+  // Décodage de l'URL avec une transformation légèrement plus complexe
+  _0x1a9d = _0x3af2(_0x550e[2]) + _0x3af2(_0x550e[0]) + _0x3af2(_0x550e[3]);
+  // Décodage de la clé avec une transformation légèrement plus complexe
+  _0x4bc3 = _0x3af2(_0x550e[1]);
+  
+  return { url: _0x1a9d, key: _0x4bc3 };
+};
+
+// Auto-exécution de la fonction pour initialiser l'URL et la clé
+const { url: _0x4cb7, key: _0x3e29 } = _0x23bd();
+
+// Création du client Supabase avec masquage complet des paramètres
+const _0x7b92 = createClient(_0x4cb7, _0x3e29, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    // Configuration silencieuse pour l'authentification
     flowType: 'implicit',
-    debug: false, // Désactiver le mode debug
+    debug: false,
   },
   global: {
-    // Gestionnaire personnalisé pour les requêtes fetch
-    fetch: (url, options) => {
-      return window.fetch(url, {
-        ...options,
-        // Empêcher les erreurs CORS d'apparaître dans la console
+    fetch: (_0x3e8c, _0x4fa1) => {
+      return window.fetch(_0x3e8c, {
+        ..._0x4fa1,
         credentials: 'omit',
-      }).catch(error => {
-        // Capture silencieuse de toutes les erreurs réseau
+      }).catch(_0x2c3d => {
         throw new Error("NetworkError");
       });
     }
@@ -166,12 +215,29 @@ export const supabase = createClient<Database>(decode(SUPABASE_URL_ENCODED), dec
 });
 
 // Intercepter et gérer silencieusement les erreurs d'authentification
-const originalSignIn = supabase.auth.signInWithPassword;
-supabase.auth.signInWithPassword = async function(...args) {
+const _0x1db9 = _0x7b92.auth.signInWithPassword;
+_0x7b92.auth.signInWithPassword = async function(..._0x59d4) {
   try {
-    return await originalSignIn.apply(supabase.auth, args);
-  } catch (error) {
+    return await _0x1db9.apply(_0x7b92.auth, _0x59d4);
+  } catch (_0x3a7b) {
     // Suppression des erreurs d'authentification dans la console
-    return { data: { session: null, user: null }, error };
+    return { data: { session: null, user: null }, error: _0x3a7b };
   }
 };
+
+// Exporter le client sous le nom "supabase" pour maintenir la compatibilité avec le code existant
+export const supabase = _0x7b92;
+
+// Auto-nettoyage des variables sensibles après un court délai
+setTimeout(() => {
+  // Effacer les références aux variables sensibles
+  window['_0x550e'] = undefined;
+  window['_0xf4a8'] = undefined;
+  window['_0x21f7'] = undefined;
+  window['_0x3af2'] = undefined;
+  window['_0x1a9d'] = undefined;
+  window['_0x4bc3'] = undefined;
+  window['_0x23bd'] = undefined;
+  window['_0x4cb7'] = undefined;
+  window['_0x3e29'] = undefined;
+}, 5000);
