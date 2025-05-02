@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { createProfileFromMetadata } from '@/hooks/useUserProfile';
 import { UserProfile } from '@/types/auth';
 import { Session } from '@supabase/supabase-js';
+import { safeISOString } from '@/utils/dateUtils';
 
 export const useSessionHandler = (
   supabase: any,
@@ -37,7 +38,7 @@ export const useSessionHandler = (
     // Set up auth state change handler
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: Session | null) => {
       try {
-        const timestamp = new Date().toISOString();
+        const timestamp = safeISOString(new Date());
         
         if (event === "SIGNED_IN") {
           localStorage.setItem("auth_state_change", JSON.stringify({
@@ -82,7 +83,7 @@ export const useSessionHandler = (
     // Get initial session
     try {
       supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
-        const timestamp = new Date().toISOString();
+        const timestamp = safeISOString(new Date());
         
         try {
           localStorage.setItem("auth_initial_session", JSON.stringify({
@@ -109,7 +110,7 @@ export const useSessionHandler = (
     } catch (error) {
       try {
         localStorage.setItem("auth_initial_session_error", JSON.stringify({
-          timestamp: new Date().toISOString(),
+          timestamp: safeISOString(new Date()),
           message: "Erreur lors de la récupération de la session"
         }));
       } catch (localStorageError) {

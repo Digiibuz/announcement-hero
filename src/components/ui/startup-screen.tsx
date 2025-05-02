@@ -5,6 +5,7 @@ import { useSupabaseConfig } from '@/context/SupabaseConfigContext';
 import { cn } from '@/lib/utils';
 import { sanitizeErrorMessage } from '@/utils/security';
 import { AlertCircle } from 'lucide-react';
+import { isValidDate } from '@/utils/dateUtils';
 
 interface StartupScreenProps {
   className?: string;
@@ -52,6 +53,11 @@ export const StartupScreen: React.FC<StartupScreenProps> = ({ className }) => {
       return "Problème de synchronisation horaire. Veuillez réessayer.";
     }
     
+    // Rendre le message plus convivial
+    if (message.includes('network') || message.includes('fetch') || message.includes('réseau')) {
+      return "Problème de connexion au serveur. Vérifiez votre connexion internet.";
+    }
+    
     return message;
   };
   
@@ -96,7 +102,7 @@ export const StartupScreen: React.FC<StartupScreenProps> = ({ className }) => {
                 <p className="mb-1">Tentative de récupération: {retryCount}</p>
                 <p className="mb-1">Temps d'attente: {loadingTime}s</p>
                 <p className="mb-3">Type d'erreur: {error.name}</p>
-                <pre>{sanitizeErrorMessage(JSON.stringify(error, null, 2))}</pre>
+                <pre className="whitespace-pre-wrap">{sanitizeErrorMessage(JSON.stringify(error, null, 2))}</pre>
               </div>
             )}
             

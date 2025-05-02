@@ -77,9 +77,55 @@ export function fixDateInJSON(jsonString: string): string {
 }
 
 /**
- * Ajouter une méthode au prototype de Date pour vérifier si une date est valide
- * Cette méthode est sécurisée car elle ne modifie que notre propre propriété
+ * Normalisateur de timestamp qui traite diverses formes de timestamps
+ * @param timestamp Timestamp à normaliser (string, number, Date)
+ * @returns Timestamp normalisé sous forme de Date valide
  */
+export function normalizeTimestamp(timestamp: string | number | Date | undefined): Date {
+  if (!timestamp) return new Date();
+  
+  try {
+    // Si c'est déjà une date
+    if (timestamp instanceof Date) {
+      return isNaN(timestamp.getTime()) ? new Date() : timestamp;
+    }
+    
+    // Si c'est un nombre (timestamp Unix)
+    if (typeof timestamp === 'number') {
+      // Vérifier si c'est en millisecondes ou en secondes
+      const date = timestamp > 9999999999 
+        ? new Date(timestamp) 
+        : new Date(timestamp * 1000);
+      
+      return isNaN(date.getTime()) ? new Date() : date;
+    }
+    
+    // Si c'est une chaîne
+    if (typeof timestamp === 'string') {
+      // Essayer d'analyser comme ISO String
+      const date = new Date(timestamp);
+      
+      // Si valide, utiliser cette date
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+      
+      // Essayer d'analyser comme un nombre
+      const numTimestamp = parseFloat(timestamp);
+      if (!isNaN(numTimestamp)) {
+        return normalizeTimestamp(numTimestamp);
+      }
+    }
+    
+    // Cas d'échec
+    return new Date();
+    
+  } catch (error) {
+    return new Date();
+  }
+}
+
+// Ajouter des méthodes utiles au prototype de Date
 if (!Date.prototype.hasOwnProperty('isValid')) {
   Object.defineProperty(Date.prototype, 'isValid', {
     value: function() {

@@ -3,13 +3,14 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../integrations/supabase/types';
 import { setSupabaseClient } from '../integrations/supabase/client';
 import { safeConsoleError } from '@/utils/logSanitizer';
+import { normalizeTimestamp, safeISOString } from '@/utils/dateUtils';
 
 // Interface pour la configuration Supabase
 interface SupabaseConfig {
   supabaseUrl: string;
   supabaseAnonKey: string;
   initToken: string;
-  timestamp: number;
+  timestamp: number | string | Date;
 }
 
 // État de chargement de la configuration
@@ -30,6 +31,20 @@ function getConfigEndpoint(): string {
     // En cas d'erreur, retourner une URL qui ne fonctionnera pas mais ne révèle rien
     console.error("Erreur lors de la génération de l'URL de configuration");
     return "https://api.exemple.com/config"; // URL factice en cas d'échec
+  }
+}
+
+/**
+ * Traitement sécurisé des valeurs de timestamp
+ */
+function processTimestamp(timestamp: any): number {
+  try {
+    if (!timestamp) return Date.now();
+    
+    const normalizedDate = normalizeTimestamp(timestamp);
+    return normalizedDate.getTime();
+  } catch (error) {
+    return Date.now();
   }
 }
 
@@ -62,16 +77,11 @@ export async function initializeSupabase(): Promise<ConfigState> {
     const config: SupabaseConfig = await response.json();
     
     // S'assurer que timestamp est un nombre valide
-    if (config.timestamp && typeof config.timestamp === 'string') {
-      config.timestamp = parseInt(config.timestamp, 10);
-      if (isNaN(config.timestamp)) {
-        config.timestamp = Date.now(); // Valeur par défaut si invalide
-      }
-    }
+    config.timestamp = processTimestamp(config.timestamp);
     
     // Log sécurisé sans exposer les valeurs complètes
     console.log("Configuration reçue avec jeton d'initialisation", { 
-      timestamp: config.timestamp ? new Date(config.timestamp).toISOString() : 'Non défini',
+      timestamp: config.timestamp ? safeISOString(config.timestamp) : 'Non défini',
       tokenExists: !!config.initToken
     });
 
