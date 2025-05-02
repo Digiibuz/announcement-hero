@@ -21,7 +21,7 @@ interface AdminTicketsProps {
 }
 
 const AdminTickets: React.FC<AdminTicketsProps> = ({ filter: initialFilter }) => {
-  const { data: allTickets, isLoading, error } = useAllTickets();
+  const { data: allTickets = [], isLoading, error } = useAllTickets();
   const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>(initialFilter);
   const [priorityFilter, setPriorityFilter] = useState<string>("all");

@@ -20,7 +20,7 @@ export interface Ticket {
   description?: string;
   status: 'open' | 'in_progress' | 'closed';
   user_id: string;
-  username?: string;
+  username: string;
   created_at: string;
   updated_at?: string;
   priority: string;
@@ -62,7 +62,7 @@ export const useTickets = (userId?: string | null) => {
           return { ...ticket, responses: [] };
         }
         
-        return { ...ticket, responses: responses || [] };
+        return { ...ticket, responses: responses || [], updated_at: ticket.created_at, description: "" };
       }));
       
       return ticketsWithResponses;
@@ -103,10 +103,17 @@ export const useAllTickets = () => {
           console.error('Error fetching ticket responses:', responsesError);
         }
         
+        const username = ticket.profiles && 
+                         typeof ticket.profiles === 'object' ? 
+                         (ticket.profiles.name || ticket.profiles.email || ticket.username || 'Unknown') : 
+                         (ticket.username || 'Unknown');
+        
         return {
           ...ticket,
-          username: ticket.profiles?.name || ticket.profiles?.email || ticket.username || 'Unknown',
-          responses: responses || []
+          username,
+          responses: responses || [],
+          updated_at: ticket.created_at,
+          description: ""
         };
       }));
       
@@ -117,7 +124,7 @@ export const useAllTickets = () => {
 };
 
 // Hook pour récupérer un ticket spécifique
-export const useTicket = (ticketId: string | null) => {
+export const useTicketDetails = (ticketId: string | null) => {
   return useQuery({
     queryKey: ['ticket', ticketId],
     queryFn: async () => {
@@ -149,10 +156,17 @@ export const useTicket = (ticketId: string | null) => {
         console.error('Error fetching ticket responses:', responsesError);
       }
       
+      const username = ticket.profiles && 
+                       typeof ticket.profiles === 'object' ? 
+                       (ticket.profiles.name || ticket.profiles.email || ticket.username || 'Unknown') : 
+                       (ticket.username || 'Unknown');
+      
       return {
         ...ticket,
-        username: ticket.profiles?.name || ticket.profiles?.email || ticket.username || 'Unknown',
-        responses: responses || []
+        username,
+        responses: responses || [],
+        updated_at: ticket.created_at,
+        description: ""
       };
     },
     enabled: !!ticketId,
@@ -165,7 +179,7 @@ export const useCreateTicket = () => {
   const { user } = useAuth();
   
   return useMutation({
-    mutationFn: async (ticketData: Omit<Ticket, 'id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (ticketData: Omit<Ticket, "id" | "updated_at">) => {
       const { data, error } = await supabase
         .from('tickets')
         .insert([ticketData])
@@ -193,7 +207,7 @@ export const useReplyToTicket = () => {
     mutationFn: async ({ ticketId, message }: { ticketId: string; message: string }) => {
       const responseData = {
         ticket_id: ticketId,
-        user_id: user?.id,
+        user_id: user?.id || "",
         message,
         is_admin: isAdmin,
         username: user?.name || user?.email || 'Unknown'

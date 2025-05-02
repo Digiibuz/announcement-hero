@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
@@ -61,12 +62,8 @@ const TicketDetails: React.FC<TicketDetailsProps> = ({ ticketId }) => {
 
     sendReply(
       {
-        ticket_id: ticketId,
-        message: reply,
-        user_id: user?.id || "",
-        username: user?.name || "",
-        is_admin: isAdmin,
-        created_at: new Date().toISOString(),
+        ticketId: ticketId,
+        message: reply
       },
       {
         onSuccess: () => {
@@ -74,7 +71,7 @@ const TicketDetails: React.FC<TicketDetailsProps> = ({ ticketId }) => {
           
           if (isAdmin && ticket.status === "open") {
             updateStatus(
-              { id: ticketId, status: "in_progress" },
+              { ticketId: ticketId, status: "in_progress" },
               {
                 onSuccess: () => {
                   toast.success("Statut du ticket mis à jour");
@@ -92,7 +89,7 @@ const TicketDetails: React.FC<TicketDetailsProps> = ({ ticketId }) => {
 
   const handleCloseTicket = () => {
     updateStatus(
-      { id: ticketId, status: "closed" },
+      { ticketId: ticketId, status: "closed" },
       {
         onSuccess: () => {
           toast.success("Ticket marqué comme résolu");
@@ -106,7 +103,7 @@ const TicketDetails: React.FC<TicketDetailsProps> = ({ ticketId }) => {
 
   const handleReopenTicket = () => {
     updateStatus(
-      { id: ticketId, status: "open" },
+      { ticketId: ticketId, status: "open" },
       {
         onSuccess: () => {
           toast.success("Ticket réouvert");

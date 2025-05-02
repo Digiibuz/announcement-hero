@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const TicketList = () => {
   const { user } = useAuth();
-  const { data: tickets, isLoading, error, refetch } = useTickets(user?.id);
+  const { data: tickets, isLoading, error, refetch } = useTickets();
   const { markTicketAsRead, markTicketTabAsViewed, readTicketIds } = useTicketNotifications();
   const [selectedTicket, setSelectedTicket] = React.useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);

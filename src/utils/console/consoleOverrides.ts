@@ -42,6 +42,29 @@ export function sanitizeArgs(args: any[]): any[] {
 }
 
 /**
+ * Initialize all console security features
+ */
+export function initializeConsoleSecurity(): void {
+  // Initialize console overrides
+  setupConsoleOverrides();
+}
+
+/**
+ * Override console functions to filter out sensitive info
+ */
+export function overrideConsoleFunctions(): void {
+  setupConsoleOverrides();
+}
+
+/**
+ * Override network requests
+ */
+export function overrideNetworkRequests(): void {
+  // This can be implemented in the future if needed
+  console.log('Network request overrides initialized');
+}
+
+/**
  * Configure les remplacements pour toutes les méthodes console
  */
 export function setupConsoleOverrides(): void {

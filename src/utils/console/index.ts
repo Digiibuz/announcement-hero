@@ -3,8 +3,13 @@
  * Main entry point for console enhancements and security measures
  */
 import { setupGlobalListeners } from './globalListeners';
-import { setupConsoleOverrides } from './consoleOverrides';
-import { SENSITIVE_PATTERNS } from './constants';
+import { 
+  setupConsoleOverrides,
+  initializeConsoleSecurity,
+  overrideConsoleFunctions, 
+  overrideNetworkRequests,
+  SENSITIVE_PATTERNS 
+} from './consoleOverrides';
 
 /**
  * Initialize all console overrides and security measures
@@ -45,4 +50,9 @@ export function testSecureLogs(): void {
 }
 
 // Export patterns for other modules
-export { SENSITIVE_PATTERNS };
+export { 
+  SENSITIVE_PATTERNS, 
+  initializeConsoleSecurity,
+  overrideConsoleFunctions,
+  overrideNetworkRequests
+};
