@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCreateTicket } from "@/hooks/useTickets";
 import { toast } from "sonner";
 import { usePersistedState } from "@/hooks/usePersistedState";
+import { Ticket } from "@/hooks/tickets/types";
 
 const CreateTicketForm = () => {
   const { user } = useAuth();
@@ -39,8 +40,8 @@ const CreateTicketForm = () => {
       username: user.name || user.email.split("@")[0],
       subject,
       message,
-      priority: "medium",
-      status: "open",
+      priority: "medium" as const,
+      status: "open" as const, // Explicitly type as "open"
       created_at: new Date().toISOString()
     };
 
