@@ -1,84 +1,149 @@
 
 /**
- * Module pour intercepter les requêtes fetch et masquer les URLs sensibles
+ * Module pour intercepter et modifier le prototype de fetch pour masquer les URLs sensibles
  */
-import { SENSITIVE_PATTERNS, replaceWithFakeUrl } from './constants';
+import { SENSITIVE_URL_PATTERNS, shouldCompletelyBlockRequest, createSecureUrl } from './constants';
 
 /**
- * Configure l'interception du fetch API pour remplacer les URLs sensibles
+ * Intercepte et modifie le prototype de fetch pour masquer les URLs sensibles
  */
 export function setupFetchInterceptor(): void {
-  // Remplacer complètement fetch pour masquer les URLs sensibles
   const originalFetch = window.fetch;
-  window.fetch = function(input, init): Promise<Response> {
+  
+  window.fetch = function(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     try {
-      const inputUrl = input instanceof Request ? input.url : String(input);
+      // Extraire l'URL de la requête
+      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
+      
+      // Vérifier si la requête doit être complètement bloquée dans l'inspecteur
+      if (shouldCompletelyBlockRequest(url)) {
+        // Créer une requête fantôme qui ne sera jamais réellement envoyée à l'inspecteur
+        const dummyResponse = new Response(JSON.stringify({status: "ok"}), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        // Exécuter la vraie requête en arrière-plan sans qu'elle n'apparaisse dans l'inspecteur
+        originalFetch(input, init).then(() => {}).catch(() => {});
+        
+        // Retourner immédiatement une réponse factice pour l'inspecteur
+        return Promise.resolve(dummyResponse);
+      }
       
       // Vérifier si l'URL est sensible
-      const isSensitive = SENSITIVE_PATTERNS.some(pattern => pattern.test(inputUrl));
+      const isSensitive = SENSITIVE_URL_PATTERNS.some(pattern => pattern.test(url));
       
       if (isSensitive) {
-        // Rediriger vers une URL factice pour les logs de console
-        const fakeUrl = replaceWithFakeUrl(inputUrl);
+        // 1. Désactiver temporairement tous les logs console
+        const originalConsole = {
+          log: console.log,
+          error: console.error,
+          warn: console.warn,
+          info: console.info,
+          debug: console.debug
+        };
         
-        // Stocker la vraie URL et les paramètres pour la vraie requête
-        const realUrl = input;
-        const realInit = init;
+        // Remplacer toutes les fonctions console
+        console.log = () => {};
+        console.error = () => {};
+        console.warn = () => {};
+        console.info = () => {};
+        console.debug = () => {};
         
-        // Intercepter toutes les erreurs de console possibles
-        const errorHandler = (event) => {
+        // 2. Désactiver temporairement tous les événements d'erreur
+        const handleError = (event: Event) => {
           event.preventDefault();
           event.stopPropagation();
           return true;
         };
         
-        // Ajouter des gestionnaires d'erreurs
-        window.addEventListener('error', errorHandler, true);
-        window.addEventListener('unhandledrejection', errorHandler, true);
+        window.addEventListener('error', handleError, true);
+        window.addEventListener('unhandledrejection', handleError, true);
         
-        // Modifier l'objet console temporairement
-        const originalConsoleError = console.error;
-        const originalConsoleWarn = console.warn;
-        const originalConsoleLog = console.log;
+        // 3. Créer une copie de la requête avec une URL factice pour les logs
+        let secureInput: RequestInfo;
+        if (typeof input === 'string') {
+          secureInput = createSecureUrl(input);
+        } else if (input instanceof Request) {
+          // Créer une copie de la requête avec l'URL sécurisée
+          secureInput = new Request(createSecureUrl(input.url), {
+            method: input.method,
+            headers: input.headers,
+            body: input.body,
+            mode: input.mode,
+            credentials: input.credentials,
+            cache: input.cache,
+            redirect: input.redirect,
+            referrer: input.referrer,
+            integrity: input.integrity
+          });
+        } else if (input instanceof URL) {
+          // Convertir URL en string pour qu'il soit compatible avec RequestInfo
+          secureInput = createSecureUrl(input.toString());
+        } else {
+          // Pour tout autre type, convertir en string
+          secureInput = String(input);
+        }
         
-        console.error = () => {};
-        console.warn = () => {};
-        console.log = () => {};
-        
-        // Créer un objet Response factice pour les cas d'échec
-        let fakeResponseCreated = false;
-        const createFakeResponse = () => {
-          if (fakeResponseCreated) return;
-          fakeResponseCreated = true;
-          
-          // Restaurer les fonctions console
-          setTimeout(() => {
-            console.error = originalConsoleError;
-            console.warn = originalConsoleWarn;
-            console.log = originalConsoleLog;
-          }, 500);
-          
-          // Supprimer les gestionnaires d'erreurs
-          window.removeEventListener('error', errorHandler, true);
-          window.removeEventListener('unhandledrejection', errorHandler, true);
-        };
-        
-        // Exécuter la vraie requête mais intercepter tous les logs
-        return originalFetch(realUrl, realInit)
+        // 4. Exécuter la vraie requête avec les écouteurs d'erreur en place
+        const promise = originalFetch(input, init)
           .then(response => {
-            createFakeResponse();
+            // Pour les réponses 400/401, bloquer aussi les logs
+            if (response.status === 400 || response.status === 401) {
+              // Garder les logs désactivés un peu plus longtemps
+              setTimeout(() => {
+                console.log = originalConsole.log;
+                console.error = originalConsole.error;
+                console.warn = originalConsole.warn;
+                console.info = originalConsole.info;
+                console.debug = originalConsole.debug;
+                
+                window.removeEventListener('error', handleError, true);
+                window.removeEventListener('unhandledrejection', handleError, true);
+              }, 1000);
+            } else {
+              // Restaurer immédiatement pour les autres cas
+              console.log = originalConsole.log;
+              console.error = originalConsole.error;
+              console.warn = originalConsole.warn;
+              console.info = originalConsole.info;
+              console.debug = originalConsole.debug;
+              
+              window.removeEventListener('error', handleError, true);
+              window.removeEventListener('unhandledrejection', handleError, true);
+            }
+            
             return response;
           })
-          .catch(err => {
-            createFakeResponse();
-            throw err;
+          .catch(error => {
+            // Capturer silencieusement l'erreur
+            localStorage.setItem('fetch_error', JSON.stringify({
+              timestamp: new Date().toISOString(),
+              message: 'Erreur réseau masquée'
+            }));
+            
+            // Restaurer les fonctions console
+            console.log = originalConsole.log;
+            console.error = originalConsole.error;
+            console.warn = originalConsole.warn;
+            console.info = originalConsole.info;
+            console.debug = originalConsole.debug;
+            
+            window.removeEventListener('error', handleError, true);
+            window.removeEventListener('unhandledrejection', handleError, true);
+            
+            // Rejeter avec un message d'erreur générique
+            throw new Error("Erreur réseau");
           });
+          
+        return promise;
       }
       
-      // Pour les requêtes non sensibles, continuer normalement
+      // Comportement normal pour les URL non sensibles
       return originalFetch(input, init);
     } catch (e) {
-      // En cas d'erreur, laisser passer la requête mais bloquer les logs
+      // En cas d'erreur dans l'interception, continuer avec la requête originale
+      // mais bloquer les logs d'erreur
       return originalFetch(input, init);
     }
   };

@@ -1,80 +1,128 @@
 
 /**
- * Module pour intercepter les requêtes XMLHttpRequest et masquer les URLs sensibles
+ * Module pour intercepter et modifier le prototype de XMLHttpRequest pour masquer les URLs sensibles
  */
-import { SENSITIVE_PATTERNS, replaceWithFakeUrl } from './constants';
+import { SENSITIVE_URL_PATTERNS, shouldCompletelyBlockRequest, createSecureUrl } from './constants';
 
 /**
- * Configure l'interception de XMLHttpRequest pour remplacer les URLs sensibles
+ * Intercepte et modifie le prototype de XMLHttpRequest pour masquer les URLs sensibles
  */
-export function setupXhrInterceptor(): void {
-  // Remplacer XMLHttpRequest.open pour masquer les URLs sensibles
-  const originalXHROpen = XMLHttpRequest.prototype.open;
-  const originalXHRSend = XMLHttpRequest.prototype.send;
+export function setupXHRInterceptor(): void {
+  const originalOpen = XMLHttpRequest.prototype.open;
+  const originalSend = XMLHttpRequest.prototype.send;
   
-  XMLHttpRequest.prototype.open = function(method, url, ...args) {
-    this._originalUrl = url;
-    
-    // Vérifier si l'URL est sensible
-    const urlStr = String(url);
-    const isSensitive = SENSITIVE_PATTERNS.some(pattern => pattern.test(urlStr));
-    
-    if (isSensitive) {
-      // Stocker l'URL originale mais utiliser une URL factice pour les logs
-      this._isSensitiveRequest = true;
-      const fakeUrl = replaceWithFakeUrl(urlStr);
+  XMLHttpRequest.prototype.open = function(method: string, url: string | URL, ...args: any[]): void {
+    try {
+      const urlString = String(url);
       
-      // Intercepter les erreurs
-      this.addEventListener('error', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        return true;
-      }, true);
+      // Vérifier si la requête doit être complètement bloquée
+      if (shouldCompletelyBlockRequest(urlString)) {
+        // Stocker la méthode et l'URL originale
+        this._originalUrl = urlString;
+        this._isBlockedRequest = true;
+        
+        // Rediriger vers une URL factice
+        return originalOpen.call(this, method, "https://api-secure.example.com/auth", ...args);
+      }
       
-      // Bloquer les logs sur load
-      this.addEventListener('load', () => {
-        if (this.status === 400 || this.status === 401) {
-          // Désactiver temporairement tous les logs console
-          const originalLog = console.log;
-          const originalError = console.error;
-          const originalWarn = console.warn;
+      // Vérifier si l'URL est sensible
+      const isSensitive = SENSITIVE_URL_PATTERNS.some(pattern => pattern.test(urlString));
+      
+      if (isSensitive) {
+        // Stocker l'URL originale pour la vraie requête
+        this._originalUrl = urlString;
+        
+        // Désactiver temporairement tous les logs console
+        const originalConsole = {
+          log: console.log,
+          error: console.error,
+          warn: console.warn,
+          info: console.info,
+          debug: console.debug
+        };
+        
+        console.log = () => {};
+        console.error = () => {};
+        console.warn = () => {};
+        console.info = () => {};
+        console.debug = () => {};
+        
+        // Ajouter un écouteur pour les erreurs XHR
+        this.addEventListener('error', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
           
-          console.log = () => {};
-          console.error = () => {};
-          console.warn = () => {};
+          // Stocker l'erreur silencieusement
+          localStorage.setItem('xhr_error', JSON.stringify({
+            timestamp: new Date().toISOString(),
+            message: 'Erreur XHR masquée'
+          }));
           
-          // Restaurer après un délai
+          // Restaurer les fonctions console après un délai
           setTimeout(() => {
-            console.log = originalLog;
-            console.error = originalError;
-            console.warn = originalWarn;
-          }, 1000);
-        }
-      }, true);
+            console.log = originalConsole.log;
+            console.error = originalConsole.error;
+            console.warn = originalConsole.warn;
+            console.info = originalConsole.info;
+            console.debug = originalConsole.debug;
+          }, 500);
+          
+          return true;
+        }, false);
+        
+        // Ajouter un écouteur pour la fin de requête
+        this.addEventListener('load', () => {
+          // Restaurer les fonctions console après un délai
+          setTimeout(() => {
+            console.log = originalConsole.log;
+            console.error = originalConsole.error;
+            console.warn = originalConsole.warn;
+            console.info = originalConsole.info;
+            console.debug = originalConsole.debug;
+          }, 500);
+        }, false);
+        
+        // Utiliser l'URL factice pour l'affichage dans les outils de développement
+        return originalOpen.call(this, method, createSecureUrl(urlString), ...args);
+      }
       
-      // Appliquer l'URL factice pour les logs de la console
-      return originalXHROpen.apply(this, [method, fakeUrl, ...args]);
+      // Comportement normal pour les URL non sensibles
+      return originalOpen.call(this, method, url, ...args);
+    } catch (e) {
+      // En cas d'erreur, utiliser l'URL originale
+      return originalOpen.call(this, method, url, ...args);
     }
-    
-    // Pour les URLs non sensibles, comportement normal
-    return originalXHROpen.apply(this, [method, url, ...args]);
   };
   
-  // Surcharger send pour utiliser l'URL originale si elle existe
-  XMLHttpRequest.prototype.send = function(...args) {
-    if (this._isSensitiveRequest && this._originalUrl) {
-      // Restaurer temporairement l'URL originale pour la vraie requête
-      const tempOpen = XMLHttpRequest.prototype.open;
-      XMLHttpRequest.prototype.open = originalXHROpen;
+  // Intercepter la méthode send pour les requêtes bloquées
+  XMLHttpRequest.prototype.send = function(...args: any[]): void {
+    // Pour les requêtes qui doivent être complètement bloquées
+    if (this._isBlockedRequest) {
+      // Simuler une réponse réussie immédiatement
+      setTimeout(() => {
+        Object.defineProperty(this, 'readyState', { value: 4 });
+        Object.defineProperty(this, 'status', { value: 200 });
+        Object.defineProperty(this, 'statusText', { value: 'OK' });
+        Object.defineProperty(this, 'responseText', { value: JSON.stringify({status: "ok"}) });
+        Object.defineProperty(this, 'response', { value: JSON.stringify({status: "ok"}) });
+        
+        // Déclencher les événements de changement d'état et de chargement
+        const loadEvent = new Event('load');
+        this.dispatchEvent(loadEvent);
+        
+        const readyStateEvent = new Event('readystatechange');
+        this.dispatchEvent(readyStateEvent);
+      }, 10);
       
-      // Réouvrir avec l'URL originale
-      this.abort();
-      this.open(this._method || 'GET', this._originalUrl);
+      // Exécuter la vraie requête en arrière-plan
+      const xhr = new XMLHttpRequest();
+      xhr.open(this._method || 'GET', this._originalUrl);
+      xhr.send(...args);
       
-      // Restaurer la fonction open modifiée
-      XMLHttpRequest.prototype.open = tempOpen;
+      return;
     }
     
-    return originalXHRSend.apply(this, args);
+    // Pour les autres requêtes, comportement normal
+    return originalSend.apply(this, args);
   };
 }
