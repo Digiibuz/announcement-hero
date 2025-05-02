@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -11,6 +12,7 @@ import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
 import { handleAuthError } from "@/utils/security";
 import { SENSITIVE_PATTERNS } from "@/integrations/supabase/client";
+import { usePersistedState } from "@/hooks/usePersistedState";
 
 // Initialisation immédiate avant tout autre code
 (() => {
@@ -97,66 +99,12 @@ import { SENSITIVE_PATTERNS } from "@/integrations/supabase/client";
 })();
 
 const Login = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = usePersistedState("login_email", "");
+  const [password, setPassword] = usePersistedState("login_password", "");
+  const [showPassword, setShowPassword] = usePersistedState("login_show_password", false);
   const [isLoading, setIsLoading] = useState(false);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-
-  // Bloquer complètement les logs console standard
-  useEffect(() => {
-    const originalConsoleLog = console.log;
-    const originalConsoleError = console.error;
-    const originalConsoleWarn = console.warn;
-    
-    // Remplacer toutes les méthodes console pour bloquer les logs sensibles
-    console.log = function(...args) {
-      // Bloquer tous les logs liés à l'authentification ou aux URLs sensibles
-      if (args.some(arg => {
-        if (arg === undefined || arg === null) return false;
-        const str = String(arg);
-        return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
-      })) {
-        return; // Ne rien logger
-      }
-      
-      originalConsoleLog.apply(console, args);
-    };
-    
-    console.error = function(...args) {
-      // Bloquer tous les logs d'erreur liés à l'authentification ou aux URLs sensibles
-      if (args.some(arg => {
-        if (arg === undefined || arg === null) return false;
-        const str = String(arg);
-        return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
-      })) {
-        return; // Ne rien logger
-      }
-      
-      originalConsoleError.apply(console, args);
-    };
-    
-    console.warn = function(...args) {
-      // Bloquer tous les logs d'avertissement liés à l'authentification ou aux URLs sensibles
-      if (args.some(arg => {
-        if (arg === undefined || arg === null) return false;
-        const str = String(arg);
-        return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
-      })) {
-        return; // Ne rien logger
-      }
-      
-      originalConsoleWarn.apply(console, args);
-    };
-    
-    // Nettoyer lors du démontage du composant
-    return () => {
-      console.log = originalConsoleLog;
-      console.error = originalConsoleError;
-      console.warn = originalConsoleWarn;
-    };
-  }, []);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -240,6 +188,7 @@ const Login = () => {
       try {
         await login(email, password);
         toast.success("Connexion réussie");
+        localStorage.setItem("login_success", new Date().toISOString());
         
         // Redirect after successful login
         setTimeout(() => {
@@ -247,6 +196,10 @@ const Login = () => {
         }, 300);
       } catch (error: any) {
         // Utiliser la fonction de gestion sécurisée des erreurs sans loguer de détails
+        localStorage.setItem("login_error", typeof error === 'object' ? JSON.stringify({
+          message: error.message || "Erreur inconnue",
+          timestamp: new Date().toISOString()
+        }) : "Erreur inconnue");
         toast.error("Identifiants invalides. Veuillez vérifier votre email et mot de passe.");
       } finally {
         // Restaurer les fonctions console avec un délai
@@ -258,14 +211,11 @@ const Login = () => {
       }
     } catch (error) {
       // Ne pas afficher l'erreur
+      localStorage.setItem("login_unexpected_error", "Erreur imprévue pendant la connexion");
       toast.error("Identifiants invalides. Veuillez vérifier votre email et mot de passe.");
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
   };
 
   return (
@@ -338,7 +288,7 @@ const Login = () => {
                     variant="ghost"
                     size="icon"
                     className="absolute right-0 top-0 h-full px-3"
-                    onClick={togglePasswordVisibility}
+                    onClick={() => setShowPassword(!showPassword)}
                     disabled={isLoading}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

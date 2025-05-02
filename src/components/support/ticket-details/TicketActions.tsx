@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { CardFooter } from "@/components/ui/card";
 import { useUpdateTicketStatus } from "@/hooks/tickets";
 import { toast } from "sonner";
+import { usePersistedState } from "@/hooks/usePersistedState";
 
 interface TicketActionsProps {
   ticketId: string;
@@ -21,9 +22,17 @@ export const TicketActions: React.FC<TicketActionsProps> = ({
   isAdmin 
 }) => {
   const { mutate: updateStatus, isPending: isUpdatingStatus } = useUpdateTicketStatus();
+  // Persister l'état de la dernière action pour restauration si nécessaire
+  const [lastAction, setLastAction] = usePersistedState(`ticket_${ticketId}_last_action`, null);
 
   const handleTicketStatusChange = (newStatus: string) => {
     try {
+      // Sauvegarder l'état actuel avant modification
+      setLastAction({
+        previousStatus: ticketStatus,
+        actionTimestamp: new Date().toISOString()
+      });
+      
       updateStatus(
         { ticketId: ticketId, status: newStatus },
         {

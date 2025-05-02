@@ -24,6 +24,7 @@ export function usePersistedState<T>(key: string, initialValue: T | (() => T)) {
       return initialValue instanceof Function ? initialValue() : initialValue;
     } catch (error) {
       // En cas d'erreur (par ex. JSON invalide), utiliser la valeur initiale
+      localStorage.setItem('usePersistedState_error', error instanceof Error ? error.message : 'Erreur inconnue');
       return initialValue instanceof Function ? initialValue() : initialValue;
     }
   });
@@ -34,7 +35,7 @@ export function usePersistedState<T>(key: string, initialValue: T | (() => T)) {
       localStorage.setItem(key, JSON.stringify(state));
     } catch (error) {
       // En cas d'erreur (par ex. quota dépassé), enregistrer silencieusement
-      localStorage.setItem('lastStorageError', 
+      localStorage.setItem('usePersistedState_error_update', 
         error instanceof Error ? error.message : 'Erreur inconnue lors du stockage');
     }
   }, [key, state]);

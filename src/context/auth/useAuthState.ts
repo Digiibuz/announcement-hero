@@ -15,14 +15,16 @@ import { UserProfile } from '@/types/auth';
 import { createProfileFromMetadata } from '@/hooks/useUserProfile';
 import { useSupabaseConfig } from '@/context/SupabaseConfigContext';
 import { hasRole } from './types';
+import { usePersistedState } from '@/hooks/usePersistedState';
 
 export const useAuthState = () => {
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = usePersistedState<UserProfile | null>("auth_user", null);
+  const [session, setSession] = usePersistedState<Session | null>("auth_session", null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const location = useLocation();
   const navigate = useNavigate();
-  const [isOnResetPasswordPage, setIsOnResetPasswordPage] = useState(
+  const [isOnResetPasswordPage, setIsOnResetPasswordPage] = usePersistedState(
+    "auth_is_on_reset_password_page",
     location.pathname.includes('reset-password')
   );
 
@@ -93,30 +95,67 @@ export const useAuthState = () => {
     // Set up auth state change handler
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN") {
-        // Utiliser un log sécurisé
-        safeConsoleError("User signed in:", session?.user?.id);
+        // Stocker silencieusement l'information
+        localStorage.setItem("auth_state_change", JSON.stringify({
+          event: "SIGNED_IN",
+          userId: session?.user?.id,
+          timestamp: new Date().toISOString()
+        }));
+        
         setUser(createProfileFromMetadata(session?.user || null));
         setSession(session || null);
       } else if (event === "SIGNED_OUT") {
-        safeConsoleError("User signed out");
+        localStorage.setItem("auth_state_change", JSON.stringify({
+          event: "SIGNED_OUT",
+          timestamp: new Date().toISOString()
+        }));
+        
         setUser(null);
         setSession(null);
         navigate('/login');
       } else if (event === "USER_UPDATED") {
-        safeConsoleError("User profile updated:", session?.user?.id);
+        localStorage.setItem("auth_state_change", JSON.stringify({
+          event: "USER_UPDATED",
+          userId: session?.user?.id,
+          timestamp: new Date().toISOString()
+        }));
+        
         setUser(createProfileFromMetadata(session?.user || null));
         setSession(session || null);
       } else if (event === "PASSWORD_RECOVERY") {
-        safeConsoleError("Password recovery initiated");
+        localStorage.setItem("auth_state_change", JSON.stringify({
+          event: "PASSWORD_RECOVERY",
+          timestamp: new Date().toISOString()
+        }));
+        
         setIsOnResetPasswordPage(true);
       }
     });
 
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(createProfileFromMetadata(session?.user || null));
-      setSession(session || null);
-    }).finally(() => {
+    try {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        localStorage.setItem("auth_initial_session", JSON.stringify({
+          hasSession: !!session,
+          userId: session?.user?.id,
+          timestamp: new Date().toISOString()
+        }));
+        
+        setUser(createProfileFromMetadata(session?.user || null));
+        setSession(session || null);
+      }).finally(() => {
+        setIsLoading(false);
+        
+        // Restaurer les fonctions de console
+        setTimeout(() => {
+          console.error = originalConsoleError;
+          console.warn = originalConsoleWarn;
+          console.log = originalConsoleLog;
+        }, 1000);
+      });
+    } catch (error) {
+      localStorage.setItem("auth_initial_session_error", 
+        error instanceof Error ? error.message : "Erreur inconnue");
       setIsLoading(false);
       
       // Restaurer les fonctions de console
@@ -125,7 +164,7 @@ export const useAuthState = () => {
         console.warn = originalConsoleWarn;
         console.log = originalConsoleLog;
       }, 1000);
-    });
+    }
 
     return () => {
       subscription.unsubscribe();
@@ -135,12 +174,12 @@ export const useAuthState = () => {
       console.warn = originalConsoleWarn;
       console.log = originalConsoleLog;
     };
-  }, [supabase, location.pathname, navigate]); 
+  }, [supabase, location.pathname, navigate, setSession, setUser, setIsOnResetPasswordPage]); 
 
   // Update reset password page state when location changes
   useEffect(() => {
     setIsOnResetPasswordPage(location.pathname.includes('reset-password'));
-  }, [location.pathname]);
+  }, [location.pathname, setIsOnResetPasswordPage]);
 
   // Login function
   const login = async (email: string, password: string) => {
@@ -157,20 +196,39 @@ export const useAuthState = () => {
     console.log = function() {};
     
     try {
+      localStorage.setItem("auth_login_attempt", JSON.stringify({
+        email: email.substring(0, 2) + "..." + email.split("@")[1],
+        timestamp: new Date().toISOString()
+      }));
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email,
         password: password,
       });
 
       if (error) {
-        // Ne pas loguer l'erreur complète, utiliser un message générique
+        localStorage.setItem("auth_login_error", JSON.stringify({
+          message: "Identifiants invalides",
+          timestamp: new Date().toISOString()
+        }));
+        
         throw new Error("Identifiants invalides");
       }
 
+      localStorage.setItem("auth_login_success", JSON.stringify({
+        userId: data.user?.id,
+        timestamp: new Date().toISOString()
+      }));
+      
       setUser(createProfileFromMetadata(data.user));
       setSession(data.session);
     } catch (error) {
       // Utiliser un message d'erreur générique pour ne pas exposer de détails
+      localStorage.setItem("auth_login_error_handled", JSON.stringify({
+        message: "Identifiants invalides",
+        timestamp: new Date().toISOString()
+      }));
+      
       throw new Error("Identifiants invalides");
     } finally {
       // Restaurer les fonctions de console après un délai
@@ -185,48 +243,109 @@ export const useAuthState = () => {
   // Logout function
   const logout = async () => {
     if (!supabase) throw new Error("Supabase client not initialized");
-    const { error } = await supabase.auth.signOut();
+    
+    try {
+      const { error } = await supabase.auth.signOut();
 
-    if (error) {
-      console.error("Logout error:", error);
-      throw new Error(error.message);
+      if (error) {
+        localStorage.setItem("auth_logout_error", JSON.stringify({
+          message: error.message,
+          timestamp: new Date().toISOString()
+        }));
+        
+        throw new Error(error.message);
+      }
+
+      localStorage.setItem("auth_logout_success", JSON.stringify({
+        timestamp: new Date().toISOString()
+      }));
+      
+      setUser(null);
+      setSession(null);
+    } catch (error) {
+      localStorage.setItem("auth_logout_error_handled", JSON.stringify({
+        message: error instanceof Error ? error.message : "Erreur inconnue",
+        timestamp: new Date().toISOString()
+      }));
+      
+      throw new Error("Erreur lors de la déconnexion");
     }
-
-    console.log("Logout successful");
-    setUser(null);
-    setSession(null);
   };
 
   // Reset password function
   const resetPassword = async (email: string) => {
     if (!supabase) throw new Error("Supabase client not initialized");
-    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
+    
+    try {
+      localStorage.setItem("auth_reset_password_attempt", JSON.stringify({
+        email: email.substring(0, 2) + "..." + email.split("@")[1],
+        timestamp: new Date().toISOString()
+      }));
+      
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
 
-    if (error) {
-      console.error("Password reset error:", error);
-      throw new Error(error.message);
+      if (error) {
+        localStorage.setItem("auth_reset_password_error", JSON.stringify({
+          message: error.message,
+          timestamp: new Date().toISOString()
+        }));
+        
+        throw new Error(error.message);
+      }
+
+      localStorage.setItem("auth_reset_password_success", JSON.stringify({
+        timestamp: new Date().toISOString()
+      }));
+      
+      toast.success("Un email de réinitialisation a été envoyé.");
+    } catch (error) {
+      localStorage.setItem("auth_reset_password_error_handled", JSON.stringify({
+        message: error instanceof Error ? error.message : "Erreur inconnue",
+        timestamp: new Date().toISOString()
+      }));
+      
+      throw new Error("Erreur lors de l'envoi de l'email de réinitialisation");
     }
-
-    console.log("Reset password request sent:", data);
-    toast.success("A reset email has been sent.");
   };
 
   // Update password function
   const updatePassword = async (newPassword: string) => {
     if (!supabase) throw new Error("Supabase client not initialized");
-    const { data, error } = await supabase.auth.updateUser({
-      password: newPassword,
-    });
+    
+    try {
+      localStorage.setItem("auth_update_password_attempt", JSON.stringify({
+        timestamp: new Date().toISOString()
+      }));
+      
+      const { data, error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
 
-    if (error) {
-      console.error("Password update error:", error);
-      throw new Error(error.message);
+      if (error) {
+        localStorage.setItem("auth_update_password_error", JSON.stringify({
+          message: error.message,
+          timestamp: new Date().toISOString()
+        }));
+        
+        throw new Error(error.message);
+      }
+
+      localStorage.setItem("auth_update_password_success", JSON.stringify({
+        userId: data.user?.id,
+        timestamp: new Date().toISOString()
+      }));
+      
+      toast.success("Mot de passe mis à jour avec succès.");
+    } catch (error) {
+      localStorage.setItem("auth_update_password_error_handled", JSON.stringify({
+        message: error instanceof Error ? error.message : "Erreur inconnue",
+        timestamp: new Date().toISOString()
+      }));
+      
+      throw new Error("Erreur lors de la mise à jour du mot de passe");
     }
-
-    console.log("Password updated:", data);
-    toast.success("Password successfully updated.");
   };
 
   return {

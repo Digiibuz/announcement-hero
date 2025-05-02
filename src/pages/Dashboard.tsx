@@ -28,6 +28,8 @@ const Dashboard = () => {
       localStorage.setItem("last_dashboard_visit", new Date().toISOString());
     } catch (error) {
       // Gérer silencieusement les erreurs de stockage
+      localStorage.setItem("dashboard_visit_error", 
+        error instanceof Error ? error.message : "Erreur inconnue");
     }
   }, []);
 
