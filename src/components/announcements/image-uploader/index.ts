@@ -1,6 +1,6 @@
 
-export { default as NetworkAwareImageUploader } from './NetworkAwareImageUploader';
-export * from './use-network-aware-image-uploader';
-export * from './image-compression';
+export { default as ImageUploader } from './ImageUploader';
+export * from './use-image-uploader';
+export * from './compression-utils';
 export * from './upload-zone';
-export * from './image-grid';
+export * from './images-grid';
