@@ -63,6 +63,7 @@ const NetworkAwareImageUploader = ({
           error={error}
           triggerFileUpload={triggerFileUpload}
           triggerCameraUpload={triggerCameraUpload}
+          isMobile={false}
         />
 
         {uploadedImages.length > 0 && (

@@ -1,6 +1,6 @@
 
 import React from "react";
-import { ImageIcon, Camera, UploadCloud, Loader2, AlertCircle } from "lucide-react";
+import { ImageIcon, Camera, UploadCloud, Loader2, AlertCircle, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface UploadZoneProps {
@@ -9,7 +9,9 @@ interface UploadZoneProps {
   error: string | null;
   triggerFileUpload: () => void;
   triggerCameraUpload: () => void;
-  isMobile: boolean;
+  isMobile?: boolean;
+  isOnline?: boolean;
+  networkQuality?: 'slow' | 'medium' | 'fast';
 }
 
 export function UploadZone({
@@ -18,21 +20,28 @@ export function UploadZone({
   error,
   triggerFileUpload,
   triggerCameraUpload,
-  isMobile
+  isMobile = false,
+  isOnline = true,
+  networkQuality = 'medium'
 }: UploadZoneProps) {
   return (
     <div className="text-center">
       <div className="flex justify-center mb-4">
         <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-          <ImageIcon className="h-6 w-6 text-muted-foreground" />
+          {!isOnline ? (
+            <WifiOff className="h-6 w-6 text-destructive" />
+          ) : (
+            <ImageIcon className="h-6 w-6 text-muted-foreground" />
+          )}
         </div>
       </div>
       
       <p className="mb-4 text-gray-950">
-        {isMobile ? 
-          "Ajoutez des photos à votre annonce" : 
-          "Glissez-déposez vos images ici, ou sélectionnez une option ci-dessous"
-        }
+        {!isOnline ? "Vous êtes hors ligne" : (
+          isMobile ? 
+            "Ajoutez des photos à votre annonce" : 
+            "Glissez-déposez vos images ici, ou sélectionnez une option ci-dessous"
+        )}
       </p>
       
       {/* Simplified mobile buttons with clear feedback */}
@@ -42,7 +51,7 @@ export function UploadZone({
           variant="outline" 
           size="sm" 
           onClick={triggerFileUpload} 
-          disabled={isUploading}
+          disabled={isUploading || !isOnline}
           className="flex-1"
         >
           <UploadCloud className="mr-2 h-4 w-4" />
@@ -53,7 +62,7 @@ export function UploadZone({
           variant="outline" 
           size="sm" 
           onClick={triggerCameraUpload} 
-          disabled={isUploading}
+          disabled={isUploading || !isOnline}
           className="flex-1"
         >
           <Camera className="mr-2 h-4 w-4" />
@@ -75,6 +84,12 @@ export function UploadZone({
               ></div>
             </div>
           )}
+        </div>
+      )}
+      
+      {networkQuality === 'slow' && isOnline && !error && !isUploading && (
+        <div className="mt-4 text-amber-500 text-sm">
+          Connexion lente détectée. Les images seront compressées pour un envoi plus rapide.
         </div>
       )}
       
