@@ -13,6 +13,7 @@ export function useNetworkAwareImageUploader(form: UseFormReturn<any>) {
   const [error, setError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [networkQuality, setNetworkQuality] = useState<'slow' | 'medium' | 'fast'>('medium');
+  const [processingCount, setProcessingCount] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useMediaQuery("(max-width: 767px)");
@@ -106,6 +107,9 @@ export function useNetworkAwareImageUploader(form: UseFormReturn<any>) {
                       
       const filesToProcess = Array.from(files).slice(0, maxFiles);
       
+      // Update processing count to show skeletons
+      setProcessingCount(filesToProcess.length);
+      
       if (files.length > maxFiles) {
         toast.warning(`Maximum ${maxFiles} images peuvent être téléversées à la fois sur votre connexion actuelle`);
       }
@@ -154,6 +158,7 @@ export function useNetworkAwareImageUploader(form: UseFormReturn<any>) {
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
+      setProcessingCount(0);
       if (fileInputRef.current) fileInputRef.current.value = '';
       if (cameraInputRef.current) cameraInputRef.current.value = '';
     }
@@ -262,6 +267,7 @@ export function useNetworkAwareImageUploader(form: UseFormReturn<any>) {
     error,
     isOnline,
     networkQuality,
+    processingCount,
     handleFileUpload,
     removeImage,
     fileInputRef,

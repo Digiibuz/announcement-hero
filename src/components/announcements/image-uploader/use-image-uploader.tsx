@@ -11,6 +11,7 @@ export function useImageUploader(form: UseFormReturn<any>) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
+  const [processingCount, setProcessingCount] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useMediaQuery("(max-width: 767px)");
@@ -28,6 +29,9 @@ export function useImageUploader(form: UseFormReturn<any>) {
       // Limit number of files on mobile to avoid memory issues
       const maxFiles = isMobile ? 3 : 10;
       const filesToProcess = Array.from(files).slice(0, maxFiles);
+      
+      // Update processing count to show skeletons
+      setProcessingCount(filesToProcess.length);
       
       if (files.length > maxFiles) {
         toast.warning(`Maximum ${maxFiles} images peuvent être téléversées à la fois sur mobile`);
@@ -68,6 +72,7 @@ export function useImageUploader(form: UseFormReturn<any>) {
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
+      setProcessingCount(0);
       if (fileInputRef.current) fileInputRef.current.value = '';
       if (cameraInputRef.current) cameraInputRef.current.value = '';
     }
@@ -158,6 +163,7 @@ export function useImageUploader(form: UseFormReturn<any>) {
     isUploading,
     uploadProgress,
     error,
+    processingCount,
     handleFileUpload,
     removeImage,
     fileInputRef,

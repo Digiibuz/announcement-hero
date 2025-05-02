@@ -54,4 +54,23 @@ describe('ImagesGrid', () => {
     const gridContainer = document.querySelector('.grid');
     expect(gridContainer?.children.length).toBe(0);
   });
+  
+  it('renders skeleton placeholders when processing images', () => {
+    render(
+      <ImagesGrid 
+        images={mockImages} 
+        onRemove={mockOnRemove} 
+        processingImages={true} 
+        processingCount={2} 
+      />
+    );
+    
+    // Check that skeletons are rendered
+    const processingLabels = screen.getAllByText('Processing...');
+    expect(processingLabels.length).toBe(2);
+    
+    // Check total number of elements (3 images + 2 skeletons)
+    const gridItems = document.querySelectorAll('.aspect-square');
+    expect(gridItems.length).toBe(5);
+  });
 });

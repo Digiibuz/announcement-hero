@@ -1,26 +1,40 @@
 
-// Test setup file
+// Test environment setup for image uploader tests
+import '@testing-library/jest-dom';
 
-// Mock for window network API functions
-Object.defineProperty(window, 'isOnSlowNetwork', {
-  value: jest.fn().mockReturnValue(false)
+// Mock window.URL.createObjectURL
+Object.defineProperty(window, 'URL', {
+  value: {
+    createObjectURL: jest.fn(() => 'blob-url'),
+    revokeObjectURL: jest.fn()
+  },
+  writable: true
 });
 
-Object.defineProperty(window, 'getNetworkQuality', {
-  value: jest.fn().mockReturnValue('medium')
-});
+// Mock for ResizeObserver
+class ResizeObserverMock {
+  observe = jest.fn();
+  unobserve = jest.fn();
+  disconnect = jest.fn();
+}
 
-Object.defineProperty(window, 'checkNetworkStatus', {
-  value: jest.fn().mockResolvedValue({ type: 'wifi', downlink: 10, rtt: 50 })
-});
+// Add to global
+global.ResizeObserver = ResizeObserverMock;
 
-Object.defineProperty(window, 'isSaveDataEnabled', {
-  value: jest.fn().mockReturnValue(false)
-});
+// Mock IntersectionObserver
+class IntersectionObserverMock {
+  constructor(callback: IntersectionObserverCallback) {
+    this.callback = callback;
+  }
+  observe = jest.fn();
+  unobserve = jest.fn();
+  disconnect = jest.fn();
+  callback: IntersectionObserverCallback;
+}
 
-// Mock for the optimized image component
-jest.mock('@/components/ui/optimized-image', () => ({
-  OptimizedImage: ({ src, alt, className }) => (
-    <img src={src} alt={alt} className={className} />
-  )
-}));
+global.IntersectionObserver = IntersectionObserverMock;
+
+// Mock network status functions
+window.isOnSlowNetwork = jest.fn().mockReturnValue(false);
+window.isSaveDataEnabled = jest.fn().mockReturnValue(false);
+window.getNetworkQuality = jest.fn().mockReturnValue('medium');

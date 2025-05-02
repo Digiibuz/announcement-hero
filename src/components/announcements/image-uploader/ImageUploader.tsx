@@ -18,6 +18,7 @@ const ImageUploader = ({
     isUploading,
     uploadProgress,
     error,
+    processingCount,
     handleFileUpload,
     removeImage,
     fileInputRef,
@@ -64,10 +65,12 @@ const ImageUploader = ({
           isMobile={isMobile}
         />
 
-        {uploadedImages.length > 0 && (
+        {(uploadedImages.length > 0 || (isUploading && processingCount > 0)) && (
           <ImagesGrid 
             images={uploadedImages}
             onRemove={removeImage}
+            processingImages={isUploading}
+            processingCount={processingCount}
           />
         )}
       </div>

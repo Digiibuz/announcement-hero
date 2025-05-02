@@ -19,6 +19,7 @@ const NetworkAwareImageUploader = ({
     error,
     isOnline,
     networkQuality,
+    processingCount,
     handleFileUpload,
     removeImage,
     fileInputRef,
@@ -66,10 +67,12 @@ const NetworkAwareImageUploader = ({
           isMobile={false}
         />
 
-        {uploadedImages.length > 0 && (
+        {(uploadedImages.length > 0 || (isUploading && processingCount > 0)) && (
           <ImageGrid 
             images={uploadedImages}
             onRemove={removeImage}
+            processingImages={isUploading}
+            processingCount={processingCount}
           />
         )}
       </div>
