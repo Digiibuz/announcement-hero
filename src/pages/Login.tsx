@@ -41,9 +41,9 @@ const Login = () => {
   const handleRetryConnection = async () => {
     setIsRetrying(true);
     try {
-      await retryConnection();
+      const success = await retryConnection();
       const isConnected = await testSupabaseConnection();
-      if (isConnected) {
+      if (isConnected && success) {
         toast.success("Connexion rétablie");
       } else {
         toast.error("Échec de la reconnexion");

@@ -31,7 +31,7 @@ export interface AuthContextType {
   isImpersonating: boolean;
   isOnResetPasswordPage: boolean;
   isNetworkError: boolean;
-  retryConnection: () => Promise<void>;
+  retryConnection: () => Promise<boolean>;
 }
 
 export interface GoogleBusinessProfile {
