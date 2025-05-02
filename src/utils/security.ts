@@ -18,11 +18,20 @@ export {
   createSecureAuthResponse
 } from './authErrorHandler';
 
+// Définition des patterns sensibles directement dans le fichier
+const SENSITIVE_PATTERNS = [
+  /supabase\.co/i,
+  /auth\/v1\/token/i,
+  /token\?grant_type=password/i,
+  /auth\/v1/i,
+  /grant_type=password/i,
+  /400.*bad request/i,
+  /401/i,
+  /rdwqedmvzicerwotjseg/i
+];
+
 // Advanced protection to completely block sensitive URLs in errors
 (function() {
-  // Import sensitive patterns from the new central location
-  const { SENSITIVE_PATTERNS } = require('./sensitiveDataPatterns');
-  
   // Completely block unhandled errors containing sensitive information
   window.addEventListener('error', function(event) {
     const errorText = event.message || event.error?.stack || '';
@@ -91,4 +100,3 @@ export {
     originalConsoleWarn.apply(console, args);
   };
 })();
-

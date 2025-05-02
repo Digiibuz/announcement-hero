@@ -18,6 +18,18 @@ const SECONDARY_ASSETS = [
   '/placeholder.svg',
 ];
 
+// Définition des patterns sensibles directement dans le SW au lieu d'utiliser require()
+const SENSITIVE_PATTERNS = [
+  /supabase\.co/i,
+  /auth\/v1\/token/i,
+  /token\?grant_type=password/i,
+  /auth\/v1/i,
+  /grant_type=password/i,
+  /400.*bad request/i,
+  /401/i,
+  /rdwqedmvzicerwotjseg/i
+];
+
 // Vérification qu'une URL est valide pour la mise en cache
 function isValidCacheUrl(url) {
   const validSchemes = ['http:', 'https:'];

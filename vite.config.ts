@@ -3,9 +3,8 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
-// Fix the import issue with terser by using a type assertion
-// @ts-ignore - Ignore TypeScript errors for the terser import
-import { terser } from 'rollup-plugin-terser';
+// Utilisez l'import dynamique pour terser
+import terser from 'rollup-plugin-terser';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -27,7 +26,7 @@ export default defineConfig(({ mode }) => ({
     componentTagger(),
     // In production, use terser to remove all console.* calls
     mode === 'production' && 
-    terser({
+    terser.terser({
       compress: {
         drop_console: true,
       },

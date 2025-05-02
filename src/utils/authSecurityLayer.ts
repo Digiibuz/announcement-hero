@@ -32,6 +32,18 @@ export function setupAuthSecurityLayer() {
  * Blocks sensitive entries in network monitoring tools
  */
 export function setupNetworkEntriesProtection() {
+  // Définition des patterns sensibles directement dans le fichier
+  const SENSITIVE_PATTERNS = [
+    /supabase\.co/i,
+    /auth\/v1\/token/i,
+    /token\?grant_type=password/i,
+    /auth\/v1/i,
+    /grant_type=password/i,
+    /400.*bad request/i,
+    /401/i,
+    /rdwqedmvzicerwotjseg/i
+  ];
+
   // Intercept fetch requests that may contain sensitive auth info
   const originalFetch = window.fetch;
   
@@ -41,7 +53,8 @@ export function setupNetworkEntriesProtection() {
       const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
       
       // Check if this is an auth-related URL
-      if (url.includes('auth') || url.includes('token') || url.includes('login')) {
+      if (url.includes('auth') || url.includes('token') || url.includes('login') || 
+          SENSITIVE_PATTERNS.some(pattern => pattern.test(url))) {
         // For auth requests, silence console temporarily
         const originalConsoleError = console.error;
         const originalConsoleWarn = console.warn;
