@@ -20,7 +20,7 @@ export const useUserEditForm = (
     defaultValues: {
       email: user.email || "",
       name: user.name || "",
-      role: user.role as Role || "client",
+      role: user.role as Role, // Changed from 'as "admin" | "client"'
       clientId: user.clientId || "",
       wordpressConfigId: user.wordpressConfigId || "",
       wpConfigIds: [],
@@ -31,7 +31,7 @@ export const useUserEditForm = (
     form.reset({
       email: user.email || "",
       name: user.name || "",
-      role: user.role as Role || "client",
+      role: user.role as Role, // Changed from 'as "admin" | "client"'
       clientId: user.clientId || "",
       wordpressConfigId: user.wordpressConfigId || "",
       wpConfigIds: selectedConfigIds,

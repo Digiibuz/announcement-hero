@@ -266,7 +266,7 @@ const GoogleBusinessPage = () => {
                     <h3 className="text-sm font-semibold mt-4 mb-2">Google Connection</h3>
                     <p>Connected: {isConnected ? 'Yes' : 'No'}</p>
                     <p>Has Profile: {profile ? 'Yes' : 'No'}</p>
-                    <p>Google Email: {profile?.googleEmail || 'None'}</p>
+                    <p>Google Email: {profile?.google_email || 'None'}</p>
                     
                     <h3 className="text-sm font-semibold mt-4 mb-2">Callback Processing</h3>
                     <p>State: {searchParams.get("state") || 'None'}</p>
@@ -337,7 +337,7 @@ const GoogleBusinessPage = () => {
                         
                         <div className="bg-muted p-4 rounded-md">
                           <p className="text-sm font-medium">Google Email</p>
-                          <p className="text-muted-foreground">{profile.googleEmail || 'Not specified'}</p>
+                          <p className="text-muted-foreground">{profile.google_email || 'Not specified'}</p>
                         </div>
                         
                         {profile.gmb_account_id && profile.gmb_location_id ? (

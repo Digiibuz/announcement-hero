@@ -53,5 +53,5 @@ export interface GoogleBusinessProfile {
   token_expires_at: Date;
   gmb_account_id?: string;
   gmb_location_id?: string;
-  google_email?: string;
+  google_email?: string; // Ensure this property exists to match how it's used
 }

@@ -1,36 +1,26 @@
-
 import React from "react";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
-import { Loader2 } from "lucide-react";
+import { z } from "zod";
+import { UseFormReturn } from "react-hook-form";
+import { Button } from "@/components/ui/button";
+import { Form } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Role } from "@/types/auth";
 import { 
-  Form, 
   FormControl, 
   FormField, 
   FormItem, 
   FormLabel, 
-  FormMessage, 
-  FormDescription
+  FormMessage 
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
-import { UserProfile } from "@/types/auth";
-import { WordPressConfig } from "@/types/wordpress";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+// Update the schema to use the Role type
 export const formSchema = z.object({
   email: z.string().email({ message: "Email invalide" }),
   name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères" }),
-  role: z.enum(["admin", "client"], {
-    required_error: "Veuillez sélectionner un rôle",
-  }),
+  role: z.custom<Role>(),
   clientId: z.string().optional(),
   wordpressConfigId: z.string().optional(),
   wpConfigIds: z.array(z.string()).optional(),
@@ -39,7 +29,7 @@ export const formSchema = z.object({
 export type FormSchema = z.infer<typeof formSchema>;
 
 interface FormFieldsProps {
-  form: ReturnType<typeof useForm<FormSchema>>;
+  form: UseFormReturn<FormSchema>;
   configs: WordPressConfig[];
   isLoadingConfigs: boolean;
   isUpdating: boolean;
@@ -92,20 +82,15 @@ const FormFields: React.FC<FormFieldsProps> = ({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Rôle</FormLabel>
-              <Select 
+              <RadioGroup 
                 onValueChange={field.onChange} 
                 defaultValue={field.value}
               >
                 <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un rôle" />
-                  </SelectTrigger>
+                  <RadioGroupItem value="admin">Administrateur</RadioGroupItem>
+                  <RadioGroupItem value="client">Client</RadioGroupItem>
                 </FormControl>
-                <SelectContent>
-                  <SelectItem value="admin">Administrateur</SelectItem>
-                  <SelectItem value="client">Client</SelectItem>
-                </SelectContent>
-              </Select>
+              </RadioGroup>
               <FormMessage />
             </FormItem>
           )}
