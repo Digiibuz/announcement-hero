@@ -35,7 +35,7 @@ export const useUserManagement = () => {
           wordpressConfig: profile.wordpress_configs ? {
             name: profile.wordpress_configs.name,
             site_url: profile.wordpress_configs.site_url
-          } : null,
+          } : undefined,
           lastLogin: null // Nous n'avons plus accès à cette information sans la fonction Edge
         };
       });

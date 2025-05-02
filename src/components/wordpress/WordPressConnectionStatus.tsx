@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,7 +42,7 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
   showDetails = false,
   className
 }) => {
-  const { user } = useAuth();
+  const { userProfile } = useAuth();
   const { status, isChecking, errorDetails, checkConnection } = useWordPressConnection();
   const [configDetails, setConfigDetails] = useState<{name?: string, site_url?: string}>({});
   const [showHelp, setShowHelp] = useState(false);
@@ -67,7 +66,7 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
   useEffect(() => {
     // Fetch WordPress config details for additional info
     const fetchConfigDetails = async () => {
-      const id = configId || user?.wordpressConfigId;
+      const id = configId || userProfile?.wordpressConfigId;
       if (id) {
         try {
           const { data, error } = await supabase
@@ -86,7 +85,7 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
     };
     
     fetchConfigDetails();
-  }, [configId, user?.wordpressConfigId]);
+  }, [configId, userProfile?.wordpressConfigId]);
 
   // Vérifier la connexion au chargement du composant
   useEffect(() => {
@@ -98,7 +97,7 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
 
   const handleSync = async () => {
     try {
-      const effectiveConfigId = configId || user?.wordpressConfigId;
+      const effectiveConfigId = configId || userProfile?.wordpressConfigId;
       
       if (!effectiveConfigId) {
         toast.error("Aucune configuration WordPress associée");

@@ -11,7 +11,7 @@ import { UserProfile } from "@/types/auth";
 import { toast } from "sonner";
 
 const UserManagement = () => {
-  const { user, isAdmin, impersonateUser } = useAuth();
+  const { isAdmin, impersonateUser } = useAuth();
   const { 
     users, 
     isLoading, 

@@ -12,16 +12,20 @@ export const useWordPressConfigsList = () => {
   const [configs, setConfigs] = useState<WordPressConfig[]>([]);
   const [clientConfigs, setClientConfigs] = useState<ClientWordPressConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user, isClient } = useAuth();
+  const { userProfile, isClient } = useAuth();
 
   const fetchConfigs = async () => {
     try {
       setIsLoading(true);
       
+      console.log("useWordPressConfigsList - fetchConfigs - userProfile:", userProfile);
+      console.log("useWordPressConfigsList - fetchConfigs - isClient:", isClient);
+      
       // Pour les clients, on ne récupère que leur configuration WordPress attribuée
-      if (isClient) {
+      if (isClient && userProfile) {
         // Si le client a un wordpressConfigId, on récupère cette configuration
-        const wordpressConfigId = user?.user_metadata?.wordpressConfigId;
+        const wordpressConfigId = userProfile.wordpressConfigId;
+        console.log("useWordPressConfigsList - Client WordPress Config ID:", wordpressConfigId);
         
         if (wordpressConfigId) {
           const { data, error } = await supabase
@@ -85,9 +89,10 @@ export const useWordPressConfigsList = () => {
   };
 
   useEffect(() => {
+    console.log("useWordPressConfigsList - Effect triggered");
     fetchConfigs();
     fetchClientConfigs();
-  }, [isClient, user?.user_metadata?.wordpressConfigId]);
+  }, [isClient, userProfile?.wordpressConfigId]);
 
   const getConfigsForClient = (clientId: string) => {
     const clientConfigIds = clientConfigs

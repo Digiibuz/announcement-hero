@@ -3,10 +3,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../integrations/supabase/client';
 import { toast } from 'sonner';
 import { User as SupabaseUser } from '@supabase/supabase-js';
-import { User } from '@/types/auth';
+import { User, UserProfile, Role } from '@/types/auth';
 
 interface AuthContextProps {
   user: User | null;
+  userProfile: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   isAdmin: boolean;
@@ -18,15 +19,19 @@ interface AuthContextProps {
   updateProfile: (data: any) => Promise<void>;
   sendPasswordResetEmail: (email: string) => Promise<void>;
   isImpersonating: boolean;
-  impersonateUser: (user: User) => Promise<void>;
+  impersonateUser: (user: UserProfile) => Promise<void>;
   stopImpersonation: () => Promise<void>;
+  stopImpersonating: () => Promise<void>;
   isOnResetPasswordPage: boolean;
+  originalUser: UserProfile | null;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [originalUser, setOriginalUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
@@ -64,6 +69,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
+        setUserProfile(null);
+        setOriginalUser(null);
       }
     });
 
@@ -75,13 +82,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchAndSetUser = async (supabaseUser: SupabaseUser) => {
     if (!supabaseUser) {
       setUser(null);
+      setUserProfile(null);
       return;
     }
 
     try {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, wordpress_configs(name, site_url)')
         .eq('id', supabaseUser.id)
         .single();
 
@@ -92,18 +100,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userWithMetadata: User = {
         id: supabaseUser.id,
         email: supabaseUser.email || '',
+        name: profile?.name || supabaseUser?.user_metadata?.name as string || 'Unknown User',
         user_metadata: {
           name: profile?.name || supabaseUser?.user_metadata?.name as string || 'Unknown User',
-          role: profile?.role || supabaseUser?.user_metadata?.role as string || 'client',
+          role: profile?.role as Role || supabaseUser?.user_metadata?.role as Role || 'client',
           wordpressConfigId: profile?.wordpress_config_id || supabaseUser?.user_metadata?.wordpressConfigId as string | undefined,
           clientId: profile?.client_id || supabaseUser?.user_metadata?.clientId as string | undefined,
         },
         app_metadata: {
-          role: supabaseUser?.app_metadata?.role as string | undefined,
+          role: supabaseUser?.app_metadata?.role as Role | undefined,
           impersonator_id: supabaseUser?.app_metadata?.impersonator_id as string | undefined,
         },
+        wordpressConfigId: profile?.wordpress_config_id || supabaseUser?.user_metadata?.wordpressConfigId as string | undefined,
       };
+      
       setUser(userWithMetadata);
+
+      // Also create the UserProfile object for components that expect that format
+      const userProfile: UserProfile = {
+        id: supabaseUser.id,
+        email: supabaseUser.email || '',
+        name: profile?.name || supabaseUser?.user_metadata?.name as string || 'Unknown User',
+        role: profile?.role as Role || supabaseUser?.user_metadata?.role as Role || 'client',
+        wordpressConfigId: profile?.wordpress_config_id || undefined,
+        clientId: profile?.client_id || undefined,
+        wordpressConfig: profile?.wordpress_configs ? {
+          name: profile.wordpress_configs.name,
+          site_url: profile.wordpress_configs.site_url
+        } : undefined,
+        lastLogin: null // Nous n'avons plus accès à cette information sans la fonction Edge
+      };
+      
+      setUserProfile(userProfile);
     } catch (error: any) {
       console.error("Error fetching user profile:", error);
       toast.error("Failed to fetch user profile.");
@@ -111,16 +139,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const minimalUser: User = {
         id: supabaseUser.id,
         email: supabaseUser.email || '',
+        name: supabaseUser?.user_metadata?.name as string || 'Unknown User',
         user_metadata: {
           name: supabaseUser?.user_metadata?.name as string || 'Unknown User',
-          role: supabaseUser?.user_metadata?.role as string || 'client',
+          role: supabaseUser?.user_metadata?.role as Role || 'client',
         },
         app_metadata: {
-          role: supabaseUser?.app_metadata?.role as string | undefined,
+          role: supabaseUser?.app_metadata?.role as Role | undefined,
           impersonator_id: supabaseUser?.app_metadata?.impersonator_id as string | undefined,
         },
+        wordpressConfigId: supabaseUser?.user_metadata?.wordpressConfigId as string | undefined,
       };
+      
       setUser(minimalUser);
+      
+      // Create minimal UserProfile as well
+      const minimalUserProfile: UserProfile = {
+        id: supabaseUser.id,
+        email: supabaseUser.email || '',
+        name: supabaseUser?.user_metadata?.name as string || 'Unknown User',
+        role: supabaseUser?.user_metadata?.role as Role || 'client',
+      };
+      
+      setUserProfile(minimalUserProfile);
     }
   };
 
@@ -155,6 +196,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
       setUser(null);
+      setUserProfile(null);
+      setOriginalUser(null);
       navigate('/login');
     } catch (error) {
       console.error("Logout failed:", error);
@@ -245,9 +288,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const impersonateUser = async (userToImpersonate: User) => {
+  const impersonateUser = async (userToImpersonate: UserProfile) => {
     setIsLoading(true);
     try {
+      // Keep original user info before impersonating
+      setOriginalUser(userProfile);
+      
       // Call the Supabase function to set the impersonator_id
       const { data, error } = await supabase.functions.invoke('impersonate', {
         body: {
@@ -305,10 +351,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
   
         // Fetch and set the original user
-        const { data: { user: originalUser } } = await supabase.auth.getUser();
-        if (originalUser) {
-          await fetchAndSetUser(originalUser);
+        const { data: { user: originalSupabaseUser } } = await supabase.auth.getUser();
+        if (originalSupabaseUser) {
+          await fetchAndSetUser(originalSupabaseUser);
         }
+        
+        // Clear the original user state
+        setOriginalUser(null);
       } else {
         console.error('Stop impersonation function response missing access_token:', data);
         toast.error('Failed to stop impersonation: Missing access token.');
@@ -320,10 +369,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
     }
   };
+  
+  // Alias for backward compatibility
+  const stopImpersonating = stopImpersonation;
 
   // S'assurer que nous accédons correctement aux métadonnées de l'utilisateur
   const contextValue = {
     user,
+    userProfile,
     isAuthenticated: !!user,
     isLoading,
     isAdmin: user?.user_metadata?.role === 'admin',
@@ -337,6 +390,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isImpersonating: !!user?.app_metadata?.impersonator_id,
     impersonateUser,
     stopImpersonation,
+    stopImpersonating,
+    originalUser,
     isOnResetPasswordPage: location.pathname === '/reset-password'
   };
 

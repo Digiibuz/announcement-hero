@@ -21,7 +21,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 
 const WordPressManagement = () => {
-  const { isAdmin, isClient, user } = useAuth();
+  const { isAdmin, isClient, userProfile } = useAuth();
   const {
     configs,
     isLoading,
@@ -36,6 +36,7 @@ const WordPressManagement = () => {
 
   // Effet pour s'assurer que les données sont chargées dès le montage du composant
   React.useEffect(() => {
+    console.log("WordPressManagement - Fetching configs");
     fetchConfigs();
   }, [fetchConfigs]);
 
@@ -98,11 +99,11 @@ const WordPressManagement = () => {
 
   // Debug info
   React.useEffect(() => {
-    console.log("WordPressManagement - Current user:", user);
+    console.log("WordPressManagement - Current user:", userProfile);
     console.log("WordPressManagement - isClient:", isClient);
     console.log("WordPressManagement - isAdmin:", isAdmin);
     console.log("WordPressManagement - configs:", configs);
-  }, [user, isClient, isAdmin, configs]);
+  }, [userProfile, isClient, isAdmin, configs]);
 
   return (
     <PageLayout 

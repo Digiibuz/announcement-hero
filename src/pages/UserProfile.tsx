@@ -12,11 +12,11 @@ import { Toggle } from "@/components/ui/toggle";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 
 const UserProfile = () => {
-  const { user, logout } = useAuth();
+  const { userProfile, logout } = useAuth();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
 
-  if (!user) {
+  if (!userProfile) {
     return (
       <PageLayout title="Profil">
         <Card className="max-w-lg mx-auto">
@@ -53,13 +53,13 @@ const UserProfile = () => {
                 <div className="grid gap-3">
                   <Label htmlFor="name">Nom</Label>
                   <div id="name" className="text-lg font-medium">
-                    {user.name}
+                    {userProfile.name}
                   </div>
                 </div>
                 <div className="grid gap-3">
                   <Label htmlFor="email">Email</Label>
                   <div id="email" className="text-lg font-medium">
-                    {user.email}
+                    {userProfile.email}
                   </div>
                 </div>
               </div>
