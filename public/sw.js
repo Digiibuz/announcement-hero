@@ -1,6 +1,6 @@
 
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v20';
+const CACHE_NAME = 'digiibuz-cache-v19';
 
 // Liste des ressources à mettre en cache immédiatement (shell de l'application)
 const CORE_ASSETS = [
@@ -48,25 +48,19 @@ function isStaticAsset(url) {
   }
 }
 
-// Ne jamais mettre en cache ces types de fichiers ou chemins
+// Ne jamais mettre en cache ces types de fichiers
 function shouldSkipCaching(url) {
   try {
     const urlObj = new URL(url);
     
-    // Authentication routes - skip caching completely
-    if (
-      url.includes('auth/v1') || 
-      url.includes('auth-js') ||
-      url.includes('supabase.io/storage/v1') ||
-      url.includes('realtime')
-    ) {
-      console.log('Skipping cache for auth/API resource:', url);
+    // Login module specifically should not be cached
+    if (url.includes('Login-') || url.includes('login')) {
+      console.log('Skipping cache for login resource:', url);
       return true;
     }
     
-    // Ne jamais mettre en cache les fichiers JS d'authentification
-    if ((urlObj.pathname.endsWith('.js') && url.includes('auth')) || url.includes('login')) {
-      console.log('Skipping cache for auth js file:', url);
+    // Ne jamais mettre en cache les ressources JavaScript
+    if (urlObj.pathname.endsWith('.js')) {
       return true;
     }
     
@@ -94,10 +88,7 @@ function shouldSkipCaching(url) {
 
 // Installation du service worker avec préchargement optimisé
 self.addEventListener('install', event => {
-  console.log('Installing Service Worker v20 (Optimisation Authentification)');
-  
-  // Skip waiting to activate immediately
-  self.skipWaiting();
+  console.log('Installing Service Worker v19 (Optimisation Réseau)');
   
   // Stratégie de préchargement optimisée pour réseaux lents
   event.waitUntil(
@@ -114,14 +105,16 @@ self.addEventListener('install', event => {
         });
       })
   );
+  
+  // Force l'activation immédiate
+  self.skipWaiting();
 });
 
 // Activation et nettoyage des anciens caches
 self.addEventListener('activate', event => {
-  console.log('Activating Service Worker v20 (Optimisation Authentification)');
+  console.log('Activating Service Worker v19 (Optimisation Réseau)');
   const cacheWhitelist = [CACHE_NAME];
 
-  // Claim clients immediately for better control
   event.waitUntil(
     Promise.all([
       // Suppression des anciens caches
@@ -143,14 +136,8 @@ self.addEventListener('activate', event => {
 
 // Gestion des requêtes avec stratégies adaptées aux réseaux lents
 self.addEventListener('fetch', event => {
-  // NEVER intercept authentication or API requests
-  if (
-    event.request.url.includes('auth/v1') ||
-    event.request.url.includes('supabase') ||
-    event.request.url.includes('login') || 
-    event.request.url.includes('.js')
-  ) {
-    console.log('Skipping interception for:', event.request.url);
+  // Pour tous les fichiers JavaScript, surtout Login, aller directement au réseau
+  if (event.request.url.includes('Login-') || event.request.url.includes('.js')) {
     return;
   }
   
@@ -301,52 +288,5 @@ self.addEventListener('message', event => {
         clients.forEach(client => client.postMessage({ type: 'cacheCleared' }));
       });
     });
-  }
-  
-  // Nouvelle commande pour vérifier spécifiquement les ressources d'authentification dans le cache
-  if (event.data === 'checkAuthCache') {
-    caches.open(CACHE_NAME).then(cache => {
-      cache.keys().then(keys => {
-        // Filtre les entrées liées à l'authentification
-        const authEntries = keys.filter(request => 
-          request.url.includes('auth') || 
-          request.url.includes('login') ||
-          request.url.includes('supabase')
-        );
-        
-        // Si on trouve des entrées d'auth dans le cache, les supprimer
-        if (authEntries.length > 0) {
-          console.log('Suppression des entrées d\'authentification du cache:', authEntries.length);
-          Promise.all(authEntries.map(request => cache.delete(request)))
-            .then(() => {
-              self.clients.matchAll().then(clients => {
-                clients.forEach(client => client.postMessage({ 
-                  type: 'authCacheCleared',
-                  count: authEntries.length
-                }));
-              });
-            });
-        }
-      });
-    });
-  }
-});
-
-// Ajouté pour nettoyer automatiquement le cache d'authentification périodiquement
-self.addEventListener('periodicsync', event => {
-  if (event.tag === 'clear-auth-cache') {
-    event.waitUntil(
-      caches.open(CACHE_NAME).then(cache => {
-        cache.keys().then(keys => {
-          const authEntries = keys.filter(request => 
-            request.url.includes('auth') || 
-            request.url.includes('login') ||
-            request.url.includes('supabase')
-          );
-          
-          return Promise.all(authEntries.map(request => cache.delete(request)));
-        });
-      })
-    );
   }
 });

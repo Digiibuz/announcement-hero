@@ -1,37 +1,30 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
-import { useUserProfile } from "@/hooks/useUserProfile";
+import { useUserProfile, createProfileFromMetadata } from "@/hooks/useUserProfile";
 import { useImpersonation } from "@/hooks/useImpersonation";
 import { UserProfile, AuthContextType } from "@/types/auth";
-import { useAuthState } from "@/hooks/useAuthState";
-import { useAuthMethods } from "@/hooks/useAuthMethods";
-import { useAuthInitialize } from "@/hooks/useAuthInitialize";
-import { createProfileFromMetadata } from "@/hooks/useUserProfile";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [isLoading, setIsLoading] = useState(true);
   const { userProfile, setUserProfile, fetchFullProfile } = useUserProfile();
   const { originalUser, isImpersonating, impersonateUser: startImpersonation, stopImpersonating: endImpersonation } = useImpersonation(userProfile);
-  const { 
-    isLoading, setIsLoading, networkError, setNetworkError, 
-    reconnectAttempts, setReconnectAttempts, isOnResetPasswordPage, 
-    checkNetworkConnectivity, REQUEST_TIMEOUT 
-  } = useAuthState();
+  // État pour suivre si nous sommes sur une page de réinitialisation de mot de passe
+  const [isOnResetPasswordPage, setIsOnResetPasswordPage] = useState(false);
 
-  // Initialize auth state with the initialization hook
-  const { initializeAuth } = useAuthInitialize(
-    setUserProfile, setIsLoading, fetchFullProfile, setNetworkError, 
-    setReconnectAttempts, checkNetworkConnectivity, reconnectAttempts, REQUEST_TIMEOUT
-  );
-
-  // Set up auth methods with hooks
-  const { login, logout, retryConnection } = useAuthMethods(
-    userProfile, setUserProfile, setIsLoading, checkNetworkConnectivity, 
-    REQUEST_TIMEOUT, fetchFullProfile, setNetworkError, setReconnectAttempts, initializeAuth
-  );
+  // Vérifier si nous sommes sur la page de réinitialisation de mot de passe
+  useEffect(() => {
+    // Vérifier si nous sommes sur la page de réinitialisation ET si nous avons des tokens dans l'URL
+    const isResetPasswordPage = window.location.pathname === '/reset-password';
+    const hasRecoveryToken = window.location.hash.includes('type=recovery');
+    
+    setIsOnResetPasswordPage(isResetPasswordPage && (hasRecoveryToken || isResetPasswordPage));
+    console.log("Is on reset password page:", isResetPasswordPage, "Has recovery token:", hasRecoveryToken);
+  }, [window.location.pathname, window.location.hash]);
 
   // Initialize auth state and set up listeners with improved persistence
   useEffect(() => {
@@ -65,10 +58,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     // Get initial session with improved caching
+    const initializeAuth = async () => {
+      // First check if we have a locally cached user role
+      const cachedUserRole = localStorage.getItem('userRole');
+      const cachedUserId = localStorage.getItem('userId');
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        console.log("Session found during initialization");
+        // First set user from metadata
+        const initialProfile = createProfileFromMetadata(session.user);
+        
+        // Apply cached role if available for immediate UI
+        if (cachedUserRole && cachedUserId === session.user.id) {
+          initialProfile.role = cachedUserRole as any;
+          console.log("Applied cached role:", cachedUserRole);
+        }
+        
+        setUserProfile(initialProfile);
+        
+        // Then get complete profile
+        setTimeout(() => {
+          fetchFullProfile(session.user.id).then((success) => {
+            if (success) {
+              console.log("Successfully fetched complete profile");
+            } else {
+              console.warn("Failed to fetch complete profile, using metadata only");
+            }
+            setIsLoading(false);
+          });
+        }, 100);
+      } else {
+        console.log("No session found during initialization");
+        setUserProfile(null);
+        setIsLoading(false);
+      }
+    };
+
     initializeAuth();
 
     return () => {
-      subscription?.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
@@ -83,6 +114,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('userId');
     }
   }, [userProfile?.role, userProfile?.id]);
+
+  const login = async (email: string, password: string) => {
+    setIsLoading(true);
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // User will be set by the auth state change listener
+    } catch (error: any) {
+      setIsLoading(false);
+      throw new Error(error.message || "Login error");
+    }
+  };
+
+  const logout = async () => {
+    try {
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userId');
+      sessionStorage.removeItem('lastAdminPath');
+      sessionStorage.removeItem('lastAuthenticatedPath');
+      
+      await supabase.auth.signOut();
+      setUserProfile(null);
+      localStorage.removeItem("originalUser");
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
+  };
 
   // Impersonation wrappers
   const impersonateUser = (userToImpersonate: UserProfile) => {
@@ -116,8 +182,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     originalUser,
     isImpersonating,
     isOnResetPasswordPage,
-    isNetworkError: networkError,
-    retryConnection,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

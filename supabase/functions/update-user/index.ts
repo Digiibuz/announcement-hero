@@ -1,18 +1,22 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
-import { corsHeaders, errorResponse, handleCorsOptions } from "../utils/errorHandling.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
 serve(async (req) => {
-  // Gestion des requêtes CORS preflight
+  // Gérer les requêtes CORS preflight
   if (req.method === "OPTIONS") {
-    return handleCorsOptions();
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
     console.log("Démarrage de la fonction update-user");
     
-    // Créer un client Supabase avec la clé de service de façon sécurisée
+    // Créer un client Supabase avec la clé de service
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
@@ -90,7 +94,13 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    // Utilise notre système de gestion d'erreurs sécurisé
-    return errorResponse(error);
+    console.error("Erreur:", error.message, error.stack);
+    return new Response(
+      JSON.stringify({ error: error.message || "Une erreur est survenue" }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      }
+    );
   }
 });

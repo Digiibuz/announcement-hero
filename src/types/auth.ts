@@ -30,8 +30,6 @@ export interface AuthContextType {
   originalUser: UserProfile | null;
   isImpersonating: boolean;
   isOnResetPasswordPage: boolean;
-  isNetworkError: boolean;
-  retryConnection: () => Promise<boolean>;
 }
 
 export interface GoogleBusinessProfile {
