@@ -21,13 +21,13 @@ export const useTickets = (userId?: string) => {
           .order("created_at", { ascending: false });
 
         if (error) {
-          // Éviter de propager l'erreur pour qu'elle ne s'affiche pas dans la console
+          console.warn("Error fetching tickets: ", error.message);
           return [];
         }
 
         return data as Ticket[];
       } catch (error) {
-        // Silence les erreurs pour éviter l'affichage dans la console
+        // Enhanced error handling with silent failure
         return [];
       }
     },
@@ -54,13 +54,13 @@ export const useAllTickets = () => {
           .order("created_at", { ascending: false });
 
         if (error) {
-          // Éviter de propager l'erreur pour qu'elle ne s'affiche pas dans la console
+          console.warn("Error fetching all tickets: ", error.message);
           return [];
         }
 
         return data as Ticket[];
       } catch (error) {
-        // Silence les erreurs pour éviter l'affichage dans la console
+        // Enhanced error handling with silent failure
         return [];
       }
     },
