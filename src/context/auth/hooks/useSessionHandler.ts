@@ -36,51 +36,63 @@ export const useSessionHandler = (
 
     // Set up auth state change handler
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: Session | null) => {
-      if (event === "SIGNED_IN") {
-        localStorage.setItem("auth_state_change", JSON.stringify({
-          event: "SIGNED_IN",
-          userId: session?.user?.id,
-          timestamp: new Date().toISOString()
-        }));
+      try {
+        const timestamp = new Date().toISOString();
         
-        setUser(createProfileFromMetadata(session?.user || null));
-        setSession(session || null);
-      } else if (event === "SIGNED_OUT") {
-        localStorage.setItem("auth_state_change", JSON.stringify({
-          event: "SIGNED_OUT",
-          timestamp: new Date().toISOString()
-        }));
-        
-        setUser(null);
-        setSession(null);
-        navigate('/login');
-      } else if (event === "USER_UPDATED") {
-        localStorage.setItem("auth_state_change", JSON.stringify({
-          event: "USER_UPDATED",
-          userId: session?.user?.id,
-          timestamp: new Date().toISOString()
-        }));
-        
-        setUser(createProfileFromMetadata(session?.user || null));
-        setSession(session || null);
-      } else if (event === "PASSWORD_RECOVERY") {
-        localStorage.setItem("auth_state_change", JSON.stringify({
-          event: "PASSWORD_RECOVERY",
-          timestamp: new Date().toISOString()
-        }));
-        
-        setIsOnResetPasswordPage(true);
+        if (event === "SIGNED_IN") {
+          localStorage.setItem("auth_state_change", JSON.stringify({
+            event: "SIGNED_IN",
+            userId: session?.user?.id,
+            timestamp
+          }));
+          
+          setUser(createProfileFromMetadata(session?.user || null));
+          setSession(session || null);
+        } else if (event === "SIGNED_OUT") {
+          localStorage.setItem("auth_state_change", JSON.stringify({
+            event: "SIGNED_OUT",
+            timestamp
+          }));
+          
+          setUser(null);
+          setSession(null);
+          navigate('/login');
+        } else if (event === "USER_UPDATED") {
+          localStorage.setItem("auth_state_change", JSON.stringify({
+            event: "USER_UPDATED",
+            userId: session?.user?.id,
+            timestamp
+          }));
+          
+          setUser(createProfileFromMetadata(session?.user || null));
+          setSession(session || null);
+        } else if (event === "PASSWORD_RECOVERY") {
+          localStorage.setItem("auth_state_change", JSON.stringify({
+            event: "PASSWORD_RECOVERY",
+            timestamp
+          }));
+          
+          setIsOnResetPasswordPage(true);
+        }
+      } catch (error) {
+        console.error("Erreur lors du traitement de l'événement auth:", error);
       }
     });
 
     // Get initial session
     try {
       supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
-        localStorage.setItem("auth_initial_session", JSON.stringify({
-          hasSession: !!session,
-          userId: session?.user?.id,
-          timestamp: new Date().toISOString()
-        }));
+        const timestamp = new Date().toISOString();
+        
+        try {
+          localStorage.setItem("auth_initial_session", JSON.stringify({
+            hasSession: !!session,
+            userId: session?.user?.id,
+            timestamp
+          }));
+        } catch (error) {
+          console.error("Erreur lors de l'enregistrement de la session dans localStorage:", error);
+        }
         
         setUser(createProfileFromMetadata(session?.user || null));
         setSession(session || null);
@@ -95,10 +107,15 @@ export const useSessionHandler = (
         }, 1000);
       });
     } catch (error) {
-      localStorage.setItem("auth_initial_session_error", JSON.stringify({
-        timestamp: new Date().toISOString(),
-        message: "Erreur lors de la récupération de la session"
-      }));
+      try {
+        localStorage.setItem("auth_initial_session_error", JSON.stringify({
+          timestamp: new Date().toISOString(),
+          message: "Erreur lors de la récupération de la session"
+        }));
+      } catch (localStorageError) {
+        console.error("Erreur lors de l'enregistrement de l'erreur dans localStorage:", localStorageError);
+      }
+      
       setIsLoading(false);
       restore();
       
@@ -110,7 +127,11 @@ export const useSessionHandler = (
     }
 
     return () => {
-      subscription.unsubscribe();
+      try {
+        subscription.unsubscribe();
+      } catch (error) {
+        console.error("Erreur lors du désabonnement:", error);
+      }
       restore();
       window.removeEventListener('error', errorHandler, true);
       window.removeEventListener('unhandledrejection', errorHandler, true);

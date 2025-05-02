@@ -61,9 +61,17 @@ export async function initializeSupabase(): Promise<ConfigState> {
     // Récupérer les données de configuration
     const config: SupabaseConfig = await response.json();
     
+    // S'assurer que timestamp est un nombre valide
+    if (config.timestamp && typeof config.timestamp === 'string') {
+      config.timestamp = parseInt(config.timestamp, 10);
+      if (isNaN(config.timestamp)) {
+        config.timestamp = Date.now(); // Valeur par défaut si invalide
+      }
+    }
+    
     // Log sécurisé sans exposer les valeurs complètes
     console.log("Configuration reçue avec jeton d'initialisation", { 
-      timestamp: new Date(config.timestamp).toISOString(),
+      timestamp: config.timestamp ? new Date(config.timestamp).toISOString() : 'Non défini',
       tokenExists: !!config.initToken
     });
 

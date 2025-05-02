@@ -8,7 +8,6 @@ export interface NetworkAwareLoadingProps {
   message?: string;
   className?: string;
   children?: React.ReactNode;
-  // Making these props optional since they were causing type errors
   isLoading?: boolean;
   minDelay?: number;
   showSlowNetworkWarning?: boolean;
@@ -22,6 +21,13 @@ export const NetworkAwareLoading: React.FC<NetworkAwareLoadingProps> = ({
   message,
   className,
   children,
+  isLoading,
+  minDelay,
+  showSlowNetworkWarning,
+  slowNetworkMessage,
+  loadingMessage,
+  variant = "dots",
+  size = 30
 }) => {
   const networkState = useNetworkAwareLoading();
   const isOnline = networkState?.isOnline ?? true;
@@ -34,15 +40,15 @@ export const NetworkAwareLoading: React.FC<NetworkAwareLoadingProps> = ({
     return (
       <div className={`flex flex-col items-center justify-center min-h-[200px] p-4 text-center ${className || ''}`}>
         <div className="rounded-lg border p-6 max-w-md">
-          <h2 className="text-lg font-semibold mb-2">Configuration Error</h2>
+          <h2 className="text-lg font-semibold mb-2">Erreur de configuration</h2>
           <p className="mb-4 text-sm text-muted-foreground">
-            {configError.message || "Unable to load required configuration."}
+            {configError.message || "Impossible de charger la configuration requise."}
           </p>
           <button 
             onClick={() => window.location.reload()}
             className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
           >
-            Try Again
+            Réessayer
           </button>
         </div>
       </div>
@@ -54,25 +60,32 @@ export const NetworkAwareLoading: React.FC<NetworkAwareLoadingProps> = ({
     return <>{children}</>;
   }
 
+  // Use provided loading state if available
+  const showLoading = isLoading !== undefined ? isLoading : true;
+  
+  if (!showLoading) {
+    return null;
+  }
+
   // Display loading message based on network state
   let displayMessage = message;
   if (!displayMessage) {
     if (!isOnline) {
-      displayMessage = "Offline mode...";
+      displayMessage = "Mode hors connexion...";
     } else if (networkQuality === 'slow') {
-      displayMessage = "Loading on slow connection...";
+      displayMessage = slowNetworkMessage || "Chargement sur connexion lente...";
     } else if (loadingTime > 10) {
-      displayMessage = "Loading is taking longer than expected...";
+      displayMessage = "Le chargement prend plus de temps que prévu...";
     } else if (loadingTime > 5) {
-      displayMessage = "Loading in progress...";
+      displayMessage = "Chargement en cours...";
     } else {
-      displayMessage = "Loading...";
+      displayMessage = loadingMessage || "Chargement...";
     }
   }
 
   return (
     <div className={`flex flex-col items-center justify-center min-h-[200px] p-4 ${className || ''}`}>
-      <LoadingIndicator variant="dots" size={30} />
+      <LoadingIndicator variant={variant as any} size={size} />
       <p className="mt-3 text-sm text-muted-foreground">{displayMessage}</p>
     </div>
   );
