@@ -2,6 +2,8 @@
 /**
  * Module pour bloquer les fuites d'information d'authentification dans la console et le réseau
  */
+import { safeConsoleError } from './sanitization';
+import { getNetworkAuthErrorMessage } from './authErrorHandler';
 
 // Blocage immédiat et agressif de toutes les erreurs et logs liées à l'authentification
 export function setupAuthSecurityLayer(): void {
@@ -135,3 +137,7 @@ export function setupNetworkEntriesProtection(): () => void {
     observer.disconnect();
   };
 }
+
+// Export secure error handling utilities
+export { safeConsoleError, getNetworkAuthErrorMessage };
+

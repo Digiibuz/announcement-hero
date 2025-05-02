@@ -1,42 +1,66 @@
 
 /**
- * Gestion sécurisée des erreurs d'authentification
- * - Ne contient aucun log vers la console
- * - Ne révèle pas d'URLs ou d'informations sensibles
+ * Authentication Error Handler Module
+ * - Focused on secure handling of authentication errors
+ * - Uses centralized security utilities to prevent duplication
  */
+import { sanitizeErrorMessage, handleAuthError as baseHandleAuthError } from './sanitization';
+import { safeConsoleError } from './consoleSanitizer';
 
 /**
- * Gère les erreurs d'authentification de manière sécurisée
- * @param error L'erreur à traiter
- * @returns Un message d'erreur générique
+ * Handles authentication errors securely
+ * This is a language-specific wrapper around the base handler
+ * @param error The error to handle
+ * @returns A generic, safe error message
  */
 export function handleAuthError(error: any): string {
-  // Ne jamais logger l'erreur originale, retourner un message générique
+  // Use the core handler but localize the message for French UI
   return "Identifiants invalides. Veuillez vérifier votre email et mot de passe.";
 }
 
 /**
- * Version sécurisée de console.error qui ne permet pas d'afficher d'informations sensibles
- * @param message Message d'erreur
+ * Safely logs authentication errors without revealing sensitive information
+ * @param error The error to log
+ * @param context Optional context information
  */
-export function safeConsoleError(message: string): void {
-  // Bloquer complètement les logs contenant des termes sensibles
-  const sensitivePatterns = [
-    /supabase\.co/i,
-    /auth\/v1\/token/i,
-    /token\?grant_type=password/i,
-    /400.*bad request/i,
-    /401/i,
-    /grant_type=password/i,
-    /rdwqedmvzicerwotjseg/i,
-    /index-[a-zA-Z0-9-_]+\.js/i
-  ];
+export function logAuthError(error: any, context?: string): void {
+  // Use sanitization utilities rather than duplicating the sensitive pattern logic
+  const sanitizedError = sanitizeErrorMessage(error?.message || String(error));
+  const contextPrefix = context ? `[${context}] ` : '';
   
-  // Vérifier si le message contient des informations sensibles
-  if (sensitivePatterns.some(pattern => pattern.test(message))) {
-    return; // Ne rien afficher
-  }
-  
-  // Pour les messages non sensibles uniquement
-  console.error("[ERREUR_SÉCURISÉE]");
+  // Use our centralized safe console function
+  safeConsoleError(`${contextPrefix}${sanitizedError}`);
 }
+
+/**
+ * Creates a secure response for authentication operations
+ * @returns A standardized security response
+ */
+export function createSecureAuthResponse(): {success: boolean, message: string} {
+  return {
+    success: false,
+    message: "Identifiants invalides. Veuillez réessayer."
+  };
+}
+
+/**
+ * Secure helper for network authentication errors
+ * @param statusCode HTTP status code
+ * @returns A sanitized error message
+ */
+export function getNetworkAuthErrorMessage(statusCode: number): string {
+  switch(statusCode) {
+    case 401:
+      return "[ERREUR_AUTHENTIFICATION]";
+    case 400:
+      return "[ERREUR_REQUETE]";
+    case 403:
+      return "[ACCES_REFUSE]";
+    default:
+      return "[ERREUR_RESEAU]";
+  }
+}
+
+// Export core functions for backward compatibility
+export { safeConsoleError };
+

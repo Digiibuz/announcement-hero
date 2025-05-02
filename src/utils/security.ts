@@ -11,6 +11,13 @@ export {
   handleAuthError 
 } from './sanitization';
 
+// Re-export focused auth error handlers
+export { 
+  logAuthError,
+  getNetworkAuthErrorMessage,
+  createSecureAuthResponse
+} from './authErrorHandler';
+
 // Advanced protection to completely block sensitive URLs in errors
 (function() {
   // Import sensitive patterns from the new central location
@@ -84,3 +91,4 @@ export {
     originalConsoleWarn.apply(console, args);
   };
 })();
+

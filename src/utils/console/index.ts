@@ -8,6 +8,7 @@ import {
   initializeConsoleSecurity,
   SENSITIVE_PATTERNS 
 } from './consoleOverrides';
+import { logAuthError } from '../authErrorHandler';
 
 /**
  * Initialize all console overrides and security measures
@@ -42,8 +43,8 @@ export function testSecureLogs(): void {
     // Log completion
     console.log('Secure logs test completed');
   } catch (err) {
-    // Safe error logging
-    console.error('Error testing secure logs:', err);
+    // Use our new centralized auth error logger
+    logAuthError(err, 'SecureLogTest');
   }
 }
 
@@ -56,3 +57,4 @@ export {
 
 // Export the function but under the original name for backward compatibility
 export { setupConsoleOverrides } from './consoleOverrides';
+

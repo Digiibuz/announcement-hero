@@ -1,8 +1,7 @@
-
 /**
  * Utilities for sanitizing error messages and sensitive information
  */
-import { SENSITIVE_PATTERNS, SENSITIVE_KEYWORDS, getSensitiveDomains } from './sensitiveDataPatterns';
+import { SENSITIVE_PATTERNS, SENSITIVE_KEYWORDS, getSensitiveDomains, HTTP_METHODS } from './sensitiveDataPatterns';
 import { maskAllUrls } from './urlSanitizer';
 
 /**
