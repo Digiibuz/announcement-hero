@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
@@ -144,7 +145,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       // User will be set by the auth state change listener
-      return data;
+      return;
     } catch (error: any) {
       console.error("Login error details:", error);
       setIsLoading(false);
