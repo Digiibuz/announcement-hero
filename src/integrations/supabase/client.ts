@@ -6,41 +6,7 @@ import type { Database } from './types';
 // Variables encodées avec une transformation plus complexe
 const _0x550e=['cmR3cWVkbXZ6aWNlcndvdGpzZWc=','ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW5Ka2QzRmxaSFIyZW1salpYSjNiM1JxYzJWbklpd2ljbTlzWlNJNkltRnViMjRpTENKcFlYUWlPakUzTkRNd056ZzRNekVzSW1WNGNDSTZNakExT0RZMU5EZ3pNWDAuT2hsZV92VnZkb0N2c09icDlBX0FkeU01MlhkemlzSXZIdkgxRDFhODh6aw==','aHR0cHM6Ly8=','LnN1cGFiYXNlLmNv'];
 
-// Système de déchiffrement complexifié et obfusqué
-const _0xf4a8=function(){
-  let _0x5f4e9d=0;
-  return function(_0x2c6f8c,_0x418e11){
-    const _0x13e9ec=_0x5f4e9d;
-    _0x5f4e9d=0;
-    return window.atob(_0x2c6f8c.replace(/./g,function(_0x521e82,_0x3d7e9f){
-      return String.fromCharCode((Number(_0x521e82.charCodeAt(0))^Number(_0x418e11.charCodeAt(_0x3d7e9f%_0x418e11.length)))&0xFF);
-    }));
-  };
-}();
-
-// Fonction de décodage avec clé dynamique dérivée du DOM
-const _0x21f7=function(_0x3b8e12){
-  try {
-    // Génération d'une clé pseudo-aléatoire basée sur des éléments du DOM
-    const _0x5e9c=Number(document.documentElement.className.length) || 1;
-    const _0x4ea7=Number((navigator.userAgent.split('').reduce((a,b) => a + b.charCodeAt(0), 0) % 16)) || 1;
-    // Fixing the arithmetic operation by ensuring we're working with numbers
-    const _0x1a3f=String.fromCharCode(97 + (Number(_0x5e9c) * Number(_0x4ea7)) % 26);
-    
-    // Correction complète des problèmes de typage en décomposant le calcul
-    const timestamp = Date.now();
-    const timestampAsNumber = Number(timestamp);
-    const modulo = timestampAsNumber % 10000;
-    const moduloString = String(modulo);
-    const substring = moduloString.substring(0, 2);
-    
-    return _0xf4a8(_0x3b8e12, _0x1a3f + substring);
-  } catch(_0x43e1) {
-    return window.atob(_0x3b8e12);
-  }
-};
-
-// Fonction de décodage simple
+// Système de déchiffrement simplifié
 const _0x3af2=function(_0x2e8b31){
   try {
     return window.atob(_0x2e8b31);
@@ -48,25 +14,6 @@ const _0x3af2=function(_0x2e8b31){
     return _0x2e8b31;
   }
 };
-
-// Anti-débugging désactivé pour éviter les boucles infinies
-(function(){
-  const _0x4d9e=['1000','setInterval','devtool','constructor','debugger','function\x20*\x5c(\x20*\x5c)','call','action'];
-  
-  // Vérification de l'ouverture des outils de développement - DÉSACTIVÉE
-  let _0x39c16f=false;
-  const _0x32a794=new Date();
-  const _0x54857=function(){
-    _0x39c16f=true;
-    window['_dbg']=true;
-  };
-  
-  // DÉSACTIVATION du code debugger qui cause la boucle infinie
-  // Aucun setInterval avec debugger n'est utilisé maintenant
-  
-  // Test de présence de la console - MODIFICATION pour éviter les erreurs
-  // Pas de vérification qui pourrait bloquer l'application
-})();
 
 // Function pour supprimer les logs d'erreurs réseau liés à Supabase
 const _0x5e72 = function(_0x493cc7) {
@@ -225,8 +172,6 @@ export const supabase = _0x7b92;
 setTimeout(() => {
   // Effacer les références aux variables sensibles
   window['_0x550e'] = undefined;
-  window['_0xf4a8'] = undefined;
-  window['_0x21f7'] = undefined;
   window['_0x3af2'] = undefined;
   window['_0x1a9d'] = undefined;
   window['_0x4bc3'] = undefined;
