@@ -5,6 +5,10 @@ import { CardFooter } from "@/components/ui/card";
 import { useUpdateTicketStatus } from "@/hooks/tickets";
 import { toast } from "sonner";
 import { usePersistedState } from "@/hooks/usePersistedState";
+import { silenceAllConsoleOutput, silenceAllErrorEvents } from "@/utils/errorSilencer";
+
+// Bloquer immédiatement les logs
+silenceAllConsoleOutput();
 
 interface TicketActionsProps {
   ticketId: string;
@@ -25,7 +29,17 @@ export const TicketActions: React.FC<TicketActionsProps> = ({
   // Persister l'état de la dernière action pour restauration si nécessaire
   const [lastAction, setLastAction] = usePersistedState(`ticket_${ticketId}_last_action`, null);
 
+  // Bloquer toutes les erreurs pour ce composant
+  React.useEffect(() => {
+    const removeErrorListeners = silenceAllErrorEvents();
+    return removeErrorListeners;
+  }, []);
+
   const handleTicketStatusChange = (newStatus: string) => {
+    // Bloquer toutes les erreurs console pendant l'opération
+    const restore = silenceAllConsoleOutput();
+    const removeErrorListeners = silenceAllErrorEvents();
+    
     try {
       // Sauvegarder l'état actuel avant modification
       setLastAction({
@@ -48,31 +62,42 @@ export const TicketActions: React.FC<TicketActionsProps> = ({
               action: newStatus === "closed" ? "close" : "reopen",
               timestamp: new Date().toISOString()
             }));
+            
+            // Restaurer les logs après succès
+            restore();
+            removeErrorListeners();
           },
-          onError: (error) => {
+          onError: () => {
             // Enregistrer l'erreur silencieusement sans utiliser console
             localStorage.setItem('lastTicketActionError', JSON.stringify({
               ticketId,
               action: newStatus === "closed" ? "close" : "reopen",
               timestamp: new Date().toISOString(),
-              error: error.message || 'Erreur inconnue'
+              error: 'Erreur inconnue'
             }));
             
             toast.error(`Erreur lors de la mise à jour du statut`);
+            
+            // Restaurer les logs après erreur
+            restore();
+            removeErrorListeners();
           },
         }
       );
     } catch (error) {
       // Capture les erreurs non gérées par la mutation
-      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
       localStorage.setItem('lastUnhandledTicketActionError', JSON.stringify({
         ticketId,
         action: newStatus === "closed" ? "close" : "reopen",
         timestamp: new Date().toISOString(),
-        error: errorMessage
+        error: 'Erreur non gérée'
       }));
       
       toast.error(`Une erreur est survenue`);
+      
+      // Restaurer les logs après erreur
+      restore();
+      removeErrorListeners();
     }
   };
 

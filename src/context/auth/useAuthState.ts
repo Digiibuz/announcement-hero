@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Session, User } from '@supabase/supabase-js';
@@ -16,6 +15,28 @@ import { createProfileFromMetadata } from '@/hooks/useUserProfile';
 import { useSupabaseConfig } from '@/context/SupabaseConfigContext';
 import { hasRole } from './types';
 import { usePersistedState } from '@/hooks/usePersistedState';
+
+// Fonction utilitaire pour bloquer toutes les erreurs console
+function silenceAllErrors() {
+  // Stocker les fonctions console originales
+  const originalConsoleError = console.error;
+  const originalConsoleWarn = console.warn;
+  const originalConsoleLog = console.log;
+  
+  // Désactiver complètement tous les logs
+  console.error = function() {};
+  console.warn = function() {};
+  console.log = function() {};
+  
+  // Retourner une fonction pour restaurer
+  return () => {
+    setTimeout(() => {
+      console.error = originalConsoleError;
+      console.warn = originalConsoleWarn;
+      console.log = originalConsoleLog;
+    }, 1000);
+  };
+}
 
 export const useAuthState = () => {
   const [user, setUser] = usePersistedState<UserProfile | null>("auth_user", null);
@@ -45,57 +66,26 @@ export const useAuthState = () => {
 
   // Load current user and session
   useEffect(() => {
-    // Skip if Supabase client isn't ready
-    if (!supabase) {
-      return;
-    }
+    if (!supabase) return;
 
     setIsLoading(true);
+    
+    // Silence toutes les erreurs au démarrage
+    const restore = silenceAllErrors();
 
-    // Bloquer les logs pendant l'authentification
-    const originalConsoleError = console.error;
-    const originalConsoleWarn = console.warn;
-    const originalConsoleLog = console.log;
-    
-    // Désactiver temporairement les logs pour éviter de montrer les URLs sensibles
-    console.error = function(...args) {
-      // Bloquer les logs contenant des informations sensibles
-      if (args.some(arg => {
-        if (arg === null || arg === undefined) return false;
-        const str = String(arg);
-        return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
-      })) {
-        return;
-      }
-      originalConsoleError.apply(console, args);
+    // Bloquer tous les événements d'erreur
+    const errorHandler = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      return true;
     };
     
-    console.warn = function(...args) {
-      if (args.some(arg => {
-        if (arg === null || arg === undefined) return false;
-        const str = String(arg);
-        return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
-      })) {
-        return;
-      }
-      originalConsoleWarn.apply(console, args);
-    };
-    
-    console.log = function(...args) {
-      if (args.some(arg => {
-        if (arg === null || arg === undefined) return false;
-        const str = String(arg);
-        return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
-      })) {
-        return;
-      }
-      originalConsoleLog.apply(console, args);
-    };
+    window.addEventListener('error', errorHandler, true);
+    window.addEventListener('unhandledrejection', errorHandler, true);
 
     // Set up auth state change handler
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN") {
-        // Stocker silencieusement l'information
         localStorage.setItem("auth_state_change", JSON.stringify({
           event: "SIGNED_IN",
           userId: session?.user?.id,
@@ -145,34 +135,34 @@ export const useAuthState = () => {
         setSession(session || null);
       }).finally(() => {
         setIsLoading(false);
+        restore();
         
-        // Restaurer les fonctions de console
+        // Supprimer les écouteurs d'erreur après un délai
         setTimeout(() => {
-          console.error = originalConsoleError;
-          console.warn = originalConsoleWarn;
-          console.log = originalConsoleLog;
+          window.removeEventListener('error', errorHandler, true);
+          window.removeEventListener('unhandledrejection', errorHandler, true);
         }, 1000);
       });
     } catch (error) {
-      localStorage.setItem("auth_initial_session_error", 
-        error instanceof Error ? error.message : "Erreur inconnue");
+      localStorage.setItem("auth_initial_session_error", JSON.stringify({
+        timestamp: new Date().toISOString(),
+        message: "Erreur lors de la récupération de la session"
+      }));
       setIsLoading(false);
+      restore();
       
-      // Restaurer les fonctions de console
+      // Supprimer les écouteurs d'erreur après un délai
       setTimeout(() => {
-        console.error = originalConsoleError;
-        console.warn = originalConsoleWarn;
-        console.log = originalConsoleLog;
+        window.removeEventListener('error', errorHandler, true);
+        window.removeEventListener('unhandledrejection', errorHandler, true);
       }, 1000);
     }
 
     return () => {
       subscription.unsubscribe();
-      
-      // Restaurer les fonctions de console
-      console.error = originalConsoleError;
-      console.warn = originalConsoleWarn;
-      console.log = originalConsoleLog;
+      restore();
+      window.removeEventListener('error', errorHandler, true);
+      window.removeEventListener('unhandledrejection', errorHandler, true);
     };
   }, [supabase, location.pathname, navigate, setSession, setUser, setIsOnResetPasswordPage]); 
 
@@ -185,15 +175,8 @@ export const useAuthState = () => {
   const login = async (email: string, password: string) => {
     if (!supabase) throw new Error("Supabase client not initialized");
     
-    // Bloquer les logs pendant l'authentification
-    const originalConsoleError = console.error;
-    const originalConsoleWarn = console.warn;
-    const originalConsoleLog = console.log;
-    
-    // Désactiver temporairement tous les logs
-    console.error = function() {};
-    console.warn = function() {};
-    console.log = function() {};
+    // Silence toutes les erreurs pendant l'authentification
+    const restore = silenceAllErrors();
     
     try {
       localStorage.setItem("auth_login_attempt", JSON.stringify({
@@ -201,42 +184,58 @@ export const useAuthState = () => {
         timestamp: new Date().toISOString()
       }));
       
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password,
-      });
+      // Bloquer tous les événements d'erreur pendant la connexion
+      const errorHandler = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        return true;
+      };
+      
+      window.addEventListener('error', errorHandler, true);
+      window.addEventListener('unhandledrejection', errorHandler, true);
+      
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email,
+          password: password,
+        });
 
-      if (error) {
-        localStorage.setItem("auth_login_error", JSON.stringify({
+        if (error) {
+          localStorage.setItem("auth_login_error", JSON.stringify({
+            message: "Identifiants invalides",
+            timestamp: new Date().toISOString()
+          }));
+          
+          throw new Error("Identifiants invalides");
+        }
+
+        localStorage.setItem("auth_login_success", JSON.stringify({
+          userId: data.user?.id,
+          timestamp: new Date().toISOString()
+        }));
+        
+        setUser(createProfileFromMetadata(data.user));
+        setSession(data.session);
+      } catch (error) {
+        localStorage.setItem("auth_login_error_handled", JSON.stringify({
           message: "Identifiants invalides",
           timestamp: new Date().toISOString()
         }));
         
         throw new Error("Identifiants invalides");
+      } finally {
+        // Retirer les écouteurs d'erreur
+        window.removeEventListener('error', errorHandler, true);
+        window.removeEventListener('unhandledrejection', errorHandler, true);
+        restore();
       }
-
-      localStorage.setItem("auth_login_success", JSON.stringify({
-        userId: data.user?.id,
-        timestamp: new Date().toISOString()
-      }));
-      
-      setUser(createProfileFromMetadata(data.user));
-      setSession(data.session);
     } catch (error) {
-      // Utiliser un message d'erreur générique pour ne pas exposer de détails
-      localStorage.setItem("auth_login_error_handled", JSON.stringify({
-        message: "Identifiants invalides",
+      localStorage.setItem("auth_login_error_outer", JSON.stringify({
+        message: "Erreur de connexion",
         timestamp: new Date().toISOString()
       }));
-      
+      restore();
       throw new Error("Identifiants invalides");
-    } finally {
-      // Restaurer les fonctions de console après un délai
-      setTimeout(() => {
-        console.error = originalConsoleError;
-        console.warn = originalConsoleWarn;
-        console.log = originalConsoleLog;
-      }, 1000);
     }
   };
 

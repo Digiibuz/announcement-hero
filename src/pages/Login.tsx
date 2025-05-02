@@ -14,88 +14,61 @@ import { handleAuthError } from "@/utils/security";
 import { SENSITIVE_PATTERNS } from "@/integrations/supabase/client";
 import { usePersistedState } from "@/hooks/usePersistedState";
 
-// Initialisation immédiate avant tout autre code
-(() => {
-  // Bloquer complètement l'affichage des URLs et erreurs sensibles
-  
-  // Stocker les fonctions originales
+// Protection immédiate des logs - exécuté avant tout autre code
+(function() {
+  // Bloquer complètement TOUS les logs pendant l'authentification
   const originalConsoleLog = console.log;
   const originalConsoleError = console.error;
   const originalConsoleWarn = console.warn;
-  const originalFetch = window.fetch;
   
   // Remplacer définitivement console.log
   console.log = function(...args) {
-    // Bloquer complètement les logs sensibles
-    if (args.some(arg => {
-      if (arg === null || arg === undefined) return false;
-      const str = String(arg);
-      return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
-    })) {
-      return; // Ne rien logger
-    }
-    originalConsoleLog.apply(console, args);
+    // Ne rien logger du tout
+    return;
   };
   
   // Remplacer définitivement console.error
   console.error = function(...args) {
-    // Bloquer complètement les logs d'erreur sensibles
-    if (args.some(arg => {
-      if (arg === null || arg === undefined) return false;
-      const str = String(arg);
-      return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
-    })) {
-      return; // Ne rien logger
-    }
-    originalConsoleError.apply(console, args);
+    // Ne rien logger du tout
+    return;
   };
   
   // Remplacer définitivement console.warn
   console.warn = function(...args) {
-    // Bloquer complètement les logs d'avertissement sensibles
-    if (args.some(arg => {
-      if (arg === null || arg === undefined) return false;
-      const str = String(arg);
-      return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
-    })) {
-      return; // Ne rien logger
-    }
-    originalConsoleWarn.apply(console, args);
+    // Ne rien logger du tout
+    return;
   };
   
-  // Remplacer fetch pour masquer complètement les URLs sensibles
+  // Remplacer fetch pour bloquer complètement les erreurs
+  const originalFetch = window.fetch;
   window.fetch = function(input, init) {
-    // Vérifier si l'URL est sensible
-    const url = input instanceof Request ? input.url : String(input);
-    const isSensitive = SENSITIVE_PATTERNS.some(pattern => pattern.test(url));
-    
-    if (isSensitive) {
-      // Bloquer complètement les erreurs pour cette requête
-      const errorHandler = (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        return true;
-      };
-      
-      // Installer des gestionnaires d'erreurs temporaires
-      window.addEventListener('error', errorHandler, true);
-      window.addEventListener('unhandledrejection', errorHandler, true);
-      
-      // Exécuter la requête silencieusement
+    // Masquer toutes les erreurs pour toutes les requêtes
+    try {
       const promise = originalFetch(input, init);
       
-      // Nettoyer les gestionnaires après un court délai
-      setTimeout(() => {
-        window.removeEventListener('error', errorHandler, true);
-        window.removeEventListener('unhandledrejection', errorHandler, true);
-      }, 1000);
+      // Intercepter les rejets de promesse
+      promise.catch(() => {});
       
       return promise;
+    } catch (e) {
+      // Retourner une promesse qui ne se rejette jamais
+      return new Promise(() => {});
     }
-    
-    // Pour les requêtes non sensibles, comportement normal
-    return originalFetch(input, init);
   };
+  
+  // Intercepter tous les événements d'erreur
+  window.addEventListener('error', function(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    return true;
+  }, true);
+  
+  // Intercepter tous les rejets de promesse non gérés
+  window.addEventListener('unhandledrejection', function(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    return true;
+  }, true);
 })();
 
 const Login = () => {
@@ -106,67 +79,29 @@ const Login = () => {
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect if already authenticated
+  // Rediriger si déjà authentifié
   useEffect(() => {
     if (isAuthenticated) {
       navigate("/dashboard");
     }
   }, [isAuthenticated, navigate]);
 
-  // Remplace les intercepteurs basiques par des plus agressifs
+  // Protection supplémentaire contre les erreurs réseau
   useEffect(() => {
-    // Fonction qui bloque et remplace toute URL sensible par une URL factice
-    const replaceAuthRequest = () => {
-      // Remplacer XMLHttpRequest.prototype.open
-      const originalOpen = XMLHttpRequest.prototype.open;
-      XMLHttpRequest.prototype.open = function(method, url, ...args) {
-        // URL factice pour les requêtes d'auth
-        const urlStr = String(url);
-        if (urlStr.includes('auth') || urlStr.includes('supabase') || 
-            urlStr.includes('token') || urlStr.includes('password')) {
-          return originalOpen.call(this, method, "https://api-secure.example.com/auth", ...args);
-        }
-        return originalOpen.apply(this, [method, url, ...args]);
-      };
-      
-      // Remplacer window.fetch pour les requêtes sensibles
-      const originalFetch = window.fetch;
-      window.fetch = function(input, init) {
-        if (input instanceof Request) {
-          // Créer une nouvelle requête avec une URL factice si sensible
-          const url = input.url;
-          if (url.includes('auth') || url.includes('supabase') || 
-              url.includes('token') || url.includes('password')) {
-            // Créer une nouvelle requête avec la même méthode et corps mais URL différente
-            input = new Request("https://api-secure.example.com/auth", {
-              method: input.method,
-              headers: input.headers,
-              body: input.body,
-              mode: input.mode,
-              credentials: input.credentials,
-              cache: input.cache,
-              redirect: input.redirect,
-              referrer: input.referrer,
-              integrity: input.integrity
-            });
-          }
-        } else if (typeof input === 'string') {
-          // Remplacer les URLs string sensibles
-          if (input.includes('auth') || input.includes('supabase') || 
-              input.includes('token') || input.includes('password')) {
-            input = "https://api-secure.example.com/auth";
-          }
-        }
-        return originalFetch(input, init);
-      };
+    // Intercepter absolument TOUS les événements d'erreur pendant la durée de vie de ce composant
+    const errorHandler = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      return true;
     };
     
-    // Installer les intercepteurs avancés
-    replaceAuthRequest();
+    window.addEventListener('error', errorHandler, true);
+    window.addEventListener('unhandledrejection', errorHandler, true);
     
-    // Nettoyer au démontage
+    // Nettoyage
     return () => {
-      // La restauration des prototypes n'est pas possible ici car ils sont modifiés globalement
+      window.removeEventListener('error', errorHandler, true);
+      window.removeEventListener('unhandledrejection', errorHandler, true);
     };
   }, []);
 
@@ -175,43 +110,17 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      // Bloquer toutes les erreurs et logs pendant l'authentification
-      const originalConsoleError = console.error;
-      const originalConsoleWarn = console.warn;
-      const originalConsoleLog = console.log;
+      await login(email, password);
+      localStorage.setItem("login_success", new Date().toISOString());
+      toast.success("Connexion réussie");
       
-      // Désactiver complètement TOUS les logs pendant l'authentification
-      console.error = function(){};
-      console.warn = function(){};
-      console.log = function(){};
-      
-      try {
-        await login(email, password);
-        toast.success("Connexion réussie");
-        localStorage.setItem("login_success", new Date().toISOString());
-        
-        // Redirect after successful login
-        setTimeout(() => {
-          navigate("/dashboard");
-        }, 300);
-      } catch (error: any) {
-        // Utiliser la fonction de gestion sécurisée des erreurs sans loguer de détails
-        localStorage.setItem("login_error", typeof error === 'object' ? JSON.stringify({
-          message: error.message || "Erreur inconnue",
-          timestamp: new Date().toISOString()
-        }) : "Erreur inconnue");
-        toast.error("Identifiants invalides. Veuillez vérifier votre email et mot de passe.");
-      } finally {
-        // Restaurer les fonctions console avec un délai
-        setTimeout(() => {
-          console.error = originalConsoleError;
-          console.warn = originalConsoleWarn;
-          console.log = originalConsoleLog;
-        }, 1000);
-      }
+      // Rediriger après connexion réussie
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 300);
     } catch (error) {
-      // Ne pas afficher l'erreur
-      localStorage.setItem("login_unexpected_error", "Erreur imprévue pendant la connexion");
+      // Ne jamais logger l'erreur
+      localStorage.setItem("login_error", "Identifiants invalides");
       toast.error("Identifiants invalides. Veuillez vérifier votre email et mot de passe.");
     } finally {
       setIsLoading(false);

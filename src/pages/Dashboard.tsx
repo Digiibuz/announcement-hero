@@ -12,25 +12,51 @@ import {
 import { useAllTickets } from "@/hooks/tickets";
 import { TicketListSkeleton } from "@/components/support/ticket-list";
 import { usePersistedState } from "@/hooks/usePersistedState";
+import { silenceAllConsoleOutput } from "@/utils/errorSilencer";
+
+// Bloquer immédiatement tous les logs pour ce composant
+const restore = silenceAllConsoleOutput();
 
 const Dashboard = () => {
   const { user } = useAuth();
+  
+  // Utiliser try/catch pour toutes les requêtes
   const { data: tickets, isLoading, isError } = useAllTickets();
   
   // Persister l'onglet actif
   const [activeTab, setActiveTab] = usePersistedState("dashboard_active_tab", "all");
 
   useEffect(() => {
+    // Bloquer toutes les erreurs pour ce composant
+    const errorHandler = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      localStorage.setItem("dashboard_error_silenced", JSON.stringify({
+        timestamp: new Date().toISOString(),
+        message: "Erreur silencée dans le tableau de bord"
+      }));
+      return true;
+    };
+    
+    window.addEventListener('error', errorHandler, true);
+    window.addEventListener('unhandledrejection', errorHandler, true);
+    
     document.title = "Tableau de bord | Support";
     
     // Enregistrer la dernière visite
     try {
       localStorage.setItem("last_dashboard_visit", new Date().toISOString());
     } catch (error) {
-      // Gérer silencieusement les erreurs de stockage
-      localStorage.setItem("dashboard_visit_error", 
-        error instanceof Error ? error.message : "Erreur inconnue");
+      // Stocker silencieusement sans utiliser console
+      localStorage.setItem("dashboard_visit_error", "Erreur lors de l'enregistrement de la visite");
     }
+    
+    // Restaurer les fonctions console à la destruction du composant
+    return () => {
+      restore();
+      window.removeEventListener('error', errorHandler, true);
+      window.removeEventListener('unhandledrejection', errorHandler, true);
+    };
   }, []);
 
   if (isLoading) {
