@@ -81,8 +81,12 @@ export function setupFetchInterceptor(): void {
             referrer: input.referrer,
             integrity: input.integrity
           });
+        } else if (input instanceof URL) {
+          // Correction ici : convertir URL en string pour qu'il soit compatible avec RequestInfo
+          secureInput = createSecureUrl(input.toString());
         } else {
-          secureInput = input;
+          // Pour tout autre type, convertir en string
+          secureInput = String(input);
         }
         
         // 4. Exécuter la vraie requête avec les écouteurs d'erreur en place
