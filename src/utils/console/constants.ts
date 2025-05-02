@@ -15,6 +15,9 @@ export const SENSITIVE_URL_PATTERNS = [
   /rdwqedmvzicerwotjseg/i
 ];
 
+// Alias pour une compatibilité avec les autres modules
+export const SENSITIVE_PATTERNS = SENSITIVE_URL_PATTERNS;
+
 // Liste des requêtes à bloquer complètement dans l'inspecteur réseau
 export const CRITICAL_URLS_TO_BLOCK = [
   'auth/v1/token',

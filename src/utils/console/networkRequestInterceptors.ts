@@ -3,7 +3,7 @@
  * Module pour intercepter et remplacer complètement les requêtes réseau avec des URLs factices
  */
 import { setupFetchInterceptor } from './fetchInterceptor';
-import { setupXhrInterceptor } from './xhrInterceptor';
+import { setupXHRInterceptor } from './xhrInterceptor';
 import { setupErrorListeners } from './errorListeners';
 import { setupDevToolsProtection } from './devToolsProtection';
 
@@ -13,7 +13,7 @@ import { setupDevToolsProtection } from './devToolsProtection';
 export function setupNetworkInterceptors(): void {
   // Configurer les différents intercepteurs
   setupFetchInterceptor();
-  setupXhrInterceptor();
+  setupXHRInterceptor();
   setupErrorListeners();
   setupDevToolsProtection();
 }

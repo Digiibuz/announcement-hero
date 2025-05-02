@@ -2,7 +2,7 @@
 /**
  * Module pour protéger contre l'affichage d'informations sensibles dans les outils de développement
  */
-import { SENSITIVE_PATTERNS } from './constants';
+import { SENSITIVE_URL_PATTERNS } from './constants';
 
 /**
  * Configure la protection contre l'affichage d'informations sensibles dans les outils de développement
@@ -15,7 +15,7 @@ export function setupDevToolsProtection(): void {
     Object.prototype.toString = function() {
       if (this instanceof Request || this instanceof Response || this instanceof URL) {
         const str = originalToString.call(this);
-        if (SENSITIVE_PATTERNS.some(pattern => pattern.test(str))) {
+        if (SENSITIVE_URL_PATTERNS.some(pattern => pattern.test(str))) {
           return "[object SecureRequest]";
         }
       }

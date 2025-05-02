@@ -2,7 +2,7 @@
 /**
  * Module pour configurer les écouteurs d'événements d'erreur globaux
  */
-import { SENSITIVE_PATTERNS } from './constants';
+import { SENSITIVE_URL_PATTERNS } from './constants';
 
 /**
  * Configure les écouteurs d'événements pour bloquer les erreurs sensibles
@@ -13,7 +13,7 @@ export function setupErrorListeners(): void {
     const eventData = event.message || event.error?.stack || '';
     
     // Bloquer les événements d'erreur liés aux patterns sensibles
-    if (SENSITIVE_PATTERNS.some(pattern => pattern.test(eventData))) {
+    if (SENSITIVE_URL_PATTERNS.some(pattern => pattern.test(eventData))) {
       event.preventDefault();
       event.stopPropagation();
       return true;
@@ -25,7 +25,7 @@ export function setupErrorListeners(): void {
     const reasonStr = String(event.reason || '');
     
     // Bloquer les rejets de promesses liés aux patterns sensibles
-    if (SENSITIVE_PATTERNS.some(pattern => pattern.test(reasonStr))) {
+    if (SENSITIVE_URL_PATTERNS.some(pattern => pattern.test(reasonStr))) {
       event.preventDefault();
       event.stopPropagation();
       return true;
