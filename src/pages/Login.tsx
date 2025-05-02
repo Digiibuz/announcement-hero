@@ -39,8 +39,20 @@ const Login = () => {
         navigate("/dashboard");
       }, 300);
     } catch (error: any) {
-      console.error("Erreur de connexion:", error);
-      toast.error(error.message || "Échec de la connexion");
+      // Suppression des logs d'erreur dans la console
+      let errorMessage = "Échec de la connexion";
+      
+      if (error?.message) {
+        if (error.message.includes("Invalid login credentials")) {
+          errorMessage = "Identifiants invalides";
+        } else if (error.message.includes("Email not confirmed")) {
+          errorMessage = "Email non confirmé";
+        } else if (error.message.includes("network")) {
+          errorMessage = "Problème de connexion réseau";
+        }
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

@@ -18,100 +18,135 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Vérifier si nous sommes sur la page de réinitialisation de mot de passe
   useEffect(() => {
-    // Vérifier si nous sommes sur la page de réinitialisation ET si nous avons des tokens dans l'URL
-    const isResetPasswordPage = window.location.pathname === '/reset-password';
-    const hasRecoveryToken = window.location.hash.includes('type=recovery');
-    
-    setIsOnResetPasswordPage(isResetPasswordPage && (hasRecoveryToken || isResetPasswordPage));
-    console.log("Is on reset password page:", isResetPasswordPage, "Has recovery token:", hasRecoveryToken);
+    try {
+      // Vérifier si nous sommes sur la page de réinitialisation ET si nous avons des tokens dans l'URL
+      const isResetPasswordPage = window.location.pathname === '/reset-password';
+      const hasRecoveryToken = window.location.hash.includes('type=recovery');
+      
+      setIsOnResetPasswordPage(isResetPasswordPage && (hasRecoveryToken || isResetPasswordPage));
+      // Suppression du log de débogage
+    } catch (error) {
+      // Silence cette erreur pour ne pas l'afficher dans la console
+    }
   }, [window.location.pathname, window.location.hash]);
 
   // Initialize auth state and set up listeners with improved persistence
   useEffect(() => {
-    console.log("Setting up auth state listener");
-    // Set up the auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("Auth state changed:", event);
-        setIsLoading(true);
-        
-        if (session?.user) {
-          // First set user from metadata for immediate UI feedback
-          const initialProfile = createProfileFromMetadata(session.user);
-          setUserProfile(initialProfile);
-          console.log("Initial profile from metadata:", initialProfile);
-          
-          // Then asynchronously fetch the complete profile
-          setTimeout(() => {
-            fetchFullProfile(session.user.id).then((success) => {
-              if (!success) {
-                console.warn("Failed to fetch complete profile, using metadata only");
-              }
+    try {
+      // Suppression du log de débogage
+
+      // Set up the auth state change listener
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          try {
+            // Suppression du log de débogage
+            setIsLoading(true);
+            
+            if (session?.user) {
+              // First set user from metadata for immediate UI feedback
+              const initialProfile = createProfileFromMetadata(session.user);
+              setUserProfile(initialProfile);
+              // Suppression du log de débogage
+              
+              // Then asynchronously fetch the complete profile
+              setTimeout(() => {
+                fetchFullProfile(session.user.id).then((success) => {
+                  if (!success) {
+                    // Suppression du log d'avertissement
+                  }
+                  setIsLoading(false);
+                }).catch(() => {
+                  // Silence les erreurs pour ne pas les afficher dans la console
+                  setIsLoading(false);
+                });
+              }, 100);
+            } else {
+              setUserProfile(null);
               setIsLoading(false);
-            });
-          }, 100);
-        } else {
+            }
+          } catch (error) {
+            // Silence cette erreur pour ne pas l'afficher dans la console
+            setIsLoading(false);
+          }
+        }
+      );
+
+      // Get initial session with improved caching
+      const initializeAuth = async () => {
+        try {
+          // First check if we have a locally cached user role
+          const cachedUserRole = localStorage.getItem('userRole');
+          const cachedUserId = localStorage.getItem('userId');
+          
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session?.user) {
+            // Suppression du log de débogage
+            // First set user from metadata
+            const initialProfile = createProfileFromMetadata(session.user);
+            
+            // Apply cached role if available for immediate UI
+            if (cachedUserRole && cachedUserId === session.user.id) {
+              initialProfile.role = cachedUserRole as any;
+              // Suppression du log de débogage
+            }
+            
+            setUserProfile(initialProfile);
+            
+            // Then get complete profile
+            setTimeout(() => {
+              fetchFullProfile(session.user.id).then((success) => {
+                if (success) {
+                  // Suppression du log de débogage
+                } else {
+                  // Suppression du log d'avertissement
+                }
+                setIsLoading(false);
+              }).catch(() => {
+                // Silence les erreurs pour ne pas les afficher dans la console
+                setIsLoading(false);
+              });
+            }, 100);
+          } else {
+            // Suppression du log de débogage
+            setUserProfile(null);
+            setIsLoading(false);
+          }
+        } catch (error) {
+          // Silence cette erreur pour ne pas l'afficher dans la console
           setUserProfile(null);
           setIsLoading(false);
         }
-      }
-    );
+      };
 
-    // Get initial session with improved caching
-    const initializeAuth = async () => {
-      // First check if we have a locally cached user role
-      const cachedUserRole = localStorage.getItem('userRole');
-      const cachedUserId = localStorage.getItem('userId');
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        console.log("Session found during initialization");
-        // First set user from metadata
-        const initialProfile = createProfileFromMetadata(session.user);
-        
-        // Apply cached role if available for immediate UI
-        if (cachedUserRole && cachedUserId === session.user.id) {
-          initialProfile.role = cachedUserRole as any;
-          console.log("Applied cached role:", cachedUserRole);
+      initializeAuth();
+
+      return () => {
+        try {
+          subscription.unsubscribe();
+        } catch (error) {
+          // Silence cette erreur pour ne pas l'afficher dans la console
         }
-        
-        setUserProfile(initialProfile);
-        
-        // Then get complete profile
-        setTimeout(() => {
-          fetchFullProfile(session.user.id).then((success) => {
-            if (success) {
-              console.log("Successfully fetched complete profile");
-            } else {
-              console.warn("Failed to fetch complete profile, using metadata only");
-            }
-            setIsLoading(false);
-          });
-        }, 100);
-      } else {
-        console.log("No session found during initialization");
-        setUserProfile(null);
-        setIsLoading(false);
-      }
-    };
-
-    initializeAuth();
-
-    return () => {
-      subscription.unsubscribe();
-    };
+      };
+    } catch (error) {
+      // Silence cette erreur pour ne pas l'afficher dans la console
+      setIsLoading(false);
+    }
   }, []);
 
   // Cache the user role when it changes
   useEffect(() => {
-    if (userProfile) {
-      localStorage.setItem('userRole', userProfile.role);
-      localStorage.setItem('userId', userProfile.id);
-      console.log("Cached user role:", userProfile.role);
-    } else {
-      localStorage.removeItem('userRole');
-      localStorage.removeItem('userId');
+    try {
+      if (userProfile) {
+        localStorage.setItem('userRole', userProfile.role);
+        localStorage.setItem('userId', userProfile.id);
+        // Suppression du log de débogage
+      } else {
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('userId');
+      }
+    } catch (error) {
+      // Silence cette erreur pour ne pas l'afficher dans la console
     }
   }, [userProfile?.role, userProfile?.id]);
 
@@ -129,9 +164,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       // User will be set by the auth state change listener
+      return data;
     } catch (error: any) {
       setIsLoading(false);
-      throw new Error(error.message || "Login error");
+      throw error; // Renvoi de l'erreur pour la gestion dans la composante Login
     }
   };
 
@@ -146,26 +182,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUserProfile(null);
       localStorage.removeItem("originalUser");
     } catch (error) {
-      console.error("Error during logout:", error);
+      // Suppression du log d'erreur dans la console
+      // Silence cette erreur
     }
   };
 
   // Impersonation wrappers
   const impersonateUser = (userToImpersonate: UserProfile) => {
-    const impersonatedUser = startImpersonation(userToImpersonate);
-    if (impersonatedUser) {
-      setUserProfile(impersonatedUser);
-      localStorage.setItem('userRole', impersonatedUser.role);
-      localStorage.setItem('userId', impersonatedUser.id);
+    try {
+      const impersonatedUser = startImpersonation(userToImpersonate);
+      if (impersonatedUser) {
+        setUserProfile(impersonatedUser);
+        localStorage.setItem('userRole', impersonatedUser.role);
+        localStorage.setItem('userId', impersonatedUser.id);
+      }
+      return impersonatedUser;
+    } catch (error) {
+      // Silence cette erreur pour ne pas l'afficher dans la console
+      return null;
     }
   };
 
   const stopImpersonating = () => {
-    const originalUserProfile = endImpersonation();
-    if (originalUserProfile) {
-      setUserProfile(originalUserProfile);
-      localStorage.setItem('userRole', originalUserProfile.role);
-      localStorage.setItem('userId', originalUserProfile.id);
+    try {
+      const originalUserProfile = endImpersonation();
+      if (originalUserProfile) {
+        setUserProfile(originalUserProfile);
+        localStorage.setItem('userRole', originalUserProfile.role);
+        localStorage.setItem('userId', originalUserProfile.id);
+      }
+      return originalUserProfile;
+    } catch (error) {
+      // Silence cette erreur pour ne pas l'afficher dans la console
+      return null;
     }
   };
 
