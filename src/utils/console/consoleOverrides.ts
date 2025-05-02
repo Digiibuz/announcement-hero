@@ -3,18 +3,10 @@
  * Module pour remplacer les fonctions console natives et filtrer les informations sensibles
  */
 import { replaceAllSensitiveUrls } from './stringReplacer';
+import { SENSITIVE_PATTERNS as GLOBAL_SENSITIVE_PATTERNS } from './constants';
 
-// Patterns sensibles à bloquer
-export const SENSITIVE_PATTERNS = [
-  /supabase\.co/i,
-  /auth\/v1\/token/i,
-  /token\?grant_type=password/i,
-  /400.*bad request/i,
-  /401/i,
-  /grant_type=password/i,
-  /rdwqedmvzicerwotjseg/i,
-  /index-[a-zA-Z0-9-_]+\.js/i
-];
+// Export the patterns for reuse in other modules
+export const SENSITIVE_PATTERNS = GLOBAL_SENSITIVE_PATTERNS;
 
 /**
  * Vérifie si un argument contient des informations sensibles
@@ -42,26 +34,27 @@ export function sanitizeArgs(args: any[]): any[] {
 }
 
 /**
+ * Safely wraps a console function to filter sensitive information
+ */
+export function createSafeConsoleFunction(
+  originalFn: (...args: any[]) => void
+): (...args: any[]) => void {
+  return function(...args) {
+    if (containsSensitiveInfo(args)) {
+      return; // Supprimer complètement le message
+    }
+    
+    // Pour les autres messages, remplacer les URLs sensibles
+    const newArgs = sanitizeArgs(args);
+    originalFn.apply(console, newArgs);
+  };
+}
+
+/**
  * Initialize all console security features
  */
 export function initializeConsoleSecurity(): void {
-  // Initialize console overrides
   setupConsoleOverrides();
-}
-
-/**
- * Override console functions to filter out sensitive info
- */
-export function overrideConsoleFunctions(): void {
-  setupConsoleOverrides();
-}
-
-/**
- * Override network requests
- */
-export function overrideNetworkRequests(): void {
-  // This can be implemented in the future if needed
-  console.log('Network request overrides initialized');
 }
 
 /**
@@ -75,54 +68,21 @@ export function setupConsoleOverrides(): void {
   const originalConsoleInfo = console.info;
   const originalConsoleDebug = console.debug;
   
-  // Remplacer console.error pour masquer les informations sensibles
-  console.error = function(...args) {
-    if (containsSensitiveInfo(args)) {
-      return; // Supprimer complètement le message
-    }
-    
-    // Pour les autres messages, remplacer les URLs sensibles
-    const newArgs = sanitizeArgs(args);
-    originalConsoleError.apply(console, newArgs);
-  };
-  
-  // Même logique pour console.warn
-  console.warn = function(...args) {
-    if (containsSensitiveInfo(args)) {
-      return;
-    }
-    
-    const newArgs = sanitizeArgs(args);
-    originalConsoleWarn.apply(console, newArgs);
-  };
-  
-  // Même logique pour console.log
-  console.log = function(...args) {
-    if (containsSensitiveInfo(args)) {
-      return;
-    }
-    
-    const newArgs = sanitizeArgs(args);
-    originalConsoleLog.apply(console, newArgs);
-  };
-  
-  // Même logique pour console.info
-  console.info = function(...args) {
-    if (containsSensitiveInfo(args)) {
-      return;
-    }
-    
-    const newArgs = sanitizeArgs(args);
-    originalConsoleInfo.apply(console, newArgs);
-  };
-  
-  // Même logique pour console.debug
-  console.debug = function(...args) {
-    if (containsSensitiveInfo(args)) {
-      return;
-    }
-    
-    const newArgs = sanitizeArgs(args);
-    originalConsoleDebug.apply(console, newArgs);
-  };
+  // Replace each console function with a safe version
+  console.error = createSafeConsoleFunction(originalConsoleError);
+  console.warn = createSafeConsoleFunction(originalConsoleWarn);
+  console.log = createSafeConsoleFunction(originalConsoleLog);
+  console.info = createSafeConsoleFunction(originalConsoleInfo);
+  console.debug = createSafeConsoleFunction(originalConsoleDebug);
 }
+
+/**
+ * Override network requests
+ */
+export function overrideNetworkRequests(): void {
+  // This can be implemented in the future if needed
+  console.log('Network request overrides initialized');
+}
+
+// Export overrideConsoleFunctions as an alias for setupConsoleOverrides
+export const overrideConsoleFunctions = setupConsoleOverrides;

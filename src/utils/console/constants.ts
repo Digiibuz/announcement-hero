@@ -8,15 +8,18 @@ export const SENSITIVE_URL_PATTERNS = [
   /supabase\.co/i,
   /auth\/v1\/token/i,
   /token\?grant_type=password/i,
-  /auth\/v1/i,
-  /grant_type=password/i,
   /400.*bad request/i,
   /401/i,
+  /grant_type=password/i,
   /rdwqedmvzicerwotjseg/i
 ];
 
-// Alias pour une compatibilité avec les autres modules
-export const SENSITIVE_PATTERNS = SENSITIVE_URL_PATTERNS;
+// Shared patterns for all security modules
+export const SENSITIVE_PATTERNS = [
+  ...SENSITIVE_URL_PATTERNS,
+  /index-[a-zA-Z0-9-_]+\.js/i,
+  /auth\/v1/i
+];
 
 // Liste des requêtes à bloquer complètement dans l'inspecteur réseau
 export const CRITICAL_URLS_TO_BLOCK = [

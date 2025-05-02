@@ -6,8 +6,6 @@ import { setupGlobalListeners } from './globalListeners';
 import { 
   setupConsoleOverrides,
   initializeConsoleSecurity,
-  overrideConsoleFunctions, 
-  overrideNetworkRequests,
   SENSITIVE_PATTERNS 
 } from './consoleOverrides';
 
@@ -49,10 +47,12 @@ export function testSecureLogs(): void {
   }
 }
 
-// Export patterns for other modules
+// Re-export everything for other modules
 export { 
   SENSITIVE_PATTERNS, 
   initializeConsoleSecurity,
-  overrideConsoleFunctions,
-  overrideNetworkRequests
+  setupConsoleOverrides as overrideConsoleFunctions,
 };
+
+// Export the function but under the original name for backward compatibility
+export { setupConsoleOverrides } from './consoleOverrides';
