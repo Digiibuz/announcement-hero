@@ -1,22 +1,18 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders, errorResponse, handleCorsOptions } from "../utils/errorHandling.ts";
 
 serve(async (req) => {
-  // Gérer les requêtes CORS preflight
+  // Gestion des requêtes CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return handleCorsOptions();
   }
 
   try {
     console.log("Démarrage de la fonction delete-user");
     
-    // Créer un client Supabase avec la clé de service
+    // Créer un client Supabase avec la clé de service de façon sécurisée
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
@@ -73,13 +69,7 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Erreur:", error.message, error.stack);
-    return new Response(
-      JSON.stringify({ error: error.message || "Une erreur est survenue" }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
-      }
-    );
+    // Utilise notre système de gestion d'erreurs sécurisé
+    return errorResponse(error);
   }
 });

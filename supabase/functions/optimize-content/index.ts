@@ -1,18 +1,14 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { corsHeaders, errorResponse, handleCorsOptions } from "../utils/errorHandling.ts";
 
+// Récupérer la clé API depuis les variables d'environnement de manière sécurisée
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // Gestion des requêtes CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return handleCorsOptions();
   }
 
   try {
@@ -20,7 +16,7 @@ serve(async (req) => {
     
     const { type, title, description } = await req.json();
     
-    console.log(`Paramètres reçus - Type: ${type}, Titre: "${title.substring(0, 20)}..."`);
+    console.log(`Paramètres reçus - Type: ${type}, Titre: "${title?.substring(0, 20)}..."`);
     if (description) {
       console.log(`Description: "${description.substring(0, 30)}..."`);
     }
@@ -28,7 +24,7 @@ serve(async (req) => {
     let prompt = "";
     let systemMessage = "";
     
-    // Configure the prompt based on the type of optimization
+    // Configure le prompt selon le type d'optimisation
     switch (type) {
       case "description":
         systemMessage = "Tu es un rédacteur professionnel. Reprend le texte et améliore seulement les tournures de phrase. Conserve la structure et les informations d'origine. IMPORTANT: Fournis UNIQUEMENT le texte réécrit, sans préface ni commentaire.";
@@ -121,13 +117,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Erreur dans la fonction optimize-content:', error);
-    return new Response(JSON.stringify({ 
-      success: false, 
-      error: error.message 
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    // Utilise notre fonction d'erreur sécurisée
+    return errorResponse(error);
   }
 });

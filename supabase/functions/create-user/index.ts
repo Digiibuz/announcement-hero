@@ -1,23 +1,18 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders, errorResponse, handleCorsOptions } from "../utils/errorHandling.ts";
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // Gestion des requêtes CORS preflight
   if (req.method === "OPTIONS") {
     console.log("[create-user] Requête OPTIONS CORS reçue");
-    return new Response("ok", { headers: corsHeaders });
+    return handleCorsOptions();
   }
 
   try {
     console.log("[create-user] Démarrage de la fonction create-user");
     
-    // Create a Supabase client with the service role key
+    // Créer un client Supabase avec la clé de service
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
@@ -25,7 +20,7 @@ serve(async (req) => {
 
     console.log("[create-user] Client Supabase initialisé");
 
-    // Get request data
+    // Récupérer les données de la requête
     let requestData;
     let requestBody = "";
     try {
@@ -59,7 +54,7 @@ serve(async (req) => {
     console.log(`[create-user] - wordpressConfigId: ${wordpressConfigId}`);
     console.log(`[create-user] - password: ${"*".repeat(password?.length || 0)}`);
 
-    // Check required data
+    // Vérifier les données requises
     if (!email || !password || !name || !role) {
       console.log("[create-user] Données requises manquantes");
       console.log("[create-user] Champs reçus:", Object.keys(requestData).join(", "));
@@ -83,7 +78,7 @@ serve(async (req) => {
       );
     }
 
-    // Check if the user already exists
+    // Vérifier si l'utilisateur existe déjà
     let existingUser = null;
     let isPartiallyCreated = false;
 
@@ -375,17 +370,7 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("[create-user] Erreur non gérée:", error.message, error.stack);
-    return new Response(
-      JSON.stringify({ 
-        error: error.message || "Une erreur est survenue", 
-        stack: error.stack || null,
-        details: "Erreur non interceptée dans la fonction Edge"
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
-      }
-    );
+    // Utilise notre système de gestion d'erreurs sécurisé
+    return errorResponse(error);
   }
 });
