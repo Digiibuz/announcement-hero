@@ -150,11 +150,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [userProfile?.role, userProfile?.id]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<void> => {
     setIsLoading(true);
     
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
@@ -164,7 +164,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       // User will be set by the auth state change listener
-      return data;
+      return;
     } catch (error: any) {
       setIsLoading(false);
       throw error; // Renvoi de l'erreur pour la gestion dans la composante Login

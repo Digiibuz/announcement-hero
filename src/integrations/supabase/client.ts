@@ -40,8 +40,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   },
   global: {
     // Gérer les erreurs sans les afficher dans la console
-    fetch: (...args) => {
-      return window.fetch(...args)
+    fetch: (url, options) => {
+      return window.fetch(url, options)
         .catch(error => {
           // Silence les erreurs réseau pour éviter l'affichage dans la console
           throw error;
