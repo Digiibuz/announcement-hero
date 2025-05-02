@@ -103,11 +103,10 @@ export const useAllTickets = () => {
           console.error('Error fetching ticket responses:', responsesError);
         }
         
-        // Add null check for profiles property
-        const username = ticket.profiles && 
-                         typeof ticket.profiles === 'object' && 
-                         ticket.profiles !== null ? 
-                         (ticket.profiles?.name || ticket.profiles?.email || ticket.username || 'Unknown') : 
+        // Add null check for profiles property and use optional chaining
+        const profiles = ticket.profiles;
+        const username = profiles && typeof profiles === 'object' ? 
+                         (profiles?.name || profiles?.email || ticket.username || 'Unknown') : 
                          (ticket.username || 'Unknown');
         
         return {
@@ -158,11 +157,10 @@ export const useTicketDetails = (ticketId: string | null) => {
         console.error('Error fetching ticket responses:', responsesError);
       }
       
-      // Add null check for profiles property
-      const username = ticket.profiles && 
-                       typeof ticket.profiles === 'object' && 
-                       ticket.profiles !== null ? 
-                       (ticket.profiles?.name || ticket.profiles?.email || ticket.username || 'Unknown') : 
+      // Add null check for profiles property and use optional chaining
+      const profiles = ticket.profiles;
+      const username = profiles && typeof profiles === 'object' ? 
+                       (profiles?.name || profiles?.email || ticket.username || 'Unknown') : 
                        (ticket.username || 'Unknown');
       
       return {
