@@ -1,5 +1,5 @@
 
-import React, { useEffect } from "react";
+import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -7,13 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useCreateTicket } from "@/hooks/useTickets";
 import { toast } from "sonner";
-import { usePersistedState } from "@/hooks/usePersistedState";
-import { Ticket } from "@/hooks/tickets/types";
 
 const CreateTicketForm = () => {
   const { user } = useAuth();
-  const [subject, setSubject] = usePersistedState("new_ticket_subject", "");
-  const [message, setMessage] = usePersistedState("new_ticket_message", "");
+  const [subject, setSubject] = React.useState("");
+  const [message, setMessage] = React.useState("");
   const { mutate: createTicket, isPending } = useCreateTicket();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -34,64 +32,20 @@ const CreateTicketForm = () => {
       return;
     }
 
-    // Sauvegarde des données avant envoi
-    const ticketData = {
+    createTicket({
       user_id: user.id,
       username: user.name || user.email.split("@")[0],
       subject,
       message,
-      priority: "medium" as const,
-      status: "open" as const, // Explicitly type as "open"
+      priority: "medium", // Default priority is still set at the backend
+      status: "open",
       created_at: new Date().toISOString()
-    };
+    });
 
-    try {
-      // Sauvegarde de sauvegarde en cas d'erreur
-      localStorage.setItem("ticket_backup", JSON.stringify({
-        subject,
-        message,
-        timestamp: new Date().toISOString()
-      }));
-      
-      createTicket(ticketData, {
-        onSuccess: () => {
-          // Réinitialisation du formulaire après succès
-          setSubject("");
-          setMessage("");
-          // Suppression de la sauvegarde
-          localStorage.removeItem("ticket_backup");
-          toast.success("Votre ticket a été créé avec succès");
-        },
-        onError: (error) => {
-          // Enregistrer l'erreur silencieusement
-          localStorage.setItem("ticket_creation_error", JSON.stringify({
-            error: error.message || "Erreur inconnue",
-            timestamp: new Date().toISOString()
-          }));
-          toast.error("Impossible de créer votre ticket. Veuillez réessayer.");
-        }
-      });
-    } catch (error) {
-      // Capture des erreurs non gérées par la mutation
-      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-      localStorage.setItem("ticket_creation_unhandled_error", errorMessage);
-      toast.error("Une erreur est survenue lors de la création du ticket");
-    }
+    // Reset form after submission
+    setSubject("");
+    setMessage("");
   };
-
-  // Tentative de restauration en cas de données présentes
-  useEffect(() => {
-    try {
-      const backup = localStorage.getItem("ticket_backup");
-      if (backup && (!subject || !message)) {
-        const data = JSON.parse(backup);
-        if (!subject && data.subject) setSubject(data.subject);
-        if (!message && data.message) setMessage(data.message);
-      }
-    } catch (e) {
-      // Ne rien faire en cas d'erreur
-    }
-  }, []);
 
   return (
     <Card>

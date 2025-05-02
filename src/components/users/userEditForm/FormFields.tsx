@@ -20,20 +20,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { UserProfile } from "@/types/auth";
 import { WordPressConfig } from "@/types/wordpress";
 
-// Define the form schema with proper typing
 export const formSchema = z.object({
   email: z.string().email({ message: "Email invalide" }),
   name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères" }),
-  // Remove 'user' from the enum since it's not used in the form
   role: z.enum(["admin", "client"], {
     required_error: "Veuillez sélectionner un rôle",
   }),
   clientId: z.string().optional(),
   wordpressConfigId: z.string().optional(),
-  wpConfigIds: z.array(z.string()).default([]),
+  wpConfigIds: z.array(z.string()).optional(),
 });
 
 export type FormSchema = z.infer<typeof formSchema>;

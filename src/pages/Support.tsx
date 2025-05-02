@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import PageLayout from "@/components/ui/layout/PageLayout";
@@ -6,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import TicketList from "@/components/support/TicketList";
 import CreateTicketForm from "@/components/support/CreateTicketForm";
 import AdminTickets from "@/components/support/AdminTickets";
-import { useTicketNotifications } from "@/hooks/notifications";
+import { useTicketNotifications } from "@/hooks/useTicketNotifications";
 
 const Support = () => {
   const { isAdmin, isClient } = useAuth();

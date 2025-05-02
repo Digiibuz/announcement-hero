@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useEffect } from "react";
@@ -21,7 +20,7 @@ import {
   UserCircle,
   Ticket
 } from "lucide-react";
-import { useTicketNotifications } from "@/hooks/notifications";
+import { useTicketNotifications } from "@/hooks/useTicketNotifications";
 import { supabase } from "@/integrations/supabase/client";
 
 const Sidebar = () => {

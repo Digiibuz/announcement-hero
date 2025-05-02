@@ -20,24 +20,21 @@ interface AnnouncementFilterProps {
   setFilter: React.Dispatch<React.SetStateAction<FilterState>>;
 }
 
-const AnnouncementFilter = ({ 
-  filter = { search: "", status: "all" }, // Provide default values
-  setFilter 
-}: AnnouncementFilterProps) => {
+const AnnouncementFilter = ({ filter, setFilter }: AnnouncementFilterProps) => {
   return (
     <div className="flex flex-col md:flex-row gap-4 mb-6">
       <div className="flex-1 relative">
         <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Rechercher des annonces..."
-          value={filter?.search || ""}
+          value={filter.search}
           onChange={(e) => setFilter({ ...filter, search: e.target.value })}
           className="pl-9"
         />
       </div>
       <div className="w-full md:w-[180px]">
         <Select
-          value={filter?.status || "all"}
+          value={filter.status}
           onValueChange={(value) => setFilter({ ...filter, status: value })}
         >
           <SelectTrigger>

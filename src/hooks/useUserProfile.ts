@@ -1,62 +1,136 @@
 
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { UserProfile, Role } from "@/types/auth";
-import { supabase } from "@/integrations/supabase/client";
 
-// Helper function to create a UserProfile from a Supabase User object
-export const createProfileFromMetadata = (user: User | null): UserProfile | null => {
-  if (!user) return null;
-
-  // Extract user metadata
-  const metadata = user.user_metadata || {};
+// Function to create a profile from user metadata
+export const createProfileFromMetadata = (authUser: User | null): UserProfile | null => {
+  if (!authUser) return null;
   
-  // Determine role from metadata or default to "client"
-  let role: Role = (metadata.role as Role) || "client";
+  // Récupérer le rôle depuis le localStorage en priorité pour éviter les rechargements inutiles
+  const cachedRole = localStorage.getItem('userRole') as Role | null;
+  const cachedUserId = localStorage.getItem('userId');
   
-  // Ensure role is a valid Role type
-  if (!["admin", "client", "user"].includes(role)) {
-    role = "client";
-  }
-
-  // Build the UserProfile object
-  const profile: UserProfile = {
-    id: user.id,
-    email: user.email || "",
-    name: metadata.name || user.email?.split('@')[0] || "User",
+  // Si l'ID utilisateur correspond et que nous avons un rôle en cache, utilisons-le
+  const role = (cachedUserId === authUser.id && cachedRole) 
+    ? cachedRole 
+    : (authUser.user_metadata?.role as Role) || 'client';
+  
+  return {
+    id: authUser.id,
+    email: authUser.email || '',
+    name: authUser.user_metadata?.name || authUser.email || '',
     role: role,
-    clientId: metadata.client_id || undefined,
-    wordpressConfigId: metadata.wordpress_config_id || undefined,
-    lastLogin: user.last_sign_in_at || null
+    clientId: authUser.user_metadata?.clientId,
+    wordpressConfigId: authUser.user_metadata?.wordpressConfigId,
   };
-
-  if (metadata.wordpress_config) {
-    profile.wordpressConfig = {
-      name: metadata.wordpress_config.name || "",
-      site_url: metadata.wordpress_config.site_url || "",
-    };
-  }
-
-  return profile;
 };
 
-// Function to get user profile data
+// Hook for user profile management with improved caching and error handling
 export const useUserProfile = () => {
-  const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .single();
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
-    if (error) {
-      console.error("Error fetching user profile:", error);
-      return null;
+  // Function to fetch the full profile from the database
+  const fetchFullProfile = async (userId: string): Promise<boolean> => {
+    try {
+      console.log("Fetching full profile for user:", userId);
+      
+      // Utiliser d'abord le rôle en cache pour éviter tout problème
+      const cachedRole = localStorage.getItem('userRole') as Role | null;
+      const cachedUserId = localStorage.getItem('userId');
+      
+      // Si nous avons un profil utilisateur mais sans rôle défini, utilisons le rôle en cache
+      if (userProfile && !userProfile.role && cachedRole && cachedUserId === userId) {
+        console.log("Using cached role before fetch:", cachedRole);
+        setUserProfile({...userProfile, role: cachedRole});
+      }
+      
+      // Add a small retry mechanism for network issues
+      let attempts = 0;
+      const maxAttempts = 3;
+      
+      while (attempts < maxAttempts) {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*, wordpress_configs(name, site_url)')
+            .eq('id', userId)
+            .maybeSingle();
+          
+          if (error) {
+            console.error("Error fetching profile:", error);
+            throw error;
+          }
+          
+          if (data) {
+            console.log("Profile data received:", data);
+            
+            // Get cached role as fallback
+            const roleToUse = data.role as Role || cachedRole || 'client';
+            
+            const updatedProfile: UserProfile = {
+              id: data.id,
+              email: data.email,
+              name: data.name,
+              role: roleToUse,
+              clientId: data.client_id,
+              wordpressConfigId: data.wordpress_config_id,
+              wordpressConfig: data.wordpress_configs ? {
+                name: data.wordpress_configs.name,
+                site_url: data.wordpress_configs.site_url
+              } : null
+            };
+            
+            console.log("Updated profile with role:", updatedProfile.role);
+            setUserProfile(updatedProfile);
+            
+            // Cache the role for future reference
+            localStorage.setItem('userRole', updatedProfile.role);
+            localStorage.setItem('userId', updatedProfile.id);
+            
+            return true;
+          }
+          
+          // No data but no error either - break the retry loop
+          console.warn("No profile data found, using cached data if available");
+          break;
+        } catch (e) {
+          console.error(`Attempt ${attempts + 1} failed:`, e);
+          attempts++;
+          
+          // If we have more attempts, wait before retrying
+          if (attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+      }
+      
+      // If we reach here without returning, we failed to get data
+      console.warn("Could not fetch complete profile after retries");
+      
+      // Use the cached role if we have one
+      if (cachedRole && cachedUserId === userId) {
+        console.log("Using cached role after failed fetches:", cachedRole);
+        
+        // Update the current profile with the cached role
+        if (userProfile) {
+          const updatedProfile = {...userProfile, role: cachedRole};
+          setUserProfile(updatedProfile);
+          return true;
+        }
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Exception while fetching profile:', error);
+      return false;
     }
-
-    return data;
   };
-  
-  return { fetchProfile };
-};
 
-export default useUserProfile;
+  return { 
+    userProfile, 
+    setUserProfile, 
+    fetchFullProfile 
+  };
+};

@@ -3,41 +3,13 @@
 project_id = "rdwqedmvzicerwotjseg"
 
 [api]
-# Configuration de l'API
+# ID du projet pour les configurations spécifiques
 
 [db]
 # Configurations de la base de données
 
-# Configurations des Edge Functions - Original Functions
-[functions.login]
-verify_jwt = false
+[functions.google-business]
+verify_jwt = true
 import_map = "./import_map.json"
 
-[functions.db]
-verify_jwt = false  # Nous gérons l'authentification manuellement
-import_map = "./import_map.json"
-
-[functions.refresh-token]
-verify_jwt = false
-import_map = "./import_map.json"
-
-[functions.utils]
-verify_jwt = false
-import_map = "./import_map.json"
-
-[functions.get-config]
-verify_jwt = false
-import_map = "./import_map.json"
-
-# New secure edge functions (proxy layer)
-[functions.secure-login]
-verify_jwt = false
-import_map = "./import_map.json"
-
-[functions.secure-db]
-verify_jwt = false # We handle authentication manually
-import_map = "./import_map.json"
-
-[functions.secure-refresh]
-verify_jwt = false
-import_map = "./import_map.json"
+# Section pour variables d'environnement globales

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -10,57 +10,44 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
-import { usePersistedState } from "@/hooks/usePersistedState";
-import { setupAuthSecurityLayer, setupNetworkEntriesProtection } from "@/utils/authSecurityLayer";
-
-// Activer la couche de sécurité d'authentification immédiatement
-setupAuthSecurityLayer();
 
 const Login = () => {
-  const [email, setEmail] = usePersistedState("login_email", "");
-  const [password, setPassword] = usePersistedState("login_password", "");
-  const [showPassword, setShowPassword] = usePersistedState("login_show_password", false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  // Rediriger si déjà authentifié
-  useEffect(() => {
+  // Redirect if already authenticated
+  React.useEffect(() => {
     if (isAuthenticated) {
       navigate("/dashboard");
     }
   }, [isAuthenticated, navigate]);
-
-  // Protection supplémentaire contre les entrées réseau sensibles
-  useEffect(() => {
-    // Mettre en place l'observateur pour masquer les entrées réseau sensibles
-    const cleanupObserver = setupNetworkEntriesProtection();
-    
-    // Nettoyage lors du démontage du composant
-    return cleanupObserver;
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
-      // Bloquer complètement tous les logs et toutes les erreurs pendant la tentative de connexion
       await login(email, password);
-      localStorage.setItem("login_success", new Date().toISOString());
       toast.success("Connexion réussie");
       
-      // Rediriger après connexion réussie
+      // Redirect after successful login
       setTimeout(() => {
         navigate("/dashboard");
       }, 300);
-    } catch (error) {
-      // Masquer complètement l'erreur
-      localStorage.setItem("login_error", "Identifiants invalides");
-      toast.error("Identifiants invalides. Veuillez vérifier votre email et mot de passe.");
+    } catch (error: any) {
+      console.error("Erreur de connexion:", error);
+      toast.error(error.message || "Échec de la connexion");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
@@ -133,7 +120,7 @@ const Login = () => {
                     variant="ghost"
                     size="icon"
                     className="absolute right-0 top-0 h-full px-3"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={togglePasswordVisibility}
                     disabled={isLoading}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

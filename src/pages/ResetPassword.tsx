@@ -22,7 +22,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useAuth } from "@/context/AuthContext";
-import { usePersistedState } from "@/hooks/usePersistedState";
 
 // Schema de validation pour le formulaire
 const passwordSchema = z.object({
@@ -41,34 +40,23 @@ type PasswordForm = z.infer<typeof passwordSchema>;
 
 const ResetPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitted, setIsSubmitted] = usePersistedState("reset_password_submitted", false);
-  const [showPassword, setShowPassword] = usePersistedState("reset_password_show_password", false);
-  const [showConfirmPassword, setShowConfirmPassword] = usePersistedState("reset_password_show_confirm_password", false);
-  const [isTokenValid, setIsTokenValid] = usePersistedState("reset_password_token_valid", null);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isTokenValid, setIsTokenValid] = useState<boolean | null>(null);
   const [isChecking, setIsChecking] = useState(true);
-  const [accessToken, setAccessToken] = usePersistedState("reset_password_access_token", null);
-  const [refreshToken, setRefreshToken] = usePersistedState("reset_password_refresh_token", null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Utiliser usePersistedState pour les valeurs du formulaire
-  const [formValues, setFormValues] = usePersistedState<PasswordForm>("reset_password_form_values", {
-    password: "",
-    confirmPassword: ""
-  });
-  
   const form = useForm<PasswordForm>({
     resolver: zodResolver(passwordSchema),
-    defaultValues: formValues
+    defaultValues: {
+      password: "",
+      confirmPassword: ""
+    }
   });
-
-  // Mettre à jour les valeurs persistées à chaque changement du formulaire
-  useEffect(() => {
-    const subscription = form.watch((value) => {
-      setFormValues(value as PasswordForm);
-    });
-    return () => subscription.unsubscribe();
-  }, [form, setFormValues]);
 
   // Vérifier si le token est valide au chargement de la page et configuration immédiate de la session
   useEffect(() => {
@@ -82,53 +70,39 @@ const ResetPassword = () => {
         const refresh = hashParams.get('refresh_token');
         const type = hashParams.get('type');
         
-        // Stocker silencieusement les informations de déboggage
-        localStorage.setItem("reset_password_hash_params", JSON.stringify({ 
-          hasAccessToken: !!token, 
-          hasRefreshToken: !!refresh, 
+        // Log pour debug
+        console.log("URL hash params:", { 
+          accessToken: !!token, 
+          refreshToken: !!refresh, 
           type,
-          timestamp: new Date().toISOString()
-        }));
+          fullHash: location.hash
+        });
         
         if (token && type === 'recovery') {
-          localStorage.setItem("reset_password_token_found", "token de récupération trouvé");
+          console.log("Token de récupération trouvé, configuration de la session...");
           setAccessToken(token);
           if (refresh) setRefreshToken(refresh);
           
           // Si nous avons un token de récupération dans l'URL hash, nous le configurons dans la session
-          try {
-            const { data, error } = await supabase.auth.setSession({
-              access_token: token,
-              refresh_token: refresh || '',
-            });
-            
-            if (error) {
-              localStorage.setItem("reset_password_session_error", JSON.stringify({
-                message: error.message,
-                details: error.stack,
-                timestamp: new Date().toISOString()
-              }));
-              setIsTokenValid(false);
-              toast.error("Le lien de réinitialisation est invalide ou a expiré");
-            } else {
-              localStorage.setItem("reset_password_session_success", JSON.stringify({
-                userId: data.user?.id,
-                timestamp: new Date().toISOString()
-              }));
-              setIsTokenValid(true);
-              toast.success("Vous pouvez maintenant réinitialiser votre mot de passe");
-            }
-          } catch (error) {
-            localStorage.setItem("reset_password_session_unhandled_error", 
-              error instanceof Error ? error.message : "Erreur inconnue");
+          const { data, error } = await supabase.auth.setSession({
+            access_token: token,
+            refresh_token: refresh || '',
+          });
+          
+          if (error) {
+            console.error("Erreur lors de la configuration de la session:", error);
             setIsTokenValid(false);
-            toast.error("Une erreur est survenue lors de la vérification du token");
+            toast.error("Le lien de réinitialisation est invalide ou a expiré");
+          } else {
+            console.log("Session configurée avec succès:", data);
+            setIsTokenValid(true);
+            toast.success("Vous pouvez maintenant réinitialiser votre mot de passe");
           }
         } else {
           // Vérifier si nous avons une URL comme digii.app.digiibuz.fr/reset-password#access_token=...
           // Certains navigateurs peuvent ne pas capturer correctement le hash via URLSearchParams
           if (location.hash && location.hash.includes('access_token')) {
-            localStorage.setItem("reset_password_hash_detection", "token détecté dans le hash");
+            console.log("Token détecté dans le hash mais non extrait par URLSearchParams, tentative alternative");
             
             // Extraction manuelle
             const hashString = location.hash.substring(1);
@@ -140,103 +114,48 @@ const ResetPassword = () => {
               const extractedToken = tokenMatch[1];
               const extractedRefresh = refreshMatch && refreshMatch[1] ? refreshMatch[1] : '';
               
-              localStorage.setItem("reset_password_token_extracted", "token extrait manuellement");
+              console.log("Token extrait manuellement:", !!extractedToken);
               setAccessToken(extractedToken);
               if (extractedRefresh) setRefreshToken(extractedRefresh);
               
               // Configurer la session avec le token extrait
-              try {
-                const { data, error } = await supabase.auth.setSession({
-                  access_token: extractedToken,
-                  refresh_token: extractedRefresh,
-                });
-                
-                if (error) {
-                  localStorage.setItem("reset_password_manual_session_error", JSON.stringify({
-                    message: error.message,
-                    details: error.stack,
-                    timestamp: new Date().toISOString()
-                  }));
-                  setIsTokenValid(false);
-                  toast.error("Le lien de réinitialisation est invalide ou a expiré");
-                } else {
-                  localStorage.setItem("reset_password_manual_session_success", JSON.stringify({
-                    userId: data.user?.id,
-                    timestamp: new Date().toISOString()
-                  }));
-                  setIsTokenValid(true);
-                  toast.success("Vous pouvez maintenant réinitialiser votre mot de passe");
-                }
-              } catch (error) {
-                localStorage.setItem("reset_password_manual_session_unhandled_error", 
-                  error instanceof Error ? error.message : "Erreur inconnue");
+              const { data, error } = await supabase.auth.setSession({
+                access_token: extractedToken,
+                refresh_token: extractedRefresh,
+              });
+              
+              if (error) {
+                console.error("Erreur lors de la configuration de la session (méthode alternative):", error);
                 setIsTokenValid(false);
-                toast.error("Une erreur est survenue lors de la vérification du token");
+                toast.error("Le lien de réinitialisation est invalide ou a expiré");
+              } else {
+                console.log("Session configurée avec succès (méthode alternative):", data);
+                setIsTokenValid(true);
+                toast.success("Vous pouvez maintenant réinitialiser votre mot de passe");
               }
             } else {
-              // Sinon, nous vérifions si l'utilisateur a une session valide
-              localStorage.setItem("reset_password_no_token_in_hash", "pas de token dans le hash");
-              
-              try {
-                const { data, error } = await supabase.auth.getSession();
-                
-                if (error) {
-                  localStorage.setItem("reset_password_get_session_error", JSON.stringify({
-                    message: error.message,
-                    details: error.stack,
-                    timestamp: new Date().toISOString()
-                  }));
-                  setIsTokenValid(false);
-                } else if (data?.session?.user) {
-                  localStorage.setItem("reset_password_found_session", JSON.stringify({
-                    userId: data.session.user.id,
-                    timestamp: new Date().toISOString()
-                  }));
-                  setIsTokenValid(true);
-                } else {
-                  localStorage.setItem("reset_password_no_session", "aucune session trouvée");
-                  setIsTokenValid(false);
-                }
-              } catch (error) {
-                localStorage.setItem("reset_password_get_session_unhandled_error", 
-                  error instanceof Error ? error.message : "Erreur inconnue");
-                setIsTokenValid(false);
-              }
+              console.log("Pas de token de récupération valide trouvé dans le hash");
+              setIsTokenValid(false);
             }
           } else {
             // Sinon, nous vérifions si l'utilisateur a une session valide
-            localStorage.setItem("reset_password_check_existing_session", "vérification d'une session existante");
+            console.log("Pas de token dans le hash, vérification d'une session existante...");
+            const { data, error } = await supabase.auth.getSession();
             
-            try {
-              const { data, error } = await supabase.auth.getSession();
-              
-              if (error) {
-                localStorage.setItem("reset_password_get_session_error", JSON.stringify({
-                  message: error.message,
-                  details: error.stack,
-                  timestamp: new Date().toISOString()
-                }));
-                setIsTokenValid(false);
-              } else if (data?.session?.user) {
-                localStorage.setItem("reset_password_found_session", JSON.stringify({
-                  userId: data.session.user.id,
-                  timestamp: new Date().toISOString()
-                }));
-                setIsTokenValid(true);
-              } else {
-                localStorage.setItem("reset_password_no_session", "aucune session trouvée");
-                setIsTokenValid(false);
-              }
-            } catch (error) {
-              localStorage.setItem("reset_password_get_session_unhandled_error", 
-                error instanceof Error ? error.message : "Erreur inconnue");
+            if (error) {
+              console.error("Erreur lors de la vérification de la session:", error);
+              setIsTokenValid(false);
+            } else if (data?.session?.user) {
+              console.log("Session utilisateur trouvée:", data.session.user);
+              setIsTokenValid(true);
+            } else {
+              console.log("Aucune session trouvée et pas de token dans l'URL");
               setIsTokenValid(false);
             }
           }
         }
       } catch (error) {
-        localStorage.setItem("reset_password_check_session_unhandled_error", 
-          error instanceof Error ? error.message : "Erreur inconnue");
+        console.error("Erreur lors de la vérification du token:", error);
         setIsTokenValid(false);
       } finally {
         setIsChecking(false);
@@ -250,7 +169,7 @@ const ResetPassword = () => {
     return () => {
       // Nettoyage si nécessaire
     };
-  }, [location, setAccessToken, setIsTokenValid, setRefreshToken]);
+  }, [location]);
 
   const onSubmit = async (data: PasswordForm) => {
     setIsLoading(true);
@@ -258,46 +177,32 @@ const ResetPassword = () => {
     try {
       // Si nous avons stocké les tokens directement, on peut les utiliser pour s'assurer que la session est correcte
       if (accessToken && refreshToken) {
-        localStorage.setItem("reset_password_using_stored_tokens", "utilisation des tokens stockés");
-        
-        try {
-          await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-        } catch (sessionError) {
-          localStorage.setItem("reset_password_set_session_error", 
-            sessionError instanceof Error ? sessionError.message : "Erreur inconnue");
-        }
+        console.log("Utilisation des tokens stockés pour la session avant mise à jour du mot de passe");
+        await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
       }
       
       // Mettre à jour le mot de passe
-      try {
-        const { error } = await supabase.auth.updateUser({ 
-          password: data.password 
-        });
-        
-        if (error) {
-          throw error;
-        }
-        
-        localStorage.setItem("reset_password_success", "mot de passe réinitialisé avec succès");
-        setIsSubmitted(true);
-        toast.success("Votre mot de passe a été réinitialisé avec succès");
-        
-        // Rediriger vers la page de connexion après un court délai
-        setTimeout(() => {
-          navigate("/login");
-        }, 3000);
-      } catch (updateError) {
-        localStorage.setItem("reset_password_update_error", 
-          updateError instanceof Error ? updateError.message : "Erreur inconnue");
-        toast.error("Une erreur s'est produite lors de la réinitialisation du mot de passe");
+      const { error } = await supabase.auth.updateUser({ 
+        password: data.password 
+      });
+      
+      if (error) {
+        throw error;
       }
-    } catch (error) {
-      localStorage.setItem("reset_password_submit_error", 
-        error instanceof Error ? error.message : "Erreur inconnue");
-      toast.error("Une erreur s'est produite lors de la réinitialisation du mot de passe");
+      
+      setIsSubmitted(true);
+      toast.success("Votre mot de passe a été réinitialisé avec succès");
+      
+      // Rediriger vers la page de connexion après un court délai
+      setTimeout(() => {
+        navigate("/login");
+      }, 3000);
+    } catch (error: any) {
+      console.error("Erreur lors de la réinitialisation du mot de passe:", error);
+      toast.error(error.message || "Une erreur s'est produite lors de la réinitialisation du mot de passe");
     } finally {
       setIsLoading(false);
     }
@@ -428,7 +333,7 @@ const ResetPassword = () => {
                 alt="DigiiBuz" 
                 className="h-16 w-auto mb-2"
                 onError={(e) => {
-                  localStorage.setItem("reset_password_image_error", "erreur de chargement de l'image");
+                  console.error("Erreur de chargement de l'image:", e);
                   e.currentTarget.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzMzM2E0NSIgLz48dGV4dCB4PSI1MCIgeT0iNTAiIGZvbnQtc2l6ZT0iMTgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGFsaWdubWVudC1iYXNlbGluZT0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSI+RGlnaWlCdXo8L3RleHQ+PC9zdmc+";
                 }}
               />

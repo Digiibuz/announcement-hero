@@ -15,15 +15,12 @@ export const useUserEditForm = (
   const [isLoadingConfigs, setIsLoadingConfigs] = useState(false);
   const [selectedConfigIds, setSelectedConfigIds] = useState<string[]>([]);
 
-  // Ensure role is admin or client for the form - convert "user" role to "client" if needed
-  const safeRole = user.role === "user" ? "client" : user.role;
-
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: user.email || "",
       name: user.name || "",
-      role: safeRole as "admin" | "client", // Type assertion for safety
+      role: user.role || "client",
       clientId: user.clientId || "",
       wordpressConfigId: user.wordpressConfigId || "",
       wpConfigIds: [],
@@ -31,13 +28,10 @@ export const useUserEditForm = (
   });
 
   useEffect(() => {
-    // Ensure role is admin or client for the form
-    const safeRole = user.role === "user" ? "client" : user.role;
-    
     form.reset({
       email: user.email || "",
       name: user.name || "",
-      role: safeRole as "admin" | "client", // Type assertion for safety
+      role: user.role || "client",
       clientId: user.clientId || "",
       wordpressConfigId: user.wordpressConfigId || "",
       wpConfigIds: selectedConfigIds,

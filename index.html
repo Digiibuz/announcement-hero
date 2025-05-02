@@ -3,178 +3,58 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DigiiBuz</title>
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" href="/favicon.ico" />
-    <script>
-      // Bloquer immédiatement toutes les URLs sensibles avant même le chargement de l'application
-      (function() {
-        // Liste des patterns sensibles à bloquer complètement
-        const SENSITIVE_PATTERNS = [
-          /supabase\.co/i,
-          /auth\/v1\/token/i,
-          /token\?grant_type=password/i,
-          /400.*bad request/i,
-          /401/i,
-          /grant_type=password/i,
-          /rdwqedmvzicerwotjseg/i,
-          /index-[a-zA-Z0-9-_]+\.js/i
-        ];
-        
-        // Stocker les fonctions originales
-        const originalFetch = window.fetch;
-        const originalXMLHttpRequestOpen = XMLHttpRequest.prototype.open;
-        const originalConsoleError = console.error;
-        const originalConsoleWarn = console.warn;
-        const originalConsoleLog = console.log;
-        
-        // Remplacer fetch pour masquer complètement les URLs sensibles
-        window.fetch = function(input, init) {
-          try {
-            // Vérifier si l'URL est sensible
-            const url = input instanceof Request ? input.url : String(input);
-            const isSensitive = SENSITIVE_PATTERNS.some(pattern => pattern.test(url));
-            
-            if (isSensitive) {
-              // Suppression complète des logs pour cette requête
-              console.error = function() {};
-              console.warn = function() {};
-              console.log = function() {};
-              
-              // Ajouter des écouteurs d'erreurs globaux temporaires
-              const errorHandler = function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                return true;
-              };
-              
-              window.addEventListener('error', errorHandler, true);
-              window.addEventListener('unhandledrejection', errorHandler, true);
-              
-              // Exécuter la requête sans logguer
-              const promise = originalFetch(input, init);
-              
-              // Restaurer les fonctions après un délai
-              setTimeout(function() {
-                console.error = originalConsoleError;
-                console.warn = originalConsoleWarn;
-                console.log = originalConsoleLog;
-                window.removeEventListener('error', errorHandler, true);
-                window.removeEventListener('unhandledrejection', errorHandler, true);
-              }, 1000);
-              
-              return promise;
-            }
-            
-            return originalFetch(input, init);
-          } catch (e) {
-            return originalFetch(input, init);
-          }
-        };
-        
-        // Remplacer XMLHttpRequest.open pour masquer les URLs sensibles
-        XMLHttpRequest.prototype.open = function(method, url, ...args) {
-          try {
-            // Vérifier si l'URL est sensible
-            const urlStr = String(url);
-            const isSensitive = SENSITIVE_PATTERNS.some(pattern => pattern.test(urlStr));
-            
-            if (isSensitive) {
-              // Désactiver tous les logs pendant cette requête
-              console.error = function() {};
-              console.warn = function() {};
-              console.log = function() {};
-              
-              // Ajouter des écouteurs d'erreur pour cette requête
-              this.addEventListener('error', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                return true;
-              });
-              
-              this.addEventListener('load', function() {
-                // Réactiver les logs après un délai
-                setTimeout(function() {
-                  console.error = originalConsoleError;
-                  console.warn = originalConsoleWarn;
-                  console.log = originalConsoleLog;
-                }, 1000);
-              });
-            }
-            
-            // Appliquer avec l'URL originale
-            return originalXMLHttpRequestOpen.apply(this, [method, url, ...args]);
-          } catch (e) {
-            return originalXMLHttpRequestOpen.apply(this, [method, url, ...args]);
-          }
-        };
-        
-        // Remplacer console.error pour masquer les erreurs sensibles
-        console.error = function(...args) {
-          // Bloquer complètement les logs sensibles
-          if (args.some(arg => {
-            if (arg === null || arg === undefined) return false;
-            const str = String(arg);
-            return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
-          })) {
-            return; // Ne rien afficher
-          }
-          
-          originalConsoleError.apply(console, args);
-        };
-        
-        // Même logique pour console.warn
-        console.warn = function(...args) {
-          if (args.some(arg => {
-            if (arg === null || arg === undefined) return false;
-            const str = String(arg);
-            return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
-          })) {
-            return;
-          }
-          
-          originalConsoleWarn.apply(console, args);
-        };
-        
-        // Même logique pour console.log
-        console.log = function(...args) {
-          if (args.some(arg => {
-            if (arg === null || arg === undefined) return false;
-            const str = String(arg);
-            return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
-          })) {
-            return;
-          }
-          
-          originalConsoleLog.apply(console, args);
-        };
-        
-        // Intercepter les erreurs globales
-        window.addEventListener('error', function(event) {
-          // Vérifier si l'erreur contient des informations sensibles
-          const errorText = event.message || event.error?.stack || '';
-          if (SENSITIVE_PATTERNS.some(pattern => pattern.test(errorText))) {
-            event.preventDefault();
-            event.stopPropagation();
-            return true;
-          }
-        }, true);
-        
-        // Intercepter les rejets de promesse non gérés
-        window.addEventListener('unhandledrejection', function(event) {
-          const reasonText = String(event.reason || '');
-          if (SENSITIVE_PATTERNS.some(pattern => pattern.test(reasonText))) {
-            event.preventDefault();
-            event.stopPropagation();
-            return true;
-          }
-        }, true);
-      })();
-    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>DigiiBuz - Gestion d'annonces WordPress</title>
+    <meta name="description" content="DigiiBuz - Gestion d'annonces WordPress avec Divi Builder et DiviPixel" />
+    <meta name="author" content="DigiiBuz" />
+    <link rel="icon" href="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" type="image/png" />
+    
+    <!-- Optimisations de performance -->
+    <meta http-equiv="x-dns-prefetch-control" content="on">
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Chargement optimisé des polices -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800&display=swap"></noscript>
+
+    <!-- Méta balises OpenGraph -->
+    <meta property="og:title" content="DigiiBuz - Gestion d'annonces WordPress" />
+    <meta property="og:description" content="DigiiBuz - Gestion d'annonces WordPress avec Divi Builder et DiviPixel" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" />
+
+    <!-- Optimisation PWA -->
+    <meta name="theme-color" content="#0C1646">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="DigiiBuz">
+    <link rel="apple-touch-icon" href="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png">
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" />
+    
+    <!-- Preload des ressources critiques -->
+    <link rel="preload" href="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" as="image" type="image/png" />
   </head>
+
   <body>
     <div id="root"></div>
+    <!-- Script pour détecter et signaler les problèmes de chargement -->
+    <script>
+      // Détecter et notifier les temps de chargement lents
+      window.perfMetrics = {
+        onFirstInputDelay: function(delay) {
+          if (delay > 500) {
+            console.warn("Délai d'interaction initial élevé:", delay + "ms");
+          }
+        }
+      };
+    </script>
     <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
