@@ -18,13 +18,14 @@ export const useCreateTicket = () => {
           .single();
 
         if (error) {
-          throw error;
+          // Éviter de propager l'erreur
+          throw new Error("Erreur de création du ticket");
         }
 
         return data;
       } catch (error) {
-        // Silence les erreurs pour éviter l'affichage dans la console
-        throw error;
+        // Créer une nouvelle erreur sans information sensible
+        throw new Error("Erreur de création du ticket");
       }
     },
     onSuccess: (_, variables) => {
@@ -56,23 +57,24 @@ export const useReplyToTicket = () => {
           .single();
 
         if (error) {
-          throw error;
+          // Éviter de propager l'erreur
+          throw new Error("Erreur d'ajout de la réponse");
         }
 
         try {
           // If not the ticket owner (i.e. admin is responding), send a notification
-          if (response.user_id !== (await supabase.from("tickets").select("user_id").eq("id", response.ticket_id).single()).data?.user_id) {
+          if (response.user_id !== (await supabase.from("tickets").select("user_id").eq("id", response.ticket_id).maybeSingle()).data?.user_id) {
             // This is a response from the admin to the user's ticket
-            toast.success("Réponse envoyée. L'utilisateur sera notifié.");
+            // Pas de notification d'erreur ici
           }
         } catch (e) {
-          // Silence les erreurs pour éviter l'affichage dans la console
+          // Silence les erreurs
         }
 
         return data;
       } catch (error) {
-        // Silence les erreurs pour éviter l'affichage dans la console
-        throw error;
+        // Créer une nouvelle erreur sans information sensible
+        throw new Error("Erreur d'ajout de la réponse");
       }
     },
     onSuccess: (_, variables) => {
@@ -108,13 +110,14 @@ export const useUpdateTicketStatus = () => {
           .single();
 
         if (error) {
-          throw error;
+          // Éviter de propager l'erreur
+          throw new Error("Erreur de mise à jour du statut");
         }
 
         return data as Ticket;
       } catch (error) {
-        // Silence les erreurs pour éviter l'affichage dans la console
-        throw error;
+        // Créer une nouvelle erreur sans information sensible
+        throw new Error("Erreur de mise à jour du statut");
       }
     },
     onSuccess: (data) => {

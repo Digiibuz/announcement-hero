@@ -23,7 +23,11 @@ export const useAuthFunctions = (
       // User will be set by the auth state change listener
     } catch (error: any) {
       setIsLoading(false);
-      throw error; // Rethrow the error for handling in the Login component
+      
+      // Éviter que l'erreur ne s'affiche dans la console
+      const customError = new Error(error?.message || "Échec de connexion");
+      customError.name = "AuthError";
+      throw customError;
     }
   };
 
@@ -34,11 +38,11 @@ export const useAuthFunctions = (
       sessionStorage.removeItem('lastAdminPath');
       sessionStorage.removeItem('lastAuthenticatedPath');
       
-      await supabase.auth.signOut();
+      await supabase.auth.signOut().catch(() => null); // Capture silencieuse des erreurs de déconnexion
       setUserProfile(null);
       localStorage.removeItem("originalUser");
     } catch (error) {
-      // Silence this error
+      // Silence cette erreur
     }
   };
 

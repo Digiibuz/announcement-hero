@@ -24,34 +24,50 @@ export const useAuthSession = () => {
   // Initialize auth state and set up listeners
   useEffect(() => {
     try {
+      let isSubscribed = true; // Pour éviter les mises à jour après démontage du composant
+      
       // Set up the auth state change listener
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        async (event, session) => {
-          try {
-            setIsLoading(true);
-            
-            if (session?.user) {
-              // First set user from metadata for immediate UI feedback
-              const initialProfile = createProfileFromMetadata(session.user);
-              setUserProfile(initialProfile);
+      const setupAuthListener = async () => {
+        try {
+          const { data: { subscription } } = await supabase.auth.onAuthStateChange(
+            async (event, session) => {
+              if (!isSubscribed) return; // Ne pas mettre à jour si démonté
               
-              // Then asynchronously fetch the complete profile
-              setTimeout(() => {
-                fetchFullProfile(session.user.id).then((success) => {
+              try {
+                setIsLoading(true);
+                
+                if (session?.user) {
+                  // First set user from metadata for immediate UI feedback
+                  const initialProfile = createProfileFromMetadata(session.user);
+                  setUserProfile(initialProfile);
+                  
+                  // Then asynchronously fetch the complete profile
+                  setTimeout(() => {
+                    if (!isSubscribed) return;
+                    fetchFullProfile(session.user.id)
+                      .then(() => {
+                        if (isSubscribed) setIsLoading(false);
+                      })
+                      .catch(() => {
+                        if (isSubscribed) setIsLoading(false);
+                      });
+                  }, 100);
+                } else {
+                  setUserProfile(null);
                   setIsLoading(false);
-                }).catch(() => {
-                  setIsLoading(false);
-                });
-              }, 100);
-            } else {
-              setUserProfile(null);
-              setIsLoading(false);
+                }
+              } catch (error) {
+                if (isSubscribed) setIsLoading(false);
+              }
             }
-          } catch (error) {
-            setIsLoading(false);
-          }
+          );
+          
+          return subscription;
+        } catch (error) {
+          // Silence cette erreur
+          return { unsubscribe: () => {} };
         }
-      );
+      };
 
       // Get initial session
       const initializeAuth = async () => {
@@ -60,7 +76,9 @@ export const useAuthSession = () => {
           const cachedUserRole = localStorage.getItem('userRole');
           const cachedUserId = localStorage.getItem('userId');
           
-          const { data: { session } } = await supabase.auth.getSession();
+          const { data: { session } } = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
+          
+          if (!isSubscribed) return;
           
           if (session?.user) {
             // First set user from metadata
@@ -75,29 +93,50 @@ export const useAuthSession = () => {
             
             // Then get complete profile
             setTimeout(() => {
-              fetchFullProfile(session.user.id).then(() => {
-                setIsLoading(false);
-              }).catch(() => {
-                setIsLoading(false);
-              });
+              if (!isSubscribed) return;
+              fetchFullProfile(session.user.id)
+                .then(() => {
+                  if (isSubscribed) setIsLoading(false);
+                })
+                .catch(() => {
+                  if (isSubscribed) setIsLoading(false);
+                });
             }, 100);
           } else {
             setUserProfile(null);
             setIsLoading(false);
           }
         } catch (error) {
-          setUserProfile(null);
-          setIsLoading(false);
+          if (isSubscribed) {
+            setUserProfile(null);
+            setIsLoading(false);
+          }
         }
       };
 
-      initializeAuth();
+      // Initialiser l'authentification et configurer les écouteurs d'événements
+      let subscription: { unsubscribe: () => void } = { unsubscribe: () => {} };
+      
+      Promise.all([
+        setupAuthListener().then(sub => {
+          subscription = sub;
+        }),
+        initializeAuth()
+      ]).catch(() => {
+        // Silence les erreurs pendant l'initialisation
+        if (isSubscribed) {
+          setUserProfile(null);
+          setIsLoading(false);
+        }
+      });
 
+      // Nettoyer lors du démontage
       return () => {
+        isSubscribed = false;
         try {
           subscription.unsubscribe();
         } catch (error) {
-          // Silence this error
+          // Silence cette erreur
         }
       };
     } catch (error) {
@@ -116,7 +155,7 @@ export const useAuthSession = () => {
         localStorage.removeItem('userId');
       }
     } catch (error) {
-      // Silence this error
+      // Silence cette erreur
     }
   }, [userProfile?.role, userProfile?.id]);
 

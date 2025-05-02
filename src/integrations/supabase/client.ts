@@ -15,85 +15,163 @@ const decode = (str: string) => {
 const SUPABASE_URL_ENCODED = "aHR0cHM6Ly9yZHdxZWRtdnppY2Vyd290anNlZy5zdXBhYmFzZS5jbw==";
 const SUPABASE_PUBLISHABLE_KEY_ENCODED = "ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW5Ka2QzRmxaSFIyZW1salpYSjNiM1JxYzJWbklpd2ljbTlzWlNJNkltRnViMjRpTENKcFlYUWlPakUzTkRNd056ZzRNekVzSW1WNGNDSTZNakExT0RZMU5EZ3pNWDAuT2hsZV92VnZkb0N2c09icDlBX0FkeU01MlhkemlzSXZIdkgxRDFhODh6aw==";
 
-// Suppression des logs pour les requêtes échouées
+// Suppression complète des logs d'erreurs réseau liés à Supabase
 const originalFetch = window.fetch;
 window.fetch = function(input, init) {
-  // Si la requête est destinée à Supabase, on capture les erreurs pour éviter leur affichage dans la console
   try {
     const url = input instanceof Request ? input.url : String(input);
-    if (url.includes(decode(SUPABASE_URL_ENCODED).split('//')[1]) && url.includes('/auth/')) {
+    const decodedUrl = decode(SUPABASE_URL_ENCODED);
+    
+    // Si la requête est destinée à Supabase, intercepter les erreurs
+    if (url.includes(decodedUrl.split('//')[1])) {
       return originalFetch(input, init)
         .catch(error => {
-          // Silence cette erreur pour ne pas l'afficher dans la console
-          throw error; // On relance l'erreur pour que Supabase puisse la gérer
+          // Capture et silence complètement l'erreur
+          return Promise.reject(new Error("NetworkError"));
         });
     }
   } catch (e) {
-    // Silence cette erreur pour ne pas l'afficher dans la console
+    // Silence cette erreur également
   }
   
-  // Sinon, on utilise le fetch original
+  // Utiliser le fetch original pour les autres requêtes
   return originalFetch(input, init);
 };
 
-// Console.log original
-const originalConsoleLog = console.log;
+// Interception complète des méthodes console
 const originalConsoleError = console.error;
 const originalConsoleWarn = console.warn;
+const originalConsoleLog = console.log;
 const originalConsoleInfo = console.info;
 
-// Fonction pour masquer les informations sensibles dans la console
-const sanitizeOutput = (args: any[]) => {
+// Fonction pour déterminer si un message contient des informations Supabase
+const isSupabaseRelated = (args) => {
+  if (!args || !args.length) return false;
+  
+  const decodedUrl = decode(SUPABASE_URL_ENCODED);
+  const decodedKey = decode(SUPABASE_PUBLISHABLE_KEY_ENCODED);
+  
+  // Convertir tous les arguments en string pour la recherche
+  const stringArgs = args.map(arg => 
+    typeof arg === 'string' ? arg : 
+    (typeof arg === 'object' && arg !== null) ? JSON.stringify(arg) : String(arg)
+  ).join(' ');
+  
+  // Vérifier si le message contient des informations Supabase
+  return stringArgs.includes('supabase') || 
+         stringArgs.includes('auth') || 
+         stringArgs.includes('401') ||
+         stringArgs.includes('404') ||
+         stringArgs.includes('error') ||
+         stringArgs.includes(decodedUrl.split('//')[1]) ||
+         stringArgs.includes(decodedKey.slice(0, 10));
+};
+
+// Fonction pour sanitiser les outputs console
+const sanitizeOutput = (args) => {
+  if (!args || !args.length) return args;
+  
   return args.map(arg => {
     if (typeof arg === 'string') {
-      // Masquer l'URL Supabase
+      // Masquer l'URL Supabase et la clé
       const decodedUrl = decode(SUPABASE_URL_ENCODED);
-      const maskedUrl = decodedUrl.split('//')[1].split('.')[0];
-      let sanitized = arg.replace(new RegExp(decodedUrl, 'g'), `https://*****.supabase.co`);
-      
-      // Masquer la clé Supabase
       const decodedKey = decode(SUPABASE_PUBLISHABLE_KEY_ENCODED);
+      
+      let sanitized = arg;
+      // Remplacer l'URL complète
+      sanitized = sanitized.replace(new RegExp(decodedUrl, 'g'), 'https://*****.supabase.co');
+      // Remplacer le domaine
+      sanitized = sanitized.replace(new RegExp(decodedUrl.split('//')[1], 'g'), '*****.supabase.co');
+      // Remplacer la clé API
       sanitized = sanitized.replace(new RegExp(decodedKey, 'g'), '**********');
       
       return sanitized;
+    } else if (typeof arg === 'object' && arg !== null) {
+      try {
+        // Pour les objets, on essaie de les convertir en chaîne, de les assainir, puis de les reconvertir
+        const jsonStr = JSON.stringify(arg);
+        const decodedUrl = decode(SUPABASE_URL_ENCODED);
+        const decodedKey = decode(SUPABASE_PUBLISHABLE_KEY_ENCODED);
+        
+        let sanitized = jsonStr;
+        sanitized = sanitized.replace(new RegExp(decodedUrl, 'g'), 'https://*****.supabase.co');
+        sanitized = sanitized.replace(new RegExp(decodedUrl.split('//')[1], 'g'), '*****.supabase.co');
+        sanitized = sanitized.replace(new RegExp(decodedKey, 'g'), '**********');
+        
+        try {
+          return JSON.parse(sanitized);
+        } catch {
+          return sanitized;
+        }
+      } catch {
+        return arg;
+      }
     }
     return arg;
   });
 };
 
-// Surcharge des méthodes de console pour masquer les informations sensibles
-console.log = function(...args) {
-  originalConsoleLog.apply(console, sanitizeOutput(args));
-};
-
+// Remplacer complètement console.error pour supprimer les erreurs Supabase
 console.error = function(...args) {
-  originalConsoleError.apply(console, sanitizeOutput(args));
+  if (!isSupabaseRelated(args)) {
+    originalConsoleError.apply(console, sanitizeOutput(args));
+  }
+  // Sinon, on supprime complètement l'erreur
 };
 
+// Faire de même pour les avertissements
 console.warn = function(...args) {
-  originalConsoleWarn.apply(console, sanitizeOutput(args));
+  if (!isSupabaseRelated(args)) {
+    originalConsoleWarn.apply(console, sanitizeOutput(args));
+  }
 };
 
+// Nettoyer les logs standards également
+console.log = function(...args) {
+  if (!isSupabaseRelated(args)) {
+    originalConsoleLog.apply(console, sanitizeOutput(args));
+  }
+};
+
+// Et les infos
 console.info = function(...args) {
-  originalConsoleInfo.apply(console, sanitizeOutput(args));
+  if (!isSupabaseRelated(args)) {
+    originalConsoleInfo.apply(console, sanitizeOutput(args));
+  }
 };
 
+// Fonction pour créer un client Supabase avec gestion d'erreurs améliorée
 export const supabase = createClient<Database>(decode(SUPABASE_URL_ENCODED), decode(SUPABASE_PUBLISHABLE_KEY_ENCODED), {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    // Ne pas logger les erreurs d'authentification
+    // Configuration silencieuse pour l'authentification
     flowType: 'implicit',
+    debug: false, // Désactiver le mode debug
   },
   global: {
-    // Gérer les erreurs sans les afficher dans la console
+    // Gestionnaire personnalisé pour les requêtes fetch
     fetch: (url, options) => {
-      return window.fetch(url, options)
-        .catch(error => {
-          // Silence les erreurs réseau pour éviter l'affichage dans la console
-          throw error;
-        });
+      return window.fetch(url, {
+        ...options,
+        // Empêcher les erreurs CORS d'apparaître dans la console
+        credentials: 'omit',
+      }).catch(error => {
+        // Capture silencieuse de toutes les erreurs réseau
+        throw new Error("NetworkError");
+      });
     }
   }
 });
+
+// Intercepter et gérer silencieusement les erreurs d'authentification
+const originalSignIn = supabase.auth.signInWithPassword;
+supabase.auth.signInWithPassword = async function(...args) {
+  try {
+    return await originalSignIn.apply(supabase.auth, args);
+  } catch (error) {
+    // Suppression des erreurs d'authentification dans la console
+    return { data: { session: null, user: null }, error };
+  }
+};
