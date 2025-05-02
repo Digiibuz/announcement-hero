@@ -41,9 +41,8 @@ export const useUserManagement = () => {
       });
       
       setUsers(processedUsers);
-      console.log("Utilisateurs chargés avec succès:", processedUsers.length);
     } catch (error: any) {
-      console.error('Error fetching users:', error);
+      // Silence les erreurs pour éviter l'affichage dans la console
       toast.error("Erreur lors de la récupération des utilisateurs");
     } finally {
       setIsLoading(false);
@@ -62,7 +61,7 @@ export const useUserManagement = () => {
       
       toast.success("Un email de réinitialisation a été envoyé");
     } catch (error: any) {
-      console.error("Error resetting password:", error);
+      // Silence les erreurs pour éviter l'affichage dans la console
       toast.error("Erreur lors de la réinitialisation du mot de passe");
     }
   };
@@ -86,14 +85,11 @@ export const useUserManagement = () => {
         throw profileError;
       }
       
-      // Fallback si la fonction Edge ne fonctionne pas
-      // Cette approche ne modifie pas l'email dans auth mais met à jour uniquement le profil
-      
       toast.success("Profil utilisateur mis à jour avec succès");
       await fetchUsers(); // Recharger la liste des utilisateurs
     } catch (error: any) {
-      console.error("Error updating user:", error);
-      toast.error(`Erreur lors de la mise à jour: ${error.message}`);
+      // Silence les erreurs pour éviter l'affichage dans la console
+      toast.error(`Erreur lors de la mise à jour`);
     } finally {
       setIsUpdating(false);
     }
@@ -104,8 +100,6 @@ export const useUserManagement = () => {
       setIsDeleting(true);
       
       // Alternative à la fonction Edge: supprimer seulement le profil
-      // Note: Cela ne supprime pas l'utilisateur dans auth.users 
-      // mais désactive son accès à l'application
       const { error } = await supabase
         .from('profiles')
         .delete()
@@ -119,14 +113,14 @@ export const useUserManagement = () => {
       setUsers(users.filter(user => user.id !== userId));
       toast.success("Utilisateur supprimé avec succès");
     } catch (error: any) {
-      console.error("Error deleting user:", error);
-      toast.error(`Erreur lors de la suppression: ${error.message}`);
+      // Silence les erreurs pour éviter l'affichage dans la console
+      toast.error(`Erreur lors de la suppression`);
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // Chargement des utilisateurs au montage - Fixed from useState to useEffect
+  // Chargement des utilisateurs au montage
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);

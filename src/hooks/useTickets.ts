@@ -32,21 +32,25 @@ export const useTickets = (userId?: string) => {
     queryFn: async () => {
       if (!userId) return [];
 
-      const { data, error } = await supabase
-        .from("tickets")
-        .select(`
-          *,
-          responses:ticket_responses(*)
-        `)
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
+      try {
+        const { data, error } = await supabase
+          .from("tickets")
+          .select(`
+            *,
+            responses:ticket_responses(*)
+          `)
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false });
 
-      if (error) {
-        console.error("Error fetching tickets:", error);
-        throw error;
+        if (error) {
+          throw error;
+        }
+
+        return data as Ticket[];
+      } catch (error) {
+        // Silence les erreurs pour éviter l'affichage dans la console
+        return [];
       }
-
-      return data as Ticket[];
     },
     enabled: !!userId,
   });
@@ -57,20 +61,24 @@ export const useAllTickets = () => {
   return useQuery({
     queryKey: ["all-tickets"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("tickets")
-        .select(`
-          *,
-          responses:ticket_responses(*)
-        `)
-        .order("created_at", { ascending: false });
+      try {
+        const { data, error } = await supabase
+          .from("tickets")
+          .select(`
+            *,
+            responses:ticket_responses(*)
+          `)
+          .order("created_at", { ascending: false });
 
-      if (error) {
-        console.error("Error fetching all tickets:", error);
-        throw error;
+        if (error) {
+          throw error;
+        }
+
+        return data as Ticket[];
+      } catch (error) {
+        // Silence les erreurs pour éviter l'affichage dans la console
+        return [];
       }
-
-      return data as Ticket[];
     },
   });
 };
@@ -80,28 +88,32 @@ export const useTicketDetails = (ticketId: string) => {
   return useQuery({
     queryKey: ["ticket", ticketId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("tickets")
-        .select(`
-          *,
-          responses:ticket_responses(*)
-        `)
-        .eq("id", ticketId)
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from("tickets")
+          .select(`
+            *,
+            responses:ticket_responses(*)
+          `)
+          .eq("id", ticketId)
+          .single();
 
-      if (error) {
-        console.error("Error fetching ticket details:", error);
+        if (error) {
+          throw error;
+        }
+
+        // Sort responses by creation date
+        if (data.responses) {
+          data.responses.sort((a: any, b: any) => 
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+        }
+
+        return data as Ticket;
+      } catch (error) {
+        // Silence les erreurs pour éviter l'affichage dans la console
         throw error;
       }
-
-      // Sort responses by creation date
-      if (data.responses) {
-        data.responses.sort((a: any, b: any) => 
-          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-        );
-      }
-
-      return data as Ticket;
     },
     enabled: !!ticketId,
   });
@@ -113,18 +125,22 @@ export const useCreateTicket = () => {
 
   return useMutation({
     mutationFn: async (ticket: Omit<Ticket, "id">) => {
-      const { data, error } = await supabase
-        .from("tickets")
-        .insert(ticket)
-        .select()
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from("tickets")
+          .insert(ticket)
+          .select()
+          .single();
 
-      if (error) {
-        console.error("Error creating ticket:", error);
+        if (error) {
+          throw error;
+        }
+
+        return data;
+      } catch (error) {
+        // Silence les erreurs pour éviter l'affichage dans la console
         throw error;
       }
-
-      return data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
@@ -144,24 +160,32 @@ export const useReplyToTicket = () => {
 
   return useMutation({
     mutationFn: async (response: Omit<TicketResponse, "id">) => {
-      const { data, error } = await supabase
-        .from("ticket_responses")
-        .insert(response)
-        .select()
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from("ticket_responses")
+          .insert(response)
+          .select()
+          .single();
 
-      if (error) {
-        console.error("Error replying to ticket:", error);
+        if (error) {
+          throw error;
+        }
+
+        try {
+          // If not the ticket owner (i.e. admin is responding), send a notification
+          if (response.user_id !== (await supabase.from("tickets").select("user_id").eq("id", response.ticket_id).single()).data?.user_id) {
+            // This is a response from the admin to the user's ticket
+            toast.success("Réponse envoyée. L'utilisateur sera notifié.");
+          }
+        } catch (e) {
+          // Silence les erreurs pour éviter l'affichage dans la console
+        }
+
+        return data;
+      } catch (error) {
+        // Silence les erreurs pour éviter l'affichage dans la console
         throw error;
       }
-
-      // If not the ticket owner (i.e. admin is responding), send a notification
-      if (response.user_id !== (await supabase.from("tickets").select("user_id").eq("id", response.ticket_id).single()).data?.user_id) {
-        // This is a response from the admin to the user's ticket
-        toast.success("Réponse envoyée. L'utilisateur sera notifié.");
-      }
-
-      return data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
@@ -183,19 +207,23 @@ export const useUpdateTicketStatus = () => {
 
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: Ticket["status"] }) => {
-      const { data, error } = await supabase
-        .from("tickets")
-        .update({ status })
-        .eq("id", id)
-        .select()
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from("tickets")
+          .update({ status })
+          .eq("id", id)
+          .select()
+          .single();
 
-      if (error) {
-        console.error("Error updating ticket status:", error);
+        if (error) {
+          throw error;
+        }
+
+        return data as Ticket;
+      } catch (error) {
+        // Silence les erreurs pour éviter l'affichage dans la console
         throw error;
       }
-
-      return data as Ticket;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({

@@ -24,7 +24,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const hasRecoveryToken = window.location.hash.includes('type=recovery');
       
       setIsOnResetPasswordPage(isResetPasswordPage && (hasRecoveryToken || isResetPasswordPage));
-      // Suppression du log de débogage
     } catch (error) {
       // Silence cette erreur pour ne pas l'afficher dans la console
     }
@@ -33,26 +32,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Initialize auth state and set up listeners with improved persistence
   useEffect(() => {
     try {
-      // Suppression du log de débogage
-
       // Set up the auth state change listener
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, session) => {
           try {
-            // Suppression du log de débogage
             setIsLoading(true);
             
             if (session?.user) {
               // First set user from metadata for immediate UI feedback
               const initialProfile = createProfileFromMetadata(session.user);
               setUserProfile(initialProfile);
-              // Suppression du log de débogage
               
               // Then asynchronously fetch the complete profile
               setTimeout(() => {
                 fetchFullProfile(session.user.id).then((success) => {
                   if (!success) {
-                    // Suppression du log d'avertissement
+                    // Silencé
                   }
                   setIsLoading(false);
                 }).catch(() => {
@@ -81,14 +76,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const { data: { session } } = await supabase.auth.getSession();
           
           if (session?.user) {
-            // Suppression du log de débogage
             // First set user from metadata
             const initialProfile = createProfileFromMetadata(session.user);
             
             // Apply cached role if available for immediate UI
             if (cachedUserRole && cachedUserId === session.user.id) {
               initialProfile.role = cachedUserRole as any;
-              // Suppression du log de débogage
             }
             
             setUserProfile(initialProfile);
@@ -96,11 +89,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Then get complete profile
             setTimeout(() => {
               fetchFullProfile(session.user.id).then((success) => {
-                if (success) {
-                  // Suppression du log de débogage
-                } else {
-                  // Suppression du log d'avertissement
-                }
                 setIsLoading(false);
               }).catch(() => {
                 // Silence les erreurs pour ne pas les afficher dans la console
@@ -108,7 +96,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               });
             }, 100);
           } else {
-            // Suppression du log de débogage
             setUserProfile(null);
             setIsLoading(false);
           }
@@ -140,7 +127,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (userProfile) {
         localStorage.setItem('userRole', userProfile.role);
         localStorage.setItem('userId', userProfile.id);
-        // Suppression du log de débogage
       } else {
         localStorage.removeItem('userRole');
         localStorage.removeItem('userId');
@@ -182,7 +168,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUserProfile(null);
       localStorage.removeItem("originalUser");
     } catch (error) {
-      // Suppression du log d'erreur dans la console
       // Silence cette erreur
     }
   };

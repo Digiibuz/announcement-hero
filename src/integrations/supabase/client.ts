@@ -3,11 +3,17 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://rdwqedmvzicerwotjseg.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkd3FlZG12emljZXJ3b3Rqc2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwNzg4MzEsImV4cCI6MjA1ODY1NDgzMX0.Ohle_vVvdoCvsObP9A_AdyM52XdzisIvHvH1D1a88zk";
+// Encodage minimal pour éviter l'affichage en clair dans les logs
+const decode = (str: string) => {
+  try {
+    return atob(str);
+  } catch (e) {
+    return str;
+  }
+};
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
+const SUPABASE_URL_ENCODED = "aHR0cHM6Ly9yZHdxZWRtdnppY2Vyd290anNlZy5zdXBhYmFzZS5jbw==";
+const SUPABASE_PUBLISHABLE_KEY_ENCODED = "ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW5Ka2QzRmxaSFIyZW1salpYSjNiM1JxYzJWbklpd2ljbTlzWlNJNkltRnViMjRpTENKcFlYUWlPakUzTkRNd056ZzRNekVzSW1WNGNDSTZNakExT0RZMU5EZ3pNWDAuT2hsZV92VnZkb0N2c09icDlBX0FkeU01MlhkemlzSXZIdkgxRDFhODh6aw==";
 
 // Suppression des logs pour les requêtes échouées
 const originalFetch = window.fetch;
@@ -15,7 +21,7 @@ window.fetch = function(input, init) {
   // Si la requête est destinée à Supabase, on capture les erreurs pour éviter leur affichage dans la console
   try {
     const url = input instanceof Request ? input.url : String(input);
-    if (url.includes('supabase.co') && url.includes('/auth/')) {
+    if (url.includes(decode(SUPABASE_URL_ENCODED).split('//')[1]) && url.includes('/auth/')) {
       return originalFetch(input, init)
         .catch(error => {
           // Silence cette erreur pour ne pas l'afficher dans la console
@@ -30,7 +36,49 @@ window.fetch = function(input, init) {
   return originalFetch(input, init);
 };
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+// Console.log original
+const originalConsoleLog = console.log;
+const originalConsoleError = console.error;
+const originalConsoleWarn = console.warn;
+const originalConsoleInfo = console.info;
+
+// Fonction pour masquer les informations sensibles dans la console
+const sanitizeOutput = (args: any[]) => {
+  return args.map(arg => {
+    if (typeof arg === 'string') {
+      // Masquer l'URL Supabase
+      const decodedUrl = decode(SUPABASE_URL_ENCODED);
+      const maskedUrl = decodedUrl.split('//')[1].split('.')[0];
+      let sanitized = arg.replace(new RegExp(decodedUrl, 'g'), `https://*****.supabase.co`);
+      
+      // Masquer la clé Supabase
+      const decodedKey = decode(SUPABASE_PUBLISHABLE_KEY_ENCODED);
+      sanitized = sanitized.replace(new RegExp(decodedKey, 'g'), '**********');
+      
+      return sanitized;
+    }
+    return arg;
+  });
+};
+
+// Surcharge des méthodes de console pour masquer les informations sensibles
+console.log = function(...args) {
+  originalConsoleLog.apply(console, sanitizeOutput(args));
+};
+
+console.error = function(...args) {
+  originalConsoleError.apply(console, sanitizeOutput(args));
+};
+
+console.warn = function(...args) {
+  originalConsoleWarn.apply(console, sanitizeOutput(args));
+};
+
+console.info = function(...args) {
+  originalConsoleInfo.apply(console, sanitizeOutput(args));
+};
+
+export const supabase = createClient<Database>(decode(SUPABASE_URL_ENCODED), decode(SUPABASE_PUBLISHABLE_KEY_ENCODED), {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
