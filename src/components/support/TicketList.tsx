@@ -1,11 +1,10 @@
-
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageSquare, Clock, MailOpen, Mail, RefreshCw } from "lucide-react";
-import { useTickets } from "@/hooks/useTickets";
+import { useUserTickets } from "@/hooks/useTickets";
 import { useTicketNotifications } from "@/hooks/useTicketNotifications";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -14,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const TicketList = () => {
   const { user } = useAuth();
-  const { data: tickets, isLoading, error, refetch } = useTickets();
+  const { data: tickets, isLoading, error, refetch } = useUserTickets();
   const { markTicketAsRead, markTicketTabAsViewed, readTicketIds } = useTicketNotifications();
   const [selectedTicket, setSelectedTicket] = React.useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -190,7 +189,7 @@ const TicketList = () => {
                     onClick={() => handleSelectTicket(ticket.id)}
                   >
                     <MessageSquare className="h-4 w-4 mr-2" />
-                    Voir les détails et répondre
+                    Voir les détails et r��pondre
                   </Button>
                 </CardContent>
               </Card>
