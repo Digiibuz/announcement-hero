@@ -2,7 +2,7 @@
 import React from "react";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, AlertCircle } from "lucide-react";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import WordPressConfigForm from "@/components/wordpress/WordPressConfigForm";
 import WordPressConfigList from "@/components/wordpress/WordPressConfigList";
@@ -19,6 +19,7 @@ import AccessDenied from "@/components/users/AccessDenied";
 import { WordPressConfig } from "@/types/wordpress";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const WordPressManagement = () => {
   const { isAdmin, isClient, userProfile } = useAuth();
@@ -33,30 +34,54 @@ const WordPressManagement = () => {
   } = useWordPressConfigs();
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   // Effet pour s'assurer que les données sont chargées dès le montage du composant
   React.useEffect(() => {
     console.log("WordPressManagement - Fetching configs");
-    fetchConfigs();
+    try {
+      fetchConfigs();
+      setError(null);
+    } catch (err: any) {
+      console.error("Error fetching configs:", err);
+      setError(err.message || "Erreur lors du chargement des configurations WordPress");
+    }
   }, [fetchConfigs]);
 
   const handleCreateConfig = async (data: any) => {
-    await createConfig(data);
-    setIsDialogOpen(false);
-    fetchConfigs(); // Call fetchConfigs after creating a new config
+    try {
+      await createConfig(data);
+      setIsDialogOpen(false);
+      fetchConfigs(); // Call fetchConfigs after creating a new config
+      toast.success("Configuration WordPress créée avec succès");
+    } catch (err: any) {
+      console.error("Error creating config:", err);
+      toast.error(err.message || "Erreur lors de la création de la configuration");
+    }
   };
 
   // Wrapper pour updateConfig pour assurer la compatibilité avec le composant
   const handleUpdateConfig = async (id: string, data: Partial<WordPressConfig>) => {
-    await updateConfig(id, data);
-    // La fonction updateConfig retourne un WordPressConfig, mais nous ignorons la valeur retournée
-    // pour rendre la fonction compatible avec le type attendu
+    try {
+      await updateConfig(id, data);
+      toast.success("Configuration WordPress mise à jour avec succès");
+    } catch (err: any) {
+      console.error("Error updating config:", err);
+      toast.error(err.message || "Erreur lors de la mise à jour de la configuration");
+    }
   };
 
   // Fonction de rafraîchissement pour le bouton
   const handleRefresh = () => {
-    fetchConfigs();
-    toast.success("Configurations WordPress mises à jour");
+    try {
+      fetchConfigs();
+      setError(null);
+      toast.success("Configurations WordPress mises à jour");
+    } catch (err: any) {
+      console.error("Error refreshing configs:", err);
+      setError(err.message || "Erreur lors du rafraîchissement des configurations");
+      toast.error("Erreur lors du rafraîchissement des configurations");
+    }
   };
 
   // Le bouton d'ajout n'est disponible que pour les administrateurs, pas pour les clients
@@ -116,6 +141,14 @@ const WordPressManagement = () => {
       ) : (
         <AnimatedContainer delay={200}>
           <div className="w-full">
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Erreur</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            
             {isClient && configs.length === 0 ? (
               <NoSiteMessage />
             ) : (

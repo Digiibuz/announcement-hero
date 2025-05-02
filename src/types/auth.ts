@@ -14,7 +14,7 @@ export type Role = 'admin' | 'editor' | 'client';
 export interface User {
   id: string;
   email: string;
-  name?: string; // Ajouté pour compatibilité
+  name?: string;
   user_metadata: {
     name: string;
     role?: Role;
@@ -53,5 +53,12 @@ export interface GoogleBusinessProfile {
   token_expires_at: Date;
   gmb_account_id?: string;
   gmb_location_id?: string;
-  google_email?: string; // Ensure this property exists to match how it's used
+  google_email?: string;
+}
+
+// Interface pour ajouter aux props du contexte d'authentification
+export interface AuthContextProps {
+  isAdmin: boolean;
+  isClient: boolean;
+  isEditor: boolean;
 }

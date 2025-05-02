@@ -32,11 +32,11 @@ export const useWordPressPages = () => {
   const [pages, setPages] = useState<WordPressPage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { userProfile } = useAuth();
 
   const fetchPages = async () => {
-    if (!user?.wordpressConfigId) {
-      console.error("No WordPress configuration ID found for user", user);
+    if (!userProfile?.wordpressConfigId) {
+      console.error("No WordPress configuration ID found for user", userProfile);
       setError("No WordPress configuration found for this user");
       return;
     }
@@ -44,13 +44,13 @@ export const useWordPressPages = () => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log("Fetching pages for WordPress config ID:", user.wordpressConfigId);
+      console.log("Fetching pages for WordPress config ID:", userProfile.wordpressConfigId);
 
       // First get the WordPress config for the user
       const { data: wpConfig, error: wpConfigError } = await supabase
         .from('wordpress_configs')
         .select('site_url, rest_api_key, app_username, app_password')
-        .eq('id', user.wordpressConfigId)
+        .eq('id', userProfile.wordpressConfigId)
         .single();
 
       if (wpConfigError) {
@@ -95,9 +95,9 @@ export const useWordPressPages = () => {
       
       console.log("Fetching pages from:", apiUrl);
       
-      // Ajouter un délai d'expiration à la requête
+      // Ajouter un délai d'expiration à la requête - AUGMENTER À 30 SECONDES
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes de timeout
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout instead of 10
       
       try {
         const response = await fetch(apiUrl, {
@@ -150,11 +150,11 @@ export const useWordPressPages = () => {
   };
 
   useEffect(() => {
-    console.log("useWordPressPages effect running, user:", user?.id, "wordpressConfigId:", user?.wordpressConfigId);
-    if (user?.wordpressConfigId) {
+    console.log("useWordPressPages effect running, user ID:", userProfile?.id, "wordpressConfigId:", userProfile?.wordpressConfigId);
+    if (userProfile?.wordpressConfigId) {
       fetchPages();
     }
-  }, [user?.wordpressConfigId]);
+  }, [userProfile?.wordpressConfigId]);
 
   return { 
     pages, 
