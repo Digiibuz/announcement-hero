@@ -25,7 +25,7 @@ const _0x21f7=function(_0x3b8e12){
     const _0x5e9c=Number(document.documentElement.className.length) || 1;
     const _0x4ea7=Number((navigator.userAgent.split('').reduce((a,b) => a + b.charCodeAt(0), 0) % 16)) || 1;
     // Fixing the arithmetic operation by ensuring we're working with numbers
-    const _0x1a3f=String.fromCharCode(97 + Number(_0x5e9c) * Number(_0x4ea7) % 26);
+    const _0x1a3f=String.fromCharCode(97 + (Number(_0x5e9c) * Number(_0x4ea7)) % 26);
     // Fix: Ensure all operands in arithmetic operations are properly converted to number type
     return _0xf4a8(_0x3b8e12, _0x1a3f + (Number(Date.now()) % Number(10000)).toString().substring(0,2));
   } catch(_0x43e1) {
