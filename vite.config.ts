@@ -6,7 +6,7 @@ import { componentTagger } from "lovable-tagger";
 import fs from 'fs';
 
 // Fonction simple pour crypter une chaîne (uniquement pour le build)
-function encryptForBuild(str) {
+function encryptForBuild(str: string): string {
   if (!str) return str;
   // Version simplifiée de crypto.ts pour le build
   const CRYPTO_KEY = "D1G11BUZ_S3CUR1TY_K3Y";
