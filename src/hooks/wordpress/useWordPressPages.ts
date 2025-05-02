@@ -1,40 +1,15 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-export interface WordPressPage {
-  id: number;
-  date: string;
-  modified: string;
-  slug: string;
-  status: string;
-  type: string;
-  link: string;
-  title: {
-    rendered: string;
-  };
-  content: {
-    rendered: string;
-    protected: boolean;
-  };
-  author: number;
-  featured_media: number;
-  parent: number;
-  menu_order: number;
-  comment_status: string;
-  ping_status: string;
-  template: string;
-}
-
 export const useWordPressPages = () => {
-  const [pages, setPages] = useState<WordPressPage[]>([]);
+  const [pages, setPages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { userProfile } = useAuth();
 
-  const fetchPages = async () => {
+  const fetchPages = useCallback(async () => {
     if (!userProfile?.wordpressConfigId) {
       console.error("No WordPress configuration ID found for user", userProfile);
       setError("No WordPress configuration found for this user");
@@ -70,10 +45,10 @@ export const useWordPressPages = () => {
         hasAppPassword: !!wpConfig.app_password
       });
 
-      // Normaliser l'URL (supprimer les doubles slashes)
+      // Normalize the URL (remove double slashes)
       const siteUrl = wpConfig.site_url.replace(/([^:]\/)\/+/g, "$1");
-
-      // Construct the WordPress API URL
+      
+      // Prepare API URL for pages
       const apiUrl = `${siteUrl}/wp-json/wp/v2/pages`;
       
       // Prepare headers
@@ -93,13 +68,13 @@ export const useWordPressPages = () => {
         console.log("No authentication credentials provided");
       }
       
-      console.log("Fetching pages from:", apiUrl);
-      
-      // Ajouter un délai d'expiration à la requête - AUGMENTER À 30 SECONDES
+      // Add timeout to the request
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout instead of 10
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
       try {
+        console.log("Fetching WordPress pages from:", apiUrl);
+        
         const response = await fetch(apiUrl, {
           method: 'GET',
           headers: headers,
@@ -120,7 +95,7 @@ export const useWordPressPages = () => {
         }
   
         const pagesData = await response.json();
-        console.log("Pages fetched successfully:", pagesData.length);
+        console.log("WordPress pages fetched successfully:", pagesData.length);
         setPages(pagesData);
       } catch (fetchError: any) {
         if (fetchError.name === 'AbortError') {
@@ -133,7 +108,7 @@ export const useWordPressPages = () => {
       
       let errorMessage = err.message || "Failed to fetch WordPress pages";
       
-      // Améliorer les messages d'erreur
+      // Improve error messages
       if (err.message.includes("Failed to fetch")) {
         errorMessage = "Erreur réseau: impossible d'accéder au site WordPress";
       } else if (err.message.includes("NetworkError")) {
@@ -143,18 +118,18 @@ export const useWordPressPages = () => {
       }
       
       setError(errorMessage);
-      toast.error("Erreur lors de la récupération des pages WordPress");
+      toast.error("Erreur lors de la récupération des pages");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userProfile?.wordpressConfigId]);
 
   useEffect(() => {
-    console.log("useWordPressPages effect running, user ID:", userProfile?.id, "wordpressConfigId:", userProfile?.wordpressConfigId);
+    console.log("useWordPressPages effect running, user:", userProfile?.id, "wordpressConfigId:", userProfile?.wordpressConfigId);
     if (userProfile?.wordpressConfigId) {
       fetchPages();
     }
-  }, [userProfile?.wordpressConfigId]);
+  }, [userProfile?.wordpressConfigId, fetchPages]);
 
   return { 
     pages, 

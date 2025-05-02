@@ -1,42 +1,36 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { WordPressConfig } from "@/types/wordpress";
+import { toast } from "sonner";
 
 /**
- * Hook for CRUD operations on WordPress configurations
+ * Hook for WordPress configuration CRUD operations
  */
-export const useWordPressConfigCrud = (onConfigsChange?: () => void) => {
+export const useWordPressConfigCrud = (onSuccess?: () => void) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const createConfig = async (config: Omit<WordPressConfig, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       setIsSubmitting(true);
-      
-      // Assurons-nous que les anciens champs sont définis comme null
-      const configData = {
-        ...config,
-        rest_api_key: null,
-        username: null,
-        password: null
-      };
-      
       const { data, error } = await supabase
         .from('wordpress_configs')
-        .insert([configData])
+        .insert([config])
         .select()
         .single();
-      
+
       if (error) {
         throw error;
       }
-      
-      toast.success("Configuration WordPress créée avec succès");
-      if (onConfigsChange) onConfigsChange();
-      return data as WordPressConfig;
-    } catch (error) {
+
+      if (onSuccess) {
+        onSuccess();
+      }
+
+      return data;
+    } catch (error: any) {
       console.error('Error creating WordPress config:', error);
-      toast.error("Erreur lors de la création de la configuration WordPress");
+      toast.error(`Erreur lors de la création: ${error.message}`);
       throw error;
     } finally {
       setIsSubmitting(false);
@@ -52,17 +46,19 @@ export const useWordPressConfigCrud = (onConfigsChange?: () => void) => {
         .eq('id', id)
         .select()
         .single();
-      
+
       if (error) {
         throw error;
       }
-      
-      toast.success("Configuration WordPress mise à jour avec succès");
-      if (onConfigsChange) onConfigsChange();
-      return data as WordPressConfig;
-    } catch (error) {
+
+      if (onSuccess) {
+        onSuccess();
+      }
+
+      return data;
+    } catch (error: any) {
       console.error('Error updating WordPress config:', error);
-      toast.error("Erreur lors de la mise à jour de la configuration WordPress");
+      toast.error(`Erreur lors de la mise à jour: ${error.message}`);
       throw error;
     } finally {
       setIsSubmitting(false);
@@ -72,20 +68,46 @@ export const useWordPressConfigCrud = (onConfigsChange?: () => void) => {
   const deleteConfig = async (id: string) => {
     try {
       setIsSubmitting(true);
+      // First check if there are any client associations
+      const { data: associations, error: assocError } = await supabase
+        .from('client_wordpress_configs')
+        .select('id')
+        .eq('wordpress_config_id', id);
+
+      if (assocError) {
+        throw assocError;
+      }
+
+      // If there are associations, delete them first
+      if (associations && associations.length > 0) {
+        const { error: deleteAssocError } = await supabase
+          .from('client_wordpress_configs')
+          .delete()
+          .eq('wordpress_config_id', id);
+
+        if (deleteAssocError) {
+          throw deleteAssocError;
+        }
+      }
+
+      // Then delete the config itself
       const { error } = await supabase
         .from('wordpress_configs')
         .delete()
         .eq('id', id);
-      
+
       if (error) {
         throw error;
       }
+
+      if (onSuccess) {
+        onSuccess();
+      }
       
       toast.success("Configuration WordPress supprimée avec succès");
-      if (onConfigsChange) onConfigsChange();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting WordPress config:', error);
-      toast.error("Erreur lors de la suppression de la configuration WordPress");
+      toast.error(`Erreur lors de la suppression: ${error.message}`);
       throw error;
     } finally {
       setIsSubmitting(false);
