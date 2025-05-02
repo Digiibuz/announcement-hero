@@ -92,7 +92,7 @@ export const useAuthMethods = (
     }
   };
 
-  const retryConnection = async () => {
+  const retryConnection = async (): Promise<boolean> => {
     try {
       await initializeAuth();
       return true;

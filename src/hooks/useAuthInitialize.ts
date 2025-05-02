@@ -55,7 +55,7 @@ export const useAuthInitialize = (
       
       // Reset reconnect attempts on successful connection
       if (reconnectAttempts > 0) {
-        setReconnectAttempts(0);
+        setReconnectAttempts(prev => prev + 1);
         setNetworkError(false);
       }
       

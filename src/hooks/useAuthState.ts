@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { UserProfile } from "@/types/auth";
-import { createProfileFromMetadata } from "@/hooks/useUserProfile";
 
 // Timeout for the requests to Supabase (in ms)
 const REQUEST_TIMEOUT = 15000;

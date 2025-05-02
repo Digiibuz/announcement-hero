@@ -8,6 +8,7 @@ import { UserProfile, AuthContextType } from "@/types/auth";
 import { useAuthState } from "@/hooks/useAuthState";
 import { useAuthMethods } from "@/hooks/useAuthMethods";
 import { useAuthInitialize } from "@/hooks/useAuthInitialize";
+import { createProfileFromMetadata } from "@/hooks/useUserProfile";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
