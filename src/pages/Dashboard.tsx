@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
@@ -24,7 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Announcement } from "@/types/announcement";
 import { Button } from "@/components/ui/button";
 import FloatingActionButton from "@/components/ui/FloatingActionButton";
-import { useTickets, useAllTickets } from "@/hooks/useTickets";
+import { useTickets, useAllTickets } from "@/hooks/tickets";
 
 const stripHtmlTags = (html: string): string => {
   if (!html) return '';
