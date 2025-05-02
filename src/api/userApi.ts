@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { UserProfile } from "@/types/auth";
+import { UserProfile, Role } from "@/types/auth";
 import { toast } from "sonner";
 
 /**
@@ -22,7 +22,7 @@ export const fetchAllUsers = async (): Promise<UserProfile[]> => {
         id: profile.id,
         email: profile.email,
         name: profile.name,
-        role: profile.role,
+        role: profile.role as Role, // Cast to Role type
         clientId: profile.client_id,
         wordpressConfigId: profile.wordpress_config_id || null,
         wordpressConfig: profile.wordpress_configs ? {

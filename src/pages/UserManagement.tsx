@@ -47,6 +47,15 @@ const UserManagement = () => {
     }
   };
 
+  // Type adapters to handle the boolean return values
+  const handleUpdateUser = async (userId: string, userData: Partial<UserProfile>): Promise<void> => {
+    await updateUser(userId, userData);
+  };
+
+  const handleDeleteUser = async (userId: string): Promise<void> => {
+    await deleteUser(userId);
+  };
+
   const titleAction = isAdmin ? (
     <UserCreateForm onUserCreated={handleUserCreated} />
   ) : null;
@@ -68,8 +77,8 @@ const UserManagement = () => {
             isDeleting={isDeleting}
             isUpdating={isUpdating}
             onResetPassword={handleResetPassword}
-            onUpdateUser={updateUser}
-            onDeleteUser={deleteUser}
+            onUpdateUser={handleUpdateUser}
+            onDeleteUser={handleDeleteUser}
             onImpersonateUser={handleImpersonateUser}
           />
         </AnimatedContainer>
