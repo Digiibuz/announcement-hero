@@ -75,78 +75,34 @@ export const SENSITIVE_PATTERNS = [
       
       // Vérifier si l'URL contient des patterns sensibles
       if (SENSITIVE_PATTERNS.some(pattern => pattern.test(url))) {
-        // Créer une copie de l'entrée avec une URL factice visible
-        if (input instanceof Request) {
-          const fakeRequest = new Request('https://api-secure.example.com/auth', {
-            method: input.method,
-            headers: input.headers,
-            body: input.body,
-            mode: input.mode,
-            credentials: input.credentials,
-            cache: input.cache,
-            redirect: input.redirect,
-            referrer: input.referrer,
-            integrity: input.integrity
-          });
-          
-          // Supprimer les gestionnaires d'erreur qui pourraient exposer l'URL
-          const errorHandler = function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            return true;
-          };
-          
-          window.addEventListener('error', errorHandler, true);
-          window.addEventListener('unhandledrejection', errorHandler, true);
-          
-          // Temporairement désactiver les logs pendant la requête
-          console.error = function() {};
-          console.warn = function() {};
-          console.log = function() {};
-          
-          // Exécuter la requête réelle mais masquer toutes les erreurs
-          const promise = originalFetch(input, init);
-          
-          // Restaurer les fonctions après un court délai
-          setTimeout(function() {
-            console.error = originalConsoleError;
-            console.warn = originalConsoleWarn;
-            console.log = originalConsoleLog;
-            window.removeEventListener('error', errorHandler, true);
-            window.removeEventListener('unhandledrejection', errorHandler, true);
-          }, 1000);
-          
-          return promise;
-        } else {
-          // Suppression complète des logs pour cette requête
-          const errorHandler = function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            return true;
-          };
-          
-          window.addEventListener('error', errorHandler, true);
-          window.addEventListener('unhandledrejection', errorHandler, true);
-          
-          // Temporairement désactiver les logs pendant la requête
-          console.error = function() {};
-          console.warn = function() {};
-          console.log = function() {};
-          
-          // Exécuter la requête réelle mais masquer toutes les erreurs
-          const promise = originalFetch(input, init);
-          
-          // Restaurer les fonctions après un court délai
-          setTimeout(function() {
-            console.error = originalConsoleError;
-            console.warn = originalConsoleWarn;
-            console.log = originalConsoleLog;
-            window.removeEventListener('error', errorHandler, true);
-            window.removeEventListener('unhandledrejection', errorHandler, true);
-          }, 1000);
-          
-          return promise;
-        }
+        // Désactiver tous les logs pendant cette requête
+        console.error = function() {};
+        console.warn = function() {};
+        console.log = function() {};
+        
+        // Bloquer tous les événements d'erreur
+        const errorHandler = function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          return true;
+        };
+        
+        window.addEventListener('error', errorHandler, true);
+        window.addEventListener('unhandledrejection', errorHandler, true);
+        
+        // Exécuter la requête
+        const promise = originalFetch(input, init);
+        
+        // Restaurer les fonctions après un délai
+        setTimeout(function() {
+          console.error = originalConsoleError;
+          console.warn = originalConsoleWarn;
+          console.log = originalConsoleLog;
+          window.removeEventListener('error', errorHandler, true);
+          window.removeEventListener('unhandledrejection', errorHandler, true);
+        }, 1000);
+        
+        return promise;
       }
       
       // Pour les autres URL, comportement normal

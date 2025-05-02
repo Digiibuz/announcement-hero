@@ -31,54 +31,83 @@
         
         // Remplacer fetch pour masquer complètement les URLs sensibles
         window.fetch = function(input, init) {
-          // Vérifier si l'URL est sensible
-          const url = input instanceof Request ? input.url : String(input);
-          const isSensitive = SENSITIVE_PATTERNS.some(pattern => pattern.test(url));
-          
-          if (isSensitive) {
-            // Suppression complète des logs pour cette requête
-            console.error = function() {};
-            console.warn = function() {};
-            console.log = function() {};
+          try {
+            // Vérifier si l'URL est sensible
+            const url = input instanceof Request ? input.url : String(input);
+            const isSensitive = SENSITIVE_PATTERNS.some(pattern => pattern.test(url));
             
-            // Exécuter la requête sans logguer
-            const promise = originalFetch(input, init);
+            if (isSensitive) {
+              // Suppression complète des logs pour cette requête
+              console.error = function() {};
+              console.warn = function() {};
+              console.log = function() {};
+              
+              // Ajouter des écouteurs d'erreurs globaux temporaires
+              const errorHandler = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                return true;
+              };
+              
+              window.addEventListener('error', errorHandler, true);
+              window.addEventListener('unhandledrejection', errorHandler, true);
+              
+              // Exécuter la requête sans logguer
+              const promise = originalFetch(input, init);
+              
+              // Restaurer les fonctions après un délai
+              setTimeout(function() {
+                console.error = originalConsoleError;
+                console.warn = originalConsoleWarn;
+                console.log = originalConsoleLog;
+                window.removeEventListener('error', errorHandler, true);
+                window.removeEventListener('unhandledrejection', errorHandler, true);
+              }, 1000);
+              
+              return promise;
+            }
             
-            // Restaurer les fonctions après un délai
-            setTimeout(function() {
-              console.error = originalConsoleError;
-              console.warn = originalConsoleWarn;
-              console.log = originalConsoleLog;
-            }, 500);
-            
-            return promise;
+            return originalFetch(input, init);
+          } catch (e) {
+            return originalFetch(input, init);
           }
-          
-          return originalFetch(input, init);
         };
         
         // Remplacer XMLHttpRequest.open pour masquer les URLs sensibles
         XMLHttpRequest.prototype.open = function(method, url, ...args) {
-          // Vérifier si l'URL est sensible
-          const urlStr = String(url);
-          const isSensitive = SENSITIVE_PATTERNS.some(pattern => pattern.test(urlStr));
-          
-          if (isSensitive) {
-            // Désactiver tous les logs pendant cette requête
-            console.error = function() {};
-            console.warn = function() {};
-            console.log = function() {};
+          try {
+            // Vérifier si l'URL est sensible
+            const urlStr = String(url);
+            const isSensitive = SENSITIVE_PATTERNS.some(pattern => pattern.test(urlStr));
             
-            // Réactiver les logs après un délai
-            setTimeout(function() {
-              console.error = originalConsoleError;
-              console.warn = originalConsoleWarn;
-              console.log = originalConsoleLog;
-            }, 500);
+            if (isSensitive) {
+              // Désactiver tous les logs pendant cette requête
+              console.error = function() {};
+              console.warn = function() {};
+              console.log = function() {};
+              
+              // Ajouter des écouteurs d'erreur pour cette requête
+              this.addEventListener('error', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                return true;
+              });
+              
+              this.addEventListener('load', function() {
+                // Réactiver les logs après un délai
+                setTimeout(function() {
+                  console.error = originalConsoleError;
+                  console.warn = originalConsoleWarn;
+                  console.log = originalConsoleLog;
+                }, 1000);
+              });
+            }
+            
+            // Appliquer avec l'URL originale
+            return originalXMLHttpRequestOpen.apply(this, [method, url, ...args]);
+          } catch (e) {
+            return originalXMLHttpRequestOpen.apply(this, [method, url, ...args]);
           }
-          
-          // Appliquer avec l'URL originale
-          return originalXMLHttpRequestOpen.apply(this, [method, url, ...args]);
         };
         
         // Remplacer console.error pour masquer les erreurs sensibles
@@ -126,6 +155,16 @@
           // Vérifier si l'erreur contient des informations sensibles
           const errorText = event.message || event.error?.stack || '';
           if (SENSITIVE_PATTERNS.some(pattern => pattern.test(errorText))) {
+            event.preventDefault();
+            event.stopPropagation();
+            return true;
+          }
+        }, true);
+        
+        // Intercepter les rejets de promesse non gérés
+        window.addEventListener('unhandledrejection', function(event) {
+          const reasonText = String(event.reason || '');
+          if (SENSITIVE_PATTERNS.some(pattern => pattern.test(reasonText))) {
             event.preventDefault();
             event.stopPropagation();
             return true;

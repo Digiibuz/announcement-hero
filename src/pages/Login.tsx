@@ -10,13 +10,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
-import { handleAuthError } from "@/utils/security";
-import { SENSITIVE_PATTERNS } from "@/integrations/supabase/client";
 import { usePersistedState } from "@/hooks/usePersistedState";
 
 // Protection immédiate des logs - exécuté avant tout autre code
 (function() {
-  // Bloquer complètement TOUS les logs pendant l'authentification
+  // Stocker les fonctions originales
   const originalConsoleLog = console.log;
   const originalConsoleError = console.error;
   const originalConsoleWarn = console.warn;
@@ -38,38 +36,20 @@ import { usePersistedState } from "@/hooks/usePersistedState";
     // Ne rien logger du tout
     return;
   };
-  
-  // Remplacer fetch pour bloquer complètement les erreurs
-  const originalFetch = window.fetch;
-  window.fetch = function(input, init) {
-    // Masquer toutes les erreurs pour toutes les requêtes
-    try {
-      const promise = originalFetch(input, init);
-      
-      // Intercepter les rejets de promesse
-      promise.catch(() => {});
-      
-      return promise;
-    } catch (e) {
-      // Retourner une promesse qui ne se rejette jamais
-      return new Promise(() => {});
-    }
-  };
-  
-  // Intercepter tous les événements d'erreur
-  window.addEventListener('error', function(event) {
-    event.preventDefault();
-    event.stopPropagation();
-    return true;
-  }, true);
-  
-  // Intercepter tous les rejets de promesse non gérés
-  window.addEventListener('unhandledrejection', function(event) {
-    event.preventDefault();
-    event.stopPropagation();
-    return true;
-  }, true);
 })();
+
+// Bloquer tous les événements d'erreur au niveau de la page
+window.addEventListener('error', function(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  return true;
+}, true);
+
+window.addEventListener('unhandledrejection', function(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  return true;
+}, true);
 
 const Login = () => {
   const [email, setEmail] = usePersistedState("login_email", "");
@@ -92,8 +72,21 @@ const Login = () => {
     const errorHandler = (event) => {
       event.preventDefault();
       event.stopPropagation();
+      localStorage.setItem("login_error_silenced", JSON.stringify({
+        timestamp: new Date().toISOString(),
+        message: "Erreur silencée"
+      }));
       return true;
     };
+    
+    // Remplacer toutes les fonctions console
+    const originalConsoleLog = console.log;
+    const originalConsoleError = console.error;
+    const originalConsoleWarn = console.warn;
+    
+    console.log = function() {};
+    console.error = function() {};
+    console.warn = function() {};
     
     window.addEventListener('error', errorHandler, true);
     window.addEventListener('unhandledrejection', errorHandler, true);
@@ -102,12 +95,34 @@ const Login = () => {
     return () => {
       window.removeEventListener('error', errorHandler, true);
       window.removeEventListener('unhandledrejection', errorHandler, true);
+      console.log = originalConsoleLog;
+      console.error = originalConsoleError;
+      console.warn = originalConsoleWarn;
     };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    
+    // Désactiver tous les logs console pendant la tentative de connexion
+    const originalConsoleLog = console.log;
+    const originalConsoleError = console.error;
+    const originalConsoleWarn = console.warn;
+    
+    console.log = function() {};
+    console.error = function() {};
+    console.warn = function() {};
+    
+    // Intercepter toutes les erreurs pendant la connexion
+    const errorHandler = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      return true;
+    };
+    
+    window.addEventListener('error', errorHandler, true);
+    window.addEventListener('unhandledrejection', errorHandler, true);
     
     try {
       await login(email, password);
@@ -124,6 +139,15 @@ const Login = () => {
       toast.error("Identifiants invalides. Veuillez vérifier votre email et mot de passe.");
     } finally {
       setIsLoading(false);
+      
+      // Restaurer les fonctions console après un délai
+      setTimeout(() => {
+        console.log = originalConsoleLog;
+        console.error = originalConsoleError;
+        console.warn = originalConsoleWarn;
+        window.removeEventListener('error', errorHandler, true);
+        window.removeEventListener('unhandledrejection', errorHandler, true);
+      }, 1000);
     }
   };
 

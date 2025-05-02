@@ -6,7 +6,17 @@
 
 // Bloquer complètement toutes les erreurs console
 (function() {
-  // Ne pas utiliser try/catch pour éviter toute erreur
+  // Liste des patterns sensibles à bloquer complètement
+  const SENSITIVE_PATTERNS = [
+    /supabase\.co/i,
+    /auth\/v1\/token/i,
+    /token\?grant_type=password/i,
+    /400.*bad request/i,
+    /401/i,
+    /grant_type=password/i,
+    /rdwqedmvzicerwotjseg/i,
+    /index-[a-zA-Z0-9-_]+\.js/i
+  ];
   
   // Stocker les fonctions originales
   const originalConsoleLog = console.log;
@@ -15,7 +25,7 @@
   const originalConsoleInfo = console.info;
   const originalConsoleDebug = console.debug;
   
-  // Remplacer par des fonctions vides
+  // Remplacer complètement par des fonctions vides
   console.log = function() {};
   console.error = function() {};
   console.warn = function() {};
@@ -57,6 +67,41 @@
   // Intercepter le fetch API pour éviter les erreurs réseau
   const originalFetch = window.fetch;
   window.fetch = function(input, init) {
+    // Vérifier si l'URL est sensible
+    const url = input instanceof Request ? input.url : String(input);
+    const isSensitive = SENSITIVE_PATTERNS.some(pattern => pattern.test(url));
+    
+    if (isSensitive) {
+      // Établir temporairement un gestionnaire d'erreur global
+      const errorHandler = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        return true;
+      };
+      window.addEventListener('error', errorHandler, true);
+      window.addEventListener('unhandledrejection', errorHandler, true);
+      
+      // Exécuter la requête silencieusement
+      const promise = originalFetch(input, init);
+      
+      // Intercepter toutes les erreurs
+      promise.catch(error => {
+        localStorage.setItem('lastFetchError', JSON.stringify({
+          timestamp: new Date().toISOString(),
+          message: "Erreur fetch silencée"
+        }));
+      });
+      
+      // Supprimer les gestionnaires après un délai
+      setTimeout(function() {
+        window.removeEventListener('error', errorHandler, true);
+        window.removeEventListener('unhandledrejection', errorHandler, true);
+      }, 1000);
+      
+      return promise;
+    }
+    
+    // Pour les requêtes non sensibles, continuer normalement
     const promise = originalFetch(input, init);
     
     // Intercepter toutes les erreurs
@@ -73,14 +118,47 @@
   // Intercepter XMLHttpRequest pour éviter les erreurs réseau
   const originalXHROpen = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function() {
-    this.addEventListener('error', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      localStorage.setItem('lastXHRError', JSON.stringify({
-        timestamp: new Date().toISOString(),
-        message: "Erreur XHR silencée"
-      }));
-    });
+    // Vérifier si l'URL est sensible
+    const url = arguments[1];
+    const urlStr = String(url);
+    const isSensitive = SENSITIVE_PATTERNS.some(pattern => pattern.test(urlStr));
+    
+    if (isSensitive) {
+      // Stocker la méthode pour référence
+      this._method = arguments[0];
+      
+      // Bloquer toutes les erreurs pendant cette requête
+      this.addEventListener('error', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        localStorage.setItem('lastXHRError', JSON.stringify({
+          timestamp: new Date().toISOString(),
+          message: "Erreur XHR silencée"
+        }));
+        return true;
+      }, true);
+      
+      // Bloquer les journaux pour les réponses d'erreur
+      this.addEventListener('load', function() {
+        if (this.status === 400 || this.status === 401) {
+          localStorage.setItem('lastXHRErrorResponse', JSON.stringify({
+            timestamp: new Date().toISOString(),
+            status: this.status,
+            message: "Réponse d'erreur XHR silencée"
+          }));
+        }
+      }, true);
+    } else {
+      this.addEventListener('error', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        localStorage.setItem('lastXHRError', JSON.stringify({
+          timestamp: new Date().toISOString(),
+          message: "Erreur XHR silencée"
+        }));
+        return true;
+      });
+    }
     
     return originalXHROpen.apply(this, arguments);
   };
