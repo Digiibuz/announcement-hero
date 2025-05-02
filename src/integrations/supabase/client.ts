@@ -13,7 +13,7 @@ const _0xf4a8=function(){
     const _0x13e9ec=_0x5f4e9d;
     _0x5f4e9d=0;
     return window.atob(_0x2c6f8c.replace(/./g,function(_0x521e82,_0x3d7e9f){
-      return String.fromCharCode((_0x521e82.charCodeAt(0)^_0x418e11.charCodeAt(_0x3d7e9f%_0x418e11.length))&0xFF);
+      return String.fromCharCode((Number(_0x521e82.charCodeAt(0))^Number(_0x418e11.charCodeAt(_0x3d7e9f%_0x418e11.length)))&0xFF);
     }));
   };
 }();
