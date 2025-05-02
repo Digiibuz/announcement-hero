@@ -34,6 +34,11 @@ const WordPressManagement = () => {
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
+  // Effet pour s'assurer que les données sont chargées dès le montage du composant
+  React.useEffect(() => {
+    fetchConfigs();
+  }, [fetchConfigs]);
+
   const handleCreateConfig = async (data: any) => {
     await createConfig(data);
     setIsDialogOpen(false);
@@ -90,6 +95,14 @@ const WordPressManagement = () => {
       </CardContent>
     </Card>
   );
+
+  // Debug info
+  React.useEffect(() => {
+    console.log("WordPressManagement - Current user:", user);
+    console.log("WordPressManagement - isClient:", isClient);
+    console.log("WordPressManagement - isAdmin:", isAdmin);
+    console.log("WordPressManagement - configs:", configs);
+  }, [user, isClient, isAdmin, configs]);
 
   return (
     <PageLayout 

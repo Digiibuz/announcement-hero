@@ -21,11 +21,13 @@ export const useWordPressConfigsList = () => {
       // Pour les clients, on ne récupère que leur configuration WordPress attribuée
       if (isClient) {
         // Si le client a un wordpressConfigId, on récupère cette configuration
-        if (user?.wordpressConfigId) {
+        const wordpressConfigId = user?.user_metadata?.wordpressConfigId;
+        
+        if (wordpressConfigId) {
           const { data, error } = await supabase
             .from('wordpress_configs')
             .select('*')
-            .eq('id', user.wordpressConfigId)
+            .eq('id', wordpressConfigId)
             .single();
           
           if (error) {
@@ -85,7 +87,7 @@ export const useWordPressConfigsList = () => {
   useEffect(() => {
     fetchConfigs();
     fetchClientConfigs();
-  }, [isClient, user?.wordpressConfigId]);
+  }, [isClient, user?.user_metadata?.wordpressConfigId]);
 
   const getConfigsForClient = (clientId: string) => {
     const clientConfigIds = clientConfigs

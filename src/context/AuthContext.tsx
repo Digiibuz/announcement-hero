@@ -1,26 +1,351 @@
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { supabase } from '../integrations/supabase/client';
+import { toast } from 'sonner';
+import { User as SupabaseUser } from '@supabase/supabase-js';
+import { User } from '@/types/auth';
 
-import { createContext, useState, useEffect, useContext } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { User } from '@supabase/supabase-js';
-import { UserProfile } from '@/types/auth';
-import { createProfileFromMetadata } from '@/hooks/useUserProfile';
-
-interface AuthContextType {
-  user: UserProfile | null;
-  isLoading: boolean;
+interface AuthContextProps {
+  user: User | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
   isAdmin: boolean;
+  isEditor: boolean;
   isClient: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  isOnResetPasswordPage: boolean;
-  impersonateUser: (userToImpersonate: UserProfile) => void;
-  stopImpersonating: () => void;
-  originalUser: UserProfile | null;
+  resetPassword: (email: string) => Promise<void>;
+  updateProfile: (data: any) => Promise<void>;
+  sendPasswordResetEmail: (email: string) => Promise<void>;
   isImpersonating: boolean;
+  impersonateUser: (user: User) => Promise<void>;
+  stopImpersonation: () => Promise<void>;
+  isOnResetPasswordPage: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextProps | undefined>(undefined);
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const getSession = async () => {
+      setIsLoading(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session) {
+          const supabaseUser = session.user;
+          await fetchAndSetUser(supabaseUser);
+        }
+      } catch (error) {
+        console.error("Error getting session:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    getSession();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'INITIAL_SESSION') {
+        const supabaseUser = session?.user;
+        if (supabaseUser) {
+          await fetchAndSetUser(supabaseUser);
+        }
+      } else if (event === 'SIGNED_IN') {
+        const supabaseUser = session?.user;
+        if (supabaseUser) {
+          await fetchAndSetUser(supabaseUser);
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+      }
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, []);
+
+  const fetchAndSetUser = async (supabaseUser: SupabaseUser) => {
+    if (!supabaseUser) {
+      setUser(null);
+      return;
+    }
+
+    try {
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', supabaseUser.id)
+        .single();
+
+      if (profileError) {
+        throw profileError;
+      }
+
+      const userWithMetadata: User = {
+        id: supabaseUser.id,
+        email: supabaseUser.email || '',
+        user_metadata: {
+          name: profile?.name || supabaseUser?.user_metadata?.name as string || 'Unknown User',
+          role: profile?.role || supabaseUser?.user_metadata?.role as string || 'client',
+          wordpressConfigId: profile?.wordpress_config_id || supabaseUser?.user_metadata?.wordpressConfigId as string | undefined,
+          clientId: profile?.client_id || supabaseUser?.user_metadata?.clientId as string | undefined,
+        },
+        app_metadata: {
+          role: supabaseUser?.app_metadata?.role as string | undefined,
+          impersonator_id: supabaseUser?.app_metadata?.impersonator_id as string | undefined,
+        },
+      };
+      setUser(userWithMetadata);
+    } catch (error: any) {
+      console.error("Error fetching user profile:", error);
+      toast.error("Failed to fetch user profile.");
+      // Fallback to minimal user info if profile fetch fails
+      const minimalUser: User = {
+        id: supabaseUser.id,
+        email: supabaseUser.email || '',
+        user_metadata: {
+          name: supabaseUser?.user_metadata?.name as string || 'Unknown User',
+          role: supabaseUser?.user_metadata?.role as string || 'client',
+        },
+        app_metadata: {
+          role: supabaseUser?.app_metadata?.role as string | undefined,
+          impersonator_id: supabaseUser?.app_metadata?.impersonator_id as string | undefined,
+        },
+      };
+      setUser(minimalUser);
+    }
+  };
+
+  const login = async (email: string, password: string) => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.user) {
+        await fetchAndSetUser(data.user);
+      }
+    } catch (error: any) {
+      console.error("Login failed:", error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        throw error;
+      }
+      setUser(null);
+      navigate('/login');
+    } catch (error) {
+      console.error("Logout failed:", error);
+      toast.error("Logout failed.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) {
+        throw error;
+      }
+      toast.success('Password reset email sent.');
+    } catch (error) {
+      console.error("Password reset request failed:", error);
+      toast.error("Failed to request password reset.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateProfile = useCallback(async (data: any) => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update(data)
+        .eq('id', user?.id);
+
+      if (error) {
+        throw error;
+      }
+
+      // Refresh user data after profile update
+      if (user?.id) {
+        const { data: updatedProfile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (profileError) {
+          console.error("Error fetching updated profile:", profileError);
+          toast.error("Failed to fetch updated profile.");
+        } else {
+          // Update the user context with the new profile data
+          const updatedUser: User = {
+            ...user,
+            user_metadata: {
+              ...user.user_metadata,
+              name: updatedProfile?.name || user.user_metadata.name,
+              // Update other fields as necessary
+            },
+          };
+          setUser(updatedUser);
+          toast.success('Profile updated successfully!');
+        }
+      }
+    } catch (error) {
+      console.error("Profile update failed:", error);
+      toast.error("Failed to update profile.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [supabase, user]);
+
+  const sendPasswordResetEmail = async (email: string) => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) {
+        throw error;
+      }
+      toast.success('Password reset email sent.');
+    } catch (error) {
+      console.error("Password reset request failed:", error);
+      toast.error("Failed to request password reset.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const impersonateUser = async (userToImpersonate: User) => {
+    setIsLoading(true);
+    try {
+      // Call the Supabase function to set the impersonator_id
+      const { data, error } = await supabase.functions.invoke('impersonate', {
+        body: {
+          user_id: userToImpersonate.id,
+        },
+      });
+  
+      if (error) {
+        console.error('Impersonation function error:', error);
+        toast.error('Failed to impersonate user.');
+        return;
+      }
+  
+      if (data && data.access_token) {
+        // Update the auth session with the new access token
+        await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+        });
+  
+        // Fetch and set the impersonated user
+         const { data: { user: impersonatedUser } } = await supabase.auth.getUser();
+         if (impersonatedUser) {
+           await fetchAndSetUser(impersonatedUser);
+         }
+      } else {
+        console.error('Impersonation function response missing access_token:', data);
+        toast.error('Failed to impersonate user: Missing access token.');
+      }
+    } catch (error) {
+      console.error('Error during impersonation:', error);
+      toast.error('Failed to impersonate user.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const stopImpersonation = async () => {
+    setIsLoading(true);
+    try {
+      // Call the Supabase function to remove the impersonator_id
+      const { data, error } = await supabase.functions.invoke('stop-impersonating');
+  
+      if (error) {
+        console.error('Stop impersonation function error:', error);
+        toast.error('Failed to stop impersonation.');
+        return;
+      }
+  
+      if (data && data.access_token) {
+        // Update the auth session with the new access token
+        await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+        });
+  
+        // Fetch and set the original user
+        const { data: { user: originalUser } } = await supabase.auth.getUser();
+        if (originalUser) {
+          await fetchAndSetUser(originalUser);
+        }
+      } else {
+        console.error('Stop impersonation function response missing access_token:', data);
+        toast.error('Failed to stop impersonation: Missing access token.');
+      }
+    } catch (error) {
+      console.error('Error during stop impersonation:', error);
+      toast.error('Failed to stop impersonation.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // S'assurer que nous accédons correctement aux métadonnées de l'utilisateur
+  const contextValue = {
+    user,
+    isAuthenticated: !!user,
+    isLoading,
+    isAdmin: user?.user_metadata?.role === 'admin',
+    isEditor: user?.user_metadata?.role === 'editor',
+    isClient: user?.user_metadata?.role === 'client',
+    login,
+    logout,
+    resetPassword,
+    updateProfile,
+    sendPasswordResetEmail,
+    isImpersonating: !!user?.app_metadata?.impersonator_id,
+    impersonateUser,
+    stopImpersonation,
+    isOnResetPasswordPage: location.pathname === '/reset-password'
+  };
+
+  return (
+    <AuthContext.Provider value={contextValue}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -28,113 +353,4 @@ export const useAuth = () => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
-
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [originalUser, setOriginalUser] = useState<UserProfile | null>(null);
-  const [isImpersonating, setIsImpersonating] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isOnResetPasswordPage, setIsOnResetPasswordPage] = useState(false);
-
-  useEffect(() => {
-    // Check for reset password page
-    try {
-      const isResetPasswordPage = window.location.pathname === '/reset-password';
-      const hasRecoveryToken = window.location.hash.includes('type=recovery');
-      setIsOnResetPasswordPage(isResetPasswordPage && hasRecoveryToken);
-    } catch (error) {
-      console.error("Error checking reset password page:", error);
-    }
-
-    // Set up auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      const authUser = session?.user || null;
-      // Convert the plain Supabase User to our UserProfile type
-      const userProfile = createProfileFromMetadata(authUser);
-      setUser(userProfile);
-      setIsLoading(false);
-    });
-
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const authUser = session?.user || null;
-      // Convert the plain Supabase User to our UserProfile type
-      const userProfile = createProfileFromMetadata(authUser);
-      setUser(userProfile);
-      setIsLoading(false);
-    });
-
-    // Cleanup subscription
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const login = async (email: string, password: string): Promise<void> => {
-    setIsLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-    } catch (error) {
-      setIsLoading(false);
-      throw error;
-    }
-  };
-
-  const logout = async (): Promise<void> => {
-    try {
-      if (isImpersonating) {
-        // If impersonating, go back to original user rather than logging out
-        stopImpersonating();
-        return;
-      }
-      
-      await supabase.auth.signOut();
-      setUser(null);
-      setOriginalUser(null);
-      setIsImpersonating(false);
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
-  };
-
-  const impersonateUser = (userToImpersonate: UserProfile) => {
-    if (!isImpersonating) {
-      setOriginalUser(user);
-    }
-    
-    setUser(userToImpersonate);
-    setIsImpersonating(true);
-  };
-
-  const stopImpersonating = () => {
-    if (originalUser) {
-      setUser(originalUser);
-    }
-    
-    setOriginalUser(null);
-    setIsImpersonating(false);
-  };
-
-  const value: AuthContextType = {
-    user,
-    isLoading,
-    isAuthenticated: !!user,
-    isAdmin: user?.role === 'admin',
-    isClient: user?.role === 'client',
-    login,
-    logout,
-    isOnResetPasswordPage,
-    impersonateUser,
-    stopImpersonating,
-    originalUser,
-    isImpersonating,
-  };
-
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
 };
