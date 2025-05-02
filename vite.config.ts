@@ -4,6 +4,7 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 // Utiliser l'import nommé au lieu de l'import par défaut
+// @ts-ignore - Ignoring TypeScript declaration issues with rollup-plugin-terser
 import { terser } from 'rollup-plugin-terser';
 
 // https://vitejs.dev/config/
