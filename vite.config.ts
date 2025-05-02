@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => ({
     // qui cause des problèmes d'importation
     mode === 'production' && {
       name: 'remove-console',
-      transform(code, id) {
+      transform(code: string, id: string) {
         if (id.endsWith('.js') || id.endsWith('.ts') || id.endsWith('.tsx') || id.endsWith('.jsx')) {
           // Version simplifiée de ce que fait terser pour éliminer les console.*
           return code
