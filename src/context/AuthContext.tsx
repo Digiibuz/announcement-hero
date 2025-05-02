@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
@@ -59,38 +58,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Get initial session with improved caching
     const initializeAuth = async () => {
-      // First check if we have a locally cached user role
-      const cachedUserRole = localStorage.getItem('userRole');
-      const cachedUserId = localStorage.getItem('userId');
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        console.log("Session found during initialization");
-        // First set user from metadata
-        const initialProfile = createProfileFromMetadata(session.user);
+      try {
+        // First check if we have a locally cached user role
+        const cachedUserRole = localStorage.getItem('userRole');
+        const cachedUserId = localStorage.getItem('userId');
         
-        // Apply cached role if available for immediate UI
-        if (cachedUserRole && cachedUserId === session.user.id) {
-          initialProfile.role = cachedUserRole as any;
-          console.log("Applied cached role:", cachedUserRole);
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Error getting session:", error);
+          setIsLoading(false);
+          return;
         }
         
-        setUserProfile(initialProfile);
-        
-        // Then get complete profile
-        setTimeout(() => {
-          fetchFullProfile(session.user.id).then((success) => {
-            if (success) {
-              console.log("Successfully fetched complete profile");
-            } else {
-              console.warn("Failed to fetch complete profile, using metadata only");
-            }
-            setIsLoading(false);
-          });
-        }, 100);
-      } else {
-        console.log("No session found during initialization");
+        if (session?.user) {
+          console.log("Session found during initialization");
+          // First set user from metadata
+          const initialProfile = createProfileFromMetadata(session.user);
+          
+          // Apply cached role if available for immediate UI
+          if (cachedUserRole && cachedUserId === session.user.id) {
+            initialProfile.role = cachedUserRole as any;
+            console.log("Applied cached role:", cachedUserRole);
+          }
+          
+          setUserProfile(initialProfile);
+          
+          // Then get complete profile
+          setTimeout(() => {
+            fetchFullProfile(session.user.id).then((success) => {
+              if (success) {
+                console.log("Successfully fetched complete profile");
+              } else {
+                console.warn("Failed to fetch complete profile, using metadata only");
+              }
+              setIsLoading(false);
+            });
+          }, 100);
+        } else {
+          console.log("No session found during initialization");
+          setUserProfile(null);
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error("Error during auth initialization:", error);
         setUserProfile(null);
         setIsLoading(false);
       }
@@ -128,10 +139,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
       
+      if (!data.user || !data.session) {
+        throw new Error("Échec de connexion: aucune session créée");
+      }
+      
       // User will be set by the auth state change listener
+      return data;
     } catch (error: any) {
+      console.error("Login error details:", error);
       setIsLoading(false);
-      throw new Error(error.message || "Login error");
+      
+      // Improve error messages for network issues
+      if (!window.navigator.onLine) {
+        throw new Error("Pas de connexion internet. Veuillez vérifier votre connexion réseau.");
+      } 
+      
+      // Provide better error messages for common auth issues
+      if (error.message?.includes('Invalid login')) {
+        throw new Error("Email ou mot de passe incorrect");
+      }
+      
+      throw new Error(error.message || "Erreur de connexion");
     }
   };
 

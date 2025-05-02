@@ -10,7 +10,16 @@ export const usePasswordReset = () => {
       return true;
     } catch (error: any) {
       console.error("Error resetting password:", error);
-      toast.error("Erreur lors de la réinitialisation du mot de passe");
+      
+      // Better error handling with specific messages
+      if (!window.navigator.onLine) {
+        toast.error("Pas de connexion internet. Veuillez vérifier votre connexion réseau.");
+      } else if (error.message?.includes('network') || error.message?.includes('timeout')) {
+        toast.error("Problème de connexion au serveur. Veuillez réessayer plus tard.");
+      } else {
+        toast.error("Erreur lors de la réinitialisation du mot de passe");
+      }
+      
       return false;
     }
   };

@@ -40,7 +40,17 @@ const Login = () => {
       }, 300);
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
-      toast.error(error.message || "Échec de la connexion");
+      
+      // More descriptive error message based on error type
+      if (error.message?.includes('network') || error.message?.includes('timeout')) {
+        toast.error("Problème de connexion au serveur. Veuillez vérifier votre connexion internet.");
+      } else if (error.message?.includes('Invalid login')) {
+        toast.error("Email ou mot de passe incorrect");
+      } else if (error.message?.includes('JSON')) {
+        toast.error("Erreur de communication avec le serveur. Veuillez réessayer.");
+      } else {
+        toast.error(error.message || "Échec de la connexion");
+      }
     } finally {
       setIsLoading(false);
     }

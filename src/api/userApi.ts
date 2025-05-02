@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { UserProfile, Role } from "@/types/auth";
 import { toast } from "sonner";
@@ -45,15 +44,40 @@ export const fetchAllUsers = async (): Promise<UserProfile[]> => {
  */
 export const resetUserPassword = async (email: string): Promise<void> => {
   try {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
+    // Check for internet connection
+    if (!window.navigator.onLine) {
+      throw new Error("Pas de connexion internet");
+    }
+    
+    // Get current URL origin for proper redirect
+    const origin = window.location.origin;
+    const redirectTo = `${origin}/reset-password`;
+    
+    console.log(`Sending password reset with redirect to: ${redirectTo}`);
+    
+    const { error } = await Promise.race([
+      supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectTo,
+      }),
+      // Add timeout to detect slow connections
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Délai d'attente dépassé")), 10000);
+      })
+    ]) as any;
     
     if (error) {
       throw error;
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error resetting password:", error);
+    
+    // Handle specific error cases
+    if (error.message === "Délai d'attente dépassé") {
+      throw new Error("Le serveur met trop de temps à répondre. Veuillez réessayer plus tard.");
+    } else if (error.message?.includes('network') || !window.navigator.onLine) {
+      throw new Error("Problème de connexion réseau. Veuillez vérifier votre connexion internet.");
+    }
+    
     throw error;
   }
 };
