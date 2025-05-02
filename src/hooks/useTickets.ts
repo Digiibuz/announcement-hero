@@ -103,11 +103,16 @@ export const useAllTickets = () => {
           console.error('Error fetching ticket responses:', responsesError);
         }
         
-        // Add null check for profiles property and use optional chaining
+        // Extract profiles and properly check for null/undefined
         const profiles = ticket.profiles;
-        const username = profiles && typeof profiles === 'object' ? 
-                         (profiles?.name || profiles?.email || ticket.username || 'Unknown') : 
-                         (ticket.username || 'Unknown');
+        let username = ticket.username || 'Unknown';
+        
+        // Only try to access properties if profiles exists and is an object
+        if (profiles && typeof profiles === 'object') {
+          const profileName = profiles.name;
+          const profileEmail = profiles.email;
+          username = profileName || profileEmail || ticket.username || 'Unknown';
+        }
         
         return {
           ...ticket,
@@ -157,11 +162,16 @@ export const useTicketDetails = (ticketId: string | null) => {
         console.error('Error fetching ticket responses:', responsesError);
       }
       
-      // Add null check for profiles property and use optional chaining
+      // Extract profiles and properly check for null/undefined
       const profiles = ticket.profiles;
-      const username = profiles && typeof profiles === 'object' ? 
-                       (profiles?.name || profiles?.email || ticket.username || 'Unknown') : 
-                       (ticket.username || 'Unknown');
+      let username = ticket.username || 'Unknown';
+      
+      // Only try to access properties if profiles exists and is an object
+      if (profiles && typeof profiles === 'object') {
+        const profileName = profiles.name;
+        const profileEmail = profiles.email;
+        username = profileName || profileEmail || ticket.username || 'Unknown';
+      }
       
       return {
         ...ticket,
