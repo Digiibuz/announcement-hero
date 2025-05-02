@@ -2,10 +2,10 @@
 // Configuration du Service Worker
 
 // Nom du cache
-export const CACHE_NAME = 'digiibuz-cache-v20';
+const CACHE_NAME = 'digiibuz-cache-v21';
 
 // Liste des ressources à mettre en cache immédiatement (shell de l'application)
-export const CORE_ASSETS = [
+const CORE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
@@ -13,9 +13,14 @@ export const CORE_ASSETS = [
 ];
 
 // Assets supplémentaires à mettre en cache pour une utilisation hors ligne
-export const SECONDARY_ASSETS = [
+const SECONDARY_ASSETS = [
   // Polices web essentielles
   'https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800&display=swap',
   // Images d'interface communes
   '/placeholder.svg',
 ];
+
+// Exposer les constantes au scope global du Service Worker
+self.CACHE_NAME = CACHE_NAME;
+self.CORE_ASSETS = CORE_ASSETS;
+self.SECONDARY_ASSETS = SECONDARY_ASSETS;

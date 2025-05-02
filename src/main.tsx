@@ -1,3 +1,4 @@
+
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
@@ -99,52 +100,65 @@ window.isSaveDataEnabled = () => {
 const registerServiceWorker = async (retryCount = 3) => {
   if ('serviceWorker' in navigator) {
     try {
-      const registration = await navigator.serviceWorker.register('/sw.js', {
-        updateViaCache: 'none',
-        scope: '/'
-      });
+      // S'assurer qu'aucun service worker n'est en attente ou en cours d'installation
+      const existingReg = await navigator.serviceWorker.getRegistration();
+      if (existingReg) {
+        console.log('Service worker déjà enregistré, tentative de mise à jour...');
+        await existingReg.update();
+      }
       
-      console.log('SW enregistré:', registration);
-      serviceWorkerRegistration = registration;
-      
-      // Vérifier et mettre à jour le service worker
-      registration.update();
-      
-      // Gérer les mises à jour du service worker
-      registration.addEventListener('updatefound', () => {
-        const newWorker = registration.installing;
-        if (newWorker) {
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              console.log('Une nouvelle version du service worker est disponible');
-              
-              // Si la page est visible, proposer un rechargement
-              if (document.visibilityState === 'visible') {
-                // Créer une notification pour informer l'utilisateur
-                if ('Notification' in window && Notification.permission === 'granted') {
-                  new Notification('Application mise à jour', {
-                    body: 'Une nouvelle version est disponible. Rechargez la page pour l\'utiliser.'
-                  });
+      // Nouvel enregistrement avec délai pour éviter les conflits
+      setTimeout(async () => {
+        try {
+          const registration = await navigator.serviceWorker.register('/sw.js', {
+            scope: '/',
+            updateViaCache: 'none'
+          });
+          
+          console.log('SW enregistré avec succès:', registration);
+          serviceWorkerRegistration = registration;
+          
+          // Gérer les mises à jour du service worker
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            if (newWorker) {
+              newWorker.addEventListener('statechange', () => {
+                console.log('État du SW:', newWorker.state);
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  console.log('Une nouvelle version du service worker est disponible');
+                  
+                  // Si la page est visible, proposer un rechargement
+                  if (document.visibilityState === 'visible') {
+                    // Créer une notification pour informer l'utilisateur
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                      new Notification('Application mise à jour', {
+                        body: 'Une nouvelle version est disponible. Rechargez la page pour l\'utiliser.'
+                      });
+                    }
+                  }
                 }
+              });
+            }
+          });
+          
+          // Écouter les messages du service worker
+          navigator.serviceWorker.addEventListener('message', (event) => {
+            if (event.data) {
+              if (event.data.type === 'cacheCleared') {
+                console.log('Le cache a été vidé, rechargement de la page...');
+                window.location.reload();
+              } else if (event.data.type === 'networkStatus') {
+                console.log('Status cache:', event.data);
               }
             }
           });
+          
+          return registration;
+        } catch (innerError) {
+          console.error('Échec d\'enregistrement du SW lors de la tentative différée:', innerError);
+          throw innerError;
         }
-      });
-      
-      // Écouter les messages du service worker
-      navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data) {
-          if (event.data.type === 'cacheCleared') {
-            console.log('Le cache a été vidé, rechargement de la page...');
-            window.location.reload();
-          } else if (event.data.type === 'networkStatus') {
-            console.log('Status cache:', event.data);
-          }
-        }
-      });
-      
-      return registration;
+      }, 1000);
     } catch (error) {
       console.error('Erreur d\'enregistrement du SW:', error);
       
@@ -165,9 +179,14 @@ const registerServiceWorker = async (retryCount = 3) => {
 // Fonction pour déclencher la mise à jour du service worker
 const updateServiceWorker = async () => {
   if ('serviceWorker' in navigator) {
-    const registration = await navigator.serviceWorker.getRegistration();
-    if (registration) {
-      registration.update();
+    try {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (registration) {
+        console.log('Mise à jour du service worker...');
+        await registration.update();
+      }
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du SW:', error);
     }
   }
 };
@@ -217,10 +236,13 @@ window.clearCacheAndReload = () => {
   }
 };
 
-// Enregistrer le service worker au chargement
+// Enregistrer le service worker au chargement avec délai pour s'assurer que la page est complètement chargée
 window.addEventListener('load', () => {
-  registerServiceWorker();
-  startNetworkMonitoring();
+  // Délai pour assurer que la page est bien chargée avant d'initialiser le SW
+  setTimeout(() => {
+    registerServiceWorker();
+    startNetworkMonitoring();
+  }, 2000);
 });
 
 // Variable pour suivre si un rechargement est en cours (éviter les doubles rechargements)
@@ -336,7 +358,7 @@ document.addEventListener('visibilitychange', () => {
     const isLoginPage = currentPath.includes('login');
     
     if (isLoginPage && !reloadInProgress) {
-      console.log('Page de login détectée lors de la reprise, v��rification du cache...');
+      console.log('Page de login détectée lors de la reprise, vérification du cache...');
       // Attendre un court instant avant de vérifier s'il y a des problèmes
       setTimeout(() => {
         // Si la page est vide ou incomplète, essayer de la recharger
@@ -357,3 +379,4 @@ document.addEventListener('visibilitychange', () => {
 // Utiliser createRoot pour éviter le double rendu
 const root = createRoot(document.getElementById("root")!);
 root.render(<App />);
+

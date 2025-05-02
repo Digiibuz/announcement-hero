@@ -1,12 +1,12 @@
 
-// Import des modules
-importScripts('./sw-config.js');
-importScripts('./sw-utils.js');
-importScripts('./sw-strategies.js');
+// Import des modules avec URL complètes pour éviter les problèmes d'importation
+self.importScripts('./sw-config.js');
+self.importScripts('./sw-utils.js');
+self.importScripts('./sw-strategies.js');
 
 // Installation du service worker avec préchargement optimisé
 self.addEventListener('install', event => {
-  console.log('Installing Service Worker v20 (Optimisation Réseau)');
+  console.log('Installing Service Worker v21 (Fix ImportScripts)');
   
   // Stratégie de préchargement optimisée pour réseaux lents
   event.waitUntil(
@@ -30,7 +30,7 @@ self.addEventListener('install', event => {
 
 // Activation et nettoyage des anciens caches
 self.addEventListener('activate', event => {
-  console.log('Activating Service Worker v20 (Optimisation Réseau)');
+  console.log('Activating Service Worker v21 (Fix ImportScripts)');
   const cacheWhitelist = [CACHE_NAME];
 
   event.waitUntil(
