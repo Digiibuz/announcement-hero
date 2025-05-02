@@ -62,12 +62,12 @@ export function updateSupabaseCredentials(url: string, key: string): void {
 // Fonction d'aide pour vérifier la connexion à Supabase
 export async function testSupabaseConnection(): Promise<boolean> {
   try {
-    const { error } = await supabase.from('test_connection').select('*').limit(1).single();
-    // S'il y a une erreur mais c'est juste que la table n'existe pas, 
-    // la connexion fonctionne tout de même
-    if (error && error.code === 'PGRST116') {
-      return true;
-    }
+    // Try to query an existing table instead of test_connection
+    const { error } = await supabase
+      .from('profiles')
+      .select('id')
+      .limit(1);
+      
     return !error;
   } catch (error) {
     console.error('Erreur de connexion à Supabase:', error);
