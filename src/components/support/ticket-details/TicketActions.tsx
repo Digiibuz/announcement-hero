@@ -22,32 +22,57 @@ export const TicketActions: React.FC<TicketActionsProps> = ({
 }) => {
   const { mutate: updateStatus, isPending: isUpdatingStatus } = useUpdateTicketStatus();
 
+  const handleTicketStatusChange = (newStatus: string) => {
+    try {
+      updateStatus(
+        { ticketId: ticketId, status: newStatus },
+        {
+          onSuccess: () => {
+            const message = newStatus === "closed" 
+              ? "Ticket marqué comme résolu" 
+              : "Ticket réouvert";
+            toast.success(message);
+            
+            // Enregistrer l'action réussie dans localStorage
+            localStorage.setItem('lastTicketAction', JSON.stringify({
+              ticketId,
+              action: newStatus === "closed" ? "close" : "reopen",
+              timestamp: new Date().toISOString()
+            }));
+          },
+          onError: (error) => {
+            // Enregistrer l'erreur silencieusement sans utiliser console
+            localStorage.setItem('lastTicketActionError', JSON.stringify({
+              ticketId,
+              action: newStatus === "closed" ? "close" : "reopen",
+              timestamp: new Date().toISOString(),
+              error: error.message || 'Erreur inconnue'
+            }));
+            
+            toast.error(`Erreur lors de la mise à jour du statut`);
+          },
+        }
+      );
+    } catch (error) {
+      // Capture les erreurs non gérées par la mutation
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      localStorage.setItem('lastUnhandledTicketActionError', JSON.stringify({
+        ticketId,
+        action: newStatus === "closed" ? "close" : "reopen",
+        timestamp: new Date().toISOString(),
+        error: errorMessage
+      }));
+      
+      toast.error(`Une erreur est survenue`);
+    }
+  };
+
   const handleCloseTicket = () => {
-    updateStatus(
-      { ticketId: ticketId, status: "closed" },
-      {
-        onSuccess: () => {
-          toast.success("Ticket marqué comme résolu");
-        },
-        onError: (error) => {
-          toast.error(`Erreur lors de la mise à jour du statut: ${error.message}`);
-        },
-      }
-    );
+    handleTicketStatusChange("closed");
   };
 
   const handleReopenTicket = () => {
-    updateStatus(
-      { ticketId: ticketId, status: "open" },
-      {
-        onSuccess: () => {
-          toast.success("Ticket réouvert");
-        },
-        onError: (error) => {
-          toast.error(`Erreur lors de la mise à jour du statut: ${error.message}`);
-        },
-      }
-    );
+    handleTicketStatusChange("open");
   };
 
   if (!(isAdmin || userId === ticketUserId)) {

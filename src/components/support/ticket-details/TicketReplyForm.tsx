@@ -1,10 +1,11 @@
 
-import React, { useState } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useReplyToTicket, useUpdateTicketStatus } from "@/hooks/tickets";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
+import { usePersistedState } from "@/hooks/usePersistedState";
 
 interface TicketReplyFormProps {
   ticketId: string;
@@ -12,7 +13,8 @@ interface TicketReplyFormProps {
 }
 
 export const TicketReplyForm: React.FC<TicketReplyFormProps> = ({ ticketId, ticketStatus }) => {
-  const [reply, setReply] = useState("");
+  // Utilisation du hook personnalisé pour persister l'état dans localStorage
+  const [reply, setReply] = usePersistedState<string>(`ticket_reply_${ticketId}`, "");
   const { isAdmin } = useAuth();
   const { mutate: sendReply, isPending: isSendingReply } = useReplyToTicket();
   const { mutate: updateStatus, isPending: isUpdatingStatus } = useUpdateTicketStatus();
@@ -23,6 +25,9 @@ export const TicketReplyForm: React.FC<TicketReplyFormProps> = ({ ticketId, tick
       return;
     }
 
+    // Enregistrement des données avant l'envoi (au cas où)
+    localStorage.setItem(`ticket_reply_backup_${ticketId}`, reply);
+
     sendReply(
       {
         ticketId: ticketId,
@@ -31,20 +36,36 @@ export const TicketReplyForm: React.FC<TicketReplyFormProps> = ({ ticketId, tick
       {
         onSuccess: () => {
           setReply("");
+          // Supprimer la sauvegarde après un envoi réussi
+          localStorage.removeItem(`ticket_reply_backup_${ticketId}`);
           
           if (isAdmin && ticketStatus === "open") {
-            updateStatus(
-              { ticketId: ticketId, status: "in_progress" },
-              {
-                onSuccess: () => {
-                  toast.success("Statut du ticket mis à jour");
-                },
-              }
-            );
+            try {
+              updateStatus(
+                { ticketId: ticketId, status: "in_progress" },
+                {
+                  onSuccess: () => {
+                    toast.success("Statut du ticket mis à jour");
+                  },
+                  onError: (error) => {
+                    // Enregistrer l'erreur dans localStorage sans exposer les détails techniques
+                    localStorage.setItem('lastTicketStatusError', error.message || 'Erreur inconnue');
+                    toast.error("Impossible de mettre à jour le statut du ticket");
+                  },
+                }
+              );
+            } catch (error) {
+              // Capture des erreurs non gérées par la mutation
+              const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+              localStorage.setItem('lastTicketReplyError', errorMessage);
+              toast.error("Une erreur est survenue lors de la mise à jour du ticket");
+            }
           }
         },
         onError: (error) => {
-          toast.error(`Erreur lors de l'envoi de la réponse: ${error.message}`);
+          // Enregistrer l'erreur dans localStorage sans exposer les détails techniques
+          localStorage.setItem('lastTicketReplyError', error.message || 'Erreur inconnue');
+          toast.error("Impossible d'envoyer votre réponse");
         },
       }
     );
