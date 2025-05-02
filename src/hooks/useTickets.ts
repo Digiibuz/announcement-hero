@@ -109,8 +109,10 @@ export const useAllTickets = () => {
         
         // Only try to access properties if profiles exists and is an object
         if (profiles && typeof profiles === 'object') {
-          const profileName = profiles.name;
-          const profileEmail = profiles.email;
+          // Use type assertion to convince TypeScript that profiles is a valid object
+          const typedProfiles = profiles as { name?: string; email?: string };
+          const profileName = typedProfiles.name;
+          const profileEmail = typedProfiles.email;
           username = profileName || profileEmail || ticket.username || 'Unknown';
         }
         
@@ -168,8 +170,10 @@ export const useTicketDetails = (ticketId: string | null) => {
       
       // Only try to access properties if profiles exists and is an object
       if (profiles && typeof profiles === 'object') {
-        const profileName = profiles.name;
-        const profileEmail = profiles.email;
+        // Use type assertion to convince TypeScript that profiles is a valid object
+        const typedProfiles = profiles as { name?: string; email?: string };
+        const profileName = typedProfiles.name;
+        const profileEmail = typedProfiles.email;
         username = profileName || profileEmail || ticket.username || 'Unknown';
       }
       
