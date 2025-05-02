@@ -1,3 +1,4 @@
+
 import React from "react";
 import { z } from "zod";
 import { UseFormReturn } from "react-hook-form";
@@ -10,8 +11,10 @@ import {
   FormField, 
   FormItem, 
   FormLabel, 
-  FormMessage 
+  FormMessage,
+  FormDescription
 } from "@/components/ui/form";
+import { WordPressConfig } from "@/types/wordpress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
