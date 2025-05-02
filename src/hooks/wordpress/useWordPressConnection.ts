@@ -10,7 +10,8 @@ import { useApiAuthentication } from "./connection/useApiAuthentication";
 import { useApiTests } from "./connection/useApiTests";
 import { useErrorHandler } from "./connection/useErrorHandler";
 
-export { ConnectionStatus } from "./connection/types";
+// Change from 'export' to 'export type' to fix the isolatedModules error
+export type { ConnectionStatus } from "./connection/types";
 
 export const useWordPressConnection = () => {
   const { user } = useAuth();
