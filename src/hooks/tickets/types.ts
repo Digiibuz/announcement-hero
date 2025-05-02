@@ -24,6 +24,7 @@ export interface Ticket {
   message: string;
   responses?: TicketResponse[];
   profiles?: { name?: string; email?: string } | null;
+  attachments?: string[];
 }
 
 export const processTicketUsername = (ticket: any): string => {

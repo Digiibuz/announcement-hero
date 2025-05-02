@@ -13,7 +13,9 @@ import {
   TicketMessage, 
   TicketResponseList,
   TicketReplyForm,
-  TicketActions
+  TicketActions,
+  TicketDetailsSkeleton,
+  TicketAttachments
 } from "./ticket-details";
 
 interface TicketDetailsProps {
@@ -32,7 +34,7 @@ const TicketDetails: React.FC<TicketDetailsProps> = ({ ticketId }) => {
   }, [ticketId, ticket, markTicketAsRead]);
 
   if (isLoading || !ticket) {
-    return <p className="text-center py-8">Chargement des détails du ticket...</p>;
+    return <TicketDetailsSkeleton />;
   }
 
   return (
@@ -43,6 +45,7 @@ const TicketDetails: React.FC<TicketDetailsProps> = ({ ticketId }) => {
       
       <CardContent className="space-y-6">
         <TicketMessage message={ticket.message} />
+        {ticket.attachments && <TicketAttachments attachments={ticket.attachments} />}
         <TicketResponseList responses={ticket.responses || []} />
         <TicketReplyForm 
           ticketId={ticketId} 
