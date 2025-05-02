@@ -1,76 +1,120 @@
 
 import React from "react";
 import PageLayout from "@/components/ui/layout/PageLayout";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
+import WordPressConfigForm from "@/components/wordpress/WordPressConfigForm";
+import WordPressConfigList from "@/components/wordpress/WordPressConfigList";
+import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 import AccessDenied from "@/components/users/AccessDenied";
-import { LoadingIndicator } from "@/components/ui/loading-indicator";
-import { useWordPressManagement } from "@/components/wordpress/management/useWordPressManagement";
-import WordPressManagementHeader from "@/components/wordpress/management/WordPressManagementHeader";
-import WordPressConfigContent from "@/components/wordpress/management/WordPressConfigContent";
+import { WordPressConfig } from "@/types/wordpress";
+import { Card, CardContent } from "@/components/ui/card";
+import { toast } from "sonner";
 
 const WordPressManagement = () => {
-  const { isAdmin, isClient } = useAuth();
+  const { isAdmin, isClient, user } = useAuth();
   const {
     configs,
     isLoading,
     isSubmitting,
-    error,
-    isFetching,
-    isDialogOpen,
-    setIsDialogOpen,
-    handleCreateConfig,
-    handleUpdateConfig,
+    createConfig,
+    updateConfig,
     deleteConfig,
-    handleRefresh
-  } = useWordPressManagement();
+    fetchConfigs,
+  } = useWordPressConfigs();
+
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+
+  const handleCreateConfig = async (data: any) => {
+    await createConfig(data);
+    setIsDialogOpen(false);
+    fetchConfigs(); // Call fetchConfigs after creating a new config
+  };
+
+  // Wrapper pour updateConfig pour assurer la compatibilité avec le composant
+  const handleUpdateConfig = async (id: string, data: Partial<WordPressConfig>) => {
+    await updateConfig(id, data);
+    // La fonction updateConfig retourne un WordPressConfig, mais nous ignorons la valeur retournée
+    // pour rendre la fonction compatible avec le type attendu
+  };
+
+  // Fonction de rafraîchissement pour le bouton
+  const handleRefresh = () => {
+    fetchConfigs();
+    toast.success("Configurations WordPress mises à jour");
+  };
+
+  // Le bouton d'ajout n'est disponible que pour les administrateurs, pas pour les clients
+  const titleAction = isAdmin ? (
+    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <Plus className="h-4 w-4 mr-2" />
+          Ajouter une configuration
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Nouvelle configuration WordPress</DialogTitle>
+        </DialogHeader>
+        <WordPressConfigForm
+          onSubmit={handleCreateConfig}
+          isSubmitting={isSubmitting}
+        />
+      </DialogContent>
+    </Dialog>
+  ) : null;
 
   // Change page title based on user role
   const pageTitle = isClient ? "Mon site" : "Gestion WordPress";
 
-  // Title action component for the page header
-  const titleAction = (
-    <WordPressManagementHeader
-      isAdmin={!!isAdmin}
-      isDialogOpen={isDialogOpen}
-      setIsDialogOpen={setIsDialogOpen}
-      isSubmitting={isSubmitting}
-      createConfig={handleCreateConfig}
-    />
+  // Message to display when client has no site assigned
+  const NoSiteMessage = () => (
+    <Card className="mt-4">
+      <CardContent className="p-6 text-center">
+        <p className="text-muted-foreground mb-2">
+          Aucun site WordPress n'est actuellement attribué à votre compte.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Veuillez contacter votre administrateur pour obtenir un accès.
+        </p>
+      </CardContent>
+    </Card>
   );
-
-  // If roles are not yet determined, display a loading indicator
-  if (isAdmin === undefined && isClient === undefined) {
-    return (
-      <PageLayout title="Chargement...">
-        <div className="h-64 flex items-center justify-center">
-          <LoadingIndicator variant="dots" size={42} />
-        </div>
-      </PageLayout>
-    );
-  }
 
   return (
     <PageLayout 
       title={pageTitle} 
       titleAction={titleAction}
       onRefresh={handleRefresh}
-      refreshButtonProps={{ disabled: isFetching }}
     >
       {!(isAdmin || isClient) ? (
         <AccessDenied />
       ) : (
         <AnimatedContainer delay={200}>
-          <WordPressConfigContent 
-            isClient={isClient}
-            configs={configs}
-            isLoading={isLoading}
-            isFetching={isFetching}
-            isSubmitting={isSubmitting}
-            error={error}
-            handleUpdateConfig={handleUpdateConfig}
-            deleteConfig={deleteConfig}
-          />
+          <div className="w-full">
+            {isClient && configs.length === 0 ? (
+              <NoSiteMessage />
+            ) : (
+              <WordPressConfigList
+                configs={configs}
+                isLoading={isLoading}
+                isSubmitting={isSubmitting}
+                onUpdateConfig={handleUpdateConfig}
+                onDeleteConfig={deleteConfig}
+                readOnly={isClient} // Mode lecture seule pour les clients
+              />
+            )}
+          </div>
         </AnimatedContainer>
       )}
     </PageLayout>

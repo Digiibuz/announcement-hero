@@ -34,6 +34,7 @@ interface WordPressConfigFormProps {
   dialogDescription?: string;
   isSubmitting?: boolean;
   trigger?: React.ReactNode;
+  config?: WordPressConfig;
 }
 
 const WordPressConfigForm: React.FC<WordPressConfigFormProps> = ({
@@ -43,17 +44,18 @@ const WordPressConfigForm: React.FC<WordPressConfigFormProps> = ({
   dialogTitle = "Ajouter une configuration WordPress",
   dialogDescription = "Entrez les détails de votre site WordPress",
   isSubmitting = false,
-  trigger
+  trigger,
+  config
 }) => {
   const [open, setOpen] = React.useState(false);
   
   const form = useForm<WordPressConfigFormValues>({
     resolver: zodResolver(wordpressConfigSchema),
     defaultValues: {
-      name: defaultValues.name || "",
-      site_url: defaultValues.site_url || "",
-      app_username: defaultValues.app_username || "",
-      app_password: defaultValues.app_password || "",
+      name: config?.name || defaultValues.name || "",
+      site_url: config?.site_url || defaultValues.site_url || "",
+      app_username: config?.app_username || defaultValues.app_username || "",
+      app_password: config?.app_password || defaultValues.app_password || "",
     }
   });
 

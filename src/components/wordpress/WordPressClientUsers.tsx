@@ -39,7 +39,7 @@ const WordPressClientUsers = () => {
           wordpressConfig: profile.wordpress_configs ? {
             name: profile.wordpress_configs.name,
             site_url: profile.wordpress_configs.site_url
-          } : undefined
+          } : null
         }));
         
         setClientUsers(formattedUsers);

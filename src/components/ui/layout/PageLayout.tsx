@@ -6,7 +6,7 @@ import Header from "@/components/ui/layout/Header";
 import Sidebar from "@/components/ui/layout/Sidebar";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { Button, ButtonProps } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLocation } from "react-router-dom";
@@ -21,7 +21,6 @@ interface PageLayoutProps {
   containerClassName?: string;
   onRefresh?: () => void;
   isLoading?: boolean;
-  refreshButtonProps?: Partial<ButtonProps>;
 }
 
 const PageLayout = ({ 
@@ -31,8 +30,7 @@ const PageLayout = ({
   fullWidthMobile = false,
   containerClassName,
   onRefresh,
-  isLoading = false,
-  refreshButtonProps
+  isLoading = false
 }: PageLayoutProps) => {
   const isMobile = useMediaQuery("(max-width: 767px)");
   const { isAdmin, isClient, isImpersonating } = useAuth();
@@ -79,7 +77,6 @@ const PageLayout = ({
                       className="ml-2"
                       onClick={handleRefresh}
                       title="Rafraîchir la page"
-                      {...refreshButtonProps}
                     >
                       <RefreshCw className="h-4 w-4 mr-2" />
                       Rafraîchir

@@ -1,16 +1,10 @@
 
 import { useEffect, useRef } from 'react';
 import { UseFormReturn, DefaultValues } from 'react-hook-form';
+import { saveToStorage, loadFromStorage, clearStorage } from '../utils/storage';
+import { VisibilityHandler } from '../utils/visibilityHandler';
+import { SaveThrottler } from '../utils/saveThrottler';
 
-/**
- * Hook pour persister les données du formulaire dans le localStorage
- * @param form - Formulaire react-hook-form
- * @param storageKey - Clé de stockage dans le localStorage
- * @param initialValues - Valeurs initiales (optionnelles) pour le formulaire
- * @param autosaveInterval - Intervalle en millisecondes pour la sauvegarde automatique (par défaut: null = sauvegarde à chaque changement)
- * @param debug - Afficher les logs de debug (par défaut: false)
- * @param fields - Liste des champs spécifiques à surveiller (par défaut: tous les champs)
- */
 export function useFormPersistence<TFormValues extends Record<string, any>>(
   form: UseFormReturn<TFormValues>,
   storageKey: string,
@@ -22,44 +16,37 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
   const { watch, reset, getValues } = form;
   const initialLoadDone = useRef(false);
   const allFields = fields || Object.keys(getValues() || {});
+  const visibilityHandler = useRef(new VisibilityHandler());
+  const saveThrottler = useRef(new SaveThrottler());
   
-  // Fonction pour sauvegarder les données
   const saveData = () => {
-    const currentValues = getValues();
+    if (!saveThrottler.current.canSave()) {
+      if (debug) console.log('Save throttled or in progress');
+      return;
+    }
     
-    if (currentValues && Object.keys(currentValues).length > 0) {
-      // Vérifier que les données ne sont pas vides avant de sauvegarder
-      let hasNonEmptyValues = false;
-      
-      for (const key of Object.keys(currentValues)) {
-        const value = currentValues[key];
-        if (value !== undefined && value !== null && value !== '') {
-          if (Array.isArray(value) ? value.length > 0 : true) {
-            hasNonEmptyValues = true;
-            break;
-          }
-        }
+    saveThrottler.current.startSave();
+    try {
+      const currentValues = getValues();
+      if (currentValues) {
+        saveToStorage(storageKey, currentValues);
+        if (debug) console.log('Form data saved:', storageKey, currentValues);
       }
-      
-      if (hasNonEmptyValues) {
-        localStorage.setItem(storageKey, JSON.stringify(currentValues));
-        if (debug) console.log('Données du formulaire sauvegardées:', storageKey, currentValues);
-      }
+    } catch (error) {
+      console.error('Error saving data:', error);
+    } finally {
+      saveThrottler.current.endSave();
     }
   };
 
-  // Sauvegarder les données dans le localStorage à chaque changement ou à intervalle régulier
+  // Save data on changes or interval
   useEffect(() => {
-    // Configuration de la sauvegarde (par changement ou intervalle)
     if (autosaveInterval) {
-      // Sauvegarde à intervalle régulier
       const intervalId = setInterval(saveData, autosaveInterval);
       
-      // Aussi sauvegarder sur les changements importants
       const subscription = watch((formValues, { name }) => {
-        // Si un champ important a changé, sauvegarder immédiatement
         if (name && allFields.includes(name)) {
-          if (debug) console.log('Changement détecté dans le champ:', name);
+          if (debug) console.log('Change detected in field:', name);
           saveData();
         }
       });
@@ -69,19 +56,17 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
         subscription.unsubscribe();
       };
     } else {
-      // Sauvegarde à chaque changement
       const subscription = watch((formValues, { name, type }) => {
         if (formValues && Object.keys(formValues).length > 0) {
-          if (debug) console.log('Mise à jour des données du formulaire:', name, type);
-          localStorage.setItem(storageKey, JSON.stringify(formValues));
+          if (debug && name) console.log('Form data updated:', name, type);
+          
+          if (!visibilityHandler.current.isPending() && !saveThrottler.current.canSave()) {
+            saveToStorage(storageKey, formValues);
+          }
         }
       });
       
-      // Sauvegarde également avant de quitter la page
-      const handleBeforeUnload = () => {
-        saveData();
-      };
-      
+      const handleBeforeUnload = () => saveData();
       window.addEventListener('beforeunload', handleBeforeUnload);
       
       return () => {
@@ -89,64 +74,68 @@ export function useFormPersistence<TFormValues extends Record<string, any>>(
         window.removeEventListener('beforeunload', handleBeforeUnload);
       };
     }
-  }, [watch, storageKey, autosaveInterval, debug, saveData, allFields]);
+  }, [watch, storageKey, autosaveInterval, debug, allFields]);
 
-  // Sauvegarder aussi lorsque le composant se démonte
+  // Handle visibility changes
+  useEffect(() => {
+    const handleVisibility = () => {
+      visibilityHandler.current.handleVisibilityChange(
+        () => saveData(),
+        () => {/* Nothing to do on visible */},
+        debug
+      );
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibility);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      visibilityHandler.current.cleanup();
+      saveThrottler.current.cleanup();
+    };
+  }, [debug]);
+
+  // Save on unmount
   useEffect(() => {
     return () => {
-      saveData();
+      if (!visibilityHandler.current.isPending()) {
+        saveData();
+      }
     };
   }, []);
 
-  // Charger les données depuis le localStorage ou utiliser les valeurs initiales
+  // Load initial data
   useEffect(() => {
-    // Ne charger les données qu'une seule fois au montage du composant
     if (initialLoadDone.current) return;
     
-    const savedData = localStorage.getItem(storageKey);
-    
+    const savedData = loadFromStorage<TFormValues>(storageKey);
     if (savedData) {
       try {
-        const parsedData = JSON.parse(savedData);
-        if (parsedData && Object.keys(parsedData).length > 0) {
-          if (debug) console.log('Données du formulaire restaurées:', storageKey, parsedData);
-          
-          // Utiliser la réinitialisation avec le second paramètre pour indiquer de préserver les valeurs par défaut
-          reset(parsedData as DefaultValues<TFormValues>, { keepDefaultValues: true });
-          
-          initialLoadDone.current = true;
-          return;
-        }
+        if (debug) console.log('Form data restored:', storageKey, savedData);
+        reset(savedData as DefaultValues<TFormValues>, { keepDefaultValues: true });
+        initialLoadDone.current = true;
+        return;
       } catch (e) {
-        console.error('Erreur lors de la récupération des données sauvegardées:', e);
-        localStorage.removeItem(storageKey);
+        console.error('Error loading saved data:', e);
+        clearStorage(storageKey);
       }
     }
     
-    // Si pas de données sauvegardées valides, utiliser les valeurs initiales
     if (initialValues && Object.keys(initialValues).length > 0) {
-      if (debug) console.log('Utilisation des valeurs initiales');
+      if (debug) console.log('Using initial values');
       reset(initialValues);
     }
     
     initialLoadDone.current = true;
   }, [reset, storageKey, initialValues, debug]);
 
-  // Fonction pour effacer les données sauvegardées
-  const clearSavedData = () => {
-    localStorage.removeItem(storageKey);
-    if (debug) console.log('Données sauvegardées effacées:', storageKey);
-  };
-
-  // Vérifier si des données sont sauvegardées
-  const hasSavedData = () => {
-    const savedData = localStorage.getItem(storageKey);
-    return !!savedData;
-  };
-
-  return { 
-    clearSavedData,
-    hasSavedData,
-    saveData
+  return {
+    clearSavedData: () => clearStorage(storageKey),
+    hasSavedData: () => !!loadFromStorage(storageKey),
+    saveData,
+    getSavedStep: () => {
+      const step = localStorage.getItem(`${storageKey}_step`);
+      return step ? parseInt(step, 10) : null;
+    }
   };
 }

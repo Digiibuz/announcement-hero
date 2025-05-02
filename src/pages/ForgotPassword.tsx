@@ -29,13 +29,13 @@ const ForgotPassword = () => {
     
     try {
       // L'URL de redirection doit être une URL absolue
-      const origin = window.location.origin;
-      const redirectTo = `${origin}/reset-password`;
+      // Mise à jour de l'URL de production
+      const productionUrl = "https://digii.app.digiibuz.fr/reset-password";
       
-      // Suppression du log de débogage
+      console.log("URL de redirection pour la réinitialisation:", productionUrl);
       
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo,
+        redirectTo: productionUrl,
       });
       
       if (error) {
@@ -46,8 +46,7 @@ const ForgotPassword = () => {
       // pour des raisons de sécurité
       setIsSubmitted(true);
     } catch (error: any) {
-      // Suppression du log d'erreur dans la console
-      
+      console.error("Erreur lors de la demande de réinitialisation:", error);
       // Même en cas d'erreur, on affiche un message générique
       // pour ne pas révéler si un compte existe ou non
       setIsSubmitted(true);
@@ -67,7 +66,7 @@ const ForgotPassword = () => {
                 alt="DigiiBuz" 
                 className="h-16 w-auto mb-2"
                 onError={(e) => {
-                  // Suppression du log d'erreur
+                  console.error("Erreur de chargement de l'image:", e);
                   e.currentTarget.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzMzM2E0NSIgLz48dGV4dCB4PSI1MCIgeT0iNTAiIGZvbnQtc2l6ZT0iMTgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGFsaWdubWVudC1iYXNlbGluZT0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSI+RGlnaWlCdXo8L3RleHQ+PC9zdmc+";
                 }}
               />

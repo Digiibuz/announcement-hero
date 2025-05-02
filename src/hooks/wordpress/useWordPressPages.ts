@@ -1,33 +1,42 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export interface WordPressPage {
   id: number;
+  date: string;
+  modified: string;
+  slug: string;
+  status: string;
+  type: string;
+  link: string;
   title: {
     rendered: string;
   };
-  slug: string;
-  link: string;
-  date: string;
-  status: string;
-  content?: {
+  content: {
     rendered: string;
     protected: boolean;
   };
+  author: number;
+  featured_media: number;
+  parent: number;
+  menu_order: number;
+  comment_status: string;
+  ping_status: string;
+  template: string;
 }
 
 export const useWordPressPages = () => {
   const [pages, setPages] = useState<WordPressPage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { userProfile } = useAuth();
+  const { user } = useAuth();
 
-  const fetchPages = useCallback(async () => {
-    if (!userProfile?.wordpressConfigId) {
-      console.error("No WordPress configuration ID found for user", userProfile);
+  const fetchPages = async () => {
+    if (!user?.wordpressConfigId) {
+      console.error("No WordPress configuration ID found for user", user);
       setError("No WordPress configuration found for this user");
       return;
     }
@@ -35,13 +44,13 @@ export const useWordPressPages = () => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log("Fetching pages for WordPress config ID:", userProfile.wordpressConfigId);
+      console.log("Fetching pages for WordPress config ID:", user.wordpressConfigId);
 
       // First get the WordPress config for the user
       const { data: wpConfig, error: wpConfigError } = await supabase
         .from('wordpress_configs')
         .select('site_url, rest_api_key, app_username, app_password')
-        .eq('id', userProfile.wordpressConfigId)
+        .eq('id', user.wordpressConfigId)
         .single();
 
       if (wpConfigError) {
@@ -61,10 +70,10 @@ export const useWordPressPages = () => {
         hasAppPassword: !!wpConfig.app_password
       });
 
-      // Normalize the URL (remove double slashes)
+      // Normaliser l'URL (supprimer les doubles slashes)
       const siteUrl = wpConfig.site_url.replace(/([^:]\/)\/+/g, "$1");
-      
-      // Prepare API URL for pages
+
+      // Construct the WordPress API URL
       const apiUrl = `${siteUrl}/wp-json/wp/v2/pages`;
       
       // Prepare headers
@@ -84,13 +93,13 @@ export const useWordPressPages = () => {
         console.log("No authentication credentials provided");
       }
       
-      // Add timeout to the request
+      console.log("Fetching pages from:", apiUrl);
+      
+      // Ajouter un délai d'expiration à la requête
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes de timeout
       
       try {
-        console.log("Fetching WordPress pages from:", apiUrl);
-        
         const response = await fetch(apiUrl, {
           method: 'GET',
           headers: headers,
@@ -111,7 +120,7 @@ export const useWordPressPages = () => {
         }
   
         const pagesData = await response.json();
-        console.log("WordPress pages fetched successfully:", pagesData.length);
+        console.log("Pages fetched successfully:", pagesData.length);
         setPages(pagesData);
       } catch (fetchError: any) {
         if (fetchError.name === 'AbortError') {
@@ -124,7 +133,7 @@ export const useWordPressPages = () => {
       
       let errorMessage = err.message || "Failed to fetch WordPress pages";
       
-      // Improve error messages
+      // Améliorer les messages d'erreur
       if (err.message.includes("Failed to fetch")) {
         errorMessage = "Erreur réseau: impossible d'accéder au site WordPress";
       } else if (err.message.includes("NetworkError")) {
@@ -134,18 +143,18 @@ export const useWordPressPages = () => {
       }
       
       setError(errorMessage);
-      toast.error("Erreur lors de la récupération des pages");
+      toast.error("Erreur lors de la récupération des pages WordPress");
     } finally {
       setIsLoading(false);
     }
-  }, [userProfile?.wordpressConfigId]);
+  };
 
   useEffect(() => {
-    console.log("useWordPressPages effect running, user:", userProfile?.id, "wordpressConfigId:", userProfile?.wordpressConfigId);
-    if (userProfile?.wordpressConfigId) {
+    console.log("useWordPressPages effect running, user:", user?.id, "wordpressConfigId:", user?.wordpressConfigId);
+    if (user?.wordpressConfigId) {
       fetchPages();
     }
-  }, [userProfile?.wordpressConfigId, fetchPages]);
+  }, [user?.wordpressConfigId]);
 
   return { 
     pages, 

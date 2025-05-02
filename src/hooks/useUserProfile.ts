@@ -34,12 +34,15 @@ export const useUserProfile = () => {
   // Function to fetch the full profile from the database
   const fetchFullProfile = async (userId: string): Promise<boolean> => {
     try {
+      console.log("Fetching full profile for user:", userId);
+      
       // Utiliser d'abord le rôle en cache pour éviter tout problème
       const cachedRole = localStorage.getItem('userRole') as Role | null;
       const cachedUserId = localStorage.getItem('userId');
       
       // Si nous avons un profil utilisateur mais sans rôle défini, utilisons le rôle en cache
       if (userProfile && !userProfile.role && cachedRole && cachedUserId === userId) {
+        console.log("Using cached role before fetch:", cachedRole);
         setUserProfile({...userProfile, role: cachedRole});
       }
       
@@ -56,10 +59,13 @@ export const useUserProfile = () => {
             .maybeSingle();
           
           if (error) {
+            console.error("Error fetching profile:", error);
             throw error;
           }
           
           if (data) {
+            console.log("Profile data received:", data);
+            
             // Get cached role as fallback
             const roleToUse = data.role as Role || cachedRole || 'client';
             
@@ -73,9 +79,10 @@ export const useUserProfile = () => {
               wordpressConfig: data.wordpress_configs ? {
                 name: data.wordpress_configs.name,
                 site_url: data.wordpress_configs.site_url
-              } : undefined,
+              } : null
             };
             
+            console.log("Updated profile with role:", updatedProfile.role);
             setUserProfile(updatedProfile);
             
             // Cache the role for future reference
@@ -86,8 +93,10 @@ export const useUserProfile = () => {
           }
           
           // No data but no error either - break the retry loop
+          console.warn("No profile data found, using cached data if available");
           break;
         } catch (e) {
+          console.error(`Attempt ${attempts + 1} failed:`, e);
           attempts++;
           
           // If we have more attempts, wait before retrying
@@ -98,9 +107,12 @@ export const useUserProfile = () => {
       }
       
       // If we reach here without returning, we failed to get data
+      console.warn("Could not fetch complete profile after retries");
       
       // Use the cached role if we have one
       if (cachedRole && cachedUserId === userId) {
+        console.log("Using cached role after failed fetches:", cachedRole);
+        
         // Update the current profile with the cached role
         if (userProfile) {
           const updatedProfile = {...userProfile, role: cachedRole};
@@ -111,7 +123,7 @@ export const useUserProfile = () => {
       
       return false;
     } catch (error) {
-      // Silence les erreurs pour éviter l'affichage dans la console
+      console.error('Exception while fetching profile:', error);
       return false;
     }
   };

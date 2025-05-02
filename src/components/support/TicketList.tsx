@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageSquare, Clock, MailOpen, Mail, RefreshCw } from "lucide-react";
-import { useTickets } from "@/hooks/tickets";
+import { useTickets } from "@/hooks/useTickets";
 import { useTicketNotifications } from "@/hooks/useTicketNotifications";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";

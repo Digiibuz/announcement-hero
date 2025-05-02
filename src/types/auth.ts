@@ -1,35 +1,8 @@
 
-export interface Session {
-  access_token: string;
-  token_type: string;
-  expires_in: number;
-  refresh_token: string;
-  user: User;
-}
+import { User } from "@supabase/supabase-js";
 
-// Type pour les rôles utilisateur
-export type Role = 'admin' | 'editor' | 'client';
+export type Role = "admin" | "client";
 
-// Interface User de Supabase avec nos champs personnalisés
-export interface User {
-  id: string;
-  email: string;
-  name?: string;
-  user_metadata: {
-    name: string;
-    role?: Role;
-    wordpressConfigId?: string;
-    clientId?: string;
-  };
-  app_metadata: {
-    role?: Role;
-    impersonator_id?: string;
-  };
-  // Ajouté pour compatibilité avec useAuth
-  wordpressConfigId?: string;
-}
-
-// Interface pour le profil utilisateur 
 export interface UserProfile {
   id: string;
   email: string;
@@ -40,25 +13,35 @@ export interface UserProfile {
   wordpressConfig?: {
     name: string;
     site_url: string;
-  };
+  } | null;
   lastLogin?: string | null;
 }
 
-// Interface pour le profil Google Business
-export interface GoogleBusinessProfile {
-  id: string;
-  user_id: string;
-  access_token: string;
-  refresh_token: string;
-  token_expires_at: Date;
-  gmb_account_id?: string;
-  gmb_location_id?: string;
-  google_email?: string;
-}
-
-// Interface pour ajouter aux props du contexte d'authentification
-export interface AuthContextProps {
+export interface AuthContextType {
+  user: UserProfile | null;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  isAuthenticated: boolean;
   isAdmin: boolean;
   isClient: boolean;
-  isEditor: boolean;
+  impersonateUser: (userToImpersonate: UserProfile) => void;
+  stopImpersonating: () => void;
+  originalUser: UserProfile | null;
+  isImpersonating: boolean;
+  isOnResetPasswordPage: boolean;
+}
+
+export interface GoogleBusinessProfile {
+  id: string;
+  userId: string;
+  googleEmail: string | null;
+  gmb_account_id: string | null;
+  gmb_location_id: string | null;
+  created_at: string;
+  updated_at: string;
+  // Token fields
+  refresh_token?: string;
+  access_token?: string;
+  token_expires_at?: string;
 }

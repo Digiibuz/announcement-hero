@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { UserProfile, Role } from "@/types/auth";
+import { UserProfile } from "@/types/auth";
 import { FormSchema, formSchema } from "./FormFields";
 
 export const useUserEditForm = (
@@ -20,7 +20,7 @@ export const useUserEditForm = (
     defaultValues: {
       email: user.email || "",
       name: user.name || "",
-      role: user.role as Role, // Changed from 'as "admin" | "client"'
+      role: user.role || "client",
       clientId: user.clientId || "",
       wordpressConfigId: user.wordpressConfigId || "",
       wpConfigIds: [],
@@ -31,7 +31,7 @@ export const useUserEditForm = (
     form.reset({
       email: user.email || "",
       name: user.name || "",
-      role: user.role as Role, // Changed from 'as "admin" | "client"'
+      role: user.role || "client",
       clientId: user.clientId || "",
       wordpressConfigId: user.wordpressConfigId || "",
       wpConfigIds: selectedConfigIds,
@@ -54,7 +54,7 @@ export const useUserEditForm = (
     await onUserUpdated(user.id, {
       email: values.email,
       name: values.name,
-      role: values.role as Role,
+      role: values.role,
       wordpressConfigId: values.role === "client" ? values.wordpressConfigId : undefined
     });
     setIsDialogOpen(false);

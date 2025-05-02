@@ -1,411 +1,196 @@
-import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from '../integrations/supabase/client';
-import { toast } from 'sonner';
-import { User as SupabaseUser } from '@supabase/supabase-js';
-import { User, UserProfile, Role } from '@/types/auth';
 
-interface AuthContextProps {
-  user: User | null;
-  userProfile: UserProfile | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  isAdmin: boolean;
-  isEditor: boolean;
-  isClient: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-  updateProfile: (data: any) => Promise<void>;
-  sendPasswordResetEmail: (email: string) => Promise<void>;
-  isImpersonating: boolean;
-  impersonateUser: (user: UserProfile) => Promise<void>;
-  stopImpersonation: () => Promise<void>;
-  stopImpersonating: () => Promise<void>;
-  isOnResetPasswordPage: boolean;
-  originalUser: UserProfile | null;
-}
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { User } from "@supabase/supabase-js";
+import { toast } from "sonner";
+import { useUserProfile, createProfileFromMetadata } from "@/hooks/useUserProfile";
+import { useImpersonation } from "@/hooks/useImpersonation";
+import { UserProfile, AuthContextType } from "@/types/auth";
 
-const AuthContext = createContext<AuthContextProps | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [originalUser, setOriginalUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
-  const location = useLocation();
+  const { userProfile, setUserProfile, fetchFullProfile } = useUserProfile();
+  const { originalUser, isImpersonating, impersonateUser: startImpersonation, stopImpersonating: endImpersonation } = useImpersonation(userProfile);
+  // État pour suivre si nous sommes sur une page de réinitialisation de mot de passe
+  const [isOnResetPasswordPage, setIsOnResetPasswordPage] = useState(false);
 
+  // Vérifier si nous sommes sur la page de réinitialisation de mot de passe
   useEffect(() => {
-    const getSession = async () => {
-      setIsLoading(true);
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
+    // Vérifier si nous sommes sur la page de réinitialisation ET si nous avons des tokens dans l'URL
+    const isResetPasswordPage = window.location.pathname === '/reset-password';
+    const hasRecoveryToken = window.location.hash.includes('type=recovery');
+    
+    setIsOnResetPasswordPage(isResetPasswordPage && (hasRecoveryToken || isResetPasswordPage));
+    console.log("Is on reset password page:", isResetPasswordPage, "Has recovery token:", hasRecoveryToken);
+  }, [window.location.pathname, window.location.hash]);
 
-        if (session) {
-          const supabaseUser = session.user;
-          await fetchAndSetUser(supabaseUser);
+  // Initialize auth state and set up listeners with improved persistence
+  useEffect(() => {
+    console.log("Setting up auth state listener");
+    // Set up the auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log("Auth state changed:", event);
+        setIsLoading(true);
+        
+        if (session?.user) {
+          // First set user from metadata for immediate UI feedback
+          const initialProfile = createProfileFromMetadata(session.user);
+          setUserProfile(initialProfile);
+          console.log("Initial profile from metadata:", initialProfile);
+          
+          // Then asynchronously fetch the complete profile
+          setTimeout(() => {
+            fetchFullProfile(session.user.id).then((success) => {
+              if (!success) {
+                console.warn("Failed to fetch complete profile, using metadata only");
+              }
+              setIsLoading(false);
+            });
+          }, 100);
+        } else {
+          setUserProfile(null);
+          setIsLoading(false);
         }
-      } catch (error) {
-        console.error("Error getting session:", error);
-      } finally {
+      }
+    );
+
+    // Get initial session with improved caching
+    const initializeAuth = async () => {
+      // First check if we have a locally cached user role
+      const cachedUserRole = localStorage.getItem('userRole');
+      const cachedUserId = localStorage.getItem('userId');
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        console.log("Session found during initialization");
+        // First set user from metadata
+        const initialProfile = createProfileFromMetadata(session.user);
+        
+        // Apply cached role if available for immediate UI
+        if (cachedUserRole && cachedUserId === session.user.id) {
+          initialProfile.role = cachedUserRole as any;
+          console.log("Applied cached role:", cachedUserRole);
+        }
+        
+        setUserProfile(initialProfile);
+        
+        // Then get complete profile
+        setTimeout(() => {
+          fetchFullProfile(session.user.id).then((success) => {
+            if (success) {
+              console.log("Successfully fetched complete profile");
+            } else {
+              console.warn("Failed to fetch complete profile, using metadata only");
+            }
+            setIsLoading(false);
+          });
+        }, 100);
+      } else {
+        console.log("No session found during initialization");
+        setUserProfile(null);
         setIsLoading(false);
       }
     };
 
-    getSession();
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'INITIAL_SESSION') {
-        const supabaseUser = session?.user;
-        if (supabaseUser) {
-          await fetchAndSetUser(supabaseUser);
-        }
-      } else if (event === 'SIGNED_IN') {
-        const supabaseUser = session?.user;
-        if (supabaseUser) {
-          await fetchAndSetUser(supabaseUser);
-        }
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setUserProfile(null);
-        setOriginalUser(null);
-      }
-    });
+    initializeAuth();
 
     return () => {
-      subscription?.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
-  const fetchAndSetUser = async (supabaseUser: SupabaseUser) => {
-    if (!supabaseUser) {
-      setUser(null);
-      setUserProfile(null);
-      return;
+  // Cache the user role when it changes
+  useEffect(() => {
+    if (userProfile) {
+      localStorage.setItem('userRole', userProfile.role);
+      localStorage.setItem('userId', userProfile.id);
+      console.log("Cached user role:", userProfile.role);
+    } else {
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userId');
     }
-
-    try {
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*, wordpress_configs(name, site_url)')
-        .eq('id', supabaseUser.id)
-        .single();
-
-      if (profileError) {
-        throw profileError;
-      }
-
-      const userWithMetadata: User = {
-        id: supabaseUser.id,
-        email: supabaseUser.email || '',
-        name: profile?.name || supabaseUser?.user_metadata?.name as string || 'Unknown User',
-        user_metadata: {
-          name: profile?.name || supabaseUser?.user_metadata?.name as string || 'Unknown User',
-          role: profile?.role as Role || supabaseUser?.user_metadata?.role as Role || 'client',
-          wordpressConfigId: profile?.wordpress_config_id || supabaseUser?.user_metadata?.wordpressConfigId as string | undefined,
-          clientId: profile?.client_id || supabaseUser?.user_metadata?.clientId as string | undefined,
-        },
-        app_metadata: {
-          role: supabaseUser?.app_metadata?.role as Role | undefined,
-          impersonator_id: supabaseUser?.app_metadata?.impersonator_id as string | undefined,
-        },
-        wordpressConfigId: profile?.wordpress_config_id || supabaseUser?.user_metadata?.wordpressConfigId as string | undefined,
-      };
-      
-      setUser(userWithMetadata);
-
-      // Also create the UserProfile object for components that expect that format
-      const userProfile: UserProfile = {
-        id: supabaseUser.id,
-        email: supabaseUser.email || '',
-        name: profile?.name || supabaseUser?.user_metadata?.name as string || 'Unknown User',
-        role: profile?.role as Role || supabaseUser?.user_metadata?.role as Role || 'client',
-        wordpressConfigId: profile?.wordpress_config_id || undefined,
-        clientId: profile?.client_id || undefined,
-        wordpressConfig: profile?.wordpress_configs ? {
-          name: profile.wordpress_configs.name,
-          site_url: profile.wordpress_configs.site_url
-        } : undefined,
-        lastLogin: null // Nous n'avons plus accès à cette information sans la fonction Edge
-      };
-      
-      setUserProfile(userProfile);
-    } catch (error: any) {
-      console.error("Error fetching user profile:", error);
-      toast.error("Failed to fetch user profile.");
-      // Fallback to minimal user info if profile fetch fails
-      const minimalUser: User = {
-        id: supabaseUser.id,
-        email: supabaseUser.email || '',
-        name: supabaseUser?.user_metadata?.name as string || 'Unknown User',
-        user_metadata: {
-          name: supabaseUser?.user_metadata?.name as string || 'Unknown User',
-          role: supabaseUser?.user_metadata?.role as Role || 'client',
-        },
-        app_metadata: {
-          role: supabaseUser?.app_metadata?.role as Role | undefined,
-          impersonator_id: supabaseUser?.app_metadata?.impersonator_id as string | undefined,
-        },
-        wordpressConfigId: supabaseUser?.user_metadata?.wordpressConfigId as string | undefined,
-      };
-      
-      setUser(minimalUser);
-      
-      // Create minimal UserProfile as well
-      const minimalUserProfile: UserProfile = {
-        id: supabaseUser.id,
-        email: supabaseUser.email || '',
-        name: supabaseUser?.user_metadata?.name as string || 'Unknown User',
-        role: supabaseUser?.user_metadata?.role as Role || 'client',
-      };
-      
-      setUserProfile(minimalUserProfile);
-    }
-  };
+  }, [userProfile?.role, userProfile?.id]);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
+    
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password,
+        password
       });
-
+      
       if (error) {
         throw error;
       }
-
-      if (data.user) {
-        await fetchAndSetUser(data.user);
-      }
+      
+      // User will be set by the auth state change listener
     } catch (error: any) {
-      console.error("Login failed:", error);
-      throw error;
-    } finally {
       setIsLoading(false);
+      throw new Error(error.message || "Login error");
     }
   };
 
   const logout = async () => {
-    setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        throw error;
-      }
-      setUser(null);
-      setUserProfile(null);
-      setOriginalUser(null);
-      navigate('/login');
-    } catch (error) {
-      console.error("Logout failed:", error);
-      toast.error("Logout failed.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const resetPassword = async (email: string) => {
-    setIsLoading(true);
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-      if (error) {
-        throw error;
-      }
-      toast.success('Password reset email sent.');
-    } catch (error) {
-      console.error("Password reset request failed:", error);
-      toast.error("Failed to request password reset.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const updateProfile = useCallback(async (data: any) => {
-    setIsLoading(true);
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update(data)
-        .eq('id', user?.id);
-
-      if (error) {
-        throw error;
-      }
-
-      // Refresh user data after profile update
-      if (user?.id) {
-        const { data: updatedProfile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (profileError) {
-          console.error("Error fetching updated profile:", profileError);
-          toast.error("Failed to fetch updated profile.");
-        } else {
-          // Update the user context with the new profile data
-          const updatedUser: User = {
-            ...user,
-            user_metadata: {
-              ...user.user_metadata,
-              name: updatedProfile?.name || user.user_metadata.name,
-              // Update other fields as necessary
-            },
-          };
-          setUser(updatedUser);
-          toast.success('Profile updated successfully!');
-        }
-      }
-    } catch (error) {
-      console.error("Profile update failed:", error);
-      toast.error("Failed to update profile.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [supabase, user]);
-
-  const sendPasswordResetEmail = async (email: string) => {
-    setIsLoading(true);
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-      if (error) {
-        throw error;
-      }
-      toast.success('Password reset email sent.');
-    } catch (error) {
-      console.error("Password reset request failed:", error);
-      toast.error("Failed to request password reset.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const impersonateUser = async (userToImpersonate: UserProfile) => {
-    setIsLoading(true);
-    try {
-      // Keep original user info before impersonating
-      setOriginalUser(userProfile);
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userId');
+      sessionStorage.removeItem('lastAdminPath');
+      sessionStorage.removeItem('lastAuthenticatedPath');
       
-      // Call the Supabase function to set the impersonator_id
-      const { data, error } = await supabase.functions.invoke('impersonate', {
-        body: {
-          user_id: userToImpersonate.id,
-        },
-      });
-  
-      if (error) {
-        console.error('Impersonation function error:', error);
-        toast.error('Failed to impersonate user.');
-        return;
-      }
-  
-      if (data && data.access_token) {
-        // Update the auth session with the new access token
-        await supabase.auth.setSession({
-          access_token: data.access_token,
-          refresh_token: data.refresh_token,
-        });
-  
-        // Fetch and set the impersonated user
-         const { data: { user: impersonatedUser } } = await supabase.auth.getUser();
-         if (impersonatedUser) {
-           await fetchAndSetUser(impersonatedUser);
-         }
-      } else {
-        console.error('Impersonation function response missing access_token:', data);
-        toast.error('Failed to impersonate user: Missing access token.');
-      }
+      await supabase.auth.signOut();
+      setUserProfile(null);
+      localStorage.removeItem("originalUser");
     } catch (error) {
-      console.error('Error during impersonation:', error);
-      toast.error('Failed to impersonate user.');
-    } finally {
-      setIsLoading(false);
+      console.error("Error during logout:", error);
     }
   };
 
-  const stopImpersonation = async () => {
-    setIsLoading(true);
-    try {
-      // Call the Supabase function to remove the impersonator_id
-      const { data, error } = await supabase.functions.invoke('stop-impersonating');
-  
-      if (error) {
-        console.error('Stop impersonation function error:', error);
-        toast.error('Failed to stop impersonation.');
-        return;
-      }
-  
-      if (data && data.access_token) {
-        // Update the auth session with the new access token
-        await supabase.auth.setSession({
-          access_token: data.access_token,
-          refresh_token: data.refresh_token,
-        });
-  
-        // Fetch and set the original user
-        const { data: { user: originalSupabaseUser } } = await supabase.auth.getUser();
-        if (originalSupabaseUser) {
-          await fetchAndSetUser(originalSupabaseUser);
-        }
-        
-        // Clear the original user state
-        setOriginalUser(null);
-      } else {
-        console.error('Stop impersonation function response missing access_token:', data);
-        toast.error('Failed to stop impersonation: Missing access token.');
-      }
-    } catch (error) {
-      console.error('Error during stop impersonation:', error);
-      toast.error('Failed to stop impersonation.');
-    } finally {
-      setIsLoading(false);
+  // Impersonation wrappers
+  const impersonateUser = (userToImpersonate: UserProfile) => {
+    const impersonatedUser = startImpersonation(userToImpersonate);
+    if (impersonatedUser) {
+      setUserProfile(impersonatedUser);
+      localStorage.setItem('userRole', impersonatedUser.role);
+      localStorage.setItem('userId', impersonatedUser.id);
     }
   };
-  
-  // Alias for backward compatibility
-  const stopImpersonating = stopImpersonation;
 
-  // S'assurer que nous accédons correctement aux métadonnées de l'utilisateur
-  const contextValue = {
-    user,
-    userProfile,
-    isAuthenticated: !!user,
+  const stopImpersonating = () => {
+    const originalUserProfile = endImpersonation();
+    if (originalUserProfile) {
+      setUserProfile(originalUserProfile);
+      localStorage.setItem('userRole', originalUserProfile.role);
+      localStorage.setItem('userId', originalUserProfile.id);
+    }
+  };
+
+  const value: AuthContextType = {
+    user: userProfile,
     isLoading,
-    isAdmin: user?.user_metadata?.role === 'admin',
-    isEditor: user?.user_metadata?.role === 'editor',
-    isClient: user?.user_metadata?.role === 'client',
     login,
     logout,
-    resetPassword,
-    updateProfile,
-    sendPasswordResetEmail,
-    isImpersonating: !!user?.app_metadata?.impersonator_id,
+    isAuthenticated: !!userProfile,
+    isAdmin: userProfile?.role === "admin",
+    isClient: userProfile?.role === "client",
     impersonateUser,
-    stopImpersonation,
     stopImpersonating,
     originalUser,
-    isOnResetPasswordPage: location.pathname === '/reset-password'
+    isImpersonating,
+    isOnResetPasswordPage,
   };
 
-  return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
