@@ -1,11 +1,12 @@
+
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageSquare, Clock, MailOpen, Mail, RefreshCw } from "lucide-react";
-import { useUserTickets } from "@/hooks/useTickets";
-import { useTicketNotifications } from "@/hooks/useTicketNotifications";
+import { useUserTickets } from "@/hooks/tickets";
+import { useTicketNotifications } from "@/hooks/notifications";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import TicketDetails from "@/components/support/TicketDetails";

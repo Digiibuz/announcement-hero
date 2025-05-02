@@ -14,8 +14,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { useTicketDetails, useReplyToTicket, useUpdateTicketStatus } from "@/hooks/useTickets";
-import { useTicketNotifications } from "@/hooks/useTicketNotifications";
+import { useTicketDetails, useReplyToTicket, useUpdateTicketStatus } from "@/hooks/tickets";
+import { useTicketNotifications } from "@/hooks/notifications";
 import { toast } from "sonner";
 import { MailOpen } from "lucide-react";
 
