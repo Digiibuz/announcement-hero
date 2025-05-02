@@ -3,7 +3,7 @@ import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { AnnouncementFormData } from "../AnnouncementForm";
 import { UseFormReturn } from "react-hook-form";
-import { NetworkAwareImageUploader } from "../image-uploader";
+import ImageUploader from "../ImageUploader";
 
 interface ImagesStepProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -25,7 +25,7 @@ const ImagesStep = ({
     <div className="max-w-3xl mx-auto">
       <Card className={getCardStyles()}>
         <CardContent className={`${isMobile ? "px-0 py-4" : "p-6"}`}>
-          <NetworkAwareImageUploader form={form} />
+          <ImageUploader form={form} />
         </CardContent>
       </Card>
     </div>
