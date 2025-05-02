@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import { UploadZone } from '../upload-zone';
 
 describe('UploadZone', () => {
@@ -62,5 +63,17 @@ describe('UploadZone', () => {
     fireEvent.click(button);
     
     expect(defaultProps.triggerCameraUpload).toHaveBeenCalled();
+  });
+  
+  it('displays offline message when not online', () => {
+    render(<UploadZone {...defaultProps} isOnline={false} />);
+    
+    expect(screen.getByText('Vous êtes hors ligne')).toBeInTheDocument();
+  });
+  
+  it('displays slow connection message when network is slow', () => {
+    render(<UploadZone {...defaultProps} networkQuality="slow" isOnline={true} />);
+    
+    expect(screen.getByText('Connexion lente détectée. Les images seront compressées pour un envoi plus rapide.')).toBeInTheDocument();
   });
 });

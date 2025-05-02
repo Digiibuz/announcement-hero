@@ -1,40 +1,56 @@
 
 import { compressImage } from "../compression-utils";
 
-// Mock Canvas API
-global.HTMLCanvasElement.prototype.getContext = jest.fn().mockReturnValue({
-  drawImage: jest.fn(),
+// Create proper type-safe mocks for HTMLCanvasElement and HTMLImageElement
+beforeAll(() => {
+  // Mock Canvas API
+  const mockContext = {
+    drawImage: jest.fn()
+  };
+  
+  jest.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => mockContext as unknown as CanvasRenderingContext2D);
+  
+  // Mock toBlob
+  HTMLCanvasElement.prototype.toBlob = jest.fn().mockImplementation((callback) => {
+    const blob = new Blob(['test'], { type: 'image/webp' });
+    callback(blob);
+  });
+  
+  // Create a proper mock for Image that aligns with HTMLImageElement
+  const originalImage = window.Image;
+  // @ts-ignore - we need to override this for tests
+  window.Image = class {
+    onload: () => void = () => {};
+    onerror: () => void = () => {};
+    src: string = '';
+    width: number = 1000;
+    height: number = 800;
+    
+    constructor() {
+      setTimeout(() => {
+        this.onload();
+      }, 10);
+    }
+  };
+
+  // Mock FileReader
+  const originalFileReader = window.FileReader;
+  // @ts-ignore - we need to override for tests
+  window.FileReader = class {
+    onload: (event: any) => void = () => {};
+    onerror: () => void = () => {};
+    
+    readAsDataURL = jest.fn().mockImplementation(() => {
+      setTimeout(() => {
+        this.onload({ target: { result: "data:image/jpeg;base64,test" } });
+      }, 10);
+    });
+  };
 });
 
-global.Image = class {
-  onload: Function = () => {};
-  onerror: Function = () => {};
-  src: string = '';
-  width = 1000;
-  height = 800;
-  
-  constructor() {
-    setTimeout(() => {
-      this.onload();
-    }, 10);
-  }
-};
-
-// Mock FileReader
-global.FileReader = class {
-  onload: Function = () => {};
-  onerror: Function = () => {};
-  readAsDataURL = jest.fn().mockImplementation(() => {
-    setTimeout(() => {
-      this.onload({ target: { result: "data:image/jpeg;base64,test" } });
-    }, 10);
-  });
-};
-
-// Mock Canvas toBlob
-HTMLCanvasElement.prototype.toBlob = jest.fn().mockImplementation((callback) => {
-  const blob = new Blob(['test'], { type: 'image/webp' });
-  callback(blob);
+// Cleanup mocks after tests
+afterAll(() => {
+  jest.restoreAllMocks();
 });
 
 describe('compression-utils', () => {
@@ -59,10 +75,11 @@ describe('compression-utils', () => {
     
     it('should handle errors during compression', async () => {
       // Override onload to trigger error
-      const originalImage = global.Image;
-      global.Image = class {
-        onload: Function = () => {};
-        onerror: Function = () => {};
+      const originalImage = window.Image;
+      // @ts-ignore - we need to override for tests
+      window.Image = class {
+        onload: () => void = () => {};
+        onerror: () => void = () => {};
         src: string = '';
         
         constructor() {
@@ -77,7 +94,8 @@ describe('compression-utils', () => {
       await expect(compressImage(file, true)).rejects.toThrow();
       
       // Restore Image constructor
-      global.Image = originalImage;
+      // @ts-ignore - restoring mock
+      window.Image = originalImage;
     });
   });
 });

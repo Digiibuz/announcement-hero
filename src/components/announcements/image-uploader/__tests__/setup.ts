@@ -19,22 +19,24 @@ class ResizeObserverMock {
 }
 
 // Add to global
-global.ResizeObserver = ResizeObserverMock;
+// @ts-ignore - for testing purposes
+window.ResizeObserver = ResizeObserverMock;
 
-// Mock IntersectionObserver
-class IntersectionObserverMock {
-  constructor(callback: IntersectionObserverCallback) {
-    this.callback = callback;
-  }
-  observe = jest.fn();
-  unobserve = jest.fn();
-  disconnect = jest.fn();
-  callback: IntersectionObserverCallback;
-}
+// Mock IntersectionObserver with appropriate type definition
+const mockIntersectionObserver = jest.fn();
+mockIntersectionObserver.mockReturnValue({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+});
 
-global.IntersectionObserver = IntersectionObserverMock;
+// @ts-ignore - for testing purposes
+window.IntersectionObserver = mockIntersectionObserver;
 
 // Mock network status functions
+// @ts-ignore - adding test properties to window
 window.isOnSlowNetwork = jest.fn().mockReturnValue(false);
+// @ts-ignore - adding test properties to window
 window.isSaveDataEnabled = jest.fn().mockReturnValue(false);
+// @ts-ignore - adding test properties to window
 window.getNetworkQuality = jest.fn().mockReturnValue('medium');

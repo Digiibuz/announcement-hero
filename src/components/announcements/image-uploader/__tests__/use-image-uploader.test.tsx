@@ -1,5 +1,6 @@
 
 import { renderHook, act } from '@testing-library/react-hooks';
+import '@testing-library/jest-dom';
 import { useImageUploader } from '../use-image-uploader';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
