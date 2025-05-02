@@ -40,10 +40,10 @@ const UserManagement = () => {
     toast.success("Liste des utilisateurs mise à jour");
   };
 
-  const handleImpersonateUser = (user: UserProfile) => {
-    if (user.role === 'client') {
-      impersonateUser(user);
-      toast.success(`Vous êtes maintenant connecté en tant que ${user.name}`);
+  const handleImpersonateUser = (userToImpersonate: UserProfile) => {
+    if (userToImpersonate.role === 'client') {
+      impersonateUser(userToImpersonate);
+      toast.success(`Vous êtes maintenant connecté en tant que ${userToImpersonate.name}`);
     }
   };
 

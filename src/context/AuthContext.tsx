@@ -2,9 +2,11 @@
 import { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
+import { UserProfile } from '@/types/auth';
+import { createProfileFromMetadata } from '@/hooks/useUserProfile';
 
 interface AuthContextType {
-  user: User | null;
+  user: UserProfile | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
@@ -12,10 +14,10 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isOnResetPasswordPage: boolean;
-  impersonateUser?: () => void;
-  stopImpersonating?: () => void;
-  originalUser?: any;
-  isImpersonating?: boolean;
+  impersonateUser: (userToImpersonate: UserProfile) => void;
+  stopImpersonating: () => void;
+  originalUser: UserProfile | null;
+  isImpersonating: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,7 +31,9 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [originalUser, setOriginalUser] = useState<UserProfile | null>(null);
+  const [isImpersonating, setIsImpersonating] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isOnResetPasswordPage, setIsOnResetPasswordPage] = useState(false);
 
@@ -45,13 +49,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user || null);
+      const authUser = session?.user || null;
+      // Convert the plain Supabase User to our UserProfile type
+      const userProfile = createProfileFromMetadata(authUser);
+      setUser(userProfile);
       setIsLoading(false);
     });
 
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user || null);
+      const authUser = session?.user || null;
+      // Convert the plain Supabase User to our UserProfile type
+      const userProfile = createProfileFromMetadata(authUser);
+      setUser(userProfile);
       setIsLoading(false);
     });
 
@@ -74,27 +84,52 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const logout = async (): Promise<void> => {
     try {
+      if (isImpersonating) {
+        // If impersonating, go back to original user rather than logging out
+        stopImpersonating();
+        return;
+      }
+      
       await supabase.auth.signOut();
       setUser(null);
+      setOriginalUser(null);
+      setIsImpersonating(false);
     } catch (error) {
       console.error("Logout error:", error);
     }
+  };
+
+  const impersonateUser = (userToImpersonate: UserProfile) => {
+    if (!isImpersonating) {
+      setOriginalUser(user);
+    }
+    
+    setUser(userToImpersonate);
+    setIsImpersonating(true);
+  };
+
+  const stopImpersonating = () => {
+    if (originalUser) {
+      setUser(originalUser);
+    }
+    
+    setOriginalUser(null);
+    setIsImpersonating(false);
   };
 
   const value: AuthContextType = {
     user,
     isLoading,
     isAuthenticated: !!user,
-    isAdmin: user?.user_metadata?.role === 'admin',
-    isClient: user?.user_metadata?.role === 'client',
+    isAdmin: user?.role === 'admin',
+    isClient: user?.role === 'client',
     login,
     logout,
     isOnResetPasswordPage,
-    // These are placeholders until you implement proper impersonation
-    impersonateUser: () => {},
-    stopImpersonating: () => {},
-    originalUser: null,
-    isImpersonating: false,
+    impersonateUser,
+    stopImpersonating,
+    originalUser,
+    isImpersonating,
   };
 
   return (
