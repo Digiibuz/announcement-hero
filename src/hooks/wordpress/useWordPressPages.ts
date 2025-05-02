@@ -1,10 +1,26 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+export interface WordPressPage {
+  id: number;
+  title: {
+    rendered: string;
+  };
+  slug: string;
+  link: string;
+  date: string;
+  status: string;
+  content?: {
+    rendered: string;
+    protected: boolean;
+  };
+}
+
 export const useWordPressPages = () => {
-  const [pages, setPages] = useState<any[]>([]);
+  const [pages, setPages] = useState<WordPressPage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { userProfile } = useAuth();
