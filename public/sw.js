@@ -1,6 +1,6 @@
 
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v19';
+const CACHE_NAME = 'digiibuz-cache-v20';
 
 // Liste des ressources à mettre en cache immédiatement (shell de l'application)
 const CORE_ASSETS = [
