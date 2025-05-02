@@ -1,3 +1,4 @@
+
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
@@ -63,7 +64,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     if (location.pathname === '/reset-password' && hasRecoveryToken) {
       return <>{children}</>;
     }
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   return <>{children}</>;
@@ -95,7 +96,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
     if (location.pathname === '/reset-password' && hasRecoveryToken) {
       return <>{children}</>;
     }
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   // Autoriser l'accès aux utilisateurs admin et client
@@ -103,6 +104,27 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/dashboard" replace />;
   }
 
+  return <>{children}</>;
+};
+
+// Composant de route publique qui redirige vers le tableau de bord si l'utilisateur est connecté
+const PublicRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
+  
+  // Récupérer le chemin depuis lequel la redirection a été effectuée
+  const from = location.state?.from?.pathname || '/dashboard';
+  
+  if (isLoading) {
+    return <LoadingFallback />;
+  }
+  
+  if (isAuthenticated) {
+    // Rediriger vers le dernier chemin visité ou le tableau de bord
+    const lastPath = sessionStorage.getItem('lastAuthenticatedPath') || from;
+    return <Navigate to={lastPath} replace />;
+  }
+  
   return <>{children}</>;
 };
 
@@ -115,14 +137,24 @@ function App() {
             <TooltipProvider>
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>
-                  {/* Redirect root to dashboard if logged in, otherwise to login */}
+                  {/* Redirect root to login if not authenticated */}
                   <Route path="/" element={
-                    <Navigate to="/dashboard" replace />
+                    <ProtectedRoute>
+                      <Navigate to="/dashboard" replace />
+                    </ProtectedRoute>
                   } />
                   
-                  {/* Public routes - accessibles sans authentification */}
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  {/* Public routes - accessibles sans authentification mais avec redirection si déjà connecté */}
+                  <Route path="/login" element={
+                    <PublicRoute>
+                      <Login />
+                    </PublicRoute>
+                  } />
+                  <Route path="/forgot-password" element={
+                    <PublicRoute>
+                      <ForgotPassword />
+                    </PublicRoute>
+                  } />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   
                   {/* Protected routes */}
@@ -201,8 +233,12 @@ function App() {
                     } 
                   />
                   
-                  {/* Fallback route */}
-                  <Route path="*" element={<NotFound />} />
+                  {/* Fallback pour les routes inexistantes - rediriger vers login si non connecté */}
+                  <Route path="*" element={
+                    <ProtectedRoute>
+                      <NotFound />
+                    </ProtectedRoute>
+                  } />
                 </Routes>
                 <SonnerToaster />
                 <UIToaster />
