@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { useAllTickets } from "@/hooks/useTickets";
+import { useAllTickets } from "@/hooks/tickets";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

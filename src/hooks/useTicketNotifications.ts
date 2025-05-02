@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from "react";
-import { useTickets, useAllTickets, Ticket } from "./useTickets";
+import { useTickets, useAllTickets, Ticket } from "@/hooks/tickets";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 

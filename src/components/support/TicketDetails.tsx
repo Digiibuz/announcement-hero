@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +14,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { useTicketDetails, useReplyToTicket, useUpdateTicketStatus } from "@/hooks/useTickets";
+import { useTicketDetails, useReplyToTicket, useUpdateTicketStatus } from "@/hooks/tickets";
 import { useTicketNotifications } from "@/hooks/useTicketNotifications";
 import { toast } from "sonner";
 import { MailOpen } from "lucide-react";
