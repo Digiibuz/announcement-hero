@@ -2,7 +2,7 @@
 /**
  * Utilities for replacing sensitive strings in logs
  */
-import { replaceAllSensitiveUrls } from '../sanitization';
+import { replaceAllSensitiveUrls } from '../urlSanitizer';
 
 export { replaceAllSensitiveUrls };
 

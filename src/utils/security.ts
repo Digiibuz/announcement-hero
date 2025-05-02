@@ -4,28 +4,24 @@
  */
 
 // Re-export all relevant functions to maintain compatibility with existing code
-export { sanitizeErrorMessage, safeConsoleError, sanitizeAllArgs, handleAuthError } from './sanitization';
+export { 
+  sanitizeErrorMessage, 
+  safeConsoleError, 
+  sanitizeAllArgs, 
+  handleAuthError 
+} from './sanitization';
 
 // Advanced protection to completely block sensitive URLs in errors
 (function() {
-  // Sensitive patterns to block completely
-  const sensitivePatterns = [
-    /supabase\.co/i,
-    /auth\/v1\/token/i,
-    /token\?grant_type=password/i,
-    /400.*bad request/i,
-    /401/i,
-    /grant_type=password/i,
-    /rdwqedmvzicerwotjseg/i,
-    /index-[a-zA-Z0-9-_]+\.js/i
-  ];
+  // Import sensitive patterns from the new central location
+  const { SENSITIVE_PATTERNS } = require('./sensitiveDataPatterns');
   
   // Completely block unhandled errors containing sensitive information
   window.addEventListener('error', function(event) {
     const errorText = event.message || event.error?.stack || '';
     
     // Block and mask errors related to authentication
-    if (sensitivePatterns.some(pattern => pattern.test(errorText))) {
+    if (SENSITIVE_PATTERNS.some(pattern => pattern.test(errorText))) {
       event.preventDefault();
       event.stopPropagation();
       return true;
@@ -37,7 +33,7 @@ export { sanitizeErrorMessage, safeConsoleError, sanitizeAllArgs, handleAuthErro
     const reasonText = String(event.reason || '');
     
     // Block and mask rejections related to authentication
-    if (sensitivePatterns.some(pattern => pattern.test(reasonText))) {
+    if (SENSITIVE_PATTERNS.some(pattern => pattern.test(reasonText))) {
       event.preventDefault();
       event.stopPropagation();
       return true;
@@ -55,7 +51,7 @@ export { sanitizeErrorMessage, safeConsoleError, sanitizeAllArgs, handleAuthErro
     if (args.some(arg => {
       if (arg === null || arg === undefined) return false;
       const str = String(arg);
-      return sensitivePatterns.some(pattern => pattern.test(str));
+      return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
     })) {
       return; // Don't log anything
     }
@@ -68,7 +64,7 @@ export { sanitizeErrorMessage, safeConsoleError, sanitizeAllArgs, handleAuthErro
     if (args.some(arg => {
       if (arg === null || arg === undefined) return false;
       const str = String(arg);
-      return sensitivePatterns.some(pattern => pattern.test(str));
+      return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
     })) {
       return; // Don't log anything
     }
@@ -81,7 +77,7 @@ export { sanitizeErrorMessage, safeConsoleError, sanitizeAllArgs, handleAuthErro
     if (args.some(arg => {
       if (arg === null || arg === undefined) return false;
       const str = String(arg);
-      return sensitivePatterns.some(pattern => pattern.test(str));
+      return SENSITIVE_PATTERNS.some(pattern => pattern.test(str));
     })) {
       return; // Don't log anything
     }
