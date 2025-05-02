@@ -36,6 +36,9 @@ export const useCreateTicket = () => {
       });
       toast.success("Votre ticket a été créé avec succès");
     },
+    onError: () => {
+      toast.error("Une erreur est survenue lors de la création du ticket");
+    }
   });
 };
 
@@ -82,7 +85,11 @@ export const useReplyToTicket = () => {
       queryClient.invalidateQueries({
         queryKey: ["all-tickets"],
       });
+      toast.success("Votre réponse a été ajoutée avec succès");
     },
+    onError: () => {
+      toast.error("Une erreur est survenue lors de l'ajout de votre réponse");
+    }
   });
 };
 
@@ -129,5 +136,8 @@ export const useUpdateTicketStatus = () => {
         toast.info("Le statut du ticket a été mis à jour");
       }
     },
+    onError: () => {
+      toast.error("Une erreur est survenue lors de la mise à jour du statut du ticket");
+    }
   });
 };
