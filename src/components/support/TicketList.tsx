@@ -1,22 +1,23 @@
 
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageSquare, Clock, MailOpen, Mail, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { useUserTickets } from "@/hooks/tickets";
 import { useTicketNotifications } from "@/hooks/notifications";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 import TicketDetails from "@/components/support/TicketDetails";
-import { Skeleton } from "@/components/ui/skeleton";
+import { 
+  TicketCard, 
+  TicketListSkeleton, 
+  TicketListEmpty, 
+  TicketListError 
+} from "./ticket-list";
 
 const TicketList = () => {
   const { user } = useAuth();
   const { data: tickets, isLoading, error, refetch } = useUserTickets();
   const { markTicketAsRead, markTicketTabAsViewed, readTicketIds } = useTicketNotifications();
-  const [selectedTicket, setSelectedTicket] = React.useState<string | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Mark the tab as viewed as soon as the component mounts
@@ -49,73 +50,16 @@ const TicketList = () => {
   };
 
   if (isLoading || isRefreshing) {
-    return (
-      <div className="space-y-4">
-        {Array.from({ length: 3 }).map((_, index) => (
-          <Card key={index} className="overflow-hidden">
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-start">
-                <Skeleton className="h-6 w-64" />
-                <Skeleton className="h-6 w-20" />
-              </div>
-              <div className="flex items-center mt-1">
-                <Skeleton className="h-4 w-40 mt-2" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-4 w-full mb-4" />
-              <Skeleton className="h-10 w-full" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
+    return <TicketListSkeleton />;
   }
 
   if (error) {
-    return (
-      <Card>
-        <CardContent className="pt-6">
-          <div className="text-center py-8 text-red-500">
-            <p>Erreur lors du chargement des tickets: {error.message}</p>
-            <Button 
-              variant="outline" 
-              className="mt-4"
-              onClick={handleRefresh}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Réessayer
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <TicketListError error={error} onRefresh={handleRefresh} />;
   }
 
   if (!tickets || tickets.length === 0) {
-    return (
-      <Card>
-        <CardContent className="pt-6">
-          <p className="text-center py-8 text-muted-foreground">
-            Vous n'avez pas encore de tickets. Créez-en un pour obtenir de l'aide.
-          </p>
-        </CardContent>
-      </Card>
-    );
+    return <TicketListEmpty />;
   }
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "open":
-        return <Badge className="bg-green-500">Ouvert</Badge>;
-      case "in_progress":
-        return <Badge className="bg-orange-500">En cours</Badge>;
-      case "closed":
-        return <Badge className="bg-green-500">Résolu</Badge>;
-      default:
-        return <Badge>{status}</Badge>;
-    }
-  };
 
   return (
     <div>
@@ -162,38 +106,12 @@ const TicketList = () => {
             }
             
             return (
-              <Card key={ticket.id} className="overflow-hidden">
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-center">
-                      {hasUnreadResponse ? (
-                        <Mail className="h-4 w-4 mr-2 text-primary" />
-                      ) : (
-                        <MailOpen className="h-4 w-4 mr-2 text-muted-foreground" />
-                      )}
-                      <CardTitle className="text-lg">{ticket.subject}</CardTitle>
-                    </div>
-                    {getStatusBadge(ticket.status)}
-                  </div>
-                  <div className="flex items-center text-sm text-muted-foreground mt-1">
-                    <Clock className="mr-1 h-4 w-4" />
-                    {format(new Date(ticket.created_at), 'PPP à HH:mm', { locale: fr })}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                    {ticket.message}
-                  </p>
-                  <Button
-                    variant="outline"
-                    className="w-full flex items-center justify-center"
-                    onClick={() => handleSelectTicket(ticket.id)}
-                  >
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    Voir les détails et r��pondre
-                  </Button>
-                </CardContent>
-              </Card>
+              <TicketCard
+                key={ticket.id}
+                ticket={ticket}
+                onSelect={handleSelectTicket}
+                isUnread={hasUnreadResponse}
+              />
             );
           })}
         </div>
