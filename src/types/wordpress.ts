@@ -22,3 +22,39 @@ export interface ClientWordPressConfig {
 
 // Statuts de publication WordPress
 export type WordPressPostStatus = "publish" | "draft" | "future" | "pending" | "private";
+
+// WordPress Page type definition for the REST API responses
+export interface WordPressPage {
+  id: number;
+  date: string;
+  date_gmt: string;
+  guid: {
+    rendered: string;
+  };
+  modified: string;
+  modified_gmt: string;
+  slug: string;
+  status: string;
+  type: string;
+  link: string;
+  title: {
+    rendered: string;
+  };
+  content: {
+    rendered: string;
+    protected: boolean;
+  };
+  excerpt: {
+    rendered: string;
+    protected: boolean;
+  };
+  author: number;
+  featured_media: number;
+  parent: number;
+  menu_order: number;
+  comment_status: string;
+  ping_status: string;
+  template: string;
+  meta: any[];
+  _links: any;
+}

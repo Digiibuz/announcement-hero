@@ -26,7 +26,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import WordPressConnectionStatus from "./WordPressConnectionStatus";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, typedData } from "@/integrations/supabase/client";
 import { UserProfile } from "@/types/auth";
 import { 
   Collapsible,

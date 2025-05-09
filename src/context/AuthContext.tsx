@@ -1,9 +1,8 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
-import { useUserProfile, createProfileFromMetadata } from "@/hooks/useUserProfile";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import { useImpersonation } from "@/hooks/useImpersonation";
 import { UserProfile, AuthContextType } from "@/types/auth";
 
@@ -37,7 +36,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (session?.user) {
           // First set user from metadata for immediate UI feedback
-          const initialProfile = createProfileFromMetadata(session.user);
+          const initialProfile: UserProfile = {
+            id: session.user.id,
+            email: session.user.email || '',
+            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+            role: session.user.user_metadata?.role || 'client',
+            clientId: session.user.user_metadata?.client_id,
+            wordpressConfigId: session.user.user_metadata?.wordpress_config_id,
+            wordpressConfig: null
+          };
           setUserProfile(initialProfile);
           console.log("Initial profile from metadata:", initialProfile);
           
@@ -68,7 +75,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (session?.user) {
         console.log("Session found during initialization");
         // First set user from metadata
-        const initialProfile = createProfileFromMetadata(session.user);
+        const initialProfile: UserProfile = {
+          id: session.user.id,
+          email: session.user.email || '',
+          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+          role: cachedUserRole as ("admin" | "client") || session.user.user_metadata?.role || 'client',
+          clientId: session.user.user_metadata?.client_id,
+          wordpressConfigId: session.user.user_metadata?.wordpress_config_id,
+          wordpressConfig: null
+        };
         
         // Apply cached role if available for immediate UI
         if (cachedUserRole && cachedUserId === session.user.id) {

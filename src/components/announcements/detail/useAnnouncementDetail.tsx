@@ -10,6 +10,7 @@ export interface ExtendedAnnouncement extends Omit<Announcement, 'wordpress_post
   wordpress_post_id?: number | null;
   wordpress_site_url?: string;
   wordpress_published_at?: string;
+  is_divipixel?: boolean;
 }
 
 export const useAnnouncementDetail = (userId: string | undefined) => {
@@ -91,7 +92,8 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
         images: announcement.images || [],
         seoTitle: announcement.seo_title || "",
         seoDescription: announcement.seo_description || "",
-        seoSlug: announcement.seo_slug || ""
+        seoSlug: announcement.seo_slug || "",
+        is_divipixel: announcement.is_divipixel || false
       });
     }
   }, [announcement, isEditing]);
