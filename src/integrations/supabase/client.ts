@@ -70,7 +70,7 @@ export const initializeSecureClient = async (): Promise<boolean> => {
         if (!initLock) {
           clearInterval(checkInterval);
           // Vérifier si l'initialisation précédente a réussi
-          resolve(supabaseInstance?.supabaseKey !== 'public_client_placeholder');
+          resolve(!!supabaseInstance);
         }
       }, 100);
     });
@@ -133,26 +133,25 @@ export const initializeSecureClient = async (): Promise<boolean> => {
         return;
       }
       
-      // Réinitialise le client avec la clé récupérée de façon sécurisée
-      // @ts-ignore - Nous manipulons directement le client pour des raisons de sécurité
-      supabase.supabaseKey = anonKey;
-      
-      // Force le client à utiliser la nouvelle clé pour toutes les futures requêtes
-      // @ts-ignore - Accès interne pour mise à jour sécurisée
-      supabase.rest.headers['apikey'] = anonKey;
-      
-      // Configurations supplémentaires pour s'assurer que l'authentification fonctionne correctement
-      // @ts-ignore - Accès interne pour mise à jour sécurisée
-      if (supabase.auth && typeof supabase.auth.setAuth === 'function') {
-        // @ts-ignore - Accès interne pour mise à jour sécurisée
-        supabase.auth.setAuth(anonKey);
-      }
+      // Créer un nouveau client avec la clé récupérée
+      supabaseInstance = createClient<Database>(
+        `https://${PUBLIC_PROJECT_ID}.supabase.co`,
+        anonKey,
+        {
+          auth: {
+            persistSession: true,
+            storage: localStorage,
+            autoRefreshToken: true,
+            detectSessionInUrl: true
+          }
+        }
+      );
       
       console.log('Client Supabase initialisé avec succès');
       
       // Test après initialisation
       try {
-        const { data, error } = await supabase.auth.getSession();
+        const { data, error } = await supabaseInstance.auth.getSession();
         if (error) {
           console.warn('⚠️ Test post-initialisation: Erreur lors de la récupération de la session:', error);
         } else {
@@ -210,7 +209,8 @@ export const cleanupAuthState = () => {
     }
   });
   
-  // Essayer de réinitialiser le client
+  // Réinitialiser le client
+  supabaseInstance = null;
   initializationPromise = null;
   
   return initializeSecureClient();

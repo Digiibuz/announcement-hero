@@ -3,7 +3,7 @@
 // Cette fonction fournit de manière sécurisée la clé anonyme pour le client Supabase
 
 import { corsHeaders } from "../_shared/cors.ts";
-import { Serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 // Wrap the response preparation for better error handling
 const prepareResponse = (body: any, status = 200) => {
