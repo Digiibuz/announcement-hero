@@ -73,17 +73,21 @@ export const supabase = new Proxy({} as ReturnType<typeof createClient<Database>
       if (prop === 'auth') {
         return {
           // Implémentations provisoires des méthodes auth les plus couramment utilisées
-          signInWithPassword: async (...args: any[]) => {
+          signInWithPassword: async (args: any) => {
             const client = await initSupabaseClient();
-            return client.auth.signInWithPassword(...args);
+            return client.auth.signInWithPassword(args);
           },
-          signOut: async (...args: any[]) => {
+          signOut: async (args: any) => {
             const client = await initSupabaseClient();
-            return client.auth.signOut(...args);
+            return client.auth.signOut(args);
           },
           getSession: async () => {
             const client = await initSupabaseClient();
             return client.auth.getSession();
+          },
+          resetPasswordForEmail: async (email: string, options?: any) => {
+            const client = await initSupabaseClient();
+            return client.auth.resetPasswordForEmail(email, options);
           },
           onAuthStateChange: (callback: any) => {
             // Initialiser le client et configurer l'écouteur une fois prêt
