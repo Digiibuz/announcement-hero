@@ -6,7 +6,11 @@ import './index.css'
 import { initializeSecureClient } from './integrations/supabase/client.ts'
 
 // Initialiser le client Supabase de manière sécurisée avant le rendu de l'application
-initializeSecureClient().then(() => {
+initializeSecureClient().then((success) => {
+  if (!success) {
+    console.error("Échec de l'initialisation de Supabase. Certaines fonctionnalités peuvent ne pas fonctionner.");
+  }
+  
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
       <App />

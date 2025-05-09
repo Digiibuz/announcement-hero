@@ -14,14 +14,22 @@ import type { Database } from './types';
 // L'URL complète et la clé anon sont récupérées via une Edge Function sécurisée
 const PUBLIC_PROJECT_ID = 'rdwqedmvzicerwotjseg';
 
+// Variable pour stocker le client initialisé
+let supabaseInstance: ReturnType<typeof createClient> | null = null;
+
 const createSecureClient = () => {
-  // Version obfusquée - Ne contient pas la clé complète dans le code source
-  // Ces valeurs seront chargées dynamiquement au runtime via l'API sécurisée
-  return createClient<Database>(
+  // Si nous avons déjà initialisé le client, retourner l'instance existante
+  if (supabaseInstance) {
+    return supabaseInstance;
+  }
+
+  // Création initiale avec une clé temporaire qui sera remplacée
+  supabaseInstance = createClient<Database>(
     `https://${PUBLIC_PROJECT_ID}.supabase.co`,
-    // Version temporaire avec clé partielle - sera remplacée au runtime
     'public_client_placeholder'
   );
+  
+  return supabaseInstance;
 };
 
 // Créer le client avec des configurations sécurisées
@@ -29,17 +37,24 @@ export const supabase = createSecureClient();
 
 // Initialise le client avec les vraies informations d'authentification
 // Cette fonction est appelée au démarrage de l'application
-export const initializeSecureClient = async () => {
+export const initializeSecureClient = async (): Promise<boolean> => {
   try {
+    console.log('Initialisation du client Supabase sécurisé...');
+    
     // Appel à l'Edge Function pour récupérer la clé d'API sécurisée
     const response = await fetch('/api/auth/secure-client-config');
     
     if (!response.ok) {
-      console.error('Erreur lors de la récupération de la configuration sécurisée');
-      return;
+      console.error('Erreur lors de la récupération de la configuration sécurisée:', response.status, response.statusText);
+      return false;
     }
     
     const { anonKey } = await response.json();
+    
+    if (!anonKey) {
+      console.error('Clé API non trouvée dans la réponse');
+      return false;
+    }
     
     // Réinitialise le client avec la clé récupérée de façon sécurisée
     // @ts-ignore - Nous manipulons directement le client pour des raisons de sécurité
@@ -49,11 +64,13 @@ export const initializeSecureClient = async () => {
     // @ts-ignore - Accès interne pour mise à jour sécurisée
     supabase.rest.headers['apikey'] = anonKey;
     // @ts-ignore - Accès interne pour mise à jour sécurisée
-    supabase.realtime.setAuth(anonKey);
+    supabase.auth.setAuth(anonKey);
     
     console.log('Client Supabase initialisé de façon sécurisée');
+    return true;
   } catch (error) {
     console.error('Erreur lors de l\'initialisation du client sécurisé:', error);
+    return false;
   }
 };
 

@@ -21,12 +21,25 @@ serve(async (req) => {
       'https://your-production-domain.com',
       'https://your-staging-domain.com',
       'http://localhost:8080',
+      // Ajout du domaine preview de Lovable
+      'https://64c2702a-3a05-4d0d-bbba-3f29359bfeba.lovableproject.com',
+      // Domaine générique Lovable pour les previews
+      '.lovableproject.com'
     ];
     
-    // Vérification de sécurité simple
-    const isAllowedOrigin = allowedOrigins.some(domain => origin.startsWith(domain));
+    // Vérification de sécurité plus flexible pour les domaines de preview
+    const isAllowedOrigin = allowedOrigins.some(domain => {
+      // Si c'est un domaine exact
+      if (origin === domain) return true;
+      // Si c'est un domaine générique (commençant par .)
+      if (domain.startsWith('.') && origin.endsWith(domain.substring(1))) return true;
+      // Si c'est un début de domaine
+      if (!domain.startsWith('.') && origin.startsWith(domain)) return true;
+      return false;
+    });
     
     if (!isAllowedOrigin && origin !== '') {
+      console.error(`Origine non autorisée: ${origin}`);
       return new Response(
         JSON.stringify({ error: 'Unauthorized domain' }),
         {
@@ -41,8 +54,11 @@ serve(async (req) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
     
     if (!anonKey) {
+      console.error("Clé API Supabase non trouvée dans les variables d'environnement");
       throw new Error("Missing environment variables");
     }
+    
+    console.log("Clé API Supabase récupérée avec succès");
     
     // Renvoie uniquement la clé anon, pas l'URL complète
     // L'URL peut être construite à partir de l'ID du projet qui est public
