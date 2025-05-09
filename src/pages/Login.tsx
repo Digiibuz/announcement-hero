@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Eye, EyeOff, Lock, LogIn, Loader2, RefreshCcw, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, Lock, LogIn, Loader2, RefreshCcw, AlertCircle, AlertTriangle } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
 import { 
   initializeSecureClient, 
@@ -17,6 +17,54 @@ import {
   cleanupAuthState, 
   needsAuthReset 
 } from "@/integrations/supabase/client";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from "@/components/ui/dialog";
+
+// Composant indépendant pour le bouton de réinitialisation
+const ResetConnectionButton = ({ onReset, isLoading }) => {
+  return (
+    <Button 
+      onClick={onReset} 
+      className="flex items-center gap-2 w-full"
+      variant="outline"
+      disabled={isLoading}
+    >
+      {isLoading ? (
+        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+      ) : (
+        <RefreshCcw className="h-4 w-4 mr-2" />
+      )}
+      Réinitialiser la connexion
+    </Button>
+  );
+};
+
+// Composant pour l'état de connexion
+const ConnectionStatus = ({ initError, isResetting }) => {
+  if (!initError) return null;
+  
+  return (
+    <div className="flex flex-col items-center justify-center py-4">
+      <div className="text-destructive text-center mb-2 flex flex-col items-center">
+        <AlertCircle className="h-8 w-8 mb-2 text-destructive" />
+        <p className="font-medium mb-1">Problème de configuration du serveur</p>
+        <p className="text-sm text-muted-foreground">{initError}</p>
+      </div>
+      {isResetting && (
+        <div className="text-center mt-2">
+          <p className="text-sm">Réinitialisation en cours...</p>
+          <Loader2 className="h-5 w-5 animate-spin mx-auto mt-2" />
+        </div>
+      )}
+    </div>
+  );
+};
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -24,83 +72,99 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [isResetting, setIsResetting] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
   const [loginAttempts, setLoginAttempts] = useState(0);
+  const [showResetDialog, setShowResetDialog] = useState(false);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  // Fonction pour réinitialiser l'état d'authentification et tenter une nouvelle initialisation
+  // Fonction pour réinitialiser la connexion
   const handleReinitialize = async () => {
     setInitError(null);
-    setIsInitializing(true);
+    setIsResetting(true);
     try {
-      toast.info("Réinitialisation de la connexion en cours...");
-      // Nettoyage complet de l'état d'authentification
+      toast.info("Réinitialisation de la connexion en cours...", {
+        duration: 3000
+      });
+      
+      // Nettoyage complet
       await cleanupAuthState();
+      
       // Nouvel essai d'initialisation
       const success = await initializeSecureClient();
+      
       if (success) {
-        toast.success("Connexion au serveur rétablie");
-        setIsInitializing(false);
-        localStorage.removeItem('auth-needs-reset');
+        toast.success("Connexion au serveur rétablie", {
+          duration: 3000
+        });
+        setInitError(null);
+        setShowResetDialog(false);
       } else {
-        setInitError("Échec de la réinitialisation. Veuillez rafraîchir la page.");
-        setIsInitializing(false);
+        setInitError("La réinitialisation a échoué, veuillez réessayer");
+        toast.error("Échec de la réinitialisation", {
+          description: "Veuillez rafraîchir la page ou réessayer"
+        });
       }
     } catch (error) {
       console.error("Erreur lors de la réinitialisation:", error);
-      setInitError("Erreur lors de la réinitialisation");
-      setIsInitializing(false);
+      setInitError("Une erreur est survenue pendant la réinitialisation");
+      toast.error("La réinitialisation a échoué");
+    } finally {
+      setIsResetting(false);
     }
   };
 
-  // Amélioration: Vérification plus robuste de l'initialisation
+  // Vérification de l'initialisation
   useEffect(() => {
-    // Vérifier si une réinitialisation est nécessaire dès le départ
+    // Vérifier si réinitialisation nécessaire
     if (needsAuthReset()) {
-      setInitError("Une réinitialisation est nécessaire pour résoudre des problèmes précédents");
+      setInitError("Une réinitialisation est nécessaire");
       setIsInitializing(false);
       return;
     }
 
-    // Vérifier l'initialisation du client Supabase avec retry
+    // Vérifier l'initialisation du client
     const initClient = async () => {
       try {
         console.log("Initialisation du client Supabase...");
+        
+        setIsInitializing(true);
         const success = await initializeSecureClient();
         
         if (success) {
-          console.log("Client Supabase initialisé avec succès");
-          // Vérifier que nous pouvons effectivement récupérer une session comme test
+          console.log("Client initialisé avec succès");
+          
+          // Test de validation
           try {
             const { data, error } = await supabase.auth.getSession();
             
             if (error) {
-              console.error("Erreur lors de la vérification de la session:", error);
+              console.error("Erreur de session:", error);
               if (error.message?.includes("Invalid API key")) {
-                setInitError("Problème avec la clé API. Réinitialisation nécessaire.");
+                setInitError("Problème avec la clé API");
+                setShowResetDialog(true);
               } else {
-                setInitError("Problème de connexion avec le serveur d'authentification");
+                setInitError("Problème de connexion avec le serveur");
               }
-              setIsInitializing(false);
             } else {
-              console.log("Connexion établie avec le serveur d'authentification");
-              setIsInitializing(false);
+              console.log("Connexion serveur établie");
               setInitError(null);
             }
           } catch (e) {
-            console.error("Erreur lors de la vérification de session:", e);
-            setInitError("Erreur de communication avec le serveur");
-            setIsInitializing(false);
+            console.error("Erreur de vérification:", e);
+            setInitError("Erreur de communication serveur");
           }
         } else {
-          console.error("Échec de l'initialisation du client Supabase");
+          console.error("Échec d'initialisation");
           setInitError("Problème de connexion avec le serveur");
-          setIsInitializing(false);
+          setShowResetDialog(true);
         }
       } catch (error) {
-        console.error("Erreur critique lors de l'initialisation:", error);
+        console.error("Erreur critique:", error);
         setInitError("Impossible de se connecter au serveur");
+        setShowResetDialog(true);
+      } finally {
         setIsInitializing(false);
       }
     };
@@ -111,21 +175,28 @@ const Login = () => {
   // Redirection si déjà authentifié
   useEffect(() => {
     if (isAuthenticated) {
-      console.log("Utilisateur déjà authentifié, redirection vers le tableau de bord");
+      console.log("Utilisateur authentifié, redirection");
       navigate("/dashboard");
     }
   }, [isAuthenticated, navigate]);
 
+  // Gestionnaire de soumission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (isInitializing) {
-      toast.error("Le système d'authentification est en cours d'initialisation, veuillez patienter");
+      toast.error("Initialisation en cours, veuillez patienter");
       return;
     }
     
     if (initError) {
-      toast.error("Veuillez réinitialiser la connexion avant de vous connecter");
+      toast.error("Veuillez réinitialiser la connexion", {
+        action: {
+          label: "Réinitialiser",
+          onClick: handleReinitialize
+        }
+      });
+      setShowResetDialog(true);
       return;
     }
     
@@ -135,57 +206,50 @@ const Login = () => {
     try {
       console.log("Tentative de connexion...");
       
-      // Après 2 tentatives échouées, nettoyer automatiquement l'état
-      if (loginAttempts >= 2) {
-        console.log("Plusieurs échecs détectés, nettoyage de l'état d'authentification...");
+      // Nettoyage après échecs multiples
+      if (loginAttempts >= 1) {
+        console.log("Nettoyage préventif...");
         await cleanupAuthState();
       }
       
-      // Vérifier que le client est correctement initialisé avant la connexion
       await withInitializedClient(async () => {
-        // Test de vérification de l'état du client avant login
+        // Test préliminaire
         try {
           const { data: sessionCheck } = await supabase.auth.getSession();
-          console.log("État de session avant login:", sessionCheck ? "OK" : "Pas de session");
+          console.log("État de session:", sessionCheck ? "OK" : "Pas de session");
         } catch (e) {
-          console.error("Erreur de vérification avant login:", e);
-          throw new Error("Problème de communication avec le serveur");
+          console.error("Erreur préliminaire:", e);
+          throw new Error("Problème de communication");
         }
         
         await login(email, password);
         console.log("Connexion réussie");
         toast.success("Connexion réussie");
         
-        // Reset login attempts counter on success
+        // Reset compteur
         setLoginAttempts(0);
         
-        // Redirection après connexion réussie
         setTimeout(() => {
           navigate("/dashboard");
         }, 500);
       });
     } catch (error: any) {
-      console.error("Erreur de connexion complète:", error);
+      console.error("Erreur complète:", error);
       
-      // Messages d'erreur plus descriptifs
       if (error.message?.includes("Invalid login")) {
         toast.error("Email ou mot de passe incorrect");
       } else if (error.message?.includes("Invalid API key")) {
-        toast.error("Problème de configuration du serveur. Réinitialisation en cours...");
-        // Tentative de réinitialisation automatique
+        toast.error("Problème de configuration");
+        setShowResetDialog(true);
         await handleReinitialize();
       } else if (error.message?.includes("network")) {
-        toast.error("Problème de connexion réseau. Vérifiez votre connexion internet");
+        toast.error("Problème de connexion réseau");
       } else {
         toast.error(error.message || "Échec de la connexion");
       }
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
   };
 
   return (
@@ -221,21 +285,7 @@ const Login = () => {
                 <p className="text-muted-foreground">Initialisation de la connexion sécurisée...</p>
               </div>
             ) : initError ? (
-              <div className="flex flex-col items-center justify-center py-6 space-y-4">
-                <div className="text-destructive text-center mb-2 flex flex-col items-center">
-                  <AlertCircle className="h-8 w-8 mb-2 text-destructive" />
-                  <p className="font-medium mb-1">Erreur de connexion</p>
-                  <p className="text-sm text-muted-foreground">{initError}</p>
-                </div>
-                <Button 
-                  onClick={handleReinitialize} 
-                  className="flex items-center gap-2"
-                  variant="outline"
-                >
-                  <RefreshCcw className="h-4 w-4" />
-                  Réinitialiser la connexion
-                </Button>
-              </div>
+              <ConnectionStatus initError={initError} isResetting={isResetting} />
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">              
                 <div className="space-y-2">
@@ -280,7 +330,7 @@ const Login = () => {
                       variant="ghost"
                       size="icon"
                       className="absolute right-0 top-0 h-full px-3"
-                      onClick={togglePasswordVisibility}
+                      onClick={() => setShowPassword(!showPassword)}
                       disabled={isLoading}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -301,7 +351,28 @@ const Login = () => {
                     </>
                   )}
                 </Button>
+
+                {loginAttempts > 0 && (
+                  <div className="pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-sm"
+                      onClick={() => setShowResetDialog(true)}
+                    >
+                      <AlertTriangle className="mr-2 h-3 w-3" />
+                      Problèmes de connexion ?
+                    </Button>
+                  </div>
+                )}
               </form>
+            )}
+            
+            {(!!initError || isResetting) && !isInitializing && (
+              <div className="mt-4">
+                <ResetConnectionButton onReset={handleReinitialize} isLoading={isResetting} />
+              </div>
             )}
           </CardContent>
           <CardFooter>
@@ -311,6 +382,57 @@ const Login = () => {
           </CardFooter>
         </Card>
       </AnimatedContainer>
+
+      {/* Dialogue de réinitialisation */}
+      <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCcw className="h-5 w-5" />
+              Réinitialiser la connexion au serveur
+            </DialogTitle>
+            <DialogDescription>
+              Résoudre les problèmes de connexion en réinitialisant la configuration client.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <p className="mb-4">Cette opération va :</p>
+            <ul className="list-disc pl-5 space-y-1 text-sm">
+              <li>Nettoyer les données d'authentification stockées</li>
+              <li>Rétablir la connexion avec le serveur</li>
+              <li>Résoudre les problèmes de clé API invalide</li>
+            </ul>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowResetDialog(false)}
+              disabled={isResetting}
+            >
+              Annuler
+            </Button>
+            <Button 
+              onClick={handleReinitialize}
+              disabled={isResetting}
+              className="min-w-[120px]"
+            >
+              {isResetting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Réinitialisation...
+                </>
+              ) : (
+                <>
+                  <RefreshCcw className="mr-2 h-4 w-4" />
+                  Réinitialiser
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

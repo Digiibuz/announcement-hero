@@ -47,9 +47,12 @@ const handler = async (req: Request) => {
 
     console.log("Clé API Supabase récupérée avec succès");
     
-    // Ne renvoyer que ce qui est absolument nécessaire au client
+    // Ajouter des informations de débuggage dans la réponse
     return prepareResponse({
-      anonKey
+      anonKey,
+      timestamp: new Date().toISOString(),
+      origin: origin,
+      success: true
     });
   } catch (error: any) {
     console.error("Erreur lors du traitement de la requête:", error);
