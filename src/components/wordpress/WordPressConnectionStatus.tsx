@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, typedData } from "@/integrations/supabase/client";
 
 interface WordPressConnectionStatusProps {
   configId?: string;
@@ -77,7 +77,10 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
             .single();
           
           if (!error && data) {
-            setConfigDetails(data);
+            setConfigDetails({
+              name: typedData<string>(data.name),
+              site_url: typedData<string>(data.site_url)
+            });
           }
         } catch (err) {
           console.error("Error fetching WordPress config details:", err);

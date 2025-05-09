@@ -35,6 +35,11 @@ const createSecureClient = () => {
 // Créer le client avec des configurations sécurisées
 export const supabase = createSecureClient();
 
+// Helper function for type casting Supabase responses safely
+export function typedData<T>(data: unknown): T {
+  return data as T;
+}
+
 // Initialise le client avec les vraies informations d'authentification
 // Cette fonction est appelée au démarrage de l'application
 export const initializeSecureClient = async (): Promise<boolean> => {

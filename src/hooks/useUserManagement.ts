@@ -1,6 +1,6 @@
 
 import { useState, useCallback, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, typedData } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { UserProfile, Role } from "@/types/auth";
 
@@ -23,20 +23,20 @@ export const useUserManagement = () => {
         throw profilesError;
       }
       
-      // Format user profiles without relying on the Edge function
-      const processedUsers: UserProfile[] = profilesData.map(profile => {
+      // Format user profiles with proper type casting
+      const processedUsers: UserProfile[] = (profilesData || []).map(profile => {
         return {
-          id: profile.id,
-          email: profile.email,
-          name: profile.name,
-          role: profile.role as Role,
-          clientId: profile.client_id,
-          wordpressConfigId: profile.wordpress_config_id || null,
+          id: typedData<string>(profile.id),
+          email: typedData<string>(profile.email),
+          name: typedData<string>(profile.name),
+          role: typedData<Role>(profile.role),
+          clientId: typedData<string>(profile.client_id),
+          wordpressConfigId: typedData<string>(profile.wordpress_config_id) || null,
           wordpressConfig: profile.wordpress_configs ? {
-            name: profile.wordpress_configs.name,
-            site_url: profile.wordpress_configs.site_url
+            name: typedData<string>(profile.wordpress_configs.name),
+            site_url: typedData<string>(profile.wordpress_configs.site_url)
           } : null,
-          lastLogin: null // Nous n'avons plus accès à cette information sans la fonction Edge
+          lastLogin: null // We no longer have access to this information without the Edge function
         };
       });
       
@@ -126,7 +126,7 @@ export const useUserManagement = () => {
     }
   };
 
-  // Chargement des utilisateurs au montage - Fixed from useState to useEffect
+  // Chargement des utilisateurs au montage
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);

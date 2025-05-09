@@ -21,6 +21,7 @@ serve(async (req) => {
       'https://your-production-domain.com',
       'https://your-staging-domain.com',
       'http://localhost:8080',
+      'http://localhost:3000',
       // Ajout du domaine preview de Lovable
       'https://64c2702a-3a05-4d0d-bbba-3f29359bfeba.lovableproject.com',
       // Domaine générique Lovable pour les previews

@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, typedData } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { DipiCptCategory } from "@/types/announcement";
 
@@ -47,8 +47,8 @@ export const useWordPressCategories = () => {
         hasAppPassword: !!wpConfig.app_password
       });
 
-      // Normaliser l'URL (supprimer les doubles slashes)
-      const siteUrl = wpConfig.site_url.replace(/([^:]\/)\/+/g, "$1");
+      // Safely convert unknown type to string and normalize URL
+      const siteUrl = typedData<string>(wpConfig.site_url).replace(/([^:]\/)\/+/g, "$1");
 
       // Utiliser la taxonomie personnalisée dipi_cpt_category au lieu des catégories standards
       const apiUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt_category`;
@@ -62,11 +62,11 @@ export const useWordPressCategories = () => {
       // Prioritize Application Password authentication
       if (wpConfig.app_username && wpConfig.app_password) {
         console.log("Using Application Password authentication");
-        const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
+        const basicAuth = btoa(`${typedData<string>(wpConfig.app_username)}:${typedData<string>(wpConfig.app_password)}`);
         headers['Authorization'] = `Basic ${basicAuth}`;
       } else if (wpConfig.rest_api_key) {
         console.log("Using REST API Key authentication");
-        headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
+        headers['Authorization'] = `Bearer ${typedData<string>(wpConfig.rest_api_key)}`;
       } else {
         console.log("No authentication credentials provided");
       }

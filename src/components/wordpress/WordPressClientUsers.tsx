@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, typedData } from "@/integrations/supabase/client";
 import { UserProfile } from "@/types/auth";
 import { Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,17 +28,17 @@ const WordPressClientUsers = () => {
           throw profilesError;
         }
         
-        // Format client user data
+        // Format client user data with proper type assertions
         const formattedUsers: UserProfile[] = profilesData.map(profile => ({
-          id: profile.id,
-          email: profile.email,
-          name: profile.name,
+          id: typedData<string>(profile.id),
+          email: typedData<string>(profile.email),
+          name: typedData<string>(profile.name),
           role: "client",
-          clientId: profile.client_id,
-          wordpressConfigId: profile.wordpress_config_id || null,
+          clientId: typedData<string>(profile.client_id),
+          wordpressConfigId: typedData<string>(profile.wordpress_config_id) || null,
           wordpressConfig: profile.wordpress_configs ? {
-            name: profile.wordpress_configs.name,
-            site_url: profile.wordpress_configs.site_url
+            name: typedData<string>(profile.wordpress_configs.name),
+            site_url: typedData<string>(profile.wordpress_configs.site_url)
           } : null
         }));
         

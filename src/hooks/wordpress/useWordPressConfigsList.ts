@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, typedData } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { WordPressConfig, ClientWordPressConfig } from "@/types/wordpress";
 import { useAuth } from "@/context/AuthContext";
@@ -32,7 +32,24 @@ export const useWordPressConfigsList = () => {
             throw error;
           }
           
-          setConfigs(data ? [data as WordPressConfig] : []);
+          if (data) {
+            const config: WordPressConfig = {
+              id: typedData<string>(data.id),
+              name: typedData<string>(data.name),
+              site_url: typedData<string>(data.site_url),
+              rest_api_key: typedData<string>(data.rest_api_key),
+              username: typedData<string>(data.username),
+              password: typedData<string>(data.password),
+              app_username: typedData<string>(data.app_username),
+              app_password: typedData<string>(data.app_password),
+              prompt: typedData<string>(data.prompt),
+              created_at: typedData<string>(data.created_at),
+              updated_at: typedData<string>(data.updated_at),
+            };
+            setConfigs([config]);
+          } else {
+            setConfigs([]);
+          }
         } else {
           // Si le client n'a pas de wordpressConfigId, on renvoie un tableau vide
           setConfigs([]);
@@ -49,7 +66,21 @@ export const useWordPressConfigsList = () => {
           throw error;
         }
         
-        setConfigs(data as WordPressConfig[]);
+        const typedConfigs: WordPressConfig[] = (data || []).map(item => ({
+          id: typedData<string>(item.id),
+          name: typedData<string>(item.name),
+          site_url: typedData<string>(item.site_url),
+          rest_api_key: typedData<string>(item.rest_api_key),
+          username: typedData<string>(item.username),
+          password: typedData<string>(item.password),
+          app_username: typedData<string>(item.app_username),
+          app_password: typedData<string>(item.app_password),
+          prompt: typedData<string>(item.prompt),
+          created_at: typedData<string>(item.created_at),
+          updated_at: typedData<string>(item.updated_at),
+        }));
+        
+        setConfigs(typedConfigs);
       }
     } catch (error) {
       console.error('Error fetching WordPress configs:', error);
@@ -75,7 +106,14 @@ export const useWordPressConfigsList = () => {
         throw error;
       }
       
-      setClientConfigs(data as ClientWordPressConfig[]);
+      const typedClientConfigs: ClientWordPressConfig[] = (data || []).map(item => ({
+        id: typedData<string>(item.id),
+        client_id: typedData<string>(item.client_id),
+        wordpress_config_id: typedData<string>(item.wordpress_config_id),
+        created_at: typedData<string>(item.created_at),
+      }));
+      
+      setClientConfigs(typedClientConfigs);
     } catch (error) {
       console.error('Error fetching client WordPress configs:', error);
       toast.error("Erreur lors de la récupération des associations client-WordPress");

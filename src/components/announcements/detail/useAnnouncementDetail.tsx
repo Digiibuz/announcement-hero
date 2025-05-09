@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, typedData } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
 import { Announcement } from "@/types/announcement";
@@ -39,8 +39,27 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
       if (data) {
         console.log("Loaded announcement:", data);
         console.log("WordPress post ID:", data.wordpress_post_id);
-        // Format data for the form
-        setAnnouncement(data as ExtendedAnnouncement);
+        
+        // Convert the data to a properly typed ExtendedAnnouncement
+        const typedAnnouncement: ExtendedAnnouncement = {
+          id: typedData<string>(data.id),
+          title: typedData<string>(data.title),
+          description: typedData<string>(data.description),
+          status: typedData<"draft" | "published" | "archived">(data.status),
+          images: typedData<string[]>(data.images) || [],
+          created_at: typedData<string>(data.created_at),
+          updated_at: typedData<string>(data.updated_at),
+          user_id: typedData<string>(data.user_id),
+          publish_date: typedData<string>(data.publish_date) || null,
+          wordpress_post_id: typedData<number | null>(data.wordpress_post_id),
+          wordpress_category_id: typedData<string>(data.wordpress_category_id) || null,
+          seo_title: typedData<string>(data.seo_title) || "",
+          seo_description: typedData<string>(data.seo_description) || "",
+          seo_slug: typedData<string>(data.seo_slug) || "",
+          is_divipixel: typedData<boolean>(data.is_divipixel) || false
+        };
+        
+        setAnnouncement(typedAnnouncement);
       }
     } catch (error: any) {
       console.error("Error fetching announcement:", error);

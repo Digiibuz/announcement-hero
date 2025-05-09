@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, typedData } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { UserProfile, Role } from "@/types/auth";
 
@@ -67,18 +67,18 @@ export const useUserProfile = () => {
             console.log("Profile data received:", data);
             
             // Get cached role as fallback
-            const roleToUse = data.role as Role || cachedRole || 'client';
+            const roleToUse = typedData<Role>(data.role) || cachedRole || 'client';
             
             const updatedProfile: UserProfile = {
-              id: data.id,
-              email: data.email,
-              name: data.name,
+              id: typedData<string>(data.id),
+              email: typedData<string>(data.email),
+              name: typedData<string>(data.name),
               role: roleToUse,
-              clientId: data.client_id,
-              wordpressConfigId: data.wordpress_config_id,
+              clientId: typedData<string>(data.client_id),
+              wordpressConfigId: typedData<string>(data.wordpress_config_id),
               wordpressConfig: data.wordpress_configs ? {
-                name: data.wordpress_configs.name,
-                site_url: data.wordpress_configs.site_url
+                name: typedData<string>(data.wordpress_configs.name),
+                site_url: typedData<string>(data.wordpress_configs.site_url)
               } : null
             };
             

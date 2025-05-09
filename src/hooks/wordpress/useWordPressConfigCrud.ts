@@ -1,5 +1,6 @@
+
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, typedData } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { WordPressConfig } from "@/types/wordpress";
 
@@ -33,7 +34,20 @@ export const useWordPressConfigCrud = (onConfigsChange?: () => void) => {
       
       toast.success("Configuration WordPress créée avec succès");
       if (onConfigsChange) onConfigsChange();
-      return data as WordPressConfig;
+      
+      return {
+        id: typedData<string>(data.id),
+        name: typedData<string>(data.name),
+        site_url: typedData<string>(data.site_url),
+        rest_api_key: typedData<string>(data.rest_api_key),
+        username: typedData<string>(data.username),
+        password: typedData<string>(data.password),
+        app_username: typedData<string>(data.app_username),
+        app_password: typedData<string>(data.app_password),
+        prompt: typedData<string>(data.prompt),
+        created_at: typedData<string>(data.created_at),
+        updated_at: typedData<string>(data.updated_at)
+      } as WordPressConfig;
     } catch (error) {
       console.error('Error creating WordPress config:', error);
       toast.error("Erreur lors de la création de la configuration WordPress");
@@ -59,7 +73,20 @@ export const useWordPressConfigCrud = (onConfigsChange?: () => void) => {
       
       toast.success("Configuration WordPress mise à jour avec succès");
       if (onConfigsChange) onConfigsChange();
-      return data as WordPressConfig;
+      
+      return {
+        id: typedData<string>(data.id),
+        name: typedData<string>(data.name),
+        site_url: typedData<string>(data.site_url),
+        rest_api_key: typedData<string>(data.rest_api_key),
+        username: typedData<string>(data.username),
+        password: typedData<string>(data.password),
+        app_username: typedData<string>(data.app_username),
+        app_password: typedData<string>(data.app_password),
+        prompt: typedData<string>(data.prompt),
+        created_at: typedData<string>(data.created_at),
+        updated_at: typedData<string>(data.updated_at)
+      } as WordPressConfig;
     } catch (error) {
       console.error('Error updating WordPress config:', error);
       toast.error("Erreur lors de la mise à jour de la configuration WordPress");
