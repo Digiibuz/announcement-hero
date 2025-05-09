@@ -1,3 +1,4 @@
+
 import { supabase, withInitializedClient, cleanupAuthState, getDebugInfo, testEdgeFunctionConnection } from "@/integrations/supabase/client";
 import { UserProfile } from "@/types/auth";
 import { toast } from "sonner";
@@ -67,7 +68,7 @@ export const useAuthActions = (
             const { data, error } = await supabase.auth.signInWithPassword({
               email,
               password
-              // Remove the redirectTo option as it's not supported in this version
+              // redirectTo option has been removed as it's not supported in this version
             });
             
             if (error) {
