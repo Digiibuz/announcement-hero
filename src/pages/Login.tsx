@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/auth/AuthContext";
@@ -9,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
-import { withInitializedClient, supabase } from "@/integrations/supabase/client";
+import { initializeSecureClient, supabase, withInitializedClient } from "@/integrations/supabase/client";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -20,47 +21,103 @@ const Login = () => {
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  // Vérifier l'initialisation du client Supabase
+  // Amélioration: Vérification plus robuste de l'initialisation
   useEffect(() => {
-    const checkInitialization = async () => {
+    // Vérifier l'initialisation du client Supabase avec retry
+    const initClient = async () => {
       try {
-        await supabase.auth.getSession();
-        setIsInitializing(false);
+        console.log("Initialisation du client Supabase...");
+        const success = await initializeSecureClient();
+        
+        if (success) {
+          console.log("Client Supabase initialisé avec succès");
+          // Vérifier que nous pouvons effectivement récupérer une session comme test
+          const { data, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            console.error("Erreur lors de la vérification de la session:", error);
+            toast.error("Problème de connexion avec le serveur d'authentification");
+            setTimeout(initClient, 2000); // Réessayer après 2 secondes
+            return;
+          }
+          
+          console.log("Connexion établie avec le serveur d'authentification");
+          setIsInitializing(false);
+        } else {
+          console.error("Échec de l'initialisation du client Supabase");
+          toast.error("Problème de connexion avec le serveur");
+          // Réessayer après un délai
+          setTimeout(initClient, 2000);
+        }
       } catch (error) {
-        console.error("Erreur lors de la vérification de la session:", error);
-        // Réessayer après un court délai
-        setTimeout(checkInitialization, 500);
+        console.error("Erreur critique lors de l'initialisation:", error);
+        toast.error("Impossible de se connecter au serveur");
+        // Réessayer après un délai plus long
+        setTimeout(initClient, 3000);
       }
     };
     
-    checkInitialization();
+    initClient();
   }, []);
 
-  // Redirect if already authenticated
+  // Redirection si déjà authentifié
   useEffect(() => {
     if (isAuthenticated) {
+      console.log("Utilisateur déjà authentifié, redirection vers le tableau de bord");
       navigate("/dashboard");
     }
   }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isInitializing) {
+      toast.error("Le système d'authentification est en cours d'initialisation, veuillez patienter");
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
-      // S'assurer que le client est initialisé avant de tenter la connexion
+      console.log("Tentative de connexion...");
+      
+      // Vérifier que le client est correctement initialisé avant la connexion
       await withInitializedClient(async () => {
+        // Test de vérification de l'état du client avant login
+        try {
+          const { data: sessionCheck } = await supabase.auth.getSession();
+          console.log("État de session avant login:", sessionCheck ? "OK" : "Pas de session");
+        } catch (e) {
+          console.error("Erreur de vérification avant login:", e);
+        }
+        
         await login(email, password);
+        console.log("Connexion réussie");
         toast.success("Connexion réussie");
         
-        // Redirect after successful login
+        // Redirection après connexion réussie
         setTimeout(() => {
           navigate("/dashboard");
-        }, 300);
+        }, 500);
       });
     } catch (error: any) {
-      console.error("Erreur de connexion:", error);
-      toast.error(error.message || "Échec de la connexion");
+      console.error("Erreur de connexion complète:", error);
+      
+      // Messages d'erreur plus descriptifs
+      if (error.message?.includes("Invalid login")) {
+        toast.error("Email ou mot de passe incorrect");
+      } else if (error.message?.includes("network")) {
+        toast.error("Problème de connexion réseau. Vérifiez votre connexion internet");
+      } else {
+        toast.error(error.message || "Échec de la connexion");
+      }
+      
+      // Réinitialiser le client en cas d'erreur d'authentification
+      try {
+        await initializeSecureClient();
+      } catch (e) {
+        console.error("Échec de réinitialisation du client:", e);
+      }
     } finally {
       setIsLoading(false);
     }

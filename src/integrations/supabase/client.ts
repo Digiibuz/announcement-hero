@@ -21,6 +21,9 @@ let supabaseInstance: SupabaseClient<Database> | null = null;
 // Flag pour suivre l'état d'initialisation
 let isInitializing = false;
 let initializationPromise: Promise<boolean> | null = null;
+// Tracking des échecs d'initialisation
+let initAttempts = 0;
+const MAX_INIT_ATTEMPTS = 5;
 
 const createSecureClient = () => {
   // Si nous avons déjà initialisé le client, retourner l'instance existante
@@ -31,7 +34,15 @@ const createSecureClient = () => {
   // Création initiale avec une clé temporaire qui sera remplacée
   supabaseInstance = createClient<Database>(
     `https://${PUBLIC_PROJECT_ID}.supabase.co`,
-    'public_client_placeholder'
+    'public_client_placeholder',
+    {
+      auth: {
+        persistSession: true,
+        storage: localStorage,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    }
   );
   
   return supabaseInstance;
@@ -45,39 +56,68 @@ export function typedData<T>(data: unknown): T {
   return data as T;
 }
 
+// Verrou pour éviter les initialisations concurrentes
+let initLock = false;
+
 // Initialise le client avec les vraies informations d'authentification
 // Cette fonction est appelée au démarrage de l'application
 export const initializeSecureClient = async (): Promise<boolean> => {
+  // Système de verrouillage pour éviter les appels concurrents
+  if (initLock) {
+    console.log('Initialisation déjà en cours, attente...');
+    return new Promise(resolve => {
+      const checkInterval = setInterval(() => {
+        if (!initLock) {
+          clearInterval(checkInterval);
+          // Vérifier si l'initialisation précédente a réussi
+          resolve(supabaseInstance?.supabaseKey !== 'public_client_placeholder');
+        }
+      }, 100);
+    });
+  }
+
   // Si une initialisation est déjà en cours, retourner la promesse existante
   if (initializationPromise) {
     return initializationPromise;
   }
   
-  // Si une initialisation est déjà en cours, ne pas en démarrer une autre
-  if (isInitializing) {
-    return new Promise(resolve => {
-      // Vérifier toutes les 100ms si l'initialisation est terminée
-      const checkInterval = setInterval(() => {
-        if (!isInitializing) {
-          clearInterval(checkInterval);
-          resolve(true);
-        }
-      }, 100);
-    });
-  }
-  
+  // Protection contre les appels concurrents
+  initLock = true;
   isInitializing = true;
+  console.log('Début de l\'initialisation du client Supabase');
+  
+  // Incrémenter le compteur de tentatives
+  initAttempts++;
+  
+  // Si nous avons dépassé le nombre maximum de tentatives, attendre plus longtemps
+  if (initAttempts > MAX_INIT_ATTEMPTS) {
+    console.warn(`Tentative d'initialisation ${initAttempts}/${MAX_INIT_ATTEMPTS} - Augmentation du délai d'attente`);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
   
   initializationPromise = new Promise(async (resolve) => {
     try {
-      console.log('Initialisation du client Supabase sécurisé...');
+      console.log('Appel à l\'Edge Function pour récupérer la configuration sécurisée...');
       
-      // Appel à l'Edge Function pour récupérer la clé d'API sécurisée
+      // Récupération de la configuration via l'Edge Function sécurisée
       const response = await fetch('/api/auth/secure-client-config');
       
       if (!response.ok) {
-        console.error('Erreur lors de la récupération de la configuration sécurisée:', response.status, response.statusText);
+        console.error('Erreur HTTP lors de la récupération de la configuration:', 
+                     response.status, response.statusText);
+        
+        let errorText = '';
+        try {
+          errorText = await response.text();
+        } catch (e) {
+          errorText = 'Impossible de lire la réponse';
+        }
+        
+        console.error('Détails de l\'erreur:', errorText);
+        
+        initLock = false;
         isInitializing = false;
+        initializationPromise = null;
         resolve(false);
         return;
       }
@@ -86,7 +126,9 @@ export const initializeSecureClient = async (): Promise<boolean> => {
       
       if (!anonKey) {
         console.error('Clé API non trouvée dans la réponse');
+        initLock = false;
         isInitializing = false;
+        initializationPromise = null;
         resolve(false);
         return;
       }
@@ -98,15 +140,39 @@ export const initializeSecureClient = async (): Promise<boolean> => {
       // Force le client à utiliser la nouvelle clé pour toutes les futures requêtes
       // @ts-ignore - Accès interne pour mise à jour sécurisée
       supabase.rest.headers['apikey'] = anonKey;
-      // @ts-ignore - Accès interne pour mise à jour sécurisée
-      supabase.auth.setAuth(anonKey);
       
-      console.log('Client Supabase initialisé de façon sécurisée');
+      // Configurations supplémentaires pour s'assurer que l'authentification fonctionne correctement
+      // @ts-ignore - Accès interne pour mise à jour sécurisée
+      if (supabase.auth && typeof supabase.auth.setAuth === 'function') {
+        // @ts-ignore - Accès interne pour mise à jour sécurisée
+        supabase.auth.setAuth(anonKey);
+      }
+      
+      console.log('Client Supabase initialisé avec succès');
+      
+      // Test après initialisation
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          console.warn('⚠️ Test post-initialisation: Erreur lors de la récupération de la session:', error);
+        } else {
+          console.log('✅ Test post-initialisation: Session récupérée avec succès');
+        }
+      } catch (e) {
+        console.error('❌ Erreur lors du test post-initialisation:', e);
+      }
+      
+      // Réinitialisation des compteurs de tentatives en cas de succès
+      initAttempts = 0;
+      
+      initLock = false;
       isInitializing = false;
       resolve(true);
     } catch (error) {
-      console.error('Erreur lors de l\'initialisation du client sécurisé:', error);
+      console.error('Erreur critique lors de l\'initialisation du client:', error);
+      initLock = false;
       isInitializing = false;
+      initializationPromise = null;
       resolve(false);
     }
   });
@@ -116,8 +182,38 @@ export const initializeSecureClient = async (): Promise<boolean> => {
 
 // Fonction asynchrone qui attend que le client soit initialisé avant d'exécuter une action
 export const withInitializedClient = async <T>(action: () => Promise<T>): Promise<T> => {
-  await initializeSecureClient();
+  const success = await initializeSecureClient();
+  
+  if (!success) {
+    console.warn('Tentative d\'opération avec un client non initialisé - réessai d\'initialisation');
+    
+    // Réinitialiser la promesse pour forcer une nouvelle tentative
+    initializationPromise = null;
+    
+    // Nouvelle tentative d'initialisation
+    const retrySuccess = await initializeSecureClient();
+    
+    if (!retrySuccess) {
+      throw new Error('Impossible d\'initialiser le client Supabase après plusieurs tentatives');
+    }
+  }
+  
   return action();
+};
+
+// Fonction pour nettoyer l'état d'authentification en cas de problème
+export const cleanupAuthState = () => {
+  // Supprimer toutes les clés liées à l'authentification Supabase
+  Object.keys(localStorage).forEach((key) => {
+    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+      localStorage.removeItem(key);
+    }
+  });
+  
+  // Essayer de réinitialiser le client
+  initializationPromise = null;
+  
+  return initializeSecureClient();
 };
 
 // Note: Ce client démarre avec des permissions limitées jusqu'à l'initialisation complète
