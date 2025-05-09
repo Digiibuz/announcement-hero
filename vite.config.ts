@@ -41,6 +41,9 @@ export default defineConfig(({ mode }) => ({
     'process.env.VITE_SUPABASE_ANON_KEY': '"PROTECTED"'
   },
   build: {
+    // Enable proper sourcemap generation for development builds
+    sourcemap: mode === 'development' ? 'inline' : false,
+    
     // Configuration spécifique pour la production
     rollupOptions: {
       // Avertir sur les imports dynamiques qui pourraient exposer des secrets
