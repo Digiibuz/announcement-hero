@@ -13,20 +13,22 @@ let isInitializing = false;
 let initializationPromise: Promise<boolean> | null = null;
 let initAttempts = 0;
 const MAX_INIT_ATTEMPTS = 5;
-const MAX_RETRIES = 5; // Increased max retries
-const API_TIMEOUT_MS = 15000; // Increased to 15 seconds
+const MAX_RETRIES = 7; // Increased retries for more persistence
+const API_TIMEOUT_MS = 20000; // Increased to 20 seconds
 
 // Debug storage for troubleshooting
 const debugStorage: Record<string, any> = {};
 const addDebugInfo = (key: string, value: any) => {
-  debugStorage[key] = value;
+  const timestamp = new Date().toISOString();
+  debugStorage[`${timestamp}_${key}`] = value;
   console.log(`[DEBUG] ${key}:`, value);
 };
 
 // Function to delay with exponential backoff
 const delay = (attempt: number) => {
-  const backoff = Math.min(Math.pow(2, attempt) * 300, 10000); // More aggressive backoff
-  return new Promise(resolve => setTimeout(resolve, backoff));
+  const baseDelay = Math.min(Math.pow(2, attempt) * 300, 10000);
+  const jitter = Math.random() * 300; // Add randomness to prevent thundering herd
+  return new Promise(resolve => setTimeout(resolve, baseDelay + jitter));
 };
 
 // Function to perform request with timeout
@@ -40,18 +42,47 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutM
   
   try {
     const requestId = Math.random().toString(36).substring(2, 15);
+    const startTime = new Date().toISOString();
     addDebugInfo(`fetch-start-${requestId}`, { 
       url, 
       options: { ...options, headers: options.headers }, 
-      time: new Date().toISOString() 
+      time: startTime
     });
     
-    const response = await fetch(url, { ...options, signal });
+    // Add cache-busting parameters to URL
+    const urlWithCacheBuster = new URL(url);
+    urlWithCacheBuster.searchParams.append('nocache', Date.now().toString());
+    urlWithCacheBuster.searchParams.append('uid', requestId);
     
+    // Enhanced headers for better diagnostic tracking
+    const enhancedHeaders = new Headers(options.headers || {});
+    if (!enhancedHeaders.has('x-client-id')) {
+      enhancedHeaders.set('x-client-id', requestId);
+    }
+    if (!enhancedHeaders.has('x-retry-attempt')) {
+      enhancedHeaders.set('x-retry-attempt', '1');
+    }
+    
+    // Ensure needed Cache-Control headers
+    enhancedHeaders.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    enhancedHeaders.set('Pragma', 'no-cache');
+    
+    // Apply enhanced headers
+    options.headers = enhancedHeaders;
+    
+    const response = await fetch(urlWithCacheBuster.toString(), { 
+      ...options, 
+      signal,
+      // Note: explicitly setting cache: 'no-store' here
+      cache: 'no-store'
+    });
+    
+    const endTime = new Date().toISOString();
     addDebugInfo(`fetch-complete-${requestId}`, { 
       status: response.status,
       statusText: response.statusText,
-      time: new Date().toISOString()
+      time: endTime,
+      duration: `${new Date().getTime() - new Date(startTime).getTime()}ms`
     });
     
     return response;
@@ -79,19 +110,29 @@ const createSecureClient = () => {
 
   addDebugInfo('client-create-temp', { time: new Date().toISOString() });
   
-  // Temporary client with placeholder key
-  supabaseInstance = createClient<Database>(
-    SUPABASE_URL,
-    'temporary_placeholder_key',
-    {
-      auth: {
-        persistSession: true,
-        storage: localStorage,
-        autoRefreshToken: true,
-        detectSessionInUrl: true
+  try {
+    // Temporary client with placeholder key
+    supabaseInstance = createClient<Database>(
+      SUPABASE_URL,
+      'temporary_placeholder_key',
+      {
+        auth: {
+          persistSession: true,
+          storage: localStorage,
+          autoRefreshToken: true,
+          detectSessionInUrl: true
+        }
       }
-    }
-  );
+    );
+    
+    addDebugInfo('client-create-temp-success', { time: new Date().toISOString() });
+  } catch (error) {
+    addDebugInfo('client-create-temp-error', { 
+      error: error.message,
+      stack: error.stack,
+      time: new Date().toISOString() 
+    });
+  }
   
   return supabaseInstance;
 };
@@ -109,17 +150,20 @@ let initLock = false;
 
 // Initialize client with real authentication information
 export const initializeSecureClient = async (forceReset = false): Promise<boolean> => {
+  // Record session start
+  const startTime = new Date().toISOString();
+  
   // Trace environment data for debugging
   addDebugInfo('init-env', {
     env: process.env.NODE_ENV,
     forceReset,
     url: SUPABASE_URL,
-    time: new Date().toISOString()
+    time: startTime
   });
   
   // Force reset if requested
   if (forceReset) {
-    addDebugInfo('force-reset', { time: new Date().toISOString() });
+    addDebugInfo('force-reset', { time: startTime });
     await cleanupAuthState();
     supabaseInstance = null;
     initializationPromise = null;
@@ -131,7 +175,7 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
 
   // Lock to avoid concurrent calls
   if (initLock) {
-    addDebugInfo('init-lock-wait', { time: new Date().toISOString() });
+    addDebugInfo('init-lock-wait', { time: startTime });
     return initializationPromise || false;
   }
 
@@ -142,14 +186,14 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
   
   initLock = true;
   isInitializing = true;
-  addDebugInfo('init-start', { time: new Date().toISOString() });
+  addDebugInfo('init-start', { time: startTime });
   
   // Increment attempt counter
   initAttempts++;
   
   // Longer delay after multiple attempts
   if (initAttempts > 1) {
-    addDebugInfo(`init-attempt-${initAttempts}`, { time: new Date().toISOString() });
+    addDebugInfo(`init-attempt-${initAttempts}`, { time: startTime });
     await delay(initAttempts);
   }
   
@@ -162,7 +206,8 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
       
       while (retries < MAX_RETRIES && !success) {
         try {
-          addDebugInfo(`config-fetch-try-${retries + 1}`, { time: new Date().toISOString() });
+          const attemptTime = new Date().toISOString();
+          addDebugInfo(`config-fetch-try-${retries + 1}`, { time: attemptTime });
           
           // Force no cache to avoid CDN problems
           const cacheKiller = new Date().getTime();
@@ -180,13 +225,15 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
                 'X-Web-Security': 'allow',
                 'X-Retry-Attempt': `${retries + 1}`,
                 'X-Client-Id': randomId,
-                'User-Agent': navigator.userAgent
+                'User-Agent': navigator.userAgent,
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache'
               },
               credentials: 'omit',
               cache: 'no-store',
               mode: 'cors'
             },
-            20000 // Longer timeout (20 seconds)
+            30000 // Even longer timeout (30 seconds) for extreme network conditions
           );
           
           if (!response.ok) {
@@ -207,7 +254,7 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
             
             retries++;
             if (retries < MAX_RETRIES) {
-              await delay(retries);
+              await delay(retries + 2); // Increase delay factor
               continue;
             } else {
               throw lastError;
@@ -236,18 +283,24 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
             hasUrl: !!data.url,
             clientInfo: data.clientInfo,
             requestId: data.requestId,
-            clientId: data.clientId
+            clientId: data.clientId,
+            cacheKey: data.cacheKey
           });
           
           const { anonKey, url } = data;
           
           if (!anonKey) {
             lastError = new Error('API key not found in response');
-            addDebugInfo('api-key-missing', data);
+            addDebugInfo('api-key-missing', { 
+              responseData: { 
+                ...data, 
+                anonKey: data.anonKey ? "PRÉSENTE MAIS MASQUÉE" : "ABSENTE" 
+              }
+            });
             
             retries++;
             if (retries < MAX_RETRIES) {
-              await delay(retries);
+              await delay(retries + 2);
               continue;
             } else {
               throw lastError;
@@ -256,6 +309,18 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
           
           // Create new client with retrieved key
           addDebugInfo('create-new-client', { time: new Date().toISOString() });
+          
+          // Force destroy previous instance if exists
+          if (supabaseInstance) {
+            try {
+              // Try to clean up any existing auth state
+              await supabaseInstance.auth.signOut({ scope: 'global' });
+            } catch (e) {
+              // Ignore errors, we'll reset anyway
+            }
+          }
+          
+          // Create fresh instance
           supabaseInstance = createClient<Database>(
             url || SUPABASE_URL,
             anonKey,
@@ -343,7 +408,8 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
 
 // Function that waits for initialization
 export const withInitializedClient = async <T>(action: () => Promise<T>): Promise<T> => {
-  addDebugInfo('with-init-client', { time: new Date().toISOString() });
+  const startTime = new Date().toISOString();
+  addDebugInfo('with-init-client', { time: startTime });
   const success = await initializeSecureClient();
   
   if (!success) {
@@ -362,29 +428,68 @@ export const withInitializedClient = async <T>(action: () => Promise<T>): Promis
   return action();
 };
 
-// Function to clean up authentication state
+// Enhanced function to clean up authentication state
 export const cleanupAuthState = async () => {
+  const startTime = new Date().toISOString();
   addDebugInfo('cleanup-start', {
     localStorage: Object.keys(localStorage),
     sessionStorage: Object.keys(sessionStorage),
-    time: new Date().toISOString()
+    time: startTime
   });
   
-  // Remove all authentication-related keys
-  Object.keys(localStorage).forEach((key) => {
-    if (key.startsWith('supabase.auth.') || key.includes('sb-') || key.includes('auth-')) {
-      addDebugInfo(`remove-local-${key}`, { time: new Date().toISOString() });
-      localStorage.removeItem(key);
-    }
-  });
+  // Create a backup of local storage keys in case we need to restore some
+  const backupKeys: Record<string, string> = {};
+  
+  try {
+    // Get non-auth related keys that we want to preserve
+    Object.keys(localStorage).forEach(key => {
+      if (!key.startsWith('supabase.auth.') && !key.includes('sb-') && !key.includes('auth-')) {
+        backupKeys[key] = localStorage.getItem(key) || '';
+      }
+    });
+    
+    addDebugInfo('backup-keys', {
+      count: Object.keys(backupKeys).length,
+      keys: Object.keys(backupKeys),
+      time: new Date().toISOString()
+    });
+    
+    // Actually clear everything for a complete reset
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    // Restore non-auth related keys
+    Object.keys(backupKeys).forEach(key => {
+      localStorage.setItem(key, backupKeys[key]);
+    });
+    
+    addDebugInfo('storage-cleared', {
+      localStorage: Object.keys(localStorage),
+      sessionStorage: Object.keys(sessionStorage),
+      time: new Date().toISOString()
+    });
+  } catch (error) {
+    addDebugInfo('storage-clear-error', {
+      error: error.message,
+      time: new Date().toISOString()
+    });
+    
+    // Fallback: remove known auth keys explicitly
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('supabase.auth.') || key.includes('sb-') || key.includes('auth-')) {
+        addDebugInfo(`remove-local-${key}`, { time: new Date().toISOString() });
+        localStorage.removeItem(key);
+      }
+    });
 
-  // Do the same for sessionStorage
-  Object.keys(sessionStorage).forEach((key) => {
-    if (key.startsWith('supabase.auth.') || key.includes('sb-') || key.includes('auth-')) {
-      addDebugInfo(`remove-session-${key}`, { time: new Date().toISOString() });
-      sessionStorage.removeItem(key);
-    }
-  });
+    // Do the same for sessionStorage
+    Object.keys(sessionStorage).forEach((key) => {
+      if (key.startsWith('supabase.auth.') || key.includes('sb-') || key.includes('auth-')) {
+        addDebugInfo(`remove-session-${key}`, { time: new Date().toISOString() });
+        sessionStorage.removeItem(key);
+      }
+    });
+  }
 
   // Reset client
   supabaseInstance = null;
@@ -393,9 +498,11 @@ export const cleanupAuthState = async () => {
   isInitializing = false;
   
   // Wait before reinitializing
-  await new Promise(resolve => setTimeout(resolve, 500));
+  await new Promise(resolve => setTimeout(resolve, 1000));
   
   addDebugInfo('cleanup-complete', { time: new Date().toISOString() });
+  
+  // Force client reinitialization
   return initializeSecureClient(true);
 };
 
@@ -407,4 +514,73 @@ export const needsAuthReset = (): boolean => {
 // Get debug information
 export const getDebugInfo = (): Record<string, any> => {
   return { ...debugStorage };
+};
+
+// Function to test direct connection to Edge Function
+export const testEdgeFunctionConnection = async (): Promise<any> => {
+  try {
+    const cacheKiller = new Date().getTime();
+    const randomId = Math.random().toString(36).substring(2, 15);
+    
+    // URL complète de l'Edge Function avec mode test
+    const url = `${EDGE_FUNCTION_URL}?t=${cacheKiller}&testMode=true`;
+    
+    addDebugInfo("test-edge-function", { url, time: new Date().toISOString() });
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Client-Info': `direct-test/v${cacheKiller}`,
+        'X-Web-Security': 'allow',
+        'X-Retry-Attempt': '1',
+        'X-Client-Id': randomId,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      },
+      cache: 'no-store',
+      mode: 'cors'
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      addDebugInfo("test-edge-function-error", { 
+        status: response.status, 
+        statusText: response.statusText,
+        body: errorText,
+        time: new Date().toISOString()
+      });
+      return { 
+        success: false, 
+        status: response.status, 
+        error: errorText 
+      };
+    }
+    
+    const result = await response.json();
+    
+    addDebugInfo("test-edge-function-result", { 
+      status: response.status,
+      result,
+      headers: Object.fromEntries(response.headers.entries()),
+      time: new Date().toISOString()
+    });
+    
+    return {
+      success: true,
+      data: result
+    };
+  } catch (error) {
+    addDebugInfo("test-edge-function-exception", { 
+      error: error.message,
+      stack: error.stack,
+      time: new Date().toISOString() 
+    });
+    
+    return {
+      success: false,
+      error: error.message
+    };
+  }
 };

@@ -21,10 +21,32 @@ const prepareResponse = (body: any, status = 200) => {
   );
 };
 
+// Function to prevent browser caching
+const generateCacheKey = () => {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+};
+
+// Function to get client IP and user agent
+const getClientInfo = (req: Request) => {
+  const ip = req.headers.get("x-forwarded-for") || 
+             req.headers.get("cf-connecting-ip") || 
+             "unknown";
+  
+  const ua = req.headers.get("user-agent") || "unknown";
+  
+  return {
+    ip: ip.split(',')[0].trim(), // Get first IP if multiple are in the chain
+    userAgent: ua
+  };
+};
+
 const handler = async (req: Request) => {
+  const requestTime = new Date().toISOString();
+  const requestId = crypto.randomUUID();
+  
   // CORS preflight handling with all necessary headers
   if (req.method === "OPTIONS") {
-    console.log("OPTIONS request received, responding with CORS headers");
+    console.log(`[${requestId}] OPTIONS request received at ${requestTime}, responding with CORS headers`);
     return new Response(null, {
       status: 204,
       headers: {
@@ -39,11 +61,19 @@ const handler = async (req: Request) => {
     const retryAttempt = req.headers.get("x-retry-attempt") || "0";
     const clientInfo = req.headers.get("x-client-info") || "unknown client info";
     const clientId = req.headers.get("x-client-id") || "unknown";
-    const requestId = crypto.randomUUID();
+    const clientDetails = getClientInfo(req);
     
-    console.log(`[${requestId}] Request received from: ${origin} (attempt: ${retryAttempt}, client: ${clientId})`);
+    console.log(`[${requestId}] Request received at ${requestTime}`);
+    console.log(`[${requestId}] Origin: ${origin} (attempt: ${retryAttempt}, client: ${clientId})`);
+    console.log(`[${requestId}] IP: ${clientDetails.ip}, User-Agent: ${clientDetails.userAgent.substring(0, 50)}...`);
     console.log(`[${requestId}] Client info: ${clientInfo}`);
     console.log(`[${requestId}] Headers: ${JSON.stringify(Object.fromEntries(req.headers.entries()))}`);
+    
+    // Check if this is a test request
+    const isTestMode = new URL(req.url).searchParams.get("testMode") === "true";
+    if (isTestMode) {
+      console.log(`[${requestId}] Test mode request detected`);
+    }
     
     // Get API key from environment variables
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
@@ -55,8 +85,9 @@ const handler = async (req: Request) => {
         details: "Supabase API key is not defined in environment variables",
         requestId,
         origin,
-        timestamp: new Date().toISOString(),
-        success: false
+        timestamp: requestTime,
+        success: false,
+        cacheKey: generateCacheKey()
       }, 500);
     }
 
@@ -69,34 +100,56 @@ const handler = async (req: Request) => {
         details: "Supabase URL is not defined",
         requestId,
         origin,
-        timestamp: new Date().toISOString(),
-        success: false
+        timestamp: requestTime,
+        success: false,
+        cacheKey: generateCacheKey()
       }, 500);
     }
 
     console.log(`[${requestId}] Successfully retrieved Supabase API key and URL`);
     
+    // For test mode, return more diagnostic info but mask the key
+    if (isTestMode) {
+      console.log(`[${requestId}] Returning test mode response with masked key`);
+      return prepareResponse({
+        message: "Test connection successful",
+        url,
+        keyLength: anonKey.length,
+        keyPrefix: anonKey.substring(0, 5) + "...",
+        keySuffix: "..." + anonKey.substring(anonKey.length - 5),
+        timestamp: requestTime,
+        origin,
+        clientInfo,
+        clientId,
+        requestId,
+        headers: Object.fromEntries(req.headers.entries()),
+        success: true,
+        cacheKey: generateCacheKey()
+      });
+    }
+    
     // Return a robust response with diagnostic info
     return prepareResponse({
       anonKey,
       url,
-      timestamp: new Date().toISOString(),
+      timestamp: requestTime,
       origin,
       clientInfo,
       clientId,
       requestId,
-      success: true
+      success: true,
+      cacheKey: generateCacheKey()
     });
   } catch (error: any) {
-    const requestId = crypto.randomUUID();
-    console.error(`[${requestId}] Critical error while processing request:`, error);
+    console.error(`[${requestId}] Critical error while processing request at ${requestTime}:`, error);
     return prepareResponse({ 
       error: "Server error", 
       details: error.message || "An unknown error occurred",
-      timestamp: new Date().toISOString(),
+      timestamp: requestTime,
       requestId,
       stack: error.stack,
-      success: false
+      success: false,
+      cacheKey: generateCacheKey()
     }, 500);
   }
 };

@@ -35,17 +35,58 @@ export const useAuthActions = (
         }
         
         console.log("Tentative de connexion avec email/password");
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
         
-        if (error) {
-          console.error("Erreur de connexion:", error);
-          throw error;
+        // Utiliser un délai très court entre la déconnexion et la nouvelle connexion
+        // pour éviter les conflits potentiels
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Tentative de connexion avec retry en cas d'échec
+        const MAX_RETRIES = 2;
+        let attempts = 0;
+        let lastError = null;
+        
+        while (attempts < MAX_RETRIES) {
+          try {
+            console.log(`Tentative de connexion ${attempts + 1}/${MAX_RETRIES}`);
+            const { data, error } = await supabase.auth.signInWithPassword({
+              email,
+              password
+            });
+            
+            if (error) {
+              console.error(`Erreur de connexion (tentative ${attempts + 1}):`, error);
+              lastError = error;
+              attempts++;
+              
+              if (attempts < MAX_RETRIES) {
+                console.log("Attente avant nouvelle tentative...");
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+                continue;
+              } else {
+                throw error;
+              }
+            }
+            
+            console.log("Connexion réussie avec données:", data ? "Données présentes" : "Pas de données");
+            break; // Sortie de la boucle si succès
+          } catch (e) {
+            console.error(`Erreur exceptionnelle lors de la tentative ${attempts + 1}:`, e);
+            lastError = e;
+            attempts++;
+            
+            if (attempts < MAX_RETRIES) {
+              console.log("Attente avant nouvelle tentative...");
+              await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+            } else {
+              throw e;
+            }
+          }
         }
         
-        console.log("Connexion réussie avec données:", data ? "Données présentes" : "Pas de données");
+        if (lastError && attempts >= MAX_RETRIES) {
+          console.error("Échec après toutes les tentatives:", lastError);
+          throw lastError;
+        }
 
         // Vérification supplémentaire pour le débogage
         try {
@@ -62,9 +103,11 @@ export const useAuthActions = (
 
         // Donner le temps au système de propager l'authentification
         return new Promise<void>((resolve) => {
+          console.log("Attente de propagation de l'authentification...");
           setTimeout(() => {
+            console.log("Délai terminé, authentification complète");
             resolve();
-          }, 500);
+          }, 800);
         });
       });
     } catch (error: any) {
@@ -73,7 +116,7 @@ export const useAuthActions = (
         console.error("Erreur d'authentification 401, réinitialisation nécessaire");
         localStorage.setItem('auth-needs-reset', 'true');
       }
-      throw new Error(error.message || "Login error");
+      throw error;
     }
   };
 
@@ -82,6 +125,17 @@ export const useAuthActions = (
       console.log("Début du processus de déconnexion");
       // S'assurer que le client est initialisé avant de tenter la déconnexion
       await withInitializedClient(async () => {
+        // Sauvegarde des données non-auth importantes
+        const keysToKeep = ['theme', 'language', 'preferences'];
+        const dataToKeep: Record<string, string> = {};
+        
+        keysToKeep.forEach(key => {
+          const value = localStorage.getItem(key);
+          if (value) {
+            dataToKeep[key] = value;
+          }
+        });
+        
         // Nettoyage des données persistantes
         localStorage.removeItem('userRole');
         localStorage.removeItem('userId');
@@ -104,6 +158,11 @@ export const useAuthActions = (
         
         setUserProfile(null);
         localStorage.removeItem("originalUser");
+        
+        // Restaurer les données importantes
+        Object.keys(dataToKeep).forEach(key => {
+          localStorage.setItem(key, dataToKeep[key]);
+        });
         
         // Pour s'assurer d'une déconnexion propre
         console.log("Nettoyage final post-déconnexion");

@@ -8,7 +8,10 @@ import { Label } from "@/components/ui/label";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Eye, EyeOff, Lock, LogIn, Loader2, RefreshCcw, AlertCircle, AlertTriangle, Bug, Terminal } from "lucide-react";
+import { 
+  Eye, EyeOff, Lock, LogIn, Loader2, RefreshCcw, AlertCircle, 
+  AlertTriangle, Bug, Terminal, Wifi, WifiOff, RotateCw 
+} from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
 import { 
   initializeSecureClient, 
@@ -16,7 +19,8 @@ import {
   withInitializedClient, 
   cleanupAuthState, 
   needsAuthReset,
-  getDebugInfo 
+  getDebugInfo,
+  testEdgeFunctionConnection
 } from "@/integrations/supabase/client";
 import { 
   Dialog,
@@ -26,34 +30,106 @@ import {
   DialogTitle,
   DialogFooter
 } from "@/components/ui/dialog";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 // Composant pour les informations de débogage détaillées
 const DebugPanel = ({ debugInfo }: { debugInfo: Record<string, any> | null }) => {
   if (!debugInfo) return null;
   
-  const sortedEntries = Object.entries(debugInfo).sort((a, b) => {
-    // Trier d'abord par timestamp si disponible
-    const timeA = a[1]?.time || '';
-    const timeB = b[1]?.time || '';
-    return timeA.localeCompare(timeB);
-  });
+  // Function to sort entries by timestamp
+  const sortedEntries = () => {
+    return Object.entries(debugInfo)
+      .sort((a, b) => {
+        // Extract timestamp from key if present
+        const extractTimestamp = (key: string) => {
+          const isoDateMatch = key.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)_/);
+          return isoDateMatch ? isoDateMatch[1] : '';
+        };
+        
+        const timeA = extractTimestamp(a[0]) || (a[1]?.time || '');
+        const timeB = extractTimestamp(b[0]) || (b[1]?.time || '');
+        return timeA.localeCompare(timeB);
+      });
+  };
+
+  // Group logs by category for better organization
+  const groupedLogs = {
+    network: sortedEntries().filter(([key]) => key.includes('fetch') || key.includes('edge') || key.includes('test')),
+    auth: sortedEntries().filter(([key]) => key.includes('auth') || key.includes('login')),
+    client: sortedEntries().filter(([key]) => key.includes('client') || key.includes('init')),
+    other: sortedEntries().filter(([key]) => 
+      !key.includes('fetch') && !key.includes('edge') && 
+      !key.includes('auth') && !key.includes('login') &&
+      !key.includes('client') && !key.includes('init')
+    )
+  };
   
   return (
     <div className="mt-4 p-3 bg-muted/50 backdrop-blur-sm rounded-md text-xs">
-      <details>
-        <summary className="font-mono font-semibold cursor-pointer flex items-center">
-          <Terminal className="h-3 w-3 mr-1" />
-          Informations de débogage détaillées
-        </summary>
-        <div className="mt-2 whitespace-pre-wrap overflow-auto max-h-[500px] p-2 bg-black/80 rounded text-green-400 font-mono">
-          {sortedEntries.map(([key, value]) => (
-            <div key={key} className="mb-1 border-b border-green-900/30 pb-1">
-              <span className="text-yellow-400">{key}</span>: 
-              <span className="text-green-300">{JSON.stringify(value, null, 2)}</span>
-            </div>
-          ))}
-        </div>
-      </details>
+      <Accordion type="single" collapsible>
+        <AccordionItem value="debug-panel">
+          <AccordionTrigger className="font-mono font-semibold cursor-pointer flex items-center">
+            <Terminal className="h-3 w-3 mr-1" />
+            Informations de débogage détaillées 
+            <span className="ml-1 text-xs text-muted-foreground">({Object.keys(debugInfo).length} entrées)</span>
+          </AccordionTrigger>
+          <AccordionContent>
+            <Accordion type="multiple">
+              {Object.keys(groupedLogs).map(category => (
+                !!groupedLogs[category].length && (
+                  <AccordionItem key={category} value={`category-${category}`}>
+                    <AccordionTrigger className="text-xs">
+                      {category === 'network' ? 'Réseau' : 
+                       category === 'auth' ? 'Authentification' : 
+                       category === 'client' ? 'Client Supabase' : 'Autres'}
+                      <span className="ml-1 text-muted-foreground">({groupedLogs[category].length})</span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="mt-2 whitespace-pre-wrap overflow-auto max-h-[200px] p-2 bg-black/80 rounded text-green-400 font-mono">
+                        {groupedLogs[category].map(([key, value]) => (
+                          <div key={key} className="mb-1 border-b border-green-900/30 pb-1">
+                            <span className="text-yellow-400">{key}</span>: 
+                            <span className="text-green-300">{JSON.stringify(value, null, 2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                )
+              ))}
+            </Accordion>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </div>
+  );
+};
+
+// Composant pour afficher le statut de connexion réseau
+const NetworkStatus = ({ online = true, onCheck }: { online?: boolean; onCheck: () => void }) => {
+  return (
+    <div className="flex items-center justify-center gap-2 text-xs">
+      {online ? (
+        <Wifi className="h-3 w-3 text-emerald-500" />
+      ) : (
+        <WifiOff className="h-3 w-3 text-destructive" />
+      )}
+      <span className={online ? "text-emerald-600" : "text-destructive"}>
+        {online ? "Connecté" : "Déconnecté"}
+      </span>
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="h-5 w-5 rounded-full"
+        onClick={onCheck}
+      >
+        <RotateCw className="h-3 w-3" />
+      </Button>
     </div>
   );
 };
@@ -111,15 +187,36 @@ const Login = () => {
   const [forceReset, setForceReset] = useState(false);
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [showDebugMode, setShowDebugMode] = useState(false);
+  const [isConnected, setIsConnected] = useState<boolean>(navigator.onLine);
+  const [edgeFunctionTest, setEdgeFunctionTest] = useState<any>(null);
   const debugTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  // Active le mode de débogage après 5 secondes
+  // Vérification du statut réseau
   useEffect(() => {
-    debugTimerRef.current = setTimeout(() => {
+    const handleOnline = () => setIsConnected(true);
+    const handleOffline = () => setIsConnected(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Active le mode de débogage immédiatement en développement
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
       setShowDebugMode(true);
-    }, 5000);
+    } else {
+      // En production, activer après un délai
+      debugTimerRef.current = setTimeout(() => {
+        setShowDebugMode(true);
+      }, 3000);
+    }
     
     return () => {
       if (debugTimerRef.current) {
@@ -140,7 +237,7 @@ const Login = () => {
     };
     
     updateDebugInfo();
-    const interval = setInterval(updateDebugInfo, 2000);
+    const interval = setInterval(updateDebugInfo, 1500);
     
     return () => clearInterval(interval);
   }, []);
@@ -153,46 +250,77 @@ const Login = () => {
     }
   };
 
+  // Vérification de la connectivité réseau
+  const checkNetworkConnection = async () => {
+    try {
+      // Test de connectivité basique
+      const start = Date.now();
+      await fetch('https://www.google.com/favicon.ico', { 
+        mode: 'no-cors',
+        cache: 'no-store'
+      });
+      const latency = Date.now() - start;
+      
+      setIsConnected(true);
+      logDebugInfo('network-check', { 
+        connected: true,
+        latency: `${latency}ms`,
+        time: new Date().toISOString()
+      });
+      return true;
+    } catch (error) {
+      setIsConnected(false);
+      logDebugInfo('network-check', { 
+        connected: false,
+        error: error.message,
+        time: new Date().toISOString()
+      });
+      return false;
+    }
+  };
+
   // Test de communication avec l'Edge Function
   const testEdgeFunction = async () => {
     try {
       setIsResetting(true);
+      setEdgeFunctionTest({ status: 'testing' });
       
-      const cacheKiller = new Date().getTime();
-      const randomId = Math.random().toString(36).substring(2, 15);
+      logDebugInfo("Test Edge Function", { time: new Date().toISOString() });
       
-      // URL complète de l'Edge Function
-      const edgeFunctionUrl = `https://rdwqedmvzicerwotjseg.supabase.co/functions/v1/secure-client-config?t=${cacheKiller}&testMode=true`;
+      // Premier test: connectivité réseau
+      const isNetworkConnected = await checkNetworkConnection();
+      if (!isNetworkConnected) {
+        setEdgeFunctionTest({ 
+          status: 'error',
+          message: "Pas de connexion Internet. Vérifiez votre réseau." 
+        });
+        toast.error("Pas de connexion Internet", {
+          description: "Vérifiez votre connexion réseau"
+        });
+        return;
+      }
       
-      logDebugInfo("Test Edge Function", { url: edgeFunctionUrl });
+      // Second test: accès à l'Edge Function
+      const result = await testEdgeFunctionConnection();
+      setEdgeFunctionTest(result);
       
-      const response = await fetch(edgeFunctionUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-Client-Info': `direct-test/v${cacheKiller}`,
-          'X-Web-Security': 'allow',
-          'X-Retry-Attempt': '1',
-          'X-Client-Id': randomId
-        },
-        cache: 'no-store',
-        mode: 'cors'
-      });
+      logDebugInfo("Test Edge Function Result", result);
       
-      const result = await response.json();
-      
-      logDebugInfo("Test Edge Function Result", { 
-        status: response.status, 
-        result,
-        headers: Object.fromEntries(response.headers.entries())
-      });
-      
-      toast.info("Test de l'Edge Function réussi", {
-        description: "Consultez les détails dans le panneau de débogage"
-      });
+      if (result.success) {
+        toast.success("Test de l'Edge Function réussi", {
+          description: "Communication avec le serveur établie"
+        });
+      } else {
+        toast.error("Échec du test de l'Edge Function", {
+          description: result.error || "Erreur inconnue"
+        });
+      }
     } catch (error) {
       logDebugInfo("Test Edge Function Error", { error });
+      setEdgeFunctionTest({ 
+        status: 'error',
+        error: error.message 
+      });
       
       toast.error("Échec du test de l'Edge Function", {
         description: error.message || "Erreur inconnue"
@@ -217,6 +345,16 @@ const Login = () => {
       });
       
       logDebugInfo("Début réinitialisation", {time: new Date().toISOString()});
+      
+      // Vérifier la connectivité avant tout
+      const isNetworkOk = await checkNetworkConnection();
+      if (!isNetworkOk) {
+        setInitError("Pas de connexion Internet. Vérifiez votre réseau.");
+        toast.error("Pas de connexion Internet", {
+          description: "La réinitialisation nécessite une connexion réseau"
+        });
+        return;
+      }
       
       // Forcer le nettoyage complet
       sessionStorage.clear();
@@ -294,6 +432,9 @@ const Login = () => {
       userAgent: navigator.userAgent,
       time: new Date().toISOString()
     });
+    
+    // Vérifier la connectivité réseau
+    checkNetworkConnection();
     
     // Vérifier si réinitialisation nécessaire
     if (needsAuthReset()) {
@@ -396,6 +537,17 @@ const Login = () => {
       return;
     }
     
+    // Vérifier la connexion réseau d'abord
+    if (!isConnected) {
+      const networkCheck = await checkNetworkConnection();
+      if (!networkCheck) {
+        toast.error("Pas de connexion Internet", {
+          description: "Vérifiez votre connexion réseau et réessayez"
+        });
+        return;
+      }
+    }
+    
     setIsLoading(true);
     setLoginAttempts(prev => prev + 1);
     
@@ -495,6 +647,10 @@ const Login = () => {
             <CardDescription>
               Entrez vos identifiants pour accéder à votre compte
             </CardDescription>
+            {/* Network status indicator */}
+            <div className="pt-1">
+              <NetworkStatus online={isConnected} onCheck={checkNetworkConnection} />
+            </div>
           </CardHeader>
           <CardContent>
             {isInitializing ? (
@@ -556,7 +712,7 @@ const Login = () => {
                   </div>
                 </div>
                 
-                <Button type="submit" className="w-full" disabled={isLoading || isInitializing || !!initError}>
+                <Button type="submit" className="w-full" disabled={isLoading || isInitializing || !!initError || !isConnected}>
                   {isLoading ? (
                     <div className="flex items-center">
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -577,6 +733,7 @@ const Login = () => {
                     size="sm"
                     className="w-full text-sm"
                     onClick={() => setShowResetDialog(true)}
+                    disabled={!isConnected}
                   >
                     <AlertTriangle className="mr-2 h-3 w-3" />
                     Problèmes de connexion ?
@@ -585,14 +742,14 @@ const Login = () => {
               </form>
             )}
             
-            {(!!initError || isResetting) && !isInitializing && (
+            {(!!initError || isResetting || !isConnected) && !isInitializing && (
               <div className="mt-4">
                 <ResetConnectionButton onReset={handleReinitialize} isLoading={isResetting} />
               </div>
             )}
             
-            {/* Bouton de test d'Edge Function (uniquement en développement) */}
-            {process.env.NODE_ENV === 'development' && showDebugMode && (
+            {/* Bouton de test d'Edge Function (toujours visible en mode debug) */}
+            {showDebugMode && (
               <div className="mt-4">
                 <Button
                   type="button"
@@ -600,17 +757,35 @@ const Login = () => {
                   size="sm"
                   className="w-full text-xs flex items-center justify-center"
                   onClick={testEdgeFunction}
-                  disabled={isResetting}
+                  disabled={isResetting || !isConnected}
                 >
                   <Bug className="mr-1 h-3 w-3" />
                   Tester Edge Function directement
                 </Button>
+                
+                {edgeFunctionTest && (
+                  <div className="mt-2 p-2 bg-muted text-xs rounded text-center">
+                    {edgeFunctionTest.status === 'testing' ? (
+                      <div className="flex items-center justify-center">
+                        <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                        Test en cours...
+                      </div>
+                    ) : edgeFunctionTest.success ? (
+                      <div className="text-green-500 flex items-center justify-center">
+                        <span className="bg-green-500/10 p-1 rounded">✓ Test réussi</span>
+                      </div>
+                    ) : (
+                      <div className="text-destructive">
+                        ✗ Échec: {edgeFunctionTest.error || "Erreur non spécifiée"}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
             {/* Informations de débogage (visible en mode développement ou après plusieurs échecs) */}
-            {(debugInfo && process.env.NODE_ENV === 'development') || 
-             (debugInfo && (loginAttempts > 1 || showDebugMode)) && (
+            {(showDebugMode || loginAttempts > 0 || !!initError) && debugInfo && (
               <DebugPanel debugInfo={debugInfo} />
             )}
           </CardContent>
