@@ -1,10 +1,25 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, withInitializedClient } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useImpersonation } from "@/hooks/useImpersonation";
 import { UserProfile, AuthContextType } from "@/types/auth";
+
+// Helper function to create a profile from user metadata
+const createProfileFromMetadata = (user: User): UserProfile => {
+  return {
+    id: user.id,
+    email: user.email || '',
+    name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+    role: user.user_metadata?.role || 'client',
+    clientId: user.user_metadata?.client_id,
+    wordpressConfigId: user.user_metadata?.wordpress_config_id,
+    wordpressConfig: null,
+    lastLogin: user.last_sign_in_at || null,
+  };
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -28,94 +43,101 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Initialize auth state and set up listeners with improved persistence
   useEffect(() => {
     console.log("Setting up auth state listener");
-    // Set up the auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("Auth state changed:", event);
-        setIsLoading(true);
-        
-        if (session?.user) {
-          // First set user from metadata for immediate UI feedback
-          const initialProfile: UserProfile = {
-            id: session.user.id,
-            email: session.user.email || '',
-            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-            role: session.user.user_metadata?.role || 'client',
-            clientId: session.user.user_metadata?.client_id,
-            wordpressConfigId: session.user.user_metadata?.wordpress_config_id,
-            wordpressConfig: null
-          };
-          setUserProfile(initialProfile);
-          console.log("Initial profile from metadata:", initialProfile);
-          
-          // Then asynchronously fetch the complete profile
-          setTimeout(() => {
-            fetchFullProfile(session.user.id).then((success) => {
-              if (!success) {
-                console.warn("Failed to fetch complete profile, using metadata only");
+    
+    const setupAuthListener = async () => {
+      try {
+        // Attendre que le client soit initialisé
+        await withInitializedClient(async () => {
+          // Set up the auth state change listener
+          const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            async (event, session) => {
+              console.log("Auth state changed:", event);
+              setIsLoading(true);
+              
+              if (session?.user) {
+                // First set user from metadata for immediate UI feedback
+                const initialProfile: UserProfile = createProfileFromMetadata(session.user);
+                setUserProfile(initialProfile);
+                console.log("Initial profile from metadata:", initialProfile);
+                
+                // Then asynchronously fetch the complete profile
+                setTimeout(() => {
+                  fetchFullProfile(session.user.id).then((success) => {
+                    if (!success) {
+                      console.warn("Failed to fetch complete profile, using metadata only");
+                    }
+                    setIsLoading(false);
+                  });
+                }, 100);
+              } else {
+                setUserProfile(null);
+                setIsLoading(false);
               }
-              setIsLoading(false);
-            });
-          }, 100);
-        } else {
-          setUserProfile(null);
-          setIsLoading(false);
-        }
+            }
+          );
+          
+          return subscription;
+        });
+      } catch (error) {
+        console.error("Error setting up auth listener:", error);
+        setIsLoading(false);
       }
-    );
-
+    };
+    
     // Get initial session with improved caching
     const initializeAuth = async () => {
-      // First check if we have a locally cached user role
-      const cachedUserRole = localStorage.getItem('userRole');
-      const cachedUserId = localStorage.getItem('userId');
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        console.log("Session found during initialization");
-        // First set user from metadata
-        const initialProfile: UserProfile = {
-          id: session.user.id,
-          email: session.user.email || '',
-          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-          role: cachedUserRole as ("admin" | "client") || session.user.user_metadata?.role || 'client',
-          clientId: session.user.user_metadata?.client_id,
-          wordpressConfigId: session.user.user_metadata?.wordpress_config_id,
-          wordpressConfig: null
-        };
-        
-        // Apply cached role if available for immediate UI
-        if (cachedUserRole && cachedUserId === session.user.id) {
-          initialProfile.role = cachedUserRole as any;
-          console.log("Applied cached role:", cachedUserRole);
-        }
-        
-        setUserProfile(initialProfile);
-        
-        // Then get complete profile
-        setTimeout(() => {
-          fetchFullProfile(session.user.id).then((success) => {
-            if (success) {
-              console.log("Successfully fetched complete profile");
-            } else {
-              console.warn("Failed to fetch complete profile, using metadata only");
+      try {
+        // Attendre que le client soit initialisé
+        await withInitializedClient(async () => {
+          // First check if we have a locally cached user role
+          const cachedUserRole = localStorage.getItem('userRole');
+          const cachedUserId = localStorage.getItem('userId');
+          
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session?.user) {
+            console.log("Session found during initialization");
+            // First set user from metadata
+            const initialProfile: UserProfile = createProfileFromMetadata(session.user);
+            
+            // Apply cached role if available for immediate UI
+            if (cachedUserRole && cachedUserId === session.user.id) {
+              initialProfile.role = cachedUserRole as any;
+              console.log("Applied cached role:", cachedUserRole);
             }
+            
+            setUserProfile(initialProfile);
+            
+            // Then get complete profile
+            setTimeout(() => {
+              fetchFullProfile(session.user.id).then((success) => {
+                if (success) {
+                  console.log("Successfully fetched complete profile");
+                } else {
+                  console.warn("Failed to fetch complete profile, using metadata only");
+                }
+                setIsLoading(false);
+              });
+            }, 100);
+          } else {
+            console.log("No session found during initialization");
+            setUserProfile(null);
             setIsLoading(false);
-          });
-        }, 100);
-      } else {
-        console.log("No session found during initialization");
+          }
+        });
+      } catch (error) {
+        console.error("Error initializing auth:", error);
         setUserProfile(null);
         setIsLoading(false);
       }
     };
 
-    initializeAuth();
-
-    return () => {
-      subscription.unsubscribe();
+    const setup = async () => {
+      await setupAuthListener();
+      await initializeAuth();
     };
+    
+    setup();
   }, []);
 
   // Cache the user role when it changes
@@ -134,16 +156,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
+      // S'assurer que le client est initialisé avant de tenter la connexion
+      return await withInitializedClient(async () => {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+        
+        if (error) {
+          throw error;
+        }
+        
+        // User will be set by the auth state change listener
+        return data;
       });
-      
-      if (error) {
-        throw error;
-      }
-      
-      // User will be set by the auth state change listener
     } catch (error: any) {
       setIsLoading(false);
       throw new Error(error.message || "Login error");
@@ -152,14 +178,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      localStorage.removeItem('userRole');
-      localStorage.removeItem('userId');
-      sessionStorage.removeItem('lastAdminPath');
-      sessionStorage.removeItem('lastAuthenticatedPath');
-      
-      await supabase.auth.signOut();
-      setUserProfile(null);
-      localStorage.removeItem("originalUser");
+      // S'assurer que le client est initialisé avant de tenter la déconnexion
+      await withInitializedClient(async () => {
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('userId');
+        sessionStorage.removeItem('lastAdminPath');
+        sessionStorage.removeItem('lastAuthenticatedPath');
+        
+        await supabase.auth.signOut();
+        setUserProfile(null);
+        localStorage.removeItem("originalUser");
+      });
     } catch (error) {
       console.error("Error during logout:", error);
     }

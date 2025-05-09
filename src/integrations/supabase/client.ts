@@ -18,6 +18,9 @@ const PUBLIC_PROJECT_ID = 'rdwqedmvzicerwotjseg';
 
 // Variable pour stocker le client initialisé
 let supabaseInstance: SupabaseClient<Database> | null = null;
+// Flag pour suivre l'état d'initialisation
+let isInitializing = false;
+let initializationPromise: Promise<boolean> | null = null;
 
 const createSecureClient = () => {
   // Si nous avons déjà initialisé le client, retourner l'instance existante
@@ -45,40 +48,76 @@ export function typedData<T>(data: unknown): T {
 // Initialise le client avec les vraies informations d'authentification
 // Cette fonction est appelée au démarrage de l'application
 export const initializeSecureClient = async (): Promise<boolean> => {
-  try {
-    console.log('Initialisation du client Supabase sécurisé...');
-    
-    // Appel à l'Edge Function pour récupérer la clé d'API sécurisée
-    const response = await fetch('/api/auth/secure-client-config');
-    
-    if (!response.ok) {
-      console.error('Erreur lors de la récupération de la configuration sécurisée:', response.status, response.statusText);
-      return false;
-    }
-    
-    const { anonKey } = await response.json();
-    
-    if (!anonKey) {
-      console.error('Clé API non trouvée dans la réponse');
-      return false;
-    }
-    
-    // Réinitialise le client avec la clé récupérée de façon sécurisée
-    // @ts-ignore - Nous manipulons directement le client pour des raisons de sécurité
-    supabase.supabaseKey = anonKey;
-    
-    // Force le client à utiliser la nouvelle clé pour toutes les futures requêtes
-    // @ts-ignore - Accès interne pour mise à jour sécurisée
-    supabase.rest.headers['apikey'] = anonKey;
-    // @ts-ignore - Accès interne pour mise à jour sécurisée
-    supabase.auth.setAuth(anonKey);
-    
-    console.log('Client Supabase initialisé de façon sécurisée');
-    return true;
-  } catch (error) {
-    console.error('Erreur lors de l\'initialisation du client sécurisé:', error);
-    return false;
+  // Si une initialisation est déjà en cours, retourner la promesse existante
+  if (initializationPromise) {
+    return initializationPromise;
   }
+  
+  // Si une initialisation est déjà en cours, ne pas en démarrer une autre
+  if (isInitializing) {
+    return new Promise(resolve => {
+      // Vérifier toutes les 100ms si l'initialisation est terminée
+      const checkInterval = setInterval(() => {
+        if (!isInitializing) {
+          clearInterval(checkInterval);
+          resolve(true);
+        }
+      }, 100);
+    });
+  }
+  
+  isInitializing = true;
+  
+  initializationPromise = new Promise(async (resolve) => {
+    try {
+      console.log('Initialisation du client Supabase sécurisé...');
+      
+      // Appel à l'Edge Function pour récupérer la clé d'API sécurisée
+      const response = await fetch('/api/auth/secure-client-config');
+      
+      if (!response.ok) {
+        console.error('Erreur lors de la récupération de la configuration sécurisée:', response.status, response.statusText);
+        isInitializing = false;
+        resolve(false);
+        return;
+      }
+      
+      const { anonKey } = await response.json();
+      
+      if (!anonKey) {
+        console.error('Clé API non trouvée dans la réponse');
+        isInitializing = false;
+        resolve(false);
+        return;
+      }
+      
+      // Réinitialise le client avec la clé récupérée de façon sécurisée
+      // @ts-ignore - Nous manipulons directement le client pour des raisons de sécurité
+      supabase.supabaseKey = anonKey;
+      
+      // Force le client à utiliser la nouvelle clé pour toutes les futures requêtes
+      // @ts-ignore - Accès interne pour mise à jour sécurisée
+      supabase.rest.headers['apikey'] = anonKey;
+      // @ts-ignore - Accès interne pour mise à jour sécurisée
+      supabase.auth.setAuth(anonKey);
+      
+      console.log('Client Supabase initialisé de façon sécurisée');
+      isInitializing = false;
+      resolve(true);
+    } catch (error) {
+      console.error('Erreur lors de l\'initialisation du client sécurisé:', error);
+      isInitializing = false;
+      resolve(false);
+    }
+  });
+  
+  return initializationPromise;
+};
+
+// Fonction asynchrone qui attend que le client soit initialisé avant d'exécuter une action
+export const withInitializedClient = async <T>(action: () => Promise<T>): Promise<T> => {
+  await initializeSecureClient();
+  return action();
 };
 
 // Note: Ce client démarre avec des permissions limitées jusqu'à l'initialisation complète

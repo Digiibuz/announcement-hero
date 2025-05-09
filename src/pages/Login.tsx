@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -10,17 +10,35 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
+import { withInitializedClient, supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
+  // Vérifier l'initialisation du client Supabase
+  useEffect(() => {
+    const checkInitialization = async () => {
+      try {
+        await supabase.auth.getSession();
+        setIsInitializing(false);
+      } catch (error) {
+        console.error("Erreur lors de la vérification de la session:", error);
+        // Réessayer après un court délai
+        setTimeout(checkInitialization, 500);
+      }
+    };
+    
+    checkInitialization();
+  }, []);
+
   // Redirect if already authenticated
-  React.useEffect(() => {
+  useEffect(() => {
     if (isAuthenticated) {
       navigate("/dashboard");
     }
@@ -31,13 +49,16 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      await login(email, password);
-      toast.success("Connexion réussie");
-      
-      // Redirect after successful login
-      setTimeout(() => {
-        navigate("/dashboard");
-      }, 300);
+      // S'assurer que le client est initialisé avant de tenter la connexion
+      await withInitializedClient(async () => {
+        await login(email, password);
+        toast.success("Connexion réussie");
+        
+        // Redirect after successful login
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 300);
+      });
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
       toast.error(error.message || "Échec de la connexion");
@@ -77,71 +98,78 @@ const Login = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">              
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="email@example.com"
-                  required
-                  autoComplete="email"
-                  disabled={isLoading}
-                />
+            {isInitializing ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                <p className="text-muted-foreground">Initialisation de la connexion sécurisée...</p>
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Mot de passe</Label>
-                  <Button 
-                    variant="link" 
-                    className="p-0 h-auto text-xs" 
-                    type="button" 
-                    disabled={isLoading}
-                    asChild
-                  >
-                    <Link to="/forgot-password">Mot de passe oublié ?</Link>
-                  </Button>
-                </div>
-                <div className="relative">
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">              
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
                   <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="email@example.com"
                     required
-                    autoComplete="current-password"
+                    autoComplete="email"
                     disabled={isLoading}
                   />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full px-3"
-                    onClick={togglePasswordVisibility}
-                    disabled={isLoading}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
                 </div>
-              </div>
-              
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
-                  <div className="flex items-center">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Connexion en cours...
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Mot de passe</Label>
+                    <Button 
+                      variant="link" 
+                      className="p-0 h-auto text-xs" 
+                      type="button" 
+                      disabled={isLoading}
+                      asChild
+                    >
+                      <Link to="/forgot-password">Mot de passe oublié ?</Link>
+                    </Button>
                   </div>
-                ) : (
-                  <>
-                    <LogIn className="mr-2 h-4 w-4" />
-                    Se connecter
-                  </>
-                )}
-              </Button>
-            </form>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                      autoComplete="current-password"
+                      disabled={isLoading}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={togglePasswordVisibility}
+                      disabled={isLoading}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+                
+                <Button type="submit" className="w-full" disabled={isLoading || isInitializing}>
+                  {isLoading ? (
+                    <div className="flex items-center">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Connexion en cours...
+                    </div>
+                  ) : (
+                    <>
+                      <LogIn className="mr-2 h-4 w-4" />
+                      Se connecter
+                    </>
+                  )}
+                </Button>
+              </form>
+            )}
           </CardContent>
           <CardFooter>
             <p className="text-xs text-center text-muted-foreground w-full">

@@ -6,14 +6,27 @@ import './index.css'
 import { initializeSecureClient } from './integrations/supabase/client.ts'
 
 // Initialiser le client Supabase de manière sécurisée avant le rendu de l'application
-initializeSecureClient().then((success) => {
-  if (!success) {
-    console.error("Échec de l'initialisation de Supabase. Certaines fonctionnalités peuvent ne pas fonctionner.");
+const init = async () => {
+  try {
+    // Tenter d'initialiser le client Supabase
+    const success = await initializeSecureClient();
+    
+    if (!success) {
+      console.warn("Échec de l'initialisation de Supabase. Certaines fonctionnalités peuvent ne pas fonctionner correctement.");
+    } else {
+      console.log("Client Supabase initialisé avec succès");
+    }
+  } catch (error) {
+    console.error("Erreur lors de l'initialisation:", error);
+  } finally {
+    // Rendre l'application même en cas d'échec pour permettre au moins l'affichage de l'interface
+    ReactDOM.createRoot(document.getElementById('root')!).render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>,
+    )
   }
-  
-  ReactDOM.createRoot(document.getElementById('root')!).render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>,
-  )
-})
+}
+
+// Démarrer l'initialisation
+init();
