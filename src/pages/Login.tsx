@@ -8,9 +8,9 @@ import { Label } from "@/components/ui/label";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Lock, LogIn, Loader2, RefreshCcw } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
-import { initializeSecureClient, supabase, withInitializedClient } from "@/integrations/supabase/client";
+import { initializeSecureClient, supabase, withInitializedClient, cleanupAuthState } from "@/integrations/supabase/client";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -18,8 +18,33 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [initError, setInitError] = useState<string | null>(null);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  // Fonction pour réinitialiser l'état d'authentification et tenter une nouvelle initialisation
+  const handleReinitialize = async () => {
+    setInitError(null);
+    setIsInitializing(true);
+    try {
+      toast.info("Réinitialisation de la connexion en cours...");
+      // Nettoyage complet de l'état d'authentification
+      await cleanupAuthState();
+      // Nouvel essai d'initialisation
+      const success = await initializeSecureClient();
+      if (success) {
+        toast.success("Connexion au serveur rétablie");
+        setIsInitializing(false);
+      } else {
+        setInitError("Échec de la réinitialisation. Veuillez rafraîchir la page.");
+        setIsInitializing(false);
+      }
+    } catch (error) {
+      console.error("Erreur lors de la réinitialisation:", error);
+      setInitError("Erreur lors de la réinitialisation");
+      setIsInitializing(false);
+    }
+  };
 
   // Amélioration: Vérification plus robuste de l'initialisation
   useEffect(() => {
@@ -32,28 +57,32 @@ const Login = () => {
         if (success) {
           console.log("Client Supabase initialisé avec succès");
           // Vérifier que nous pouvons effectivement récupérer une session comme test
-          const { data, error } = await supabase.auth.getSession();
-          
-          if (error) {
-            console.error("Erreur lors de la vérification de la session:", error);
-            toast.error("Problème de connexion avec le serveur d'authentification");
-            setTimeout(initClient, 2000); // Réessayer après 2 secondes
-            return;
+          try {
+            const { data, error } = await supabase.auth.getSession();
+            
+            if (error) {
+              console.error("Erreur lors de la vérification de la session:", error);
+              setInitError("Problème de connexion avec le serveur d'authentification");
+              setIsInitializing(false);
+            } else {
+              console.log("Connexion établie avec le serveur d'authentification");
+              setIsInitializing(false);
+              setInitError(null);
+            }
+          } catch (e) {
+            console.error("Erreur lors de la vérification de session:", e);
+            setInitError("Erreur de communication avec le serveur");
+            setIsInitializing(false);
           }
-          
-          console.log("Connexion établie avec le serveur d'authentification");
-          setIsInitializing(false);
         } else {
           console.error("Échec de l'initialisation du client Supabase");
-          toast.error("Problème de connexion avec le serveur");
-          // Réessayer après un délai
-          setTimeout(initClient, 2000);
+          setInitError("Problème de connexion avec le serveur");
+          setIsInitializing(false);
         }
       } catch (error) {
         console.error("Erreur critique lors de l'initialisation:", error);
-        toast.error("Impossible de se connecter au serveur");
-        // Réessayer après un délai plus long
-        setTimeout(initClient, 3000);
+        setInitError("Impossible de se connecter au serveur");
+        setIsInitializing(false);
       }
     };
     
@@ -76,10 +105,18 @@ const Login = () => {
       return;
     }
     
+    if (initError) {
+      toast.error("Veuillez réinitialiser la connexion avant de vous connecter");
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
       console.log("Tentative de connexion...");
+      
+      // Nettoyage de l'état d'authentification avant de tenter le login
+      await cleanupAuthState();
       
       // Vérifier que le client est correctement initialisé avant la connexion
       await withInitializedClient(async () => {
@@ -106,17 +143,14 @@ const Login = () => {
       // Messages d'erreur plus descriptifs
       if (error.message?.includes("Invalid login")) {
         toast.error("Email ou mot de passe incorrect");
+      } else if (error.message?.includes("Invalid API key")) {
+        toast.error("Problème de configuration du serveur. Veuillez réessayer ou contacter l'administrateur.");
+        // Tentative de réinitialisation automatique
+        await handleReinitialize();
       } else if (error.message?.includes("network")) {
         toast.error("Problème de connexion réseau. Vérifiez votre connexion internet");
       } else {
         toast.error(error.message || "Échec de la connexion");
-      }
-      
-      // Réinitialiser le client en cas d'erreur d'authentification
-      try {
-        await initializeSecureClient();
-      } catch (e) {
-        console.error("Échec de réinitialisation du client:", e);
       }
     } finally {
       setIsLoading(false);
@@ -158,6 +192,21 @@ const Login = () => {
               <div className="flex flex-col items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
                 <p className="text-muted-foreground">Initialisation de la connexion sécurisée...</p>
+              </div>
+            ) : initError ? (
+              <div className="flex flex-col items-center justify-center py-6 space-y-4">
+                <div className="text-destructive text-center mb-2">
+                  <p className="font-medium mb-1">Erreur de connexion</p>
+                  <p className="text-sm text-muted-foreground">{initError}</p>
+                </div>
+                <Button 
+                  onClick={handleReinitialize} 
+                  className="flex items-center gap-2"
+                  variant="outline"
+                >
+                  <RefreshCcw className="h-4 w-4" />
+                  Réinitialiser la connexion
+                </Button>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">              
@@ -211,7 +260,7 @@ const Login = () => {
                   </div>
                 </div>
                 
-                <Button type="submit" className="w-full" disabled={isLoading || isInitializing}>
+                <Button type="submit" className="w-full" disabled={isLoading || isInitializing || !!initError}>
                   {isLoading ? (
                     <div className="flex items-center">
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

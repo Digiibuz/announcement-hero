@@ -24,6 +24,7 @@ let initializationPromise: Promise<boolean> | null = null;
 // Tracking des échecs d'initialisation
 let initAttempts = 0;
 const MAX_INIT_ATTEMPTS = 5;
+const MAX_RETRIES = 3;
 
 const createSecureClient = () => {
   // Si nous avons déjà initialisé le client, retourner l'instance existante
@@ -59,6 +60,12 @@ export function typedData<T>(data: unknown): T {
 // Verrou pour éviter les initialisations concurrentes
 let initLock = false;
 
+// Fonction pour retarder avec backoff exponentiel
+const delay = (attempt: number) => {
+  const backoff = Math.min(Math.pow(2, attempt) * 300, 5000); // 300ms, 600ms, 1.2s, 2.4s, 5s
+  return new Promise(resolve => setTimeout(resolve, backoff));
+};
+
 // Initialise le client avec les vraies informations d'authentification
 // Cette fonction est appelée au démarrage de l'application
 export const initializeSecureClient = async (): Promise<boolean> => {
@@ -92,62 +99,106 @@ export const initializeSecureClient = async (): Promise<boolean> => {
   // Si nous avons dépassé le nombre maximum de tentatives, attendre plus longtemps
   if (initAttempts > MAX_INIT_ATTEMPTS) {
     console.warn(`Tentative d'initialisation ${initAttempts}/${MAX_INIT_ATTEMPTS} - Augmentation du délai d'attente`);
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await delay(initAttempts);
   }
   
   initializationPromise = new Promise(async (resolve) => {
     try {
-      console.log('Appel à l\'Edge Function pour récupérer la configuration sécurisée...');
+      // Implémentation de tentatives avec backoff exponentiel
+      let retries = 0;
+      let success = false;
+      let error;
       
-      // Récupération de la configuration via l'Edge Function sécurisée
-      const response = await fetch('/api/auth/secure-client-config');
-      
-      if (!response.ok) {
-        console.error('Erreur HTTP lors de la récupération de la configuration:', 
-                     response.status, response.statusText);
-        
-        let errorText = '';
+      while (retries < MAX_RETRIES && !success) {
         try {
-          errorText = await response.text();
-        } catch (e) {
-          errorText = 'Impossible de lire la réponse';
-        }
-        
-        console.error('Détails de l\'erreur:', errorText);
-        
-        initLock = false;
-        isInitializing = false;
-        initializationPromise = null;
-        resolve(false);
-        return;
-      }
-      
-      const { anonKey } = await response.json();
-      
-      if (!anonKey) {
-        console.error('Clé API non trouvée dans la réponse');
-        initLock = false;
-        isInitializing = false;
-        initializationPromise = null;
-        resolve(false);
-        return;
-      }
-      
-      // Créer un nouveau client avec la clé récupérée
-      supabaseInstance = createClient<Database>(
-        `https://${PUBLIC_PROJECT_ID}.supabase.co`,
-        anonKey,
-        {
-          auth: {
-            persistSession: true,
-            storage: localStorage,
-            autoRefreshToken: true,
-            detectSessionInUrl: true
+          console.log(`Appel à l'Edge Function pour récupérer la configuration sécurisée (tentative ${retries + 1}/${MAX_RETRIES})...`);
+          
+          // Récupération de la configuration via l'Edge Function sécurisée
+          // Utiliser l'URL complète pour éviter les problèmes de routage
+          const response = await fetch(`https://${PUBLIC_PROJECT_ID}.supabase.co/functions/v1/secure-client-config`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            }
+          });
+          
+          if (!response.ok) {
+            console.error('Erreur HTTP lors de la récupération de la configuration:', 
+                        response.status, response.statusText);
+            
+            error = new Error(`Erreur HTTP ${response.status}: ${response.statusText}`);
+            let errorText = '';
+            try {
+              errorText = await response.text();
+              error.message += ` - ${errorText}`;
+            } catch (e) {
+              errorText = 'Impossible de lire la réponse';
+            }
+            
+            console.error('Détails de l\'erreur:', errorText);
+            
+            // Augmenter le délai pour la prochaine tentative
+            retries++;
+            if (retries < MAX_RETRIES) {
+              await delay(retries);
+              continue; // Réessayer
+            } else {
+              throw error; // Plus de tentatives
+            }
+          }
+          
+          const data = await response.json();
+          const { anonKey } = data;
+          
+          if (!anonKey) {
+            error = new Error('Clé API non trouvée dans la réponse');
+            console.error(error.message);
+            
+            // Augmenter le délai pour la prochaine tentative
+            retries++;
+            if (retries < MAX_RETRIES) {
+              await delay(retries);
+              continue; // Réessayer
+            } else {
+              throw error; // Plus de tentatives
+            }
+          }
+          
+          // Créer un nouveau client avec la clé récupérée
+          supabaseInstance = createClient<Database>(
+            `https://${PUBLIC_PROJECT_ID}.supabase.co`,
+            anonKey,
+            {
+              auth: {
+                persistSession: true,
+                storage: localStorage,
+                autoRefreshToken: true,
+                detectSessionInUrl: true
+              }
+            }
+          );
+          
+          console.log('Client Supabase initialisé avec succès');
+          success = true;
+        } catch (attemptError) {
+          error = attemptError;
+          console.error(`Erreur lors de la tentative ${retries + 1}:`, attemptError);
+          retries++;
+          if (retries < MAX_RETRIES) {
+            await delay(retries);
           }
         }
-      );
+      }
       
-      console.log('Client Supabase initialisé avec succès');
+      if (!success) {
+        console.error("Échec de toutes les tentatives d'initialisation:", error);
+        initLock = false;
+        isInitializing = false;
+        initializationPromise = null;
+        resolve(false);
+        return;
+      }
       
       // Test après initialisation
       try {

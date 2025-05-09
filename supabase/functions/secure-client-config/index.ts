@@ -57,4 +57,4 @@ const handler = async (req: Request) => {
 };
 
 // Définir le gestionnaire de requêtes HTTP
-Serve(handler);
+serve(handler);
