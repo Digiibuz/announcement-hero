@@ -26,6 +26,8 @@ let initAttempts = 0;
 const MAX_INIT_ATTEMPTS = 5;
 const MAX_RETRIES = 3;
 
+const API_TIMEOUT_MS = 10000; // 10 secondes de timeout pour les requêtes API
+
 const createSecureClient = () => {
   // Si nous avons déjà initialisé le client, retourner l'instance existante
   if (supabaseInstance) {
@@ -66,8 +68,29 @@ const delay = (attempt: number) => {
   return new Promise(resolve => setTimeout(resolve, backoff));
 };
 
+// Fonction pour effectuer une requête avec timeout
+const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = API_TIMEOUT_MS): Promise<Response> => {
+  const controller = new AbortController();
+  const { signal } = controller;
+  
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+  
+  try {
+    const response = await fetch(url, { ...options, signal });
+    return response;
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      throw new Error(`Requête dépassée (timeout: ${timeoutMs}ms)`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
 // Initialise le client avec les vraies informations d'authentification
-// Cette fonction est appelée au démarrage de l'application
 export const initializeSecureClient = async (): Promise<boolean> => {
   // Système de verrouillage pour éviter les appels concurrents
   if (initLock) {
@@ -113,15 +136,17 @@ export const initializeSecureClient = async (): Promise<boolean> => {
         try {
           console.log(`Appel à l'Edge Function pour récupérer la configuration sécurisée (tentative ${retries + 1}/${MAX_RETRIES})...`);
           
-          // Récupération de la configuration via l'Edge Function sécurisée
-          // Utiliser l'URL complète pour éviter les problèmes de routage
-          const response = await fetch(`https://${PUBLIC_PROJECT_ID}.supabase.co/functions/v1/secure-client-config`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
+          // Récupération de la configuration via l'Edge Function sécurisée avec timeout
+          const response = await fetchWithTimeout(
+            `https://${PUBLIC_PROJECT_ID}.supabase.co/functions/v1/secure-client-config`,
+            {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+              }
             }
-          });
+          );
           
           if (!response.ok) {
             console.error('Erreur HTTP lors de la récupération de la configuration:', 
@@ -193,6 +218,8 @@ export const initializeSecureClient = async (): Promise<boolean> => {
       
       if (!success) {
         console.error("Échec de toutes les tentatives d'initialisation:", error);
+        // Nettoyage avant de résoudre
+        localStorage.setItem('auth-needs-reset', 'true');
         initLock = false;
         isInitializing = false;
         initializationPromise = null;
@@ -207,6 +234,7 @@ export const initializeSecureClient = async (): Promise<boolean> => {
           console.warn('⚠️ Test post-initialisation: Erreur lors de la récupération de la session:', error);
         } else {
           console.log('✅ Test post-initialisation: Session récupérée avec succès');
+          localStorage.removeItem('auth-needs-reset');
         }
       } catch (e) {
         console.error('❌ Erreur lors du test post-initialisation:', e);
@@ -220,6 +248,7 @@ export const initializeSecureClient = async (): Promise<boolean> => {
       resolve(true);
     } catch (error) {
       console.error('Erreur critique lors de l\'initialisation du client:', error);
+      localStorage.setItem('auth-needs-reset', 'true');
       initLock = false;
       isInitializing = false;
       initializationPromise = null;
@@ -252,19 +281,29 @@ export const withInitializedClient = async <T>(action: () => Promise<T>): Promis
 };
 
 // Fonction pour nettoyer l'état d'authentification en cas de problème
-export const cleanupAuthState = () => {
+export const cleanupAuthState = async () => {
   // Supprimer toutes les clés liées à l'authentification Supabase
   Object.keys(localStorage).forEach((key) => {
     if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
       localStorage.removeItem(key);
     }
   });
-  
+
   // Réinitialiser le client
   supabaseInstance = null;
   initializationPromise = null;
+  initLock = false;
+  isInitializing = false;
+  
+  // Attendre un court instant pour que les changements prennent effet
+  await new Promise(resolve => setTimeout(resolve, 100));
   
   return initializeSecureClient();
+};
+
+// Vérifie si l'application a besoin d'une réinitialisation d'authentification
+export const needsAuthReset = (): boolean => {
+  return localStorage.getItem('auth-needs-reset') === 'true';
 };
 
 // Note: Ce client démarre avec des permissions limitées jusqu'à l'initialisation complète

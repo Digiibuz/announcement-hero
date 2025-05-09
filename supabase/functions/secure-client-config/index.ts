@@ -31,14 +31,18 @@ const handler = async (req: Request) => {
   }
 
   try {
-    console.log("Requête reçue de:", req.headers.get("origin") || "origine inconnue");
+    const origin = req.headers.get("origin") || "origine inconnue";
+    console.log(`Requête reçue de: ${origin}`);
     
     // Récupération de la clé API depuis les variables d'environnement
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
     
     if (!anonKey) {
       console.error("Erreur: Clé API non définie dans les variables d'environnement");
-      return prepareResponse({ error: "Configuration serveur manquante" }, 500);
+      return prepareResponse({ 
+        error: "Configuration serveur manquante",
+        details: "La clé API Supabase n'est pas définie dans les variables d'environnement" 
+      }, 500);
     }
 
     console.log("Clé API Supabase récupérée avec succès");
@@ -47,11 +51,11 @@ const handler = async (req: Request) => {
     return prepareResponse({
       anonKey
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erreur lors du traitement de la requête:", error);
     return prepareResponse({ 
       error: "Erreur serveur", 
-      details: error.message 
+      details: error.message || "Une erreur inconnue s'est produite" 
     }, 500);
   }
 };

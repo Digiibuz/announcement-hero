@@ -8,9 +8,15 @@ import { Label } from "@/components/ui/label";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Eye, EyeOff, Lock, LogIn, Loader2, RefreshCcw } from "lucide-react";
+import { Eye, EyeOff, Lock, LogIn, Loader2, RefreshCcw, AlertCircle } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
-import { initializeSecureClient, supabase, withInitializedClient, cleanupAuthState } from "@/integrations/supabase/client";
+import { 
+  initializeSecureClient, 
+  supabase, 
+  withInitializedClient, 
+  cleanupAuthState, 
+  needsAuthReset 
+} from "@/integrations/supabase/client";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -19,6 +25,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
+  const [loginAttempts, setLoginAttempts] = useState(0);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -35,6 +42,7 @@ const Login = () => {
       if (success) {
         toast.success("Connexion au serveur rétablie");
         setIsInitializing(false);
+        localStorage.removeItem('auth-needs-reset');
       } else {
         setInitError("Échec de la réinitialisation. Veuillez rafraîchir la page.");
         setIsInitializing(false);
@@ -48,6 +56,13 @@ const Login = () => {
 
   // Amélioration: Vérification plus robuste de l'initialisation
   useEffect(() => {
+    // Vérifier si une réinitialisation est nécessaire dès le départ
+    if (needsAuthReset()) {
+      setInitError("Une réinitialisation est nécessaire pour résoudre des problèmes précédents");
+      setIsInitializing(false);
+      return;
+    }
+
     // Vérifier l'initialisation du client Supabase avec retry
     const initClient = async () => {
       try {
@@ -62,7 +77,11 @@ const Login = () => {
             
             if (error) {
               console.error("Erreur lors de la vérification de la session:", error);
-              setInitError("Problème de connexion avec le serveur d'authentification");
+              if (error.message?.includes("Invalid API key")) {
+                setInitError("Problème avec la clé API. Réinitialisation nécessaire.");
+              } else {
+                setInitError("Problème de connexion avec le serveur d'authentification");
+              }
               setIsInitializing(false);
             } else {
               console.log("Connexion établie avec le serveur d'authentification");
@@ -111,12 +130,16 @@ const Login = () => {
     }
     
     setIsLoading(true);
+    setLoginAttempts(prev => prev + 1);
     
     try {
       console.log("Tentative de connexion...");
       
-      // Nettoyage de l'état d'authentification avant de tenter le login
-      await cleanupAuthState();
+      // Après 2 tentatives échouées, nettoyer automatiquement l'état
+      if (loginAttempts >= 2) {
+        console.log("Plusieurs échecs détectés, nettoyage de l'état d'authentification...");
+        await cleanupAuthState();
+      }
       
       // Vérifier que le client est correctement initialisé avant la connexion
       await withInitializedClient(async () => {
@@ -126,11 +149,15 @@ const Login = () => {
           console.log("État de session avant login:", sessionCheck ? "OK" : "Pas de session");
         } catch (e) {
           console.error("Erreur de vérification avant login:", e);
+          throw new Error("Problème de communication avec le serveur");
         }
         
         await login(email, password);
         console.log("Connexion réussie");
         toast.success("Connexion réussie");
+        
+        // Reset login attempts counter on success
+        setLoginAttempts(0);
         
         // Redirection après connexion réussie
         setTimeout(() => {
@@ -144,7 +171,7 @@ const Login = () => {
       if (error.message?.includes("Invalid login")) {
         toast.error("Email ou mot de passe incorrect");
       } else if (error.message?.includes("Invalid API key")) {
-        toast.error("Problème de configuration du serveur. Veuillez réessayer ou contacter l'administrateur.");
+        toast.error("Problème de configuration du serveur. Réinitialisation en cours...");
         // Tentative de réinitialisation automatique
         await handleReinitialize();
       } else if (error.message?.includes("network")) {
@@ -195,7 +222,8 @@ const Login = () => {
               </div>
             ) : initError ? (
               <div className="flex flex-col items-center justify-center py-6 space-y-4">
-                <div className="text-destructive text-center mb-2">
+                <div className="text-destructive text-center mb-2 flex flex-col items-center">
+                  <AlertCircle className="h-8 w-8 mb-2 text-destructive" />
                   <p className="font-medium mb-1">Erreur de connexion</p>
                   <p className="text-sm text-muted-foreground">{initError}</p>
                 </div>
