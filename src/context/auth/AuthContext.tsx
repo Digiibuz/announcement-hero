@@ -16,7 +16,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isImpersonating: isImp,
     isOnResetPasswordPage,
     setUserProfile,
-    fetchFullProfile
+    fetchFullProfile,
+    error
   } = useAuthState();
 
   // Set up impersonation hooks separately to avoid circular dependencies
@@ -48,7 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     originalUser,
     isImpersonating: isImp,
     isOnResetPasswordPage,
-    error: null,
+    error,
     setUserProfile,
     fetchFullProfile
   };
