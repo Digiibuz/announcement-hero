@@ -10,6 +10,7 @@ import { Routes } from "@/components/routing/Routes";
 import { useAppLifecycle } from "./hooks/useAppLifecycle";
 import { useEffect, useState } from "react";
 import { getSupabaseClient } from "./integrations/supabase/client";
+import { toast } from "sonner";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,6 +38,7 @@ const AppLifecycleManager = () => {
 
 function App() {
   const [isInitialized, setIsInitialized] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
 
   // Initialiser le client Supabase dès le chargement de l'application
   useEffect(() => {
@@ -44,9 +46,12 @@ function App() {
       try {
         await getSupabaseClient();
         setIsInitialized(true);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Erreur lors de l\'initialisation de l\'application:', error);
-        // Afficher un message d'erreur à l'utilisateur
+        setInitError(error.message || "Une erreur s'est produite pendant l'initialisation");
+        // Essayer quand même de continuer avec le client de secours
+        setIsInitialized(true);
+        toast.error("Problème de connexion au serveur, certaines fonctionnalités peuvent être limitées");
       }
     };
 
@@ -60,6 +65,11 @@ function App() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4">Chargement de l'application...</p>
+          {initError && (
+            <p className="mt-2 text-red-500 max-w-md text-sm">
+              {initError}
+            </p>
+          )}
         </div>
       </div>
     );

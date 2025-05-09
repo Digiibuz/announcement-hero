@@ -6,13 +6,19 @@ import type { Database } from './types';
 // Utilisation d'un state local pour stocker les clés
 let supabaseClient: ReturnType<typeof createClient<Database>> | null = null;
 
+// URL de repli en cas d'échec de chargement de la configuration
+const FALLBACK_URL = 'https://rdwqedmvzicerwotjseg.supabase.co';
+const FALLBACK_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkd3FlZG12emljZXJ3b3Rqc2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwNzg4MzEsImV4cCI6MjA1ODY1NDgzMX0.Ohle_vVvdoCvsObP9A_AdyM52XdzisIvHvH1D1a88zk';
+
 // Fonction pour initialiser le client Supabase avec les clés récupérées de façon sécurisée
 const initSupabaseClient = async (): Promise<ReturnType<typeof createClient<Database>>> => {
   if (supabaseClient) return supabaseClient;
   
   try {
-    // Utiliser une URL qui ne révèle pas l'ID du projet pour l'Edge Function
-    const configEndpoint = '/functions/v1/get-public-config';
+    // Essayer d'utiliser l'URL complète pour l'Edge Function en premier
+    const configEndpoint = 'https://rdwqedmvzicerwotjseg.supabase.co/functions/v1/get-public-config';
+    console.log('Tentative de récupération de la configuration depuis:', configEndpoint);
+    
     const response = await fetch(configEndpoint, {
       method: 'GET',
       headers: {
@@ -24,13 +30,16 @@ const initSupabaseClient = async (): Promise<ReturnType<typeof createClient<Data
       throw new Error(`Erreur lors de la récupération de la configuration: ${response.statusText}`);
     }
     
-    const config = await response.json();
-    const supabaseUrl = config.supabaseUrl;
-    const supabaseAnonKey = config.supabaseAnonKey;
-    
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Configuration Supabase incomplète');
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error('La réponse n\'est pas au format JSON valide');
     }
+    
+    const config = await response.json();
+    const supabaseUrl = config.supabaseUrl || FALLBACK_URL;
+    const supabaseAnonKey = config.supabaseAnonKey || FALLBACK_ANON_KEY;
+    
+    console.log('Configuration récupérée avec succès');
     
     // Créer le client Supabase avec les clés récupérées
     supabaseClient = createClient<Database>(
@@ -49,7 +58,23 @@ const initSupabaseClient = async (): Promise<ReturnType<typeof createClient<Data
     return supabaseClient;
   } catch (error) {
     console.error('Erreur lors de l\'initialisation du client Supabase:', error);
-    throw error;
+    console.log('Utilisation des valeurs de secours pour le client Supabase');
+    
+    // En cas d'erreur, créer un client avec les valeurs de secours
+    supabaseClient = createClient<Database>(
+      FALLBACK_URL,
+      FALLBACK_ANON_KEY,
+      {
+        auth: {
+          storage: localStorage,
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true
+        }
+      }
+    );
+    
+    return supabaseClient;
   }
 };
 
