@@ -1,4 +1,3 @@
-
 import { supabase, withInitializedClient, cleanupAuthState, getDebugInfo, testEdgeFunctionConnection } from "@/integrations/supabase/client";
 import { UserProfile } from "@/types/auth";
 import { toast } from "sonner";
