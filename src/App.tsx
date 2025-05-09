@@ -8,6 +8,8 @@ import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
 import { Routes } from "@/components/routing/Routes";
 import { useAppLifecycle } from "./hooks/useAppLifecycle";
+import { useEffect, useState } from "react";
+import { getSupabaseClient } from "./integrations/supabase/client";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,6 +36,35 @@ const AppLifecycleManager = () => {
 };
 
 function App() {
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Initialiser le client Supabase dès le chargement de l'application
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        await getSupabaseClient();
+        setIsInitialized(true);
+      } catch (error) {
+        console.error('Erreur lors de l\'initialisation de l\'application:', error);
+        // Afficher un message d'erreur à l'utilisateur
+      }
+    };
+
+    initializeApp();
+  }, []);
+
+  // Afficher un écran de chargement pendant l'initialisation
+  if (!isInitialized) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4">Chargement de l'application...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <BrowserRouter>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>

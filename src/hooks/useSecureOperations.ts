@@ -1,8 +1,8 @@
 
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
+import { getSupabaseClient } from '@/integrations/supabase/client';
 
 /**
  * Hook pour effectuer des opérations sécurisées via les Edge Functions
@@ -23,6 +23,9 @@ export const useSecureOperations = () => {
     
     setIsLoading(true);
     try {
+      // Obtenir une instance initialisée du client Supabase
+      const supabase = await getSupabaseClient();
+      
       const { data: result, error } = await supabase.functions.invoke('secure-admin-operations', {
         body: { operation, data },
       });
