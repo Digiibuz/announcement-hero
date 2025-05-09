@@ -1,5 +1,5 @@
 
-import { supabase, withInitializedClient, cleanupAuthState } from "@/integrations/supabase/client";
+import { supabase, withInitializedClient, cleanupAuthState, getDebugInfo } from "@/integrations/supabase/client";
 import { UserProfile } from "@/types/auth";
 import { toast } from "sonner";
 
@@ -19,11 +19,14 @@ export const useAuthActions = (
       await cleanupAuthState();
       
       // S'assurer que le client est initialisé avant de tenter la connexion
-      await withInitializedClient(async () => {
+      return await withInitializedClient(async () => {
         console.log("Client initialisé, tentative de déconnexion préalable");
         
         // Tenter de se déconnecter globalement pour éviter les conflits de session
         try {
+          // Enregistrer l'état de débogage actuel
+          console.log("État de débogage avant déconnexion:", getDebugInfo());
+          
           await supabase.auth.signOut({ scope: 'global' });
           console.log("Déconnexion préalable réussie");
         } catch (e) {
@@ -43,7 +46,26 @@ export const useAuthActions = (
         }
         
         console.log("Connexion réussie avec données:", data ? "Données présentes" : "Pas de données");
-        // User will be set by the auth state change listener
+
+        // Vérification supplémentaire pour le débogage
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          console.log("Session après connexion:", sessionData?.session ? "Présente" : "Absente");
+          
+          if (!sessionData?.session) {
+            console.warn("Session non détectée après login réussi");
+            toast.info("Connexion réussie, mais la session n'est pas encore disponible");
+          }
+        } catch (e) {
+          console.error("Erreur lors de la vérification de session:", e);
+        }
+
+        // Donner le temps au système de propager l'authentification
+        return new Promise<void>((resolve) => {
+          setTimeout(() => {
+            resolve();
+          }, 500);
+        });
       });
     } catch (error: any) {
       console.error("Erreur de connexion complète:", error);
@@ -68,6 +90,9 @@ export const useAuthActions = (
         
         try {
           console.log("Tentative de déconnexion globale");
+          // Enregistrer l'état de débogage actuel
+          console.log("État de débogage avant déconnexion:", getDebugInfo());
+          
           // Tentative de déconnexion globale pour être sûr
           await supabase.auth.signOut({ scope: 'global' });
           console.log("Déconnexion réussie");
@@ -80,7 +105,7 @@ export const useAuthActions = (
         setUserProfile(null);
         localStorage.removeItem("originalUser");
         
-        // Pour s'assurer d'une déconnexion propre, on peut réinitialiser le client
+        // Pour s'assurer d'une déconnexion propre
         console.log("Nettoyage final post-déconnexion");
         await cleanupAuthState();
       });

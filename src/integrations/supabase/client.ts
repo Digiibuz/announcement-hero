@@ -3,59 +3,83 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 type Database = any; // Temporary type to avoid compilation errors
 
-// URL de base Supabase - pas de clé sensible ici
+// Base URL - no sensitive key here
 const SUPABASE_URL = `https://rdwqedmvzicerwotjseg.supabase.co`;
 const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/secure-client-config`;
 
-// Variable pour stocker le client initialisé
+// Variable to store initialized client
 let supabaseInstance: SupabaseClient<Database> | null = null;
 let isInitializing = false;
 let initializationPromise: Promise<boolean> | null = null;
 let initAttempts = 0;
 const MAX_INIT_ATTEMPTS = 5;
-const MAX_RETRIES = 3;
-const API_TIMEOUT_MS = 10000; // 10 secondes
+const MAX_RETRIES = 5; // Increased max retries
+const API_TIMEOUT_MS = 15000; // Increased to 15 seconds
 
-// Fonction pour retarder avec backoff exponentiel
+// Debug storage for troubleshooting
+const debugStorage: Record<string, any> = {};
+const addDebugInfo = (key: string, value: any) => {
+  debugStorage[key] = value;
+  console.log(`[DEBUG] ${key}:`, value);
+};
+
+// Function to delay with exponential backoff
 const delay = (attempt: number) => {
-  const backoff = Math.min(Math.pow(2, attempt) * 300, 5000);
+  const backoff = Math.min(Math.pow(2, attempt) * 300, 10000); // More aggressive backoff
   return new Promise(resolve => setTimeout(resolve, backoff));
 };
 
-// Fonction pour effectuer une requête avec timeout
+// Function to perform request with timeout
 const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = API_TIMEOUT_MS): Promise<Response> => {
   const controller = new AbortController();
   const { signal } = controller;
   
-  const timeout = setTimeout(() => {
+  const timeoutId = setTimeout(() => {
     controller.abort();
   }, timeoutMs);
   
   try {
-    console.log(`Fetching ${url} with options:`, options);
+    const requestId = Math.random().toString(36).substring(2, 15);
+    addDebugInfo(`fetch-start-${requestId}`, { 
+      url, 
+      options: { ...options, headers: options.headers }, 
+      time: new Date().toISOString() 
+    });
+    
     const response = await fetch(url, { ...options, signal });
-    console.log(`Response status: ${response.status}`);
+    
+    addDebugInfo(`fetch-complete-${requestId}`, { 
+      status: response.status,
+      statusText: response.statusText,
+      time: new Date().toISOString()
+    });
+    
     return response;
   } catch (error: any) {
-    console.error(`Fetch error: ${error.message}`);
+    addDebugInfo(`fetch-error`, { 
+      message: error.message,
+      name: error.name,
+      time: new Date().toISOString() 
+    });
+    
     if (error.name === 'AbortError') {
-      throw new Error(`Requête dépassée (timeout: ${timeoutMs}ms)`);
+      throw new Error(`Request timeout (${timeoutMs}ms)`);
     }
     throw error;
   } finally {
-    clearTimeout(timeout);
+    clearTimeout(timeoutId);
   }
 };
 
-// Création initiale du client avec une clé temporaire (sera remplacée)
+// Initial client creation with temporary key (will be replaced)
 const createSecureClient = () => {
   if (supabaseInstance) {
     return supabaseInstance;
   }
 
-  console.log("Création d'un client temporaire");
+  addDebugInfo('client-create-temp', { time: new Date().toISOString() });
   
-  // Client temporaire avec clé placeholder
+  // Temporary client with placeholder key
   supabaseInstance = createClient<Database>(
     SUPABASE_URL,
     'temporary_placeholder_key',
@@ -72,7 +96,7 @@ const createSecureClient = () => {
   return supabaseInstance;
 };
 
-// Créer le client avec des configurations sécurisées
+// Create client with secure configurations
 export const supabase = createSecureClient();
 
 // Helper function for type casting
@@ -80,67 +104,71 @@ export function typedData<T>(data: unknown): T {
   return data as T;
 }
 
-// Verrou pour éviter les initialisations concurrentes
+// Lock to avoid concurrent initializations
 let initLock = false;
 
-// Initialise le client avec les vraies informations d'authentification
+// Initialize client with real authentication information
 export const initializeSecureClient = async (forceReset = false): Promise<boolean> => {
-  // Tracer les données d'environnement pour le débogage
-  console.log(`[initializeSecureClient] Environnement: ${process.env.NODE_ENV}`);
-  console.log(`[initializeSecureClient] Force reset: ${forceReset}`);
-  console.log(`[initializeSecureClient] URL: ${SUPABASE_URL}`);
+  // Trace environment data for debugging
+  addDebugInfo('init-env', {
+    env: process.env.NODE_ENV,
+    forceReset,
+    url: SUPABASE_URL,
+    time: new Date().toISOString()
+  });
   
-  // Si demandé, forcer la réinitialisation complète
+  // Force reset if requested
   if (forceReset) {
-    console.log('Réinitialisation forcée du client Supabase');
+    addDebugInfo('force-reset', { time: new Date().toISOString() });
     await cleanupAuthState();
     supabaseInstance = null;
     initializationPromise = null;
     initLock = false;
     localStorage.removeItem('auth-needs-reset');
     localStorage.removeItem('auth-retry-needed');
+    sessionStorage.removeItem('supabase.auth.token');
   }
 
-  // Verrouillage pour éviter les appels concurrents
+  // Lock to avoid concurrent calls
   if (initLock) {
-    console.log('Initialisation déjà en cours, attente...');
+    addDebugInfo('init-lock-wait', { time: new Date().toISOString() });
     return initializationPromise || false;
   }
 
-  // Si initialisation déjà en cours, retourner la promesse existante
+  // If initialization already in progress, return existing promise
   if (initializationPromise && !forceReset) {
     return initializationPromise;
   }
   
   initLock = true;
   isInitializing = true;
-  console.log('Début de l\'initialisation du client Supabase');
+  addDebugInfo('init-start', { time: new Date().toISOString() });
   
-  // Incrémenter le compteur de tentatives
+  // Increment attempt counter
   initAttempts++;
   
-  // Délai plus long après plusieurs tentatives
+  // Longer delay after multiple attempts
   if (initAttempts > 1) {
-    console.warn(`Tentative d'initialisation ${initAttempts}/${MAX_INIT_ATTEMPTS} - Augmentation du délai`);
+    addDebugInfo(`init-attempt-${initAttempts}`, { time: new Date().toISOString() });
     await delay(initAttempts);
   }
   
   initializationPromise = new Promise(async (resolve) => {
     try {
-      // Implémentation avec retry
+      // Implementation with retry
       let retries = 0;
       let success = false;
-      let error;
+      let lastError;
       
       while (retries < MAX_RETRIES && !success) {
         try {
-          console.log(`Récupération de la configuration sécurisée (tentative ${retries + 1}/${MAX_RETRIES})...`);
+          addDebugInfo(`config-fetch-try-${retries + 1}`, { time: new Date().toISOString() });
           
-          // Mode sans cache forcé pour éviter les problèmes avec les CDN
+          // Force no cache to avoid CDN problems
           const cacheKiller = new Date().getTime();
           const randomId = Math.random().toString(36).substring(2, 15);
           
-          // Récupération via Edge Function avec debug headers
+          // Retrieve via Edge Function with debug headers
           const response = await fetchWithTimeout(
             `${EDGE_FUNCTION_URL}?t=${cacheKiller}&r=${randomId}`,
             {
@@ -158,29 +186,31 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
               cache: 'no-store',
               mode: 'cors'
             },
-            15000 // Timeout plus long (15 secondes)
+            20000 // Longer timeout (20 seconds)
           );
           
           if (!response.ok) {
-            console.error('Erreur HTTP:', response.status, response.statusText);
+            const status = response.status;
+            const statusText = response.statusText;
+            addDebugInfo(`http-error-${retries}`, { status, statusText });
             
-            // Récupérer le corps de la réponse pour le débogage
+            // Get response body for debugging
             let responseText = '';
             try {
               responseText = await response.text();
             } catch (textError) {
-              responseText = 'Impossible de lire la réponse';
+              responseText = 'Unable to read response';
             }
             
-            error = new Error(`Erreur HTTP ${response.status}: ${response.statusText}`);
-            console.error('Détails de la réponse:', responseText);
+            lastError = new Error(`HTTP Error ${status}: ${statusText}`);
+            addDebugInfo('response-details', responseText);
             
             retries++;
             if (retries < MAX_RETRIES) {
               await delay(retries);
               continue;
             } else {
-              throw error;
+              throw lastError;
             }
           }
           
@@ -188,43 +218,44 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
           try {
             data = await response.json();
           } catch (jsonError) {
-            console.error('Erreur de parsing JSON:', jsonError);
-            error = new Error('Réponse invalide du serveur');
+            addDebugInfo('json-parse-error', jsonError);
+            lastError = new Error('Invalid server response');
             retries++;
             if (retries < MAX_RETRIES) {
               await delay(retries);
               continue;
             } else {
-              throw error;
+              throw lastError;
             }
           }
           
-          console.log("Réponse de l'Edge Function:", { 
+          addDebugInfo('edge-response', { 
             success: data.success, 
             timestamp: data.timestamp,
             hasKey: !!data.anonKey,
             hasUrl: !!data.url,
             clientInfo: data.clientInfo,
-            headers: data.headers
+            requestId: data.requestId,
+            clientId: data.clientId
           });
           
           const { anonKey, url } = data;
           
           if (!anonKey) {
-            error = new Error('Clé API non trouvée dans la réponse');
-            console.error(error.message, data);
+            lastError = new Error('API key not found in response');
+            addDebugInfo('api-key-missing', data);
             
             retries++;
             if (retries < MAX_RETRIES) {
               await delay(retries);
               continue;
             } else {
-              throw error;
+              throw lastError;
             }
           }
           
-          // Recréer un nouveau client avec la clé récupérée
-          console.log("Création d'un nouveau client Supabase avec la clé récupérée");
+          // Create new client with retrieved key
+          addDebugInfo('create-new-client', { time: new Date().toISOString() });
           supabaseInstance = createClient<Database>(
             url || SUPABASE_URL,
             anonKey,
@@ -238,11 +269,14 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
             }
           );
           
-          console.log('Client Supabase initialisé avec succès');
+          addDebugInfo('client-init-success', { time: new Date().toISOString() });
           success = true;
         } catch (attemptError) {
-          error = attemptError;
-          console.error(`Erreur d'initialisation (tentative ${retries + 1}):`, attemptError);
+          lastError = attemptError;
+          addDebugInfo(`init-error-${retries}`, { 
+            message: attemptError.message,
+            time: new Date().toISOString() 
+          });
           retries++;
           if (retries < MAX_RETRIES) {
             await delay(retries);
@@ -251,7 +285,10 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
       }
       
       if (!success) {
-        console.error("Échec de toutes les tentatives d'initialisation:", error);
+        addDebugInfo('all-attempts-failed', { 
+          error: lastError,
+          time: new Date().toISOString() 
+        });
         localStorage.setItem('auth-needs-reset', 'true');
         initLock = false;
         isInitializing = false;
@@ -260,17 +297,27 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
         return;
       }
       
-      // Test post-initialisation
+      // Post-initialization test
       try {
+        addDebugInfo('post-init-test', { time: new Date().toISOString() });
         const { data, error } = await supabaseInstance.auth.getSession();
         if (error) {
-          console.warn('Test post-initialisation: Erreur session:', error);
+          addDebugInfo('post-init-session-error', { 
+            error: error.message,
+            time: new Date().toISOString() 
+          });
         } else {
-          console.log('Test post-initialisation réussi:', !!data.session);
+          addDebugInfo('post-init-test-success', { 
+            hasSession: !!data.session,
+            time: new Date().toISOString() 
+          });
           localStorage.removeItem('auth-needs-reset');
         }
       } catch (e) {
-        console.error('Erreur lors du test post-initialisation:', e);
+        addDebugInfo('post-init-test-exception', {
+          error: e.message,
+          time: new Date().toISOString()
+        });
       }
       
       initAttempts = 0;
@@ -278,7 +325,11 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
       isInitializing = false;
       resolve(true);
     } catch (error) {
-      console.error('Erreur critique:', error);
+      addDebugInfo('critical-error', {
+        message: error.message,
+        stack: error.stack,
+        time: new Date().toISOString()
+      });
       localStorage.setItem('auth-needs-reset', 'true');
       initLock = false;
       isInitializing = false;
@@ -290,60 +341,70 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
   return initializationPromise;
 };
 
-// Fonction asynchrone qui attend l'initialisation
+// Function that waits for initialization
 export const withInitializedClient = async <T>(action: () => Promise<T>): Promise<T> => {
-  console.log("withInitializedClient: Début");
+  addDebugInfo('with-init-client', { time: new Date().toISOString() });
   const success = await initializeSecureClient();
   
   if (!success) {
-    console.warn('Tentative avec client non initialisé - réessai forcé...');
+    addDebugInfo('client-not-initialized', { time: new Date().toISOString() });
     
+    // Clear initialization promise and retry with force reset
     initializationPromise = null;
     const retrySuccess = await initializeSecureClient(true);
     
     if (!retrySuccess) {
-      throw new Error('Impossible d\'initialiser le client après plusieurs tentatives');
+      throw new Error('Unable to initialize client after multiple attempts');
     }
   }
   
-  console.log("withInitializedClient: Client prêt, exécution de l'action");
+  addDebugInfo('client-ready-for-action', { time: new Date().toISOString() });
   return action();
 };
 
-// Fonction pour nettoyer l'état d'authentification
+// Function to clean up authentication state
 export const cleanupAuthState = async () => {
-  console.log("Nettoyage complet de l'état d'authentification");
+  addDebugInfo('cleanup-start', {
+    localStorage: Object.keys(localStorage),
+    sessionStorage: Object.keys(sessionStorage),
+    time: new Date().toISOString()
+  });
   
-  // Supprimer toutes les clés liées à l'authentification
+  // Remove all authentication-related keys
   Object.keys(localStorage).forEach((key) => {
     if (key.startsWith('supabase.auth.') || key.includes('sb-') || key.includes('auth-')) {
-      console.log(`Suppression de la clé: ${key}`);
+      addDebugInfo(`remove-local-${key}`, { time: new Date().toISOString() });
       localStorage.removeItem(key);
     }
   });
 
-  // Faire de même pour sessionStorage
+  // Do the same for sessionStorage
   Object.keys(sessionStorage).forEach((key) => {
     if (key.startsWith('supabase.auth.') || key.includes('sb-') || key.includes('auth-')) {
-      console.log(`Suppression de la clé de session: ${key}`);
+      addDebugInfo(`remove-session-${key}`, { time: new Date().toISOString() });
       sessionStorage.removeItem(key);
     }
   });
 
-  // Réinitialiser le client
+  // Reset client
   supabaseInstance = null;
   initializationPromise = null;
   initLock = false;
   isInitializing = false;
   
-  // Attendre avant réinitialisation
-  await new Promise(resolve => setTimeout(resolve, 100));
+  // Wait before reinitializing
+  await new Promise(resolve => setTimeout(resolve, 500));
   
-  console.log("État d'authentification nettoyé avec succès");
+  addDebugInfo('cleanup-complete', { time: new Date().toISOString() });
   return initializeSecureClient(true);
 };
 
-// Vérifie si réinitialisation nécessaire
+// Check if reset needed
 export const needsAuthReset = (): boolean => {
   return localStorage.getItem('auth-needs-reset') === 'true';
+};
+
+// Get debug information
+export const getDebugInfo = (): Record<string, any> => {
+  return { ...debugStorage };
 };

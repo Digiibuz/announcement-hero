@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/auth/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -8,14 +8,15 @@ import { Label } from "@/components/ui/label";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Eye, EyeOff, Lock, LogIn, Loader2, RefreshCcw, AlertCircle, AlertTriangle } from "lucide-react";
+import { Eye, EyeOff, Lock, LogIn, Loader2, RefreshCcw, AlertCircle, AlertTriangle, Bug, Terminal } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
 import { 
   initializeSecureClient, 
   supabase, 
   withInitializedClient, 
   cleanupAuthState, 
-  needsAuthReset 
+  needsAuthReset,
+  getDebugInfo 
 } from "@/integrations/supabase/client";
 import { 
   Dialog,
@@ -26,7 +27,38 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 
-// Composant indépendant pour le bouton de réinitialisation
+// Composant pour les informations de débogage détaillées
+const DebugPanel = ({ debugInfo }: { debugInfo: Record<string, any> | null }) => {
+  if (!debugInfo) return null;
+  
+  const sortedEntries = Object.entries(debugInfo).sort((a, b) => {
+    // Trier d'abord par timestamp si disponible
+    const timeA = a[1]?.time || '';
+    const timeB = b[1]?.time || '';
+    return timeA.localeCompare(timeB);
+  });
+  
+  return (
+    <div className="mt-4 p-3 bg-muted/50 backdrop-blur-sm rounded-md text-xs">
+      <details>
+        <summary className="font-mono font-semibold cursor-pointer flex items-center">
+          <Terminal className="h-3 w-3 mr-1" />
+          Informations de débogage détaillées
+        </summary>
+        <div className="mt-2 whitespace-pre-wrap overflow-auto max-h-[500px] p-2 bg-black/80 rounded text-green-400 font-mono">
+          {sortedEntries.map(([key, value]) => (
+            <div key={key} className="mb-1 border-b border-green-900/30 pb-1">
+              <span className="text-yellow-400">{key}</span>: 
+              <span className="text-green-300">{JSON.stringify(value, null, 2)}</span>
+            </div>
+          ))}
+        </div>
+      </details>
+    </div>
+  );
+};
+
+// Composant pour le bouton de réinitialisation
 const ResetConnectionButton = ({ onReset, isLoading }) => {
   return (
     <Button 
@@ -78,14 +110,95 @@ const Login = () => {
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [forceReset, setForceReset] = useState(false);
   const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [showDebugMode, setShowDebugMode] = useState(false);
+  const debugTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  // Active le mode de débogage après 5 secondes
+  useEffect(() => {
+    debugTimerRef.current = setTimeout(() => {
+      setShowDebugMode(true);
+    }, 5000);
+    
+    return () => {
+      if (debugTimerRef.current) {
+        clearTimeout(debugTimerRef.current);
+      }
+    };
+  }, []);
+  
+  // Mise à jour périodique des infos de débogage
+  useEffect(() => {
+    const updateDebugInfo = () => {
+      try {
+        const info = getDebugInfo();
+        setDebugInfo(info);
+      } catch (e) {
+        console.error("Erreur lors de la récupération des infos de débogage:", e);
+      }
+    };
+    
+    updateDebugInfo();
+    const interval = setInterval(updateDebugInfo, 2000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   // Afficher des informations de débogage dans la console
   const logDebugInfo = (message: string, data?: any) => {
     console.log(`[DEBUG] ${message}`, data || '');
     if (data) {
       setDebugInfo(prev => ({...prev, [message]: data}));
+    }
+  };
+
+  // Test de communication avec l'Edge Function
+  const testEdgeFunction = async () => {
+    try {
+      setIsResetting(true);
+      
+      const cacheKiller = new Date().getTime();
+      const randomId = Math.random().toString(36).substring(2, 15);
+      
+      // URL complète de l'Edge Function
+      const edgeFunctionUrl = `https://rdwqedmvzicerwotjseg.supabase.co/functions/v1/secure-client-config?t=${cacheKiller}&testMode=true`;
+      
+      logDebugInfo("Test Edge Function", { url: edgeFunctionUrl });
+      
+      const response = await fetch(edgeFunctionUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-Client-Info': `direct-test/v${cacheKiller}`,
+          'X-Web-Security': 'allow',
+          'X-Retry-Attempt': '1',
+          'X-Client-Id': randomId
+        },
+        cache: 'no-store',
+        mode: 'cors'
+      });
+      
+      const result = await response.json();
+      
+      logDebugInfo("Test Edge Function Result", { 
+        status: response.status, 
+        result,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+      
+      toast.info("Test de l'Edge Function réussi", {
+        description: "Consultez les détails dans le panneau de débogage"
+      });
+    } catch (error) {
+      logDebugInfo("Test Edge Function Error", { error });
+      
+      toast.error("Échec du test de l'Edge Function", {
+        description: error.message || "Erreur inconnue"
+      });
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -136,7 +249,7 @@ const Login = () => {
       } else {
         setInitError("La réinitialisation a échoué, veuillez réessayer");
         toast.error("Échec de la réinitialisation", {
-          description: "Veuillez rafraîchir la page et réessayer"
+          description: "Veuillez vérifier la console pour plus de détails"
         });
       }
     } catch (error) {
@@ -261,7 +374,11 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    logDebugInfo("Tentative de soumission", { email, password: "***" });
+    logDebugInfo("Tentative de soumission", { 
+      email, 
+      password: "***", 
+      time: new Date().toISOString() 
+    });
     
     if (isInitializing) {
       toast.error("Initialisation en cours, veuillez patienter");
@@ -283,7 +400,10 @@ const Login = () => {
     setLoginAttempts(prev => prev + 1);
     
     try {
-      logDebugInfo("Tentative de connexion...", { attempt: loginAttempts + 1 });
+      logDebugInfo("Tentative de connexion...", { 
+        attempt: loginAttempts + 1,
+        time: new Date().toISOString() 
+      });
       
       // Nettoyage après échecs multiples
       if (loginAttempts >= 1) {
@@ -303,9 +423,12 @@ const Login = () => {
           throw new Error("Problème de communication");
         }
         
-        logDebugInfo("Appel login avec email", { email });
+        logDebugInfo("Appel login avec email", { 
+          email,
+          time: new Date().toISOString() 
+        });
         await login(email, password);
-        logDebugInfo("Connexion réussie");
+        logDebugInfo("Connexion réussie", { time: new Date().toISOString() });
         toast.success("Connexion réussie");
         
         // Reset compteur
@@ -317,7 +440,11 @@ const Login = () => {
       });
     } catch (error: any) {
       console.error("Erreur complète:", error);
-      logDebugInfo("Erreur de connexion", { error });
+      logDebugInfo("Erreur de connexion", { 
+        error,
+        message: error.message,
+        time: new Date().toISOString()
+      });
       
       if (error.message?.includes("Invalid login")) {
         toast.error("Email ou mot de passe incorrect");
@@ -463,17 +590,28 @@ const Login = () => {
                 <ResetConnectionButton onReset={handleReinitialize} isLoading={isResetting} />
               </div>
             )}
-
-            {/* Informations de débogage (visible uniquement en développement) */}
-            {debugInfo && process.env.NODE_ENV === 'development' && (
-              <div className="mt-6 p-3 bg-muted rounded-md text-xs">
-                <details>
-                  <summary className="font-semibold cursor-pointer">Informations de débogage</summary>
-                  <pre className="mt-2 whitespace-pre-wrap overflow-auto max-h-60">
-                    {JSON.stringify(debugInfo, null, 2)}
-                  </pre>
-                </details>
+            
+            {/* Bouton de test d'Edge Function (uniquement en développement) */}
+            {process.env.NODE_ENV === 'development' && showDebugMode && (
+              <div className="mt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs flex items-center justify-center"
+                  onClick={testEdgeFunction}
+                  disabled={isResetting}
+                >
+                  <Bug className="mr-1 h-3 w-3" />
+                  Tester Edge Function directement
+                </Button>
               </div>
+            )}
+
+            {/* Informations de débogage (visible en mode développement ou après plusieurs échecs) */}
+            {(debugInfo && process.env.NODE_ENV === 'development') || 
+             (debugInfo && (loginAttempts > 1 || showDebugMode)) && (
+              <DebugPanel debugInfo={debugInfo} />
             )}
           </CardContent>
           <CardFooter>
@@ -505,6 +643,14 @@ const Login = () => {
               <li>Résoudre les problèmes d'API key et de sessions expirées</li>
               <li>Résoudre l'erreur 401 "Unauthorized"</li>
             </ul>
+            
+            {showDebugMode && (
+              <div className="mt-4 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-md">
+                <p className="text-xs text-amber-800 dark:text-amber-300">
+                  Informations de diagnostic : {Object.keys(debugInfo || {}).length} entrées collectées
+                </p>
+              </div>
+            )}
           </div>
           
           <DialogFooter>
