@@ -33,7 +33,11 @@ const handler = async (req: Request) => {
   try {
     const origin = req.headers.get("origin") || "origine inconnue";
     const retryAttempt = req.headers.get("x-retry-attempt") || "0";
+    const clientInfo = req.headers.get("x-client-info") || "info client inconnue";
+    
     console.log(`Requête reçue de: ${origin} (tentative: ${retryAttempt})`);
+    console.log(`Info client: ${clientInfo}`);
+    console.log(`Tous les en-têtes: ${JSON.stringify(Object.fromEntries(req.headers.entries()))}`);
     
     // Récupération de la clé API depuis les variables d'environnement
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
@@ -44,7 +48,8 @@ const handler = async (req: Request) => {
         error: "Configuration serveur manquante", 
         details: "La clé API Supabase n'est pas définie dans les variables d'environnement",
         origin: origin,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        headers: Object.fromEntries(req.headers.entries())
       }, 500);
     }
 
@@ -56,7 +61,8 @@ const handler = async (req: Request) => {
         error: "Configuration serveur incomplète", 
         details: "L'URL Supabase n'est pas définie",
         origin: origin,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        headers: Object.fromEntries(req.headers.entries())
       }, 500);
     }
 
@@ -68,14 +74,17 @@ const handler = async (req: Request) => {
       url,
       timestamp: new Date().toISOString(),
       origin: origin,
-      success: true
+      clientInfo: clientInfo,
+      success: true,
+      headers: Object.fromEntries(req.headers.entries())
     });
   } catch (error: any) {
     console.error("Erreur lors du traitement de la requête:", error);
     return prepareResponse({ 
       error: "Erreur serveur", 
       details: error.message || "Une erreur inconnue s'est produite",
-      timestamp: new Date().toISOString() 
+      timestamp: new Date().toISOString(),
+      stack: error.stack
     }, 500);
   }
 };

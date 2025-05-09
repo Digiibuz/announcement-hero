@@ -77,31 +77,59 @@ const Login = () => {
   const [loginAttempts, setLoginAttempts] = useState(0);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [forceReset, setForceReset] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  // Afficher des informations de débogage dans la console
+  const logDebugInfo = (message: string, data?: any) => {
+    console.log(`[DEBUG] ${message}`, data || '');
+    if (data) {
+      setDebugInfo(prev => ({...prev, [message]: data}));
+    }
+  };
 
   // Fonction pour réinitialiser la connexion
   const handleReinitialize = async () => {
     setInitError(null);
     setIsResetting(true);
+    setDebugInfo({
+      startTime: new Date().toISOString(),
+      action: 'handleReinitialize'
+    });
+    
     try {
       toast.info("Réinitialisation complète de la connexion en cours...", {
-        duration: 3000
+        duration: 5000
       });
+      
+      logDebugInfo("Début réinitialisation", {time: new Date().toISOString()});
       
       // Forcer le nettoyage complet
       sessionStorage.clear();
       setForceReset(true);
       
+      logDebugInfo("Avant nettoyage", { 
+        localStorage: Object.keys(localStorage),
+        sessionStorage: Object.keys(sessionStorage)
+      });
+      
       // Nettoyage complet
       await cleanupAuthState();
+      
+      logDebugInfo("Après nettoyage", { 
+        localStorage: Object.keys(localStorage),
+        sessionStorage: Object.keys(sessionStorage)
+      });
       
       // Nouvel essai d'initialisation
       const success = await initializeSecureClient(true);
       
+      logDebugInfo("Résultat initialisation", { success });
+      
       if (success) {
         toast.success("Connexion au serveur rétablie", {
-          duration: 3000
+          duration: 5000
         });
         setInitError(null);
         setShowResetDialog(false);
@@ -113,8 +141,11 @@ const Login = () => {
       }
     } catch (error) {
       console.error("Erreur lors de la réinitialisation:", error);
+      logDebugInfo("Erreur réinitialisation", { error });
       setInitError("Une erreur est survenue pendant la réinitialisation");
-      toast.error("La réinitialisation a échoué");
+      toast.error("La réinitialisation a échoué", {
+        description: error.message || "Erreur inconnue"
+      });
     } finally {
       setIsResetting(false);
       setForceReset(false);
@@ -124,16 +155,20 @@ const Login = () => {
   // Forcer une réinitialisation complète si nécessaire
   useEffect(() => {
     if (forceReset) {
+      logDebugInfo("Force reset activé", {time: new Date().toISOString()});
+      
       // Effacer tous les tokens
       Object.keys(localStorage).forEach(key => {
         if (key.includes('supabase') || key.includes('auth') || key.includes('sb-')) {
           localStorage.removeItem(key);
+          logDebugInfo(`Suppression localStorage: ${key}`);
         }
       });
       
       Object.keys(sessionStorage).forEach(key => {
         if (key.includes('supabase') || key.includes('auth') || key.includes('sb-')) {
           sessionStorage.removeItem(key);
+          logDebugInfo(`Suppression sessionStorage: ${key}`);
         }
       });
     }
@@ -141,53 +176,69 @@ const Login = () => {
 
   // Vérification de l'initialisation
   useEffect(() => {
+    logDebugInfo("Démarrage vérification initialisation", {
+      url: window.location.href,
+      userAgent: navigator.userAgent,
+      time: new Date().toISOString()
+    });
+    
     // Vérifier si réinitialisation nécessaire
     if (needsAuthReset()) {
       setInitError("Une réinitialisation est nécessaire");
       setIsInitializing(false);
       setShowResetDialog(true);
+      logDebugInfo("Réinitialisation nécessaire détectée");
       return;
     }
 
     // Vérifier l'initialisation du client
     const initClient = async () => {
       try {
-        console.log("Initialisation du client Supabase...");
+        logDebugInfo("Initialisation du client Supabase...");
         
         setIsInitializing(true);
         const success = await initializeSecureClient();
         
+        logDebugInfo("Résultat initialisation", { success });
+        
         if (success) {
-          console.log("Client initialisé avec succès");
+          logDebugInfo("Client initialisé avec succès");
           
           // Test de validation
           try {
             const { data, error } = await supabase.auth.getSession();
+            logDebugInfo("Test session", { success: !error, error });
             
             if (error) {
               console.error("Erreur de session:", error);
               if (error.message?.includes("Invalid API key")) {
                 setInitError("Problème avec la clé API");
                 setShowResetDialog(true);
+              } else if (error.status === 401 || error.message?.includes("Unauthorized")) {
+                setInitError("Problème d'authentification avec le serveur (401)");
+                setShowResetDialog(true);
               } else {
                 setInitError("Problème de connexion avec le serveur");
               }
             } else {
-              console.log("Connexion serveur établie");
+              logDebugInfo("Connexion serveur établie");
               setInitError(null);
             }
           } catch (e) {
             console.error("Erreur de vérification:", e);
+            logDebugInfo("Erreur test session", { error: e });
             setInitError("Erreur de communication serveur");
             setShowResetDialog(true);
           }
         } else {
           console.error("Échec d'initialisation");
+          logDebugInfo("Échec initialisation");
           setInitError("Problème de connexion avec le serveur");
           setShowResetDialog(true);
         }
       } catch (error) {
         console.error("Erreur critique:", error);
+        logDebugInfo("Erreur critique initialisation", { error });
         setInitError("Impossible de se connecter au serveur");
         setShowResetDialog(true);
       } finally {
@@ -201,7 +252,7 @@ const Login = () => {
   // Redirection si déjà authentifié
   useEffect(() => {
     if (isAuthenticated) {
-      console.log("Utilisateur authentifié, redirection");
+      logDebugInfo("Utilisateur authentifié, redirection");
       navigate("/dashboard");
     }
   }, [isAuthenticated, navigate]);
@@ -209,6 +260,8 @@ const Login = () => {
   // Gestionnaire de soumission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    logDebugInfo("Tentative de soumission", { email, password: "***" });
     
     if (isInitializing) {
       toast.error("Initialisation en cours, veuillez patienter");
@@ -230,26 +283,29 @@ const Login = () => {
     setLoginAttempts(prev => prev + 1);
     
     try {
-      console.log("Tentative de connexion...");
+      logDebugInfo("Tentative de connexion...", { attempt: loginAttempts + 1 });
       
       // Nettoyage après échecs multiples
       if (loginAttempts >= 1) {
-        console.log("Nettoyage préventif...");
+        logDebugInfo("Nettoyage préventif...");
         await cleanupAuthState();
       }
       
       await withInitializedClient(async () => {
         // Test préliminaire
         try {
+          logDebugInfo("Test préliminaire");
           const { data: sessionCheck } = await supabase.auth.getSession();
-          console.log("État de session:", sessionCheck ? "OK" : "Pas de session");
+          logDebugInfo("État de session:", sessionCheck ? "OK" : "Pas de session");
         } catch (e) {
           console.error("Erreur préliminaire:", e);
+          logDebugInfo("Erreur préliminaire", { error: e });
           throw new Error("Problème de communication");
         }
         
+        logDebugInfo("Appel login avec email", { email });
         await login(email, password);
-        console.log("Connexion réussie");
+        logDebugInfo("Connexion réussie");
         toast.success("Connexion réussie");
         
         // Reset compteur
@@ -261,6 +317,7 @@ const Login = () => {
       });
     } catch (error: any) {
       console.error("Erreur complète:", error);
+      logDebugInfo("Erreur de connexion", { error });
       
       if (error.message?.includes("Invalid login")) {
         toast.error("Email ou mot de passe incorrect");
@@ -271,10 +328,13 @@ const Login = () => {
       } else if (error.message?.includes("network") || error.message?.includes("failed")) {
         toast.error("Problème de connexion réseau");
         setShowResetDialog(true);
-      } else if (error.message?.includes("401")) {
-        toast.error("Problème d'authentification avec le serveur");
+      } else if (error.message?.includes("401") || error.status === 401) {
+        toast.error("Problème d'authentification avec le serveur (401)");
         setShowResetDialog(true);
         await handleReinitialize();
+      } else if (!error.message || error.message === "Login error") {
+        toast.error("Erreur de connexion - Vérifiez la console pour plus de détails");
+        setShowResetDialog(true);
       } else {
         toast.error(error.message || "Échec de la connexion");
       }
@@ -401,6 +461,18 @@ const Login = () => {
             {(!!initError || isResetting) && !isInitializing && (
               <div className="mt-4">
                 <ResetConnectionButton onReset={handleReinitialize} isLoading={isResetting} />
+              </div>
+            )}
+
+            {/* Informations de débogage (visible uniquement en développement) */}
+            {debugInfo && process.env.NODE_ENV === 'development' && (
+              <div className="mt-6 p-3 bg-muted rounded-md text-xs">
+                <details>
+                  <summary className="font-semibold cursor-pointer">Informations de débogage</summary>
+                  <pre className="mt-2 whitespace-pre-wrap overflow-auto max-h-60">
+                    {JSON.stringify(debugInfo, null, 2)}
+                  </pre>
+                </details>
               </div>
             )}
           </CardContent>

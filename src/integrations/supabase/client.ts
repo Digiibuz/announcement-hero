@@ -32,9 +32,12 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutM
   }, timeoutMs);
   
   try {
+    console.log(`Fetching ${url} with options:`, options);
     const response = await fetch(url, { ...options, signal });
+    console.log(`Response status: ${response.status}`);
     return response;
   } catch (error: any) {
+    console.error(`Fetch error: ${error.message}`);
     if (error.name === 'AbortError') {
       throw new Error(`Requête dépassée (timeout: ${timeoutMs}ms)`);
     }
@@ -50,6 +53,8 @@ const createSecureClient = () => {
     return supabaseInstance;
   }
 
+  console.log("Création d'un client temporaire");
+  
   // Client temporaire avec clé placeholder
   supabaseInstance = createClient<Database>(
     SUPABASE_URL,
@@ -80,6 +85,11 @@ let initLock = false;
 
 // Initialise le client avec les vraies informations d'authentification
 export const initializeSecureClient = async (forceReset = false): Promise<boolean> => {
+  // Tracer les données d'environnement pour le débogage
+  console.log(`[initializeSecureClient] Environnement: ${process.env.NODE_ENV}`);
+  console.log(`[initializeSecureClient] Force reset: ${forceReset}`);
+  console.log(`[initializeSecureClient] URL: ${SUPABASE_URL}`);
+  
   // Si demandé, forcer la réinitialisation complète
   if (forceReset) {
     console.log('Réinitialisation forcée du client Supabase');
@@ -110,7 +120,7 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
   initAttempts++;
   
   // Délai plus long après plusieurs tentatives
-  if (initAttempts > MAX_INIT_ATTEMPTS) {
+  if (initAttempts > 1) {
     console.warn(`Tentative d'initialisation ${initAttempts}/${MAX_INIT_ATTEMPTS} - Augmentation du délai`);
     await delay(initAttempts);
   }
@@ -128,10 +138,11 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
           
           // Mode sans cache forcé pour éviter les problèmes avec les CDN
           const cacheKiller = new Date().getTime();
+          const randomId = Math.random().toString(36).substring(2, 15);
           
           // Récupération via Edge Function avec debug headers
           const response = await fetchWithTimeout(
-            `${EDGE_FUNCTION_URL}?t=${cacheKiller}`,
+            `${EDGE_FUNCTION_URL}?t=${cacheKiller}&r=${randomId}`,
             {
               method: 'GET',
               headers: {
@@ -139,26 +150,30 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
                 'Accept': 'application/json',
                 'X-Client-Info': `supabase-js-debug/v${cacheKiller}`,
                 'X-Web-Security': 'allow',
-                'X-Retry-Attempt': `${retries + 1}`
+                'X-Retry-Attempt': `${retries + 1}`,
+                'X-Client-Id': randomId,
+                'User-Agent': navigator.userAgent
               },
               credentials: 'omit',
-              cache: 'no-store'
-            }
+              cache: 'no-store',
+              mode: 'cors'
+            },
+            15000 // Timeout plus long (15 secondes)
           );
           
           if (!response.ok) {
             console.error('Erreur HTTP:', response.status, response.statusText);
             
-            error = new Error(`Erreur HTTP ${response.status}: ${response.statusText}`);
-            let errorText = '';
+            // Récupérer le corps de la réponse pour le débogage
+            let responseText = '';
             try {
-              errorText = await response.text();
-              error.message += ` - ${errorText}`;
-            } catch (e) {
-              errorText = 'Impossible de lire la réponse';
+              responseText = await response.text();
+            } catch (textError) {
+              responseText = 'Impossible de lire la réponse';
             }
             
-            console.error('Détails de l\'erreur:', errorText);
+            error = new Error(`Erreur HTTP ${response.status}: ${response.statusText}`);
+            console.error('Détails de la réponse:', responseText);
             
             retries++;
             if (retries < MAX_RETRIES) {
@@ -169,12 +184,28 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
             }
           }
           
-          const data = await response.json();
+          let data;
+          try {
+            data = await response.json();
+          } catch (jsonError) {
+            console.error('Erreur de parsing JSON:', jsonError);
+            error = new Error('Réponse invalide du serveur');
+            retries++;
+            if (retries < MAX_RETRIES) {
+              await delay(retries);
+              continue;
+            } else {
+              throw error;
+            }
+          }
+          
           console.log("Réponse de l'Edge Function:", { 
             success: data.success, 
             timestamp: data.timestamp,
             hasKey: !!data.anonKey,
-            hasUrl: !!data.url
+            hasUrl: !!data.url,
+            clientInfo: data.clientInfo,
+            headers: data.headers
           });
           
           const { anonKey, url } = data;
@@ -193,6 +224,7 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
           }
           
           // Recréer un nouveau client avec la clé récupérée
+          console.log("Création d'un nouveau client Supabase avec la clé récupérée");
           supabaseInstance = createClient<Database>(
             url || SUPABASE_URL,
             anonKey,
@@ -260,6 +292,7 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
 
 // Fonction asynchrone qui attend l'initialisation
 export const withInitializedClient = async <T>(action: () => Promise<T>): Promise<T> => {
+  console.log("withInitializedClient: Début");
   const success = await initializeSecureClient();
   
   if (!success) {
@@ -273,6 +306,7 @@ export const withInitializedClient = async <T>(action: () => Promise<T>): Promis
     }
   }
   
+  console.log("withInitializedClient: Client prêt, exécution de l'action");
   return action();
 };
 
@@ -305,6 +339,7 @@ export const cleanupAuthState = async () => {
   // Attendre avant réinitialisation
   await new Promise(resolve => setTimeout(resolve, 100));
   
+  console.log("État d'authentification nettoyé avec succès");
   return initializeSecureClient(true);
 };
 
