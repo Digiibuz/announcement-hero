@@ -40,8 +40,22 @@ const handler = async (req: Request) => {
     if (!anonKey) {
       console.error("Erreur: Clé API non définie dans les variables d'environnement");
       return prepareResponse({ 
-        error: "Configuration serveur manquante",
-        details: "La clé API Supabase n'est pas définie dans les variables d'environnement" 
+        error: "Configuration serveur manquante", 
+        details: "La clé API Supabase n'est pas définie dans les variables d'environnement",
+        origin: origin,
+        timestamp: new Date().toISOString()
+      }, 500);
+    }
+
+    // Ajout de vérifications supplémentaires
+    const url = Deno.env.get("SUPABASE_URL");
+    if (!url) {
+      console.error("URL Supabase non définie");
+      return prepareResponse({ 
+        error: "Configuration serveur incomplète", 
+        details: "L'URL Supabase n'est pas définie",
+        origin: origin,
+        timestamp: new Date().toISOString()
       }, 500);
     }
 
@@ -50,6 +64,7 @@ const handler = async (req: Request) => {
     // Ajouter des informations de débuggage dans la réponse
     return prepareResponse({
       anonKey,
+      url,
       timestamp: new Date().toISOString(),
       origin: origin,
       success: true
@@ -58,7 +73,8 @@ const handler = async (req: Request) => {
     console.error("Erreur lors du traitement de la requête:", error);
     return prepareResponse({ 
       error: "Erreur serveur", 
-      details: error.message || "Une erreur inconnue s'est produite" 
+      details: error.message || "Une erreur inconnue s'est produite",
+      timestamp: new Date().toISOString() 
     }, 500);
   }
 };

@@ -76,6 +76,7 @@ const Login = () => {
   const [initError, setInitError] = useState<string | null>(null);
   const [loginAttempts, setLoginAttempts] = useState(0);
   const [showResetDialog, setShowResetDialog] = useState(false);
+  const [forceReset, setForceReset] = useState(false);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -84,15 +85,19 @@ const Login = () => {
     setInitError(null);
     setIsResetting(true);
     try {
-      toast.info("Réinitialisation de la connexion en cours...", {
+      toast.info("Réinitialisation complète de la connexion en cours...", {
         duration: 3000
       });
+      
+      // Forcer le nettoyage complet
+      sessionStorage.clear();
+      setForceReset(true);
       
       // Nettoyage complet
       await cleanupAuthState();
       
       // Nouvel essai d'initialisation
-      const success = await initializeSecureClient();
+      const success = await initializeSecureClient(true);
       
       if (success) {
         toast.success("Connexion au serveur rétablie", {
@@ -103,7 +108,7 @@ const Login = () => {
       } else {
         setInitError("La réinitialisation a échoué, veuillez réessayer");
         toast.error("Échec de la réinitialisation", {
-          description: "Veuillez rafraîchir la page ou réessayer"
+          description: "Veuillez rafraîchir la page et réessayer"
         });
       }
     } catch (error) {
@@ -112,8 +117,27 @@ const Login = () => {
       toast.error("La réinitialisation a échoué");
     } finally {
       setIsResetting(false);
+      setForceReset(false);
     }
   };
+
+  // Forcer une réinitialisation complète si nécessaire
+  useEffect(() => {
+    if (forceReset) {
+      // Effacer tous les tokens
+      Object.keys(localStorage).forEach(key => {
+        if (key.includes('supabase') || key.includes('auth') || key.includes('sb-')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      Object.keys(sessionStorage).forEach(key => {
+        if (key.includes('supabase') || key.includes('auth') || key.includes('sb-')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+    }
+  }, [forceReset]);
 
   // Vérification de l'initialisation
   useEffect(() => {
@@ -121,6 +145,7 @@ const Login = () => {
     if (needsAuthReset()) {
       setInitError("Une réinitialisation est nécessaire");
       setIsInitializing(false);
+      setShowResetDialog(true);
       return;
     }
 
@@ -154,6 +179,7 @@ const Login = () => {
           } catch (e) {
             console.error("Erreur de vérification:", e);
             setInitError("Erreur de communication serveur");
+            setShowResetDialog(true);
           }
         } else {
           console.error("Échec d'initialisation");
@@ -242,8 +268,13 @@ const Login = () => {
         toast.error("Problème de configuration");
         setShowResetDialog(true);
         await handleReinitialize();
-      } else if (error.message?.includes("network")) {
+      } else if (error.message?.includes("network") || error.message?.includes("failed")) {
         toast.error("Problème de connexion réseau");
+        setShowResetDialog(true);
+      } else if (error.message?.includes("401")) {
+        toast.error("Problème d'authentification avec le serveur");
+        setShowResetDialog(true);
+        await handleReinitialize();
       } else {
         toast.error(error.message || "Échec de la connexion");
       }
@@ -352,20 +383,18 @@ const Login = () => {
                   )}
                 </Button>
 
-                {loginAttempts > 0 && (
-                  <div className="pt-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="w-full text-sm"
-                      onClick={() => setShowResetDialog(true)}
-                    >
-                      <AlertTriangle className="mr-2 h-3 w-3" />
-                      Problèmes de connexion ?
-                    </Button>
-                  </div>
-                )}
+                <div className="pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-sm"
+                    onClick={() => setShowResetDialog(true)}
+                  >
+                    <AlertTriangle className="mr-2 h-3 w-3" />
+                    Problèmes de connexion ?
+                  </Button>
+                </div>
               </form>
             )}
             
@@ -399,9 +428,10 @@ const Login = () => {
           <div className="py-4">
             <p className="mb-4">Cette opération va :</p>
             <ul className="list-disc pl-5 space-y-1 text-sm">
-              <li>Nettoyer les données d'authentification stockées</li>
-              <li>Rétablir la connexion avec le serveur</li>
-              <li>Résoudre les problèmes de clé API invalide</li>
+              <li>Nettoyer toutes les données d'authentification stockées</li>
+              <li>Rétablir la connexion sécurisée avec le serveur</li>
+              <li>Résoudre les problèmes d'API key et de sessions expirées</li>
+              <li>Résoudre l'erreur 401 "Unauthorized"</li>
             </ul>
           </div>
           

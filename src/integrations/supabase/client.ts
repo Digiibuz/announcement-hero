@@ -79,7 +79,18 @@ export function typedData<T>(data: unknown): T {
 let initLock = false;
 
 // Initialise le client avec les vraies informations d'authentification
-export const initializeSecureClient = async (): Promise<boolean> => {
+export const initializeSecureClient = async (forceReset = false): Promise<boolean> => {
+  // Si demandé, forcer la réinitialisation complète
+  if (forceReset) {
+    console.log('Réinitialisation forcée du client Supabase');
+    await cleanupAuthState();
+    supabaseInstance = null;
+    initializationPromise = null;
+    initLock = false;
+    localStorage.removeItem('auth-needs-reset');
+    localStorage.removeItem('auth-retry-needed');
+  }
+
   // Verrouillage pour éviter les appels concurrents
   if (initLock) {
     console.log('Initialisation déjà en cours, attente...');
@@ -87,7 +98,7 @@ export const initializeSecureClient = async (): Promise<boolean> => {
   }
 
   // Si initialisation déjà en cours, retourner la promesse existante
-  if (initializationPromise) {
+  if (initializationPromise && !forceReset) {
     return initializationPromise;
   }
   
@@ -123,10 +134,12 @@ export const initializeSecureClient = async (): Promise<boolean> => {
               headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'X-Client-Info': 'supabase-js-debug',
-                'X-Web-Security': 'allow'
+                'X-Client-Info': `supabase-js-debug/v${new Date().getTime()}`,
+                'X-Web-Security': 'allow',
+                'X-Retry-Attempt': `${retries + 1}`
               },
-              credentials: 'omit'
+              credentials: 'omit',
+              cache: 'no-store'
             }
           );
           
@@ -157,10 +170,11 @@ export const initializeSecureClient = async (): Promise<boolean> => {
           console.log("Réponse de l'Edge Function:", { 
             success: data.success, 
             timestamp: data.timestamp,
-            hasKey: !!data.anonKey 
+            hasKey: !!data.anonKey,
+            hasUrl: !!data.url
           });
           
-          const { anonKey } = data;
+          const { anonKey, url } = data;
           
           if (!anonKey) {
             error = new Error('Clé API non trouvée dans la réponse');
@@ -177,7 +191,7 @@ export const initializeSecureClient = async (): Promise<boolean> => {
           
           // Recréer un nouveau client avec la clé récupérée
           supabaseInstance = createClient<Database>(
-            SUPABASE_URL,
+            url || SUPABASE_URL,
             anonKey,
             {
               auth: {
@@ -246,10 +260,10 @@ export const withInitializedClient = async <T>(action: () => Promise<T>): Promis
   const success = await initializeSecureClient();
   
   if (!success) {
-    console.warn('Tentative avec client non initialisé - réessai...');
+    console.warn('Tentative avec client non initialisé - réessai forcé...');
     
     initializationPromise = null;
-    const retrySuccess = await initializeSecureClient();
+    const retrySuccess = await initializeSecureClient(true);
     
     if (!retrySuccess) {
       throw new Error('Impossible d\'initialiser le client après plusieurs tentatives');
@@ -265,9 +279,17 @@ export const cleanupAuthState = async () => {
   
   // Supprimer toutes les clés liées à l'authentification
   Object.keys(localStorage).forEach((key) => {
-    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+    if (key.startsWith('supabase.auth.') || key.includes('sb-') || key.includes('auth-')) {
       console.log(`Suppression de la clé: ${key}`);
       localStorage.removeItem(key);
+    }
+  });
+
+  // Faire de même pour sessionStorage
+  Object.keys(sessionStorage).forEach((key) => {
+    if (key.startsWith('supabase.auth.') || key.includes('sb-') || key.includes('auth-')) {
+      console.log(`Suppression de la clé de session: ${key}`);
+      sessionStorage.removeItem(key);
     }
   });
 
@@ -280,7 +302,7 @@ export const cleanupAuthState = async () => {
   // Attendre avant réinitialisation
   await new Promise(resolve => setTimeout(resolve, 100));
   
-  return initializeSecureClient();
+  return initializeSecureClient(true);
 };
 
 // Vérifie si réinitialisation nécessaire
