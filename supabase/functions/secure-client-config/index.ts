@@ -22,7 +22,7 @@ const prepareResponse = (body: any, status = 200) => {
 };
 
 const handler = async (req: Request) => {
-  // Gérer la requête CORS preflight
+  // Gérer la requête CORS preflight avec tous les en-têtes nécessaires
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
@@ -32,7 +32,8 @@ const handler = async (req: Request) => {
 
   try {
     const origin = req.headers.get("origin") || "origine inconnue";
-    console.log(`Requête reçue de: ${origin}`);
+    const retryAttempt = req.headers.get("x-retry-attempt") || "0";
+    console.log(`Requête reçue de: ${origin} (tentative: ${retryAttempt})`);
     
     // Récupération de la clé API depuis les variables d'environnement
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");

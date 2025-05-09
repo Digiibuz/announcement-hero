@@ -126,15 +126,18 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
         try {
           console.log(`Récupération de la configuration sécurisée (tentative ${retries + 1}/${MAX_RETRIES})...`);
           
+          // Mode sans cache forcé pour éviter les problèmes avec les CDN
+          const cacheKiller = new Date().getTime();
+          
           // Récupération via Edge Function avec debug headers
           const response = await fetchWithTimeout(
-            EDGE_FUNCTION_URL,
+            `${EDGE_FUNCTION_URL}?t=${cacheKiller}`,
             {
               method: 'GET',
               headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'X-Client-Info': `supabase-js-debug/v${new Date().getTime()}`,
+                'X-Client-Info': `supabase-js-debug/v${cacheKiller}`,
                 'X-Web-Security': 'allow',
                 'X-Retry-Attempt': `${retries + 1}`
               },
