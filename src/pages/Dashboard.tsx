@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
@@ -381,8 +380,8 @@ const Dashboard = () => {
                   {recentAnnouncements && recentAnnouncements.length > 0 ? (
                     recentAnnouncements.map((announcement) => (
                       <Link 
-                        to={`/announcements/${announcement.id}`}
-                        key={announcement.id}
+                        to={`/announcements/${String(announcement.id)}`}
+                        key={String(announcement.id)}
                         className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors block"
                       >
                         <div className="flex items-center gap-3 min-w-0">
@@ -390,20 +389,20 @@ const Dashboard = () => {
                             <FileText size={18} className="text-muted-foreground dark:text-gray-300" />
                           </div>
                           <div className="min-w-0">
-                            <div className="font-medium truncate">{announcement.title}</div>
+                            <div className="font-medium truncate">{String(announcement.title)}</div>
                             <div className="text-sm text-muted-foreground dark:text-gray-300">
-                              {formatDate(announcement.created_at)}
+                              {formatDate(String(announcement.created_at))}
                             </div>
                           </div>
                         </div>
                         <div>
                           <span 
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              getStatusBadgeClass(announcement.status)
+                              getStatusBadgeClass(String(announcement.status))
                             }`}
                           >
-                            {announcement.status === "published" ? "Publiée" : 
-                              announcement.status === "scheduled" ? "Programmée" : "Brouillon"}
+                            {String(announcement.status) === "published" ? "Publiée" : 
+                              String(announcement.status) === "scheduled" ? "Programmée" : "Brouillon"}
                           </span>
                         </div>
                       </Link>

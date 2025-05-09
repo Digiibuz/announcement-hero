@@ -10,6 +10,7 @@ export interface WordPressConfig {
   password: string | null;
   created_at: string;
   updated_at: string;
+  prompt?: string | null;
 }
 
 export interface ClientWordPressConfig {

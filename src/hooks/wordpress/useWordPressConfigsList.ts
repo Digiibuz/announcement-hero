@@ -42,7 +42,6 @@ export const useWordPressConfigsList = () => {
               password: typedData<string>(data.password),
               app_username: typedData<string>(data.app_username),
               app_password: typedData<string>(data.app_password),
-              prompt: typedData<string>(data.prompt),
               created_at: typedData<string>(data.created_at),
               updated_at: typedData<string>(data.updated_at),
             };
@@ -75,7 +74,6 @@ export const useWordPressConfigsList = () => {
           password: typedData<string>(item.password),
           app_username: typedData<string>(item.app_username),
           app_password: typedData<string>(item.app_password),
-          prompt: typedData<string>(item.prompt),
           created_at: typedData<string>(item.created_at),
           updated_at: typedData<string>(item.updated_at),
         }));

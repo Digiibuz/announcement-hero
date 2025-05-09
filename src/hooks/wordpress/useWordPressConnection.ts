@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -132,8 +131,11 @@ export const useWordPressConnection = () => {
         };
       }
 
+      // Replace the problematic line with this:
+      const restUrl = typeof siteUrl === 'string' ? siteUrl.replace(/\/$/, '') : String(siteUrl);
+      
       // Try to fetch the WordPress site info as a connection test
-      const infoUrl = `${siteUrl}/wp-json`;
+      const infoUrl = `${restUrl}/wp-json`;
       
       // Préparer les en-têtes d'authentification
       const headers: Record<string, string> = {

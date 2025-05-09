@@ -1,136 +1,75 @@
-
 import { useState, useEffect } from "react";
 import { supabase, typedData } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
-import { UserProfile, Role } from "@/types/auth";
+import { UserProfile } from "@/types/auth";
+import { toast } from "sonner";
 
-// Function to create a profile from user metadata
-export const createProfileFromMetadata = (authUser: User | null): UserProfile | null => {
-  if (!authUser) return null;
-  
-  // Récupérer le rôle depuis le localStorage en priorité pour éviter les rechargements inutiles
-  const cachedRole = localStorage.getItem('userRole') as Role | null;
-  const cachedUserId = localStorage.getItem('userId');
-  
-  // Si l'ID utilisateur correspond et que nous avons un rôle en cache, utilisons-le
-  const role = (cachedUserId === authUser.id && cachedRole) 
-    ? cachedRole 
-    : (authUser.user_metadata?.role as Role) || 'client';
-  
-  return {
-    id: authUser.id,
-    email: authUser.email || '',
-    name: authUser.user_metadata?.name || authUser.email || '',
-    role: role,
-    clientId: authUser.user_metadata?.clientId,
-    wordpressConfigId: authUser.user_metadata?.wordpressConfigId,
-  };
-};
-
-// Hook for user profile management with improved caching and error handling
-export const useUserProfile = () => {
+export const useUserProfile = (userId: string | undefined) => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  // Function to fetch the full profile from the database
-  const fetchFullProfile = async (userId: string): Promise<boolean> => {
-    try {
-      console.log("Fetching full profile for user:", userId);
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      setIsLoading(true);
+      setError(null);
       
-      // Utiliser d'abord le rôle en cache pour éviter tout problème
-      const cachedRole = localStorage.getItem('userRole') as Role | null;
-      const cachedUserId = localStorage.getItem('userId');
-      
-      // Si nous avons un profil utilisateur mais sans rôle défini, utilisons le rôle en cache
-      if (userProfile && !userProfile.role && cachedRole && cachedUserId === userId) {
-        console.log("Using cached role before fetch:", cachedRole);
-        setUserProfile({...userProfile, role: cachedRole});
+      if (!userId) {
+        setIsLoading(false);
+        return;
       }
-      
-      // Add a small retry mechanism for network issues
-      let attempts = 0;
-      const maxAttempts = 3;
-      
-      while (attempts < maxAttempts) {
-        try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*, wordpress_configs(name, site_url)')
-            .eq('id', userId)
-            .maybeSingle();
-          
-          if (error) {
-            console.error("Error fetching profile:", error);
-            throw error;
-          }
-          
-          if (data) {
-            console.log("Profile data received:", data);
-            
-            // Get cached role as fallback
-            const roleToUse = typedData<Role>(data.role) || cachedRole || 'client';
-            
-            const updatedProfile: UserProfile = {
-              id: typedData<string>(data.id),
-              email: typedData<string>(data.email),
-              name: typedData<string>(data.name),
-              role: roleToUse,
-              clientId: typedData<string>(data.client_id),
-              wordpressConfigId: typedData<string>(data.wordpress_config_id),
-              wordpressConfig: data.wordpress_configs ? {
-                name: typedData<string>(data.wordpress_configs.name),
-                site_url: typedData<string>(data.wordpress_configs.site_url)
-              } : null
-            };
-            
-            console.log("Updated profile with role:", updatedProfile.role);
-            setUserProfile(updatedProfile);
-            
-            // Cache the role for future reference
-            localStorage.setItem('userRole', updatedProfile.role);
-            localStorage.setItem('userId', updatedProfile.id);
-            
-            return true;
-          }
-          
-          // No data but no error either - break the retry loop
-          console.warn("No profile data found, using cached data if available");
-          break;
-        } catch (e) {
-          console.error(`Attempt ${attempts + 1} failed:`, e);
-          attempts++;
-          
-          // If we have more attempts, wait before retrying
-          if (attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-        }
-      }
-      
-      // If we reach here without returning, we failed to get data
-      console.warn("Could not fetch complete profile after retries");
-      
-      // Use the cached role if we have one
-      if (cachedRole && cachedUserId === userId) {
-        console.log("Using cached role after failed fetches:", cachedRole);
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*, wordpress_configs(name, site_url)')
+          .eq('id', userId)
+          .single();
         
-        // Update the current profile with the cached role
-        if (userProfile) {
-          const updatedProfile = {...userProfile, role: cachedRole};
-          setUserProfile(updatedProfile);
-          return true;
+        if (error) {
+          setError(error);
+          console.error("Error fetching user profile:", error);
+          toast.error("Erreur lors de la récupération du profil utilisateur");
+          return;
         }
-      }
-      
-      return false;
-    } catch (error) {
-      console.error('Exception while fetching profile:', error);
-      return false;
-    }
-  };
+        
+        if (data) {
+          // Check if profile.wordpress_configs exists and has name/site_url properties
+          let wordpressConfig = null;
+          if (data.wordpress_configs) {
+            // Handle potential SelectQueryError
+            const wpConfig = data.wordpress_configs as any;
+            if (wpConfig && typeof wpConfig === 'object' && 'name' in wpConfig && 'site_url' in wpConfig) {
+              wordpressConfig = {
+                name: String(wpConfig.name),
+                site_url: String(wpConfig.site_url)
+              };
+            }
+          }
 
-  return { 
-    userProfile, 
-    setUserProfile, 
-    fetchFullProfile 
-  };
+          const typedProfile: UserProfile = {
+            id: typedData<string>(data.id),
+            email: typedData<string>(data.email),
+            name: typedData<string>(data.name),
+            role: typedData<"admin" | "client">(data.role),
+            clientId: typedData<string>(data.client_id),
+            wordpressConfigId: typedData<string>(data.wordpress_config_id) || null,
+            wordpressConfig: wordpressConfig,
+            lastLogin: typedData<string>(data.last_login) || null,
+          };
+          
+          setUserProfile(typedProfile);
+        }
+      } catch (err: any) {
+        setError(err);
+        console.error("Unexpected error fetching user profile:", err);
+        toast.error("Erreur inattendue lors de la récupération du profil utilisateur");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, [userId]);
+
+  return { userProfile, isLoading, error };
 };

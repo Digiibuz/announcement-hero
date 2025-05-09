@@ -29,18 +29,30 @@ const WordPressClientUsers = () => {
         }
         
         // Format client user data with proper type assertions
-        const formattedUsers: UserProfile[] = profilesData.map(profile => ({
-          id: typedData<string>(profile.id),
-          email: typedData<string>(profile.email),
-          name: typedData<string>(profile.name),
-          role: "client",
-          clientId: typedData<string>(profile.client_id),
-          wordpressConfigId: typedData<string>(profile.wordpress_config_id) || null,
-          wordpressConfig: profile.wordpress_configs ? {
-            name: typedData<string>(profile.wordpress_configs.name),
-            site_url: typedData<string>(profile.wordpress_configs.site_url)
-          } : null
-        }));
+        const formattedUsers: UserProfile[] = profilesData.map(profile => {
+          // Check if profile.wordpress_configs exists and has name/site_url properties
+          let wordpressConfig = null;
+          if (profile.wordpress_configs) {
+            // Handle potential SelectQueryError
+            const wpConfig = profile.wordpress_configs as any;
+            if (wpConfig && typeof wpConfig === 'object' && 'name' in wpConfig && 'site_url' in wpConfig) {
+              wordpressConfig = {
+                name: String(wpConfig.name),
+                site_url: String(wpConfig.site_url)
+              };
+            }
+          }
+
+          return {
+            id: typedData<string>(profile.id),
+            email: typedData<string>(profile.email),
+            name: typedData<string>(profile.name),
+            role: "client",
+            clientId: typedData<string>(profile.client_id),
+            wordpressConfigId: typedData<string>(profile.wordpress_config_id) || null,
+            wordpressConfig: wordpressConfig
+          };
+        });
         
         setClientUsers(formattedUsers);
       } catch (error) {

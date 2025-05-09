@@ -1,143 +1,114 @@
-
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { supabase, typedData } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { UserProfile, Role } from "@/types/auth";
+import { UserProfile } from "@/types/auth";
 
 export const useUserManagement = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const fetchUsers = useCallback(async () => {
+  const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      
-      // Fetch user profiles
-      const { data: profilesData, error: profilesError } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
-        .select('*, wordpress_configs(name, site_url)');
-      
-      if (profilesError) {
-        throw profilesError;
+        .select('*, wordpress_configs(name, site_url)')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
       }
-      
-      // Format user profiles with proper type casting
-      const processedUsers: UserProfile[] = (profilesData || []).map(profile => {
+
+      const typedUsers: UserProfile[] = data.map(profile => {
+          // Check if profile.wordpress_configs exists and has name/site_url properties
+          let wordpressConfig = null;
+          if (profile.wordpress_configs) {
+            // Handle potential SelectQueryError
+            const wpConfig = profile.wordpress_configs as any;
+            if (wpConfig && typeof wpConfig === 'object' && 'name' in wpConfig && 'site_url' in wpConfig) {
+              wordpressConfig = {
+                name: String(wpConfig.name),
+                site_url: String(wpConfig.site_url)
+              };
+            }
+          }
+
         return {
           id: typedData<string>(profile.id),
           email: typedData<string>(profile.email),
           name: typedData<string>(profile.name),
-          role: typedData<Role>(profile.role),
+          role: typedData<"admin" | "client">(profile.role),
           clientId: typedData<string>(profile.client_id),
           wordpressConfigId: typedData<string>(profile.wordpress_config_id) || null,
-          wordpressConfig: profile.wordpress_configs ? {
-            name: typedData<string>(profile.wordpress_configs.name),
-            site_url: typedData<string>(profile.wordpress_configs.site_url)
-          } : null,
-          lastLogin: null // We no longer have access to this information without the Edge function
+          wordpressConfig: wordpressConfig
         };
       });
-      
-      setUsers(processedUsers);
-      console.log("Utilisateurs chargés avec succès:", processedUsers.length);
-    } catch (error: any) {
-      console.error('Error fetching users:', error);
+
+      setUsers(typedUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
       toast.error("Erreur lors de la récupération des utilisateurs");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchUsers();
   }, []);
 
-  const handleResetPassword = async (email: string) => {
+  const updateUser = async (id: string, userData: Partial<UserProfile>) => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-      
+      setIsSubmitting(true);
+      const { error } = await supabase
+        .from('profiles')
+        .update(userData)
+        .eq('id', id);
+
       if (error) {
         throw error;
       }
-      
-      toast.success("Un email de réinitialisation a été envoyé");
-    } catch (error: any) {
-      console.error("Error resetting password:", error);
-      toast.error("Erreur lors de la réinitialisation du mot de passe");
-    }
-  };
 
-  const updateUser = async (userId: string, userData: Partial<UserProfile>) => {
-    try {
-      setIsUpdating(true);
-      
-      // Mise à jour du profil dans la table profiles
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          name: userData.name,
-          email: userData.email,
-          role: userData.role,
-          wordpress_config_id: userData.role === 'client' ? userData.wordpressConfigId : null
-        })
-        .eq('id', userId);
-      
-      if (profileError) {
-        throw profileError;
-      }
-      
-      // Fallback si la fonction Edge ne fonctionne pas
-      // Cette approche ne modifie pas l'email dans auth mais met à jour uniquement le profil
-      
-      toast.success("Profil utilisateur mis à jour avec succès");
-      await fetchUsers(); // Recharger la liste des utilisateurs
-    } catch (error: any) {
+      toast.success("Utilisateur mis à jour avec succès");
+      await fetchUsers(); // Refresh users after update
+    } catch (error) {
       console.error("Error updating user:", error);
-      toast.error(`Erreur lors de la mise à jour: ${error.message}`);
+      toast.error("Erreur lors de la mise à jour de l'utilisateur");
+      throw error;
     } finally {
-      setIsUpdating(false);
+      setIsSubmitting(false);
     }
   };
 
-  const deleteUser = async (userId: string) => {
+  const deleteUser = async (id: string) => {
     try {
-      setIsDeleting(true);
-      
-      // Alternative à la fonction Edge: supprimer seulement le profil
-      // Note: Cela ne supprime pas l'utilisateur dans auth.users 
-      // mais désactive son accès à l'application
+      setIsSubmitting(true);
       const { error } = await supabase
         .from('profiles')
         .delete()
-        .eq('id', userId);
-      
+        .eq('id', id);
+
       if (error) {
         throw error;
       }
-      
-      // Mise à jour de la liste locale d'utilisateurs
-      setUsers(users.filter(user => user.id !== userId));
+
       toast.success("Utilisateur supprimé avec succès");
-    } catch (error: any) {
+      await fetchUsers(); // Refresh users after delete
+    } catch (error) {
       console.error("Error deleting user:", error);
-      toast.error(`Erreur lors de la suppression: ${error.message}`);
+      toast.error("Erreur lors de la suppression de l'utilisateur");
+      throw error;
     } finally {
-      setIsDeleting(false);
+      setIsSubmitting(false);
     }
   };
-
-  // Chargement des utilisateurs au montage
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
 
   return {
     users,
     isLoading,
-    isDeleting,
-    isUpdating,
+    isSubmitting,
     fetchUsers,
-    handleResetPassword,
     updateUser,
     deleteUser
   };

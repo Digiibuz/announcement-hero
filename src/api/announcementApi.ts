@@ -68,7 +68,7 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
       });
 
       // Ensure site_url has proper format
-      const siteUrl = wpConfig.site_url.endsWith('/')
+      const siteUrl = typeof wpConfig.site_url === 'string' && wpConfig.site_url.endsWith('/')
         ? wpConfig.site_url.slice(0, -1)
         : wpConfig.site_url;
       

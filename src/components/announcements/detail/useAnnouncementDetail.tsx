@@ -45,7 +45,7 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
           id: typedData<string>(data.id),
           title: typedData<string>(data.title),
           description: typedData<string>(data.description),
-          status: typedData<"draft" | "published" | "archived">(data.status),
+          status: typedData<"draft" | "published" | "scheduled">(data.status),
           images: typedData<string[]>(data.images) || [],
           created_at: typedData<string>(data.created_at),
           updated_at: typedData<string>(data.updated_at),

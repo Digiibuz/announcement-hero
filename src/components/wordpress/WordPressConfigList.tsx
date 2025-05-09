@@ -89,12 +89,12 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
       
       // Format client user data
       const formattedUsers: UserProfile[] = profilesData.map(profile => ({
-        id: profile.id,
-        email: profile.email,
-        name: profile.name,
+        id: typedData<string>(profile.id),
+        email: typedData<string>(profile.email),
+        name: typedData<string>(profile.name),
         role: "client",
-        clientId: profile.client_id,
-        wordpressConfigId: profile.wordpress_config_id
+        clientId: typedData<string>(profile.client_id),
+        wordpressConfigId: typedData<string>(profile.wordpress_config_id)
       }));
       
       setClientUsers(prev => ({ ...prev, [configId]: formattedUsers }));
