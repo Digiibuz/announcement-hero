@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -114,7 +113,8 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
       if (result.success) {
         toast.success("Connexion WordPress établie avec succès");
         // Actualiser les catégories et les pages
-        await Promise.all([refetchCategories(), refetchPages()]);
+        // Make sure to pass configDetails.site_url to refetchPages
+        await Promise.all([refetchCategories(), refetchPages(configDetails.site_url)]);
         toast.success("Données WordPress synchronisées avec succès");
       } else {
         toast.error(`Échec de connexion: ${result.message}`);

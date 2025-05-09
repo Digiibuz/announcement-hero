@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase, typedData } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -7,6 +8,8 @@ export const useUserManagement = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);  // Added missing state
+  const [isUpdating, setIsUpdating] = useState(false);  // Added missing state
 
   const fetchUsers = async () => {
     try {
@@ -41,7 +44,8 @@ export const useUserManagement = () => {
           role: typedData<"admin" | "client">(profile.role),
           clientId: typedData<string>(profile.client_id),
           wordpressConfigId: typedData<string>(profile.wordpress_config_id) || null,
-          wordpressConfig: wordpressConfig
+          wordpressConfig: wordpressConfig,
+          lastLogin: typedData<string>(profile.last_login) || null  // Add lastLogin property
         };
       });
 
@@ -60,7 +64,7 @@ export const useUserManagement = () => {
 
   const updateUser = async (id: string, userData: Partial<UserProfile>) => {
     try {
-      setIsSubmitting(true);
+      setIsUpdating(true);  // Use the isUpdating state
       const { error } = await supabase
         .from('profiles')
         .update(userData)
@@ -77,13 +81,13 @@ export const useUserManagement = () => {
       toast.error("Erreur lors de la mise à jour de l'utilisateur");
       throw error;
     } finally {
-      setIsSubmitting(false);
+      setIsUpdating(false);  // Reset the state
     }
   };
 
   const deleteUser = async (id: string) => {
     try {
-      setIsSubmitting(true);
+      setIsDeleting(true);  // Use the isDeleting state
       const { error } = await supabase
         .from('profiles')
         .delete()
@@ -100,6 +104,27 @@ export const useUserManagement = () => {
       toast.error("Erreur lors de la suppression de l'utilisateur");
       throw error;
     } finally {
+      setIsDeleting(false);  // Reset the state
+    }
+  };
+
+  // Add the missing handleResetPassword function
+  const handleResetPassword = async (email: string) => {
+    try {
+      setIsSubmitting(true);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast.success(`Email de réinitialisation envoyé à ${email}`);
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      toast.error("Erreur lors de l'envoi de l'email de réinitialisation");
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -108,8 +133,11 @@ export const useUserManagement = () => {
     users,
     isLoading,
     isSubmitting,
+    isDeleting,     // Return the new state
+    isUpdating,     // Return the new state
     fetchUsers,
     updateUser,
-    deleteUser
+    deleteUser,
+    handleResetPassword  // Return the new function
   };
 };

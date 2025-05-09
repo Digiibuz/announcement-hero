@@ -2,7 +2,42 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { WordPressPage } from "@/types/wordpress";
+
+// Define the WordPressPage type
+export interface WordPressPage {
+  id: number;
+  date: string;
+  date_gmt: string;
+  guid: {
+    rendered: string;
+  };
+  modified: string;
+  modified_gmt: string;
+  slug: string;
+  status: string;
+  type: string;
+  link: string;
+  title: {
+    rendered: string;
+  };
+  content: {
+    rendered: string;
+    protected: boolean;
+  };
+  excerpt: {
+    rendered: string;
+    protected: boolean;
+  };
+  author: number;
+  featured_media: number;
+  parent: number;
+  menu_order: number;
+  comment_status: string;
+  ping_status: string;
+  template: string;
+  meta: any[];
+  _links: any;
+}
 
 /**
  * Hook to fetch WordPress pages from a specific site
@@ -52,5 +87,11 @@ export const useWordPressPages = (siteUrl: string) => {
     }
   }, [siteUrl, refetch]);
 
-  return { pages, isLoading, error, refetch, hasPages };
+  return { 
+    pages, 
+    isLoading, 
+    error, 
+    refetch, 
+    hasPages 
+  };
 };
