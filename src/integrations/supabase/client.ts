@@ -11,8 +11,9 @@ const initSupabaseClient = async (): Promise<ReturnType<typeof createClient<Data
   if (supabaseClient) return supabaseClient;
   
   try {
-    // Utiliser l'URL complète de l'API Supabase pour appeler l'Edge Function
-    const response = await fetch('https://rdwqedmvzicerwotjseg.supabase.co/functions/v1/get-public-config', {
+    // Utiliser une URL qui ne révèle pas l'ID du projet pour l'Edge Function
+    const configEndpoint = '/functions/v1/get-public-config';
+    const response = await fetch(configEndpoint, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'
