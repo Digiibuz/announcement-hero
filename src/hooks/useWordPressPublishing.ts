@@ -95,10 +95,10 @@ export const useWordPressPublishing = () => {
       
       updatePublishingStep("prepare", "success", "Préparation terminée", 25);
       
-      // Handle the site URL safely
-      const siteUrl = typeof wpConfig.site_url === 'string' && wpConfig.site_url.endsWith('/')
+      // Ensure site_url has proper format
+      const siteUrl = wpConfig.site_url.endsWith('/')
         ? wpConfig.site_url.slice(0, -1)
-        : String(wpConfig.site_url);
+        : wpConfig.site_url;
       
       // Determine endpoints
       let useCustomTaxonomy = false;

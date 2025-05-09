@@ -18,7 +18,7 @@ export interface UserProfile {
 }
 
 export interface AuthContextType {
-  userProfile: UserProfile | null;
+  user: UserProfile | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -30,9 +30,6 @@ export interface AuthContextType {
   originalUser: UserProfile | null;
   isImpersonating: boolean;
   isOnResetPasswordPage: boolean;
-  error: Error | null;
-  setUserProfile: (profile: UserProfile | null) => void;
-  fetchFullProfile: (id: string) => Promise<boolean>;
 }
 
 export interface GoogleBusinessProfile {

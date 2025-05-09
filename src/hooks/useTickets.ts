@@ -1,6 +1,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase, typedData } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export interface Ticket {
@@ -25,31 +25,6 @@ export interface TicketResponse {
   is_admin: boolean;
 }
 
-// Helper function to safely convert Supabase response to Ticket type
-const convertToTicket = (data: any): Ticket => {
-  return {
-    id: typedData<string>(data.id),
-    user_id: typedData<string>(data.user_id),
-    subject: typedData<string>(data.subject),
-    message: typedData<string>(data.message),
-    status: typedData<"open" | "in_progress" | "closed">(data.status),
-    priority: typedData<"low" | "medium" | "high">(data.priority),
-    created_at: typedData<string>(data.created_at),
-    username: typedData<string>(data.username),
-    responses: Array.isArray(data.responses) 
-      ? data.responses.map((response: any) => ({
-          id: typedData<string>(response.id),
-          ticket_id: typedData<string>(response.ticket_id),
-          user_id: typedData<string>(response.user_id),
-          message: typedData<string>(response.message),
-          created_at: typedData<string>(response.created_at),
-          username: typedData<string>(response.username),
-          is_admin: typedData<boolean>(response.is_admin)
-        }))
-      : []
-  };
-};
-
 // Récupérer les tickets d'un utilisateur
 export const useTickets = (userId?: string) => {
   return useQuery({
@@ -71,8 +46,7 @@ export const useTickets = (userId?: string) => {
         throw error;
       }
 
-      // Ensure we safely convert the unknown type to Ticket
-      return (data || []).map(convertToTicket);
+      return data as Ticket[];
     },
     enabled: !!userId,
   });
@@ -96,8 +70,7 @@ export const useAllTickets = () => {
         throw error;
       }
 
-      // Ensure we safely convert the unknown type to Ticket
-      return (data || []).map(convertToTicket);
+      return data as Ticket[];
     },
   });
 };
@@ -121,16 +94,14 @@ export const useTicketDetails = (ticketId: string) => {
         throw error;
       }
 
-      const ticket = convertToTicket(data);
-
-      // Sort responses by creation date if they exist
-      if (ticket.responses && ticket.responses.length > 0) {
-        ticket.responses.sort((a, b) => 
+      // Sort responses by creation date
+      if (data.responses) {
+        data.responses.sort((a: any, b: any) => 
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
       }
 
-      return ticket;
+      return data as Ticket;
     },
     enabled: !!ticketId,
   });
@@ -153,7 +124,7 @@ export const useCreateTicket = () => {
         throw error;
       }
 
-      return convertToTicket(data);
+      return data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
@@ -224,7 +195,7 @@ export const useUpdateTicketStatus = () => {
         throw error;
       }
 
-      return convertToTicket(data);
+      return data as Ticket;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({

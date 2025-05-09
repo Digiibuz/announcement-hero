@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { supabase, typedData } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { UserProfile } from "@/types/auth";
 import { Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,31 +28,19 @@ const WordPressClientUsers = () => {
           throw profilesError;
         }
         
-        // Format client user data with proper type assertions
-        const formattedUsers: UserProfile[] = profilesData.map(profile => {
-          // Check if profile.wordpress_configs exists and has name/site_url properties
-          let wordpressConfig = null;
-          if (profile.wordpress_configs) {
-            // Handle potential SelectQueryError
-            const wpConfig = profile.wordpress_configs as any;
-            if (wpConfig && typeof wpConfig === 'object' && 'name' in wpConfig && 'site_url' in wpConfig) {
-              wordpressConfig = {
-                name: String(wpConfig.name),
-                site_url: String(wpConfig.site_url)
-              };
-            }
-          }
-
-          return {
-            id: typedData<string>(profile.id),
-            email: typedData<string>(profile.email),
-            name: typedData<string>(profile.name),
-            role: "client",
-            clientId: typedData<string>(profile.client_id),
-            wordpressConfigId: typedData<string>(profile.wordpress_config_id) || null,
-            wordpressConfig: wordpressConfig
-          };
-        });
+        // Format client user data
+        const formattedUsers: UserProfile[] = profilesData.map(profile => ({
+          id: profile.id,
+          email: profile.email,
+          name: profile.name,
+          role: "client",
+          clientId: profile.client_id,
+          wordpressConfigId: profile.wordpress_config_id || null,
+          wordpressConfig: profile.wordpress_configs ? {
+            name: profile.wordpress_configs.name,
+            site_url: profile.wordpress_configs.site_url
+          } : null
+        }));
         
         setClientUsers(formattedUsers);
       } catch (error) {

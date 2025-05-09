@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { supabase, typedData } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ClientWordPressConfig } from "@/types/wordpress";
 
@@ -25,14 +25,7 @@ export const useClientConfigAssociations = (onAssociationsChange?: () => void) =
       
       toast.success("Association client-WordPress créée avec succès");
       if (onAssociationsChange) onAssociationsChange();
-      
-      // Convert data to proper type
-      return {
-        id: typedData<string>(data.id),
-        client_id: typedData<string>(data.client_id),
-        wordpress_config_id: typedData<string>(data.wordpress_config_id),
-        created_at: typedData<string>(data.created_at),
-      } as ClientWordPressConfig;
+      return data as ClientWordPressConfig;
     } catch (error) {
       console.error('Error associating client to WordPress config:', error);
       toast.error("Erreur lors de l'association du client à la configuration WordPress");

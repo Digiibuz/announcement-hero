@@ -26,7 +26,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import WordPressConnectionStatus from "./WordPressConnectionStatus";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { supabase, typedData } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { UserProfile } from "@/types/auth";
 import { 
   Collapsible,
@@ -89,12 +89,12 @@ const WordPressConfigList: React.FC<WordPressConfigListProps> = ({
       
       // Format client user data
       const formattedUsers: UserProfile[] = profilesData.map(profile => ({
-        id: typedData<string>(profile.id),
-        email: typedData<string>(profile.email),
-        name: typedData<string>(profile.name),
+        id: profile.id,
+        email: profile.email,
+        name: profile.name,
         role: "client",
-        clientId: typedData<string>(profile.client_id),
-        wordpressConfigId: typedData<string>(profile.wordpress_config_id)
+        clientId: profile.client_id,
+        wordpressConfigId: profile.wordpress_config_id
       }));
       
       setClientUsers(prev => ({ ...prev, [configId]: formattedUsers }));

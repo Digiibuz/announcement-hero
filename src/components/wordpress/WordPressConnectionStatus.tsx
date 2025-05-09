@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
-import { supabase, typedData } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 
 interface WordPressConnectionStatusProps {
   configId?: string;
@@ -61,7 +62,7 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
     refetch: refetchPages,
     hasPages,
     error: pagesError
-  } = useWordPressPages(configDetails.site_url);
+  } = useWordPressPages();
 
   useEffect(() => {
     // Fetch WordPress config details for additional info
@@ -76,10 +77,7 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
             .single();
           
           if (!error && data) {
-            setConfigDetails({
-              name: typedData<string>(data.name),
-              site_url: typedData<string>(data.site_url)
-            });
+            setConfigDetails(data);
           }
         } catch (err) {
           console.error("Error fetching WordPress config details:", err);
@@ -113,8 +111,7 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
       if (result.success) {
         toast.success("Connexion WordPress établie avec succès");
         // Actualiser les catégories et les pages
-        // Make sure to pass configDetails.site_url to refetchPages
-        await Promise.all([refetchCategories(), refetchPages(configDetails.site_url)]);
+        await Promise.all([refetchCategories(), refetchPages()]);
         toast.success("Données WordPress synchronisées avec succès");
       } else {
         toast.error(`Échec de connexion: ${result.message}`);
