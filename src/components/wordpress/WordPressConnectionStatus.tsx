@@ -61,7 +61,7 @@ const WordPressConnectionStatus: React.FC<WordPressConnectionStatusProps> = ({
     refetch: refetchPages,
     hasPages,
     error: pagesError
-  } = useWordPressPages();
+  } = useWordPressPages(configDetails.site_url);
 
   useEffect(() => {
     // Fetch WordPress config details for additional info
