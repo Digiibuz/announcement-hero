@@ -66,10 +66,8 @@ export const useAuthActions = (
             console.log("Création d'un client Supabase temporaire pour la connexion");
             const { data, error } = await supabase.auth.signInWithPassword({
               email,
-              password,
-              options: {
-                redirectTo: window.location.origin // Garantir que la redirection est correcte
-              }
+              password
+              // Remove the redirectTo option as it's not supported in this version
             });
             
             if (error) {
