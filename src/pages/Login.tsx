@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { 
   Eye, EyeOff, Lock, LogIn, Loader2, RefreshCcw, AlertCircle, 
-  AlertTriangle, Bug, Terminal, Wifi, WifiOff, RotateCw 
+  AlertTriangle, Bug, Terminal, Wifi, WifiOff, RotateCw, Download
 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
 import { 
@@ -20,7 +20,8 @@ import {
   cleanupAuthState, 
   needsAuthReset,
   getDebugInfo,
-  testEdgeFunctionConnection
+  testEdgeFunctionConnection,
+  testSupabaseConnection
 } from "@/integrations/supabase/client";
 import { 
   Dialog,
@@ -36,6 +37,44 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  Alert,
+  AlertDescription,
+} from "@/components/ui/alert";
+
+// Composant pour télécharger les logs de débogage
+const DebugDownloadButton = ({ debugInfo }: { debugInfo: Record<string, any> | null }) => {
+  const handleDownload = () => {
+    if (!debugInfo) return;
+    
+    const debugData = JSON.stringify(debugInfo, null, 2);
+    const blob = new Blob([debugData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    
+    link.href = url;
+    link.download = `debug-auth-${new Date().toISOString()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast.success("Logs de débogage téléchargés");
+  };
+
+  return (
+    <Button 
+      onClick={handleDownload} 
+      variant="outline" 
+      size="sm" 
+      className="flex items-center gap-1"
+      disabled={!debugInfo}
+    >
+      <Download className="h-3 w-3" />
+      <span className="text-xs">Télécharger les logs</span>
+    </Button>
+  );
+};
 
 // Composant pour les informations de débogage détaillées
 const DebugPanel = ({ debugInfo }: { debugInfo: Record<string, any> | null }) => {
@@ -71,40 +110,37 @@ const DebugPanel = ({ debugInfo }: { debugInfo: Record<string, any> | null }) =>
   
   return (
     <div className="mt-4 p-3 bg-muted/50 backdrop-blur-sm rounded-md text-xs">
-      <Accordion type="single" collapsible>
-        <AccordionItem value="debug-panel">
-          <AccordionTrigger className="font-mono font-semibold cursor-pointer flex items-center">
-            <Terminal className="h-3 w-3 mr-1" />
-            Informations de débogage détaillées 
-            <span className="ml-1 text-xs text-muted-foreground">({Object.keys(debugInfo).length} entrées)</span>
-          </AccordionTrigger>
-          <AccordionContent>
-            <Accordion type="multiple">
-              {Object.keys(groupedLogs).map(category => (
-                !!groupedLogs[category].length && (
-                  <AccordionItem key={category} value={`category-${category}`}>
-                    <AccordionTrigger className="text-xs">
-                      {category === 'network' ? 'Réseau' : 
-                       category === 'auth' ? 'Authentification' : 
-                       category === 'client' ? 'Client Supabase' : 'Autres'}
-                      <span className="ml-1 text-muted-foreground">({groupedLogs[category].length})</span>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="mt-2 whitespace-pre-wrap overflow-auto max-h-[200px] p-2 bg-black/80 rounded text-green-400 font-mono">
-                        {groupedLogs[category].map(([key, value]) => (
-                          <div key={key} className="mb-1 border-b border-green-900/30 pb-1">
-                            <span className="text-yellow-400">{key}</span>: 
-                            <span className="text-green-300">{JSON.stringify(value, null, 2)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                )
-              ))}
-            </Accordion>
-          </AccordionContent>
-        </AccordionItem>
+      <div className="flex justify-between mb-2">
+        <div className="font-semibold flex items-center">
+          <Terminal className="h-3 w-3 mr-1" />
+          Débogage
+          <span className="ml-1 text-xs text-muted-foreground">({Object.keys(debugInfo).length} entrées)</span>
+        </div>
+        <DebugDownloadButton debugInfo={debugInfo} />
+      </div>
+      <Accordion type="multiple" className="w-full">
+        {Object.keys(groupedLogs).map(category => (
+          !!groupedLogs[category].length && (
+            <AccordionItem key={category} value={`category-${category}`}>
+              <AccordionTrigger className="text-xs py-1">
+                {category === 'network' ? 'Réseau' : 
+                 category === 'auth' ? 'Authentification' : 
+                 category === 'client' ? 'Client Supabase' : 'Autres'}
+                <span className="ml-1 text-muted-foreground">({groupedLogs[category].length})</span>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="mt-1 whitespace-pre-wrap overflow-auto max-h-[150px] p-2 bg-black/80 rounded text-green-400 font-mono">
+                  {groupedLogs[category].map(([key, value]) => (
+                    <div key={key} className="mb-1 border-b border-green-900/30 pb-1">
+                      <span className="text-yellow-400">{key}</span>: 
+                      <span className="text-green-300">{JSON.stringify(value, null, 1)}</span>
+                    </div>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          )
+        ))}
       </Accordion>
     </div>
   );
@@ -135,7 +171,7 @@ const NetworkStatus = ({ online = true, onCheck }: { online?: boolean; onCheck: 
 };
 
 // Composant pour le bouton de réinitialisation
-const ResetConnectionButton = ({ onReset, isLoading }) => {
+const ResetConnectionButton = ({ onReset, isLoading }: { onReset: () => Promise<void>; isLoading: boolean }) => {
   return (
     <Button 
       onClick={onReset} 
@@ -154,7 +190,7 @@ const ResetConnectionButton = ({ onReset, isLoading }) => {
 };
 
 // Composant pour l'état de connexion
-const ConnectionStatus = ({ initError, isResetting }) => {
+const ConnectionStatus = ({ initError, isResetting }: { initError: string | null; isResetting: boolean }) => {
   if (!initError) return null;
   
   return (
@@ -174,6 +210,37 @@ const ConnectionStatus = ({ initError, isResetting }) => {
   );
 };
 
+// Composant pour le résultat du test de connexion
+const ConnectionTestResult = ({ result }: { result: any }) => {
+  if (!result) return null;
+  
+  return (
+    <Alert className="mt-3" variant={result.success ? "default" : "destructive"}>
+      <AlertDescription className="text-xs flex flex-col">
+        {result.success ? (
+          <>
+            <span className="font-medium">Connexion réussie</span>
+            <span>Le serveur est accessible et répond correctement.</span>
+            {result.data && (
+              <ul className="list-disc list-inside mt-1">
+                <li>Version: {result.data.keyLength} caractères</li>
+                <li>URL: {result.data.url?.substring(0, 15)}...</li>
+              </ul>
+            )}
+          </>
+        ) : (
+          <>
+            <span className="font-medium">Échec de connexion</span>
+            <span>{result.error || "Erreur inconnue"}</span>
+            {result.status && <span>Code: {result.status}</span>}
+          </>
+        )}
+      </AlertDescription>
+    </Alert>
+  );
+};
+
+// Composant principal Login
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -189,6 +256,7 @@ const Login = () => {
   const [showDebugMode, setShowDebugMode] = useState(false);
   const [isConnected, setIsConnected] = useState<boolean>(navigator.onLine);
   const [edgeFunctionTest, setEdgeFunctionTest] = useState<any>(null);
+  const [supabaseUrlTest, setSupabaseUrlTest] = useState<any>(null);
   const debugTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -209,14 +277,8 @@ const Login = () => {
 
   // Active le mode de débogage immédiatement en développement
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      setShowDebugMode(true);
-    } else {
-      // En production, activer après un délai
-      debugTimerRef.current = setTimeout(() => {
-        setShowDebugMode(true);
-      }, 3000);
-    }
+    // Toujours activer le mode débogage pour identifier les problèmes
+    setShowDebugMode(true);
     
     return () => {
       if (debugTimerRef.current) {
@@ -268,7 +330,7 @@ const Login = () => {
         time: new Date().toISOString()
       });
       return true;
-    } catch (error) {
+    } catch (error: any) {
       setIsConnected(false);
       logDebugInfo('network-check', { 
         connected: false,
@@ -276,6 +338,58 @@ const Login = () => {
         time: new Date().toISOString()
       });
       return false;
+    }
+  };
+
+  // Test de communication avec l'URL Supabase directement
+  const testSupabaseUrl = async () => {
+    try {
+      setIsResetting(true);
+      setSupabaseUrlTest({ status: 'testing' });
+      
+      logDebugInfo("Test URL Supabase", { time: new Date().toISOString() });
+      
+      // Premier test: connectivité réseau
+      const isNetworkConnected = await checkNetworkConnection();
+      if (!isNetworkConnected) {
+        setSupabaseUrlTest({ 
+          status: 'error',
+          message: "Pas de connexion Internet. Vérifiez votre réseau." 
+        });
+        toast.error("Pas de connexion Internet", {
+          description: "Vérifiez votre connexion réseau"
+        });
+        setIsResetting(false);
+        return;
+      }
+      
+      // Test direct de l'URL Supabase
+      const result = await testSupabaseConnection();
+      setSupabaseUrlTest(result);
+      
+      logDebugInfo("Test URL Supabase Result", result);
+      
+      if (result.success) {
+        toast.success("Test de l'URL Supabase réussi", {
+          description: "Connexion directe au serveur établie"
+        });
+      } else {
+        toast.error("Échec du test de l'URL Supabase", {
+          description: result.error || "Erreur inconnue"
+        });
+      }
+    } catch (error: any) {
+      logDebugInfo("Test URL Supabase Error", { error: error.message });
+      setSupabaseUrlTest({ 
+        status: 'error',
+        error: error.message 
+      });
+      
+      toast.error("Échec du test de l'URL Supabase", {
+        description: error.message || "Erreur inconnue"
+      });
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -297,6 +411,7 @@ const Login = () => {
         toast.error("Pas de connexion Internet", {
           description: "Vérifiez votre connexion réseau"
         });
+        setIsResetting(false);
         return;
       }
       
@@ -315,8 +430,8 @@ const Login = () => {
           description: result.error || "Erreur inconnue"
         });
       }
-    } catch (error) {
-      logDebugInfo("Test Edge Function Error", { error });
+    } catch (error: any) {
+      logDebugInfo("Test Edge Function Error", { error: error.message });
       setEdgeFunctionTest({ 
         status: 'error',
         error: error.message 
@@ -353,6 +468,7 @@ const Login = () => {
         toast.error("Pas de connexion Internet", {
           description: "La réinitialisation nécessite une connexion réseau"
         });
+        setIsResetting(false);
         return;
       }
       
@@ -373,6 +489,19 @@ const Login = () => {
         sessionStorage: Object.keys(sessionStorage)
       });
       
+      // Tester la connectivité à l'Edge Function
+      const edgeResult = await testEdgeFunctionConnection();
+      logDebugInfo("Test Edge Function après réinitialisation", edgeResult);
+      
+      if (!edgeResult.success) {
+        setInitError(`Problème de connexion à l'Edge Function: ${edgeResult.error || "Erreur inconnue"}`);
+        toast.error("Problème de connexion à l'Edge Function", {
+          description: edgeResult.error || "Erreur inconnue"
+        });
+        setIsResetting(false);
+        return;
+      }
+      
       // Nouvel essai d'initialisation
       const success = await initializeSecureClient(true);
       
@@ -384,15 +513,26 @@ const Login = () => {
         });
         setInitError(null);
         setShowResetDialog(false);
+        
+        // Vérification supplémentaire
+        try {
+          const { data } = await supabase.auth.getSession();
+          logDebugInfo("Session après réinitialisation", { 
+            hasSession: !!data.session,
+            time: new Date().toISOString()
+          });
+        } catch (e: any) {
+          logDebugInfo("Erreur vérification session après réinitialisation", { error: e.message });
+        }
       } else {
         setInitError("La réinitialisation a échoué, veuillez réessayer");
         toast.error("Échec de la réinitialisation", {
           description: "Veuillez vérifier la console pour plus de détails"
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erreur lors de la réinitialisation:", error);
-      logDebugInfo("Erreur réinitialisation", { error });
+      logDebugInfo("Erreur réinitialisation", { error: error.message });
       setInitError("Une erreur est survenue pendant la réinitialisation");
       toast.error("La réinitialisation a échoué", {
         description: error.message || "Erreur inconnue"
@@ -593,8 +733,7 @@ const Login = () => {
     } catch (error: any) {
       console.error("Erreur complète:", error);
       logDebugInfo("Erreur de connexion", { 
-        error,
-        message: error.message,
+        error: error.message,
         time: new Date().toISOString()
       });
       
@@ -748,46 +887,57 @@ const Login = () => {
               </div>
             )}
             
-            {/* Bouton de test d'Edge Function (toujours visible en mode debug) */}
-            {showDebugMode && (
-              <div className="mt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="w-full text-xs flex items-center justify-center"
-                  onClick={testEdgeFunction}
-                  disabled={isResetting || !isConnected}
-                >
-                  <Bug className="mr-1 h-3 w-3" />
-                  Tester Edge Function directement
-                </Button>
-                
-                {edgeFunctionTest && (
-                  <div className="mt-2 p-2 bg-muted text-xs rounded text-center">
-                    {edgeFunctionTest.status === 'testing' ? (
-                      <div className="flex items-center justify-center">
-                        <Loader2 className="h-3 w-3 animate-spin mr-2" />
-                        Test en cours...
-                      </div>
-                    ) : edgeFunctionTest.success ? (
-                      <div className="text-green-500 flex items-center justify-center">
-                        <span className="bg-green-500/10 p-1 rounded">✓ Test réussi</span>
-                      </div>
-                    ) : (
-                      <div className="text-destructive">
-                        ✗ Échec: {edgeFunctionTest.error || "Erreur non spécifiée"}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Zone de diagnostic */}
+            <div className="mt-4 pt-4 border-t border-border">
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="diagnostics">
+                  <AccordionTrigger className="text-xs">
+                    <div className="flex items-center">
+                      <Terminal className="h-3 w-3 mr-1" /> 
+                      Outils de diagnostic
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-3 pt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full text-xs flex items-center justify-center"
+                        onClick={testEdgeFunction}
+                        disabled={isResetting || !isConnected}
+                      >
+                        <Bug className="mr-1 h-3 w-3" />
+                        Tester Edge Function
+                      </Button>
+                      
+                      {edgeFunctionTest && (
+                        <ConnectionTestResult result={edgeFunctionTest} />
+                      )}
 
-            {/* Informations de débogage (visible en mode développement ou après plusieurs échecs) */}
-            {(showDebugMode || loginAttempts > 0 || !!initError) && debugInfo && (
-              <DebugPanel debugInfo={debugInfo} />
-            )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full text-xs flex items-center justify-center mt-2"
+                        onClick={testSupabaseUrl}
+                        disabled={isResetting || !isConnected}
+                      >
+                        <Bug className="mr-1 h-3 w-3" />
+                        Tester URL Supabase
+                      </Button>
+                      
+                      {supabaseUrlTest && (
+                        <ConnectionTestResult result={supabaseUrlTest} />
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+              
+              {/* Informations de débogage (toujours visibles) */}
+              {debugInfo && <DebugPanel debugInfo={debugInfo} />}
+            </div>
           </CardContent>
           <CardFooter>
             <p className="text-xs text-center text-muted-foreground w-full">
@@ -817,9 +967,23 @@ const Login = () => {
               <li>Rétablir la connexion sécurisée avec le serveur</li>
               <li>Résoudre les problèmes d'API key et de sessions expirées</li>
               <li>Résoudre l'erreur 401 "Unauthorized"</li>
+              <li>Réinitialiser complètement le cache du navigateur pour cette application</li>
             </ul>
             
-            {showDebugMode && (
+            <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-md">
+              <p className="text-sm text-amber-800 dark:text-amber-300 mb-2">
+                <strong>Conseils supplémentaires :</strong>
+              </p>
+              <ol className="list-decimal pl-5 space-y-1 text-xs text-amber-700 dark:text-amber-400">
+                <li>Essayez d'ouvrir le site en navigation privée</li>
+                <li>Désactivez les extensions de navigateur</li>
+                <li>Videz le cache du navigateur</li>
+                <li>Essayez un autre navigateur</li>
+                <li>Si le problème persiste, contactez l'administrateur</li>
+              </ol>
+            </div>
+            
+            {showDebugMode && debugInfo && (
               <div className="mt-4 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-md">
                 <p className="text-xs text-amber-800 dark:text-amber-300">
                   Informations de diagnostic : {Object.keys(debugInfo || {}).length} entrées collectées

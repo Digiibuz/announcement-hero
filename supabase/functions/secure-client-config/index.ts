@@ -91,7 +91,7 @@ const handler = async (req: Request) => {
       }, 500);
     }
 
-    // Additional checks
+    // Additional checks - ensure we have a valid URL
     const url = Deno.env.get("SUPABASE_URL");
     if (!url) {
       console.error(`[${requestId}] ERROR: Supabase URL not defined`);
@@ -106,7 +106,36 @@ const handler = async (req: Request) => {
       }, 500);
     }
 
+    // Verify the format of the Supabase URL and anon key
+    if (!url.startsWith('https://') || url.length < 20) {
+      console.error(`[${requestId}] ERROR: Invalid Supabase URL format: ${url.substring(0, 15)}...`);
+      return prepareResponse({ 
+        error: "Invalid configuration", 
+        details: "Supabase URL format is invalid",
+        requestId,
+        origin,
+        timestamp: requestTime,
+        success: false,
+        cacheKey: generateCacheKey()
+      }, 500);
+    }
+
+    if (anonKey.length < 30) {
+      console.error(`[${requestId}] ERROR: Invalid anon key format (too short)`);
+      return prepareResponse({ 
+        error: "Invalid configuration", 
+        details: "Supabase anon key format is invalid",
+        requestId,
+        origin,
+        timestamp: requestTime,
+        success: false,
+        cacheKey: generateCacheKey()
+      }, 500);
+    }
+
     console.log(`[${requestId}] Successfully retrieved Supabase API key and URL`);
+    console.log(`[${requestId}] URL format valid: ${url.substring(0, 15)}...`);
+    console.log(`[${requestId}] Key format valid: ${anonKey.substring(0, 5)}...`);
     
     // For test mode, return more diagnostic info but mask the key
     if (isTestMode) {

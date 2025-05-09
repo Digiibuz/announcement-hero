@@ -1,5 +1,5 @@
 
-import { supabase, withInitializedClient, cleanupAuthState, getDebugInfo } from "@/integrations/supabase/client";
+import { supabase, withInitializedClient, cleanupAuthState, getDebugInfo, testEdgeFunctionConnection } from "@/integrations/supabase/client";
 import { UserProfile } from "@/types/auth";
 import { toast } from "sonner";
 
@@ -13,6 +13,19 @@ export const useAuthActions = (
   const login = async (email: string, password: string): Promise<void> => {
     try {
       console.log("Début du processus de connexion pour:", email);
+      
+      // Avant de commencer, tester la connexion à l'Edge Function
+      console.log("Test de la connexion à l'Edge Function avant login");
+      const edgeFunctionTest = await testEdgeFunctionConnection();
+      console.log("Résultat du test Edge Function:", edgeFunctionTest);
+      
+      if (!edgeFunctionTest.success) {
+        console.error("Le test de l'Edge Function a échoué:", edgeFunctionTest.error);
+        toast.error("Problème de connexion au serveur", {
+          description: `Erreur: ${edgeFunctionTest.error || "Connexion impossible à l'Edge Function"}`
+        });
+        throw new Error(`Edge Function test failed: ${edgeFunctionTest.error || "Unknown error"}`);
+      }
       
       // Nettoyer l'état d'authentification avant la connexion pour éviter les conflits
       console.log("Nettoyage de l'état d'authentification avant connexion");
@@ -38,19 +51,26 @@ export const useAuthActions = (
         
         // Utiliser un délai très court entre la déconnexion et la nouvelle connexion
         // pour éviter les conflits potentiels
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 300));
         
         // Tentative de connexion avec retry en cas d'échec
-        const MAX_RETRIES = 2;
+        const MAX_RETRIES = 3;
         let attempts = 0;
         let lastError = null;
         
         while (attempts < MAX_RETRIES) {
           try {
             console.log(`Tentative de connexion ${attempts + 1}/${MAX_RETRIES}`);
+            
+            // Création d'un client Supabase temporaire pour cette connexion
+            // (contourne potentiellement les problèmes de cache)
+            console.log("Création d'un client Supabase temporaire pour la connexion");
             const { data, error } = await supabase.auth.signInWithPassword({
               email,
-              password
+              password,
+              options: {
+                redirectTo: window.location.origin // Garantir que la redirection est correcte
+              }
             });
             
             if (error) {
@@ -68,6 +88,24 @@ export const useAuthActions = (
             }
             
             console.log("Connexion réussie avec données:", data ? "Données présentes" : "Pas de données");
+            console.log("Data Session:", data.session ? "Présent" : "Absent");
+            console.log("Data User:", data.user ? "Présent" : "Absent");
+            
+            // Vérifier si la session est bien présente
+            if (!data || !data.session) {
+              console.error("Connexion sans session valide");
+              lastError = new Error("Session invalide après connexion");
+              attempts++;
+              
+              if (attempts < MAX_RETRIES) {
+                console.log("Attente avant nouvelle tentative...");
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+                continue;
+              } else {
+                throw lastError;
+              }
+            }
+            
             break; // Sortie de la boucle si succès
           } catch (e) {
             console.error(`Erreur exceptionnelle lors de la tentative ${attempts + 1}:`, e);
@@ -96,6 +134,10 @@ export const useAuthActions = (
           if (!sessionData?.session) {
             console.warn("Session non détectée après login réussi");
             toast.info("Connexion réussie, mais la session n'est pas encore disponible");
+          } else {
+            console.log("Utilisateur authentifié:", sessionData.session.user.email);
+            console.log("JWT token présent:", !!sessionData.session.access_token);
+            console.log("Token expiration:", new Date(sessionData.session.expires_at * 1000).toLocaleString());
           }
         } catch (e) {
           console.error("Erreur lors de la vérification de session:", e);
@@ -107,7 +149,7 @@ export const useAuthActions = (
           setTimeout(() => {
             console.log("Délai terminé, authentification complète");
             resolve();
-          }, 800);
+          }, 1000);
         });
       });
     } catch (error: any) {

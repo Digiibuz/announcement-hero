@@ -13,8 +13,8 @@ let isInitializing = false;
 let initializationPromise: Promise<boolean> | null = null;
 let initAttempts = 0;
 const MAX_INIT_ATTEMPTS = 5;
-const MAX_RETRIES = 7; // Increased retries for more persistence
-const API_TIMEOUT_MS = 20000; // Increased to 20 seconds
+const MAX_RETRIES = 10; // Increased retries for more persistence
+const API_TIMEOUT_MS = 30000; // Increased to 30 seconds
 
 // Debug storage for troubleshooting
 const debugStorage: Record<string, any> = {};
@@ -126,7 +126,7 @@ const createSecureClient = () => {
     );
     
     addDebugInfo('client-create-temp-success', { time: new Date().toISOString() });
-  } catch (error) {
+  } catch (error: any) {
     addDebugInfo('client-create-temp-error', { 
       error: error.message,
       stack: error.stack,
@@ -213,28 +213,43 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
           const cacheKiller = new Date().getTime();
           const randomId = Math.random().toString(36).substring(2, 15);
           
-          // Retrieve via Edge Function with debug headers
+          // Use fetch directly for better control and debugging
+          const directFetchUrl = `${EDGE_FUNCTION_URL}?t=${cacheKiller}&r=${randomId}`;
+          addDebugInfo(`direct-fetch-url`, { url: directFetchUrl });
+          
+          // Advanced diagnostic headers
+          const headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Client-Info': `client-direct/v${cacheKiller}`,
+            'X-Web-Security': 'allow',
+            'X-Retry-Attempt': `${retries + 1}`,
+            'X-Client-Id': randomId,
+            'User-Agent': navigator.userAgent,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          };
+          
+          addDebugInfo(`direct-fetch-headers`, headers);
+          
+          // Direct fetch with increased timeout
           const response = await fetchWithTimeout(
-            `${EDGE_FUNCTION_URL}?t=${cacheKiller}&r=${randomId}`,
+            directFetchUrl,
             {
               method: 'GET',
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-Client-Info': `supabase-js-debug/v${cacheKiller}`,
-                'X-Web-Security': 'allow',
-                'X-Retry-Attempt': `${retries + 1}`,
-                'X-Client-Id': randomId,
-                'User-Agent': navigator.userAgent,
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache'
-              },
+              headers,
               credentials: 'omit',
               cache: 'no-store',
               mode: 'cors'
             },
-            30000 // Even longer timeout (30 seconds) for extreme network conditions
+            30000 // 30 seconds timeout
           );
+          
+          addDebugInfo(`direct-fetch-response`, { 
+            status: response.status, 
+            statusText: response.statusText,
+            headers: Object.fromEntries(response.headers.entries())
+          });
           
           if (!response.ok) {
             const status = response.status;
@@ -329,14 +344,24 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
                 persistSession: true,
                 storage: localStorage,
                 autoRefreshToken: true,
-                detectSessionInUrl: true
+                detectSessionInUrl: true,
+                flowType: 'implicit' // Explicitly setting flow type
               }
             }
           );
           
-          addDebugInfo('client-init-success', { time: new Date().toISOString() });
+          addDebugInfo('client-init-success', { 
+            time: new Date().toISOString(),
+            clientOptions: {
+              persistSession: true,
+              autoRefreshToken: true,
+              detectSessionInUrl: true,
+              flowType: 'implicit'
+            }
+          });
+          
           success = true;
-        } catch (attemptError) {
+        } catch (attemptError: any) {
           lastError = attemptError;
           addDebugInfo(`init-error-${retries}`, { 
             message: attemptError.message,
@@ -389,7 +414,7 @@ export const initializeSecureClient = async (forceReset = false): Promise<boolea
       initLock = false;
       isInitializing = false;
       resolve(true);
-    } catch (error) {
+    } catch (error: any) {
       addDebugInfo('critical-error', {
         message: error.message,
         stack: error.stack,
@@ -468,7 +493,7 @@ export const cleanupAuthState = async () => {
       sessionStorage: Object.keys(sessionStorage),
       time: new Date().toISOString()
     });
-  } catch (error) {
+  } catch (error: any) {
     addDebugInfo('storage-clear-error', {
       error: error.message,
       time: new Date().toISOString()
@@ -571,8 +596,51 @@ export const testEdgeFunctionConnection = async (): Promise<any> => {
       success: true,
       data: result
     };
-  } catch (error) {
+  } catch (error: any) {
     addDebugInfo("test-edge-function-exception", { 
+      error: error.message,
+      stack: error.stack,
+      time: new Date().toISOString() 
+    });
+    
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+// Function to directly test connection to Supabase URL
+export const testSupabaseConnection = async (): Promise<any> => {
+  try {
+    addDebugInfo("test-supabase-url", { url: SUPABASE_URL, time: new Date().toISOString() });
+    
+    const response = await fetch(`${SUPABASE_URL}/auth/v1/settings`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      cache: 'no-store',
+      mode: 'cors'
+    });
+    
+    const responseHeaders = Object.fromEntries(response.headers.entries());
+    addDebugInfo("supabase-settings-response", { 
+      status: response.status,
+      statusText: response.statusText,
+      headers: responseHeaders,
+      time: new Date().toISOString() 
+    });
+    
+    return {
+      success: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      headers: responseHeaders
+    };
+  } catch (error: any) {
+    addDebugInfo("supabase-url-test-exception", { 
       error: error.message,
       stack: error.stack,
       time: new Date().toISOString() 
