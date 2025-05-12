@@ -6,6 +6,19 @@ import type { Database } from './types';
 // Utilisation d'un state local pour stocker les clés
 let supabaseClient: ReturnType<typeof createClient<Database>> | null = null;
 
+// Fonction pour décrypter les valeurs reçues de la fonction Edge
+function decryptValue(encrypted: string): string {
+  try {
+    // Décodage de la valeur encodée en base64
+    const decoded = atob(encrypted);
+    // Retirer le sel ajouté lors du cryptage
+    return decoded.split(':')[0];
+  } catch (e) {
+    console.error('Erreur lors du décryptage:', e);
+    throw new Error('Impossible de décrypter les informations de connexion');
+  }
+}
+
 // Fonction pour initialiser le client Supabase avec les clés récupérées de façon sécurisée
 const initSupabaseClient = async (): Promise<ReturnType<typeof createClient<Database>>> => {
   if (supabaseClient) return supabaseClient;
@@ -30,7 +43,10 @@ const initSupabaseClient = async (): Promise<ReturnType<typeof createClient<Data
     const response = await fetch(configEndpoint, {
       method: 'GET',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
       }
     });
     
@@ -43,18 +59,22 @@ const initSupabaseClient = async (): Promise<ReturnType<typeof createClient<Data
       throw new Error('La réponse n\'est pas au format JSON valide');
     }
     
-    const config = await response.json();
+    const encryptedConfig = await response.json();
     
-    if (!config.supabaseUrl || !config.supabaseAnonKey) {
+    if (!encryptedConfig.supabaseUrl || !encryptedConfig.supabaseAnonKey) {
       throw new Error('Configuration Supabase incomplète: URL ou clé manquante');
     }
     
-    console.log('Configuration sécurisée récupérée avec succès');
+    // Décrypter les valeurs reçues
+    const supabaseUrl = decryptValue(encryptedConfig.supabaseUrl);
+    const supabaseAnonKey = decryptValue(encryptedConfig.supabaseAnonKey);
     
-    // Créer le client Supabase avec les clés récupérées
+    console.log('Configuration sécurisée récupérée et décryptée avec succès');
+    
+    // Créer le client Supabase avec les clés récupérées et décryptées
     supabaseClient = createClient<Database>(
-      config.supabaseUrl, 
-      config.supabaseAnonKey,
+      supabaseUrl, 
+      supabaseAnonKey,
       {
         auth: {
           storage: localStorage,

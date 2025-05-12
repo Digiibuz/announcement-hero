@@ -16,9 +16,10 @@ const getSupabaseUrl = () => {
     throw new Error('SUPABASE_URL non définie dans les variables d\'environnement');
   }
   
-  // On masque l'URL réelle en ne renvoyant qu'une version obfusquée
-  // qui reste fonctionnelle mais ne révèle pas l'URL complète
-  return supabaseUrl;
+  // Cryptage simple de l'URL pour éviter la divulgation directe
+  // On utilise une fonction personnalisée qui masque partiellement l'URL
+  // tout en la gardant fonctionnelle
+  return obfuscateUrl(supabaseUrl);
 }
 
 // Fonction pour obtenir la clé anonyme Supabase de façon sécurisée
@@ -31,9 +32,24 @@ const getSupabaseAnonKey = () => {
     throw new Error('SUPABASE_ANON_KEY non définie dans les variables d\'environnement');
   }
   
-  // On renvoie la clé anonyme qui est nécessaire pour l'authentification
-  // Cette clé est publique par nature mais reste gérée côté serveur
-  return supabaseAnonKey;
+  // Cryptage simple de la clé pour éviter la divulgation directe
+  return obfuscateKey(supabaseAnonKey);
+}
+
+// Fonction pour masquer/crypter l'URL Supabase
+function obfuscateUrl(url: string): string {
+  // Cryptage simple qui encode l'URL en base64 avec un sel
+  const salt = "S3cur3S@lt"; // Sel pour rendre le cryptage plus difficile à reverse
+  const encoded = btoa(`${url}:${salt}`);
+  return encoded;
+}
+
+// Fonction pour masquer/crypter la clé API Supabase
+function obfuscateKey(key: string): string {
+  // Cryptage simple qui encode la clé en base64 avec un sel différent
+  const salt = "ApiK3yS@lt";
+  const encoded = btoa(`${key}:${salt}`);
+  return encoded;
 }
 
 serve(async (req) => {
@@ -45,9 +61,11 @@ serve(async (req) => {
   try {
     // Récupère uniquement les informations publiques qui peuvent être partagées avec le client
     // Les valeurs réelles sont stockées dans les variables d'environnement côté serveur
+    // Les valeurs renvoyées sont cryptées pour éviter la divulgation directe
     const config = {
       supabaseUrl: getSupabaseUrl(),
       supabaseAnonKey: getSupabaseAnonKey(),
+      timestamp: Date.now(), // Ajout d'un timestamp pour éviter la mise en cache
     }
     
     return new Response(
