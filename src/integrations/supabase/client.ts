@@ -11,10 +11,17 @@ const initSupabaseClient = async (): Promise<ReturnType<typeof createClient<Data
   if (supabaseClient) return supabaseClient;
   
   try {
-    // Utilisation de l'URL de base sans référencer directement l'ID du projet
-    const configEndpoint = '/functions/v1/get-public-config';
+    // Construction d'une URL absolue pour la fonction Edge
+    const isLocalhost = window.location.hostname === 'localhost';
+    const baseUrl = isLocalhost
+      ? 'https://rdwqedmvzicerwotjseg.supabase.co'  // URL pour le développement local
+      : `https://${window.location.hostname.includes('.lovableproject.com') 
+          ? 'rdwqedmvzicerwotjseg.supabase.co' 
+          : window.location.origin}`; // URL de production ou prévisualisation
     
-    console.log('Tentative de récupération de la configuration...');
+    const configEndpoint = `${baseUrl}/functions/v1/get-public-config`;
+    
+    console.log('Tentative de récupération de la configuration depuis:', configEndpoint);
     
     const response = await fetch(configEndpoint, {
       method: 'GET',
