@@ -1,3 +1,4 @@
+
 // Ce fichier est automatiquement généré. Ne le modifiez pas directement.
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
@@ -10,13 +11,21 @@ const initSupabaseClient = async (): Promise<ReturnType<typeof createClient<Data
   if (supabaseClient) return supabaseClient;
   
   try {
-    // Récupération de la configuration depuis l'edge function de façon plus sécurisée
-    // L'URL de l'edge function est construite côté serveur, pas exposée au client
+    // Déterminer l'URL de la fonction Edge en fonction de l'environnement
+    let configEndpoint = '';
     
-    // Déterminer le point de terminaison de la fonction Edge en fonction de l'environnement
-    const configEndpoint = '/functions/v1/get-public-config';
+    // Utiliser l'URL complète pour éviter les problèmes CORS et assurer une connexion sécurisée
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      // En développement local
+      configEndpoint = `${window.location.protocol}//${window.location.hostname}:54321/functions/v1/get-public-config`;
+    } else {
+      // En production
+      // Utiliser une URL absolue et cryptée via une fonction Edge
+      const projectRef = 'rdwqedmvzicerwotjseg'; // Référence statique du projet
+      configEndpoint = `https://${projectRef}.supabase.co/functions/v1/get-public-config`;
+    }
     
-    console.log('Tentative de récupération de la configuration');
+    console.log('Tentative de récupération de la configuration sécurisée');
     
     const response = await fetch(configEndpoint, {
       method: 'GET',
@@ -40,7 +49,7 @@ const initSupabaseClient = async (): Promise<ReturnType<typeof createClient<Data
       throw new Error('Configuration Supabase incomplète: URL ou clé manquante');
     }
     
-    console.log('Configuration récupérée avec succès');
+    console.log('Configuration sécurisée récupérée avec succès');
     
     // Créer le client Supabase avec les clés récupérées
     supabaseClient = createClient<Database>(

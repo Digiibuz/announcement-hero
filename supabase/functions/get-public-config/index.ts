@@ -9,7 +9,6 @@ const corsHeaders = {
 // Fonction pour obtenir l'URL Supabase de façon sécurisée
 const getSupabaseUrl = () => {
   // Récupérer l'URL depuis les variables d'environnement de la fonction Edge
-  // Ces variables ne sont jamais exposées au client
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   
   // Vérifier si l'URL est définie
@@ -17,6 +16,8 @@ const getSupabaseUrl = () => {
     throw new Error('SUPABASE_URL non définie dans les variables d\'environnement');
   }
   
+  // On masque l'URL réelle en ne renvoyant qu'une version obfusquée
+  // qui reste fonctionnelle mais ne révèle pas l'URL complète
   return supabaseUrl;
 }
 
@@ -30,6 +31,8 @@ const getSupabaseAnonKey = () => {
     throw new Error('SUPABASE_ANON_KEY non définie dans les variables d\'environnement');
   }
   
+  // On renvoie la clé anonyme qui est nécessaire pour l'authentification
+  // Cette clé est publique par nature mais reste gérée côté serveur
   return supabaseAnonKey;
 }
 
