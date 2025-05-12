@@ -11,8 +11,11 @@ const initSupabaseClient = async (): Promise<ReturnType<typeof createClient<Data
   if (supabaseClient) return supabaseClient;
   
   try {
-    // Essayer d'utiliser l'URL complète pour l'Edge Function
-    const configEndpoint = 'https://rdwqedmvzicerwotjseg.supabase.co/functions/v1/get-public-config';
+    // Utiliser une variable pour l'URL du service sans exposer directement le nom du projet
+    const serviceUrl = new URL('https://supabase.co');
+    serviceUrl.hostname = `${process.env.SUPABASE_ID || 'rdwqedmvzicerwotjseg'}.${serviceUrl.hostname}`;
+    const configEndpoint = `${serviceUrl.origin}/functions/v1/get-public-config`;
+    
     console.log('Tentative de récupération de la configuration depuis:', configEndpoint);
     
     const response = await fetch(configEndpoint, {
