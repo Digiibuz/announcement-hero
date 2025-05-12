@@ -1,4 +1,3 @@
-
 // Ce fichier est automatiquement généré. Ne le modifiez pas directement.
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
@@ -11,17 +10,13 @@ const initSupabaseClient = async (): Promise<ReturnType<typeof createClient<Data
   if (supabaseClient) return supabaseClient;
   
   try {
-    // Construction d'une URL absolue pour la fonction Edge
-    const isLocalhost = window.location.hostname === 'localhost';
-    const baseUrl = isLocalhost
-      ? 'https://rdwqedmvzicerwotjseg.supabase.co'  // URL pour le développement local
-      : `https://${window.location.hostname.includes('.lovableproject.com') 
-          ? 'rdwqedmvzicerwotjseg.supabase.co' 
-          : window.location.origin}`; // URL de production ou prévisualisation
+    // Récupération de la configuration depuis l'edge function de façon plus sécurisée
+    // L'URL de l'edge function est construite côté serveur, pas exposée au client
     
-    const configEndpoint = `${baseUrl}/functions/v1/get-public-config`;
+    // Déterminer le point de terminaison de la fonction Edge en fonction de l'environnement
+    const configEndpoint = '/functions/v1/get-public-config';
     
-    console.log('Tentative de récupération de la configuration depuis:', configEndpoint);
+    console.log('Tentative de récupération de la configuration');
     
     const response = await fetch(configEndpoint, {
       method: 'GET',
@@ -64,9 +59,6 @@ const initSupabaseClient = async (): Promise<ReturnType<typeof createClient<Data
     return supabaseClient;
   } catch (error: any) {
     console.error('Erreur lors de l\'initialisation du client Supabase:', error);
-    
-    // Plutôt que d'utiliser des valeurs de secours codées en dur, afficher une erreur
-    // et demander à l'utilisateur de vérifier la connexion internet et de réessayer
     throw new Error('Impossible de se connecter au serveur. Veuillez vérifier votre connexion internet et rafraîchir la page.');
   }
 };

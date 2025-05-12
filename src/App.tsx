@@ -39,22 +39,37 @@ const AppLifecycleManager = () => {
 function App() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
+  const [initAttempts, setInitAttempts] = useState(0);
+  const maxAttempts = 3;
 
   // Initialiser le client Supabase dès le chargement de l'application
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        console.log(`Tentative d'initialisation (${initAttempts + 1}/${maxAttempts})...`);
         await getSupabaseClient();
         setIsInitialized(true);
+        setInitError(null);
       } catch (error: any) {
         console.error('Erreur lors de l\'initialisation de l\'application:', error);
         setInitError(error.message || "Une erreur s'est produite pendant l'initialisation");
-        toast.error("Problème de connexion au serveur. Veuillez vérifier votre connexion internet et rafraîchir la page.");
+        
+        // Tentatives de reconnexion automatiques
+        if (initAttempts < maxAttempts - 1) {
+          console.log(`Nouvelle tentative dans 2 secondes...`);
+          setTimeout(() => {
+            setInitAttempts(prev => prev + 1);
+          }, 2000);
+        } else {
+          toast.error("Problème de connexion au serveur. Veuillez vérifier votre connexion internet et rafraîchir la page.");
+        }
       }
     };
 
-    initializeApp();
-  }, []);
+    if (!isInitialized) {
+      initializeApp();
+    }
+  }, [isInitialized, initAttempts]);
 
   // Afficher un écran de chargement pendant l'initialisation ou en cas d'erreur
   if (!isInitialized) {
@@ -68,9 +83,12 @@ function App() {
               {initError}
             </p>
           )}
-          {initError && (
+          {(initError && initAttempts >= maxAttempts) && (
             <button 
-              onClick={() => window.location.reload()} 
+              onClick={() => {
+                setInitError(null);
+                setInitAttempts(0);
+              }} 
               className="mt-4 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
             >
               Réessayer
