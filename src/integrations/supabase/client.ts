@@ -62,7 +62,7 @@ const initSupabaseClient = async (): Promise<ReturnType<typeof createClient<Data
     );
     
     return supabaseClient;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erreur lors de l\'initialisation du client Supabase:', error);
     
     // Plutôt que d'utiliser des valeurs de secours codées en dur, afficher une erreur
