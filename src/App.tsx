@@ -49,16 +49,14 @@ function App() {
       } catch (error: any) {
         console.error('Erreur lors de l\'initialisation de l\'application:', error);
         setInitError(error.message || "Une erreur s'est produite pendant l'initialisation");
-        // Essayer quand même de continuer avec le client de secours
-        setIsInitialized(true);
-        toast.error("Problème de connexion au serveur, certaines fonctionnalités peuvent être limitées");
+        toast.error("Problème de connexion au serveur. Veuillez vérifier votre connexion internet et rafraîchir la page.");
       }
     };
 
     initializeApp();
   }, []);
 
-  // Afficher un écran de chargement pendant l'initialisation
+  // Afficher un écran de chargement pendant l'initialisation ou en cas d'erreur
   if (!isInitialized) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -69,6 +67,14 @@ function App() {
             <p className="mt-2 text-red-500 max-w-md text-sm">
               {initError}
             </p>
+          )}
+          {initError && (
+            <button 
+              onClick={() => window.location.reload()} 
+              className="mt-4 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+            >
+              Réessayer
+            </button>
           )}
         </div>
       </div>
