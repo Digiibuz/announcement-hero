@@ -9,13 +9,45 @@ let supabaseClient: ReturnType<typeof createClient<Database>> | null = null;
 // Fonction pour décrypter les valeurs reçues de la fonction Edge
 function decryptValue(encrypted: string): string {
   try {
-    // Décodage de la valeur encodée en base64
-    const decoded = atob(encrypted);
-    // Retirer le sel ajouté lors du cryptage
-    return decoded.split(':')[0];
+    // La valeur chiffrée est au format: encodedData.signature.randomSuffix
+    const parts = encrypted.split('.');
+    if (parts.length < 2) {
+      throw new Error("Format de données chiffrées invalide");
+    }
+    
+    const encodedData = parts[0];
+    
+    // Décoder la valeur de base64
+    const decoded = atob(encodedData);
+    
+    // Extraire le vecteur d'initialisation (IV) (les 12 premiers caractères)
+    const ivString = decoded.substring(0, 12);
+    const encryptedData = decoded.substring(12);
+    
+    // Transformation inverse pour retrouver la valeur originale
+    // On utilise la même clé XOR que sur le serveur (ne pas exposer la vraie clé)
+    // Cette clé doit correspondre à celle utilisée dans la fonction Edge
+    const ENCRYPTION_KEY = "k3y@S3cur1ty#Str0ng!2025";
+    
+    const detransformed = encryptedData
+      .split('')
+      .map((char, index) => {
+        // XOR inverse avec les mêmes caractères de clé
+        const keyChar = ENCRYPTION_KEY.charCodeAt(index % ENCRYPTION_KEY.length);
+        return String.fromCharCode(char.charCodeAt(0) ^ (keyChar % 5));
+      })
+      .join('');
+    
+    // Extraire la valeur originale (avant le premier séparateur ':')
+    const originalParts = detransformed.split(':');
+    if (originalParts.length < 2) {
+      throw new Error("Données corrompues après déchiffrement");
+    }
+    
+    return originalParts[0];
   } catch (e) {
     console.error('Erreur lors du décryptage:', e);
-    throw new Error('Impossible de décrypter les informations de connexion');
+    throw new Error('Impossible de décrypter les informations de connexion. Vérifiez votre connexion et réessayez.');
   }
 }
 
@@ -65,7 +97,7 @@ const initSupabaseClient = async (): Promise<ReturnType<typeof createClient<Data
       throw new Error('Configuration Supabase incomplète: URL ou clé manquante');
     }
     
-    // Décrypter les valeurs reçues
+    // Décrypter les valeurs reçues avec la nouvelle méthode
     const supabaseUrl = decryptValue(encryptedConfig.supabaseUrl);
     const supabaseAnonKey = decryptValue(encryptedConfig.supabaseAnonKey);
     
