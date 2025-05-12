@@ -11,12 +11,10 @@ const initSupabaseClient = async (): Promise<ReturnType<typeof createClient<Data
   if (supabaseClient) return supabaseClient;
   
   try {
-    // Utiliser une variable pour l'URL du service sans exposer directement le nom du projet
-    const serviceUrl = new URL('https://supabase.co');
-    serviceUrl.hostname = `${process.env.SUPABASE_ID || 'rdwqedmvzicerwotjseg'}.${serviceUrl.hostname}`;
-    const configEndpoint = `${serviceUrl.origin}/functions/v1/get-public-config`;
+    // Utilisation de l'URL de base sans référencer directement l'ID du projet
+    const configEndpoint = '/functions/v1/get-public-config';
     
-    console.log('Tentative de récupération de la configuration depuis:', configEndpoint);
+    console.log('Tentative de récupération de la configuration...');
     
     const response = await fetch(configEndpoint, {
       method: 'GET',
