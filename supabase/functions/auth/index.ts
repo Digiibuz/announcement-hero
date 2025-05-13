@@ -5,17 +5,37 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.1";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Content-Type": "application/json"
 };
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders, status: 204 });
+  }
+
+  if (req.method !== "POST") {
+    return new Response(
+      JSON.stringify({ error: "Method not allowed" }), 
+      { headers: corsHeaders, status: 405 }
+    );
   }
 
   try {
     // Récupérer les informations du corps de la requête
-    const { action, email, password } = await req.json();
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (parseError) {
+      console.error("Erreur de parsing du corps de la requête:", parseError);
+      return new Response(
+        JSON.stringify({ error: "Format de requête invalide" }),
+        { headers: corsHeaders, status: 400 }
+      );
+    }
+    
+    const { action, email, password } = requestBody;
 
     // Créer un client Supabase avec la clé de service (plus sécurisé)
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -68,10 +88,7 @@ serve(async (req) => {
     // Renvoyer le résultat de l'opération
     return new Response(
       JSON.stringify(result),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200
-      }
+      { headers: corsHeaders, status: 200 }
     );
   } catch (error) {
     console.error("Erreur d'authentification:", error);
@@ -83,10 +100,7 @@ serve(async (req) => {
       JSON.stringify({ 
         error: safeErrorMessage || "Erreur d'authentification" 
       }),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: error.status || 400
-      }
+      { headers: corsHeaders, status: error.status || 400 }
     );
   }
 });
