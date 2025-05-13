@@ -1,8 +1,9 @@
+
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
 // Module crypto-js pour le déchiffrement côté client
-import { enc, AES, PBKDF2, lib, HmacSHA256 } from 'crypto-js';
+import { enc, AES, PBKDF2, lib, HmacSHA256, mode } from 'crypto-js';
 
 // Clé temporaire utilisée pendant l'initialisation
 const TEMP_SUPABASE_URL = "https://rdwqedmvzicerwotjseg.supabase.co";
@@ -80,8 +81,8 @@ async function decryptData(encryptedBase64: string, secretKey: string): Promise<
       key,
       { 
         iv: ivWordArray,
-        // Use a compatible mode configuration
-        mode: lib.mode.CBC
+        // Fix the mode property access
+        mode: mode.CBC
       }
     );
     
