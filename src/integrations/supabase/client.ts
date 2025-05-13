@@ -71,14 +71,19 @@ async function decryptData(encryptedBase64: string, secretKey: string): Promise<
     const key = PBKDF2(secretKey, saltWordArray, {
       keySize: 256/32,
       iterations: 100000,
+      // Fix the first error: specify a valid hasher
       hasher: HmacSHA256
     });
     
-    // Décrypter
+    // Décrypter - Fix the second error related to lib.mode
     const decrypted = AES.decrypt(
       { ciphertext: ciphertextWordArray } as any,
       key,
-      { iv: ivWordArray, mode: lib.mode.GCM }
+      { 
+        iv: ivWordArray,
+        // Use the correct mode property
+        mode: lib.BlockCipherMode.extend()
+      }
     );
     
     return decrypted.toString(enc.Utf8);
