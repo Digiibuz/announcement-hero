@@ -26,7 +26,8 @@ async function initializeSupabaseClient() {
   console.log("Initializing Supabase client...");
   try {
     // Récupérer la configuration depuis l'Edge Function
-    const apiUrl = `${window.location.origin}/api/get-public-config`;
+    const baseUrl = window.location.origin;
+    const apiUrl = `${baseUrl}/api/get-public-config`;
     console.log("Fetching Supabase config from:", apiUrl);
     
     const response = await fetch(apiUrl, {
@@ -43,41 +44,50 @@ async function initializeSupabaseClient() {
       return; // Continue with default values
     }
     
-    const responseText = await response.text();
-    console.log("Response received:", responseText.substring(0, 100) + "...");
-    
-    let config;
+    let responseText;
     try {
-      config = JSON.parse(responseText);
+      responseText = await response.text();
+      console.log("Response received:", responseText.substring(0, 100) + "...");
+      
+      // Check if the response is HTML instead of JSON
+      if (responseText.trim().startsWith('<!DOCTYPE html>') || 
+          responseText.trim().startsWith('<html>')) {
+        console.error("Received HTML instead of JSON. Check your Edge Function configuration.");
+        throw new Error("Invalid response format: Expected JSON, got HTML");
+      }
+      
+      const config = JSON.parse(responseText);
       console.log("Config parsed successfully:", config);
+      
+      if (!config?.supabaseUrl || !config?.supabaseAnonKey) {
+        console.warn("Incomplete Supabase configuration:", config);
+        return; // Continue with default values
+      }
+      
+      // Recreate the client with the retrieved values
+      supabaseUrl = config.supabaseUrl;
+      supabaseAnonKey = config.supabaseAnonKey;
+      
+      supabase = createClient<Database>(
+        supabaseUrl, 
+        supabaseAnonKey, 
+        {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: false // Disable auto detection of Auth tokens in URL
+          }
+        }
+      );
+      
+      console.log("Supabase client successfully initialized with config from Edge Function");
     } catch (parseError) {
       console.error("Error parsing configuration:", parseError);
-      console.log("Response received:", responseText.substring(0, 100) + "...");
-      return; // Continue with default values
-    }
-    
-    if (!config?.supabaseUrl || !config?.supabaseAnonKey) {
-      console.warn("Incomplete Supabase configuration:", config);
-      return; // Continue with default values
-    }
-    
-    // Recreate the client with the retrieved values
-    supabaseUrl = config.supabaseUrl;
-    supabaseAnonKey = config.supabaseAnonKey;
-    
-    supabase = createClient<Database>(
-      supabaseUrl, 
-      supabaseAnonKey, 
-      {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: false // Disable auto detection of Auth tokens in URL
-        }
+      if (responseText) {
+        console.log("Response received:", responseText.substring(0, 200) + "...");
       }
-    );
-    
-    console.log("Supabase client successfully initialized with config from Edge Function");
+      return; // Continue with default values
+    }
   } catch (error) {
     console.error("Error initializing Supabase client:", error);
     console.warn("Using default values for Supabase client");
@@ -86,6 +96,3 @@ async function initializeSupabaseClient() {
 
 // Initialize the client on load
 initializeSupabaseClient().catch(console.error);
-
-// Note: This client only has anon permissions
-// For any sensitive operations, use edge functions that can access service role keys securely
