@@ -1,6 +1,5 @@
 
-import { serve } from 'std/http/server.ts'
-import { createClient } from '@supabase/supabase-js'
+import { serve } from "std/http/server.ts"
 
 // En-têtes CORS pour permettre l'accès depuis le frontend
 const corsHeaders = {

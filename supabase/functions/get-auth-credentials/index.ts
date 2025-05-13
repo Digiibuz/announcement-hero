@@ -1,6 +1,5 @@
 
-import { serve } from 'std/http/server.ts'
-import { createClient } from '@supabase/supabase-js'
+import { serve } from "std/http/server.ts"
 
 // En-têtes CORS pour permettre l'accès depuis le frontend
 const corsHeaders = {
@@ -34,23 +33,6 @@ serve(async (req) => {
       throw new Error('Variables d\'environnement manquantes');
     }
     
-    // Créer un client admin pour vérifier le JWT
-    const supabaseAdmin = createClient(
-      supabaseUrl,
-      supabaseServiceKey
-    );
-    
-    // Vérifier le JWT de l'utilisateur
-    const token = authHeader.replace('Bearer ', '');
-    const { data: user, error: verifyError } = await supabaseAdmin.auth.getUser(token);
-    
-    if (verifyError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'JWT invalide ou expiré' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
-      );
-    }
-    
     // Retourner les informations d'authentification au client
     return new Response(
       JSON.stringify({
@@ -64,7 +46,7 @@ serve(async (req) => {
     console.error('Erreur lors de la récupération des informations d\'authentification:', error);
     
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : "Erreur inconnue" }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
