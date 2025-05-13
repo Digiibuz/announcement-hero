@@ -6,6 +6,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Configuration Supabase hardcodée pour cet Edge Function uniquement
+// Ces valeurs sont déjà publiques et sont destinées à être utilisées côté client
+const supabaseConfig = {
+  supabaseUrl: "https://rdwqedmvzicerwotjseg.supabase.co",
+  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkd3FlZG12emljZXJ3b3Rqc2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwNzg4MzEsImV4cCI6MjA1ODY1NDgzMX0.Ohle_vVvdoCvsObP9A_AdyM52XdzisIvHvH1D1a88zk",
+  projectId: "rdwqedmvzicerwotjseg"
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -13,16 +21,10 @@ serve(async (req) => {
   }
   
   try {
-    // Nous renvoyons uniquement les valeurs publiques qui sont sûres à exposer
-    // Ces valeurs sont définies comme des variables d'environnement dans la fonction Edge
-    const config = {
-      supabaseUrl: Deno.env.get("SUPABASE_URL"),
-      supabaseAnonKey: Deno.env.get("SUPABASE_ANON_KEY"),
-      projectId: Deno.env.get("PROJECT_ID"),
-    };
-    
+    // Au lieu d'utiliser Deno.env.get(), on retourne directement les valeurs hardcodées
+    // Cette approche est acceptable car ces valeurs sont déjà publiques (clé anon)
     return new Response(
-      JSON.stringify(config),
+      JSON.stringify(supabaseConfig),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200
