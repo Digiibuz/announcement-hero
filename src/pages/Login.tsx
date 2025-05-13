@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Eye, EyeOff, Lock, LogIn, Loader2, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
 
 const Login = () => {
@@ -16,7 +16,6 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -41,7 +40,6 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError(null);
     console.log("Login form submitted for:", email);
     
     try {
@@ -58,7 +56,6 @@ const Login = () => {
       }, 500);
     } catch (error: any) {
       console.error("Login error:", error);
-      setError(error.message || "Échec de la connexion");
       toast.error(error.message || "Échec de la connexion");
     } finally {
       setIsLoading(false);
@@ -96,16 +93,6 @@ const Login = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {error && (
-              <div className="bg-destructive/15 text-destructive p-3 rounded-md mb-4 flex items-start">
-                <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="font-medium">Erreur de connexion</p>
-                  <p className="text-sm">{error}</p>
-                </div>
-              </div>
-            )}
-            
             <form onSubmit={handleSubmit} className="space-y-4">              
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>

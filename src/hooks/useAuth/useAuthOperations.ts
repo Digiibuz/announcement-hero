@@ -31,15 +31,13 @@ export const useAuthOperations = (
       
       // Use the edge function for authentication
       console.log("Calling auth edge function for login");
-      const baseUrl = window.location.origin;
-      const apiUrl = `${baseUrl}/api/auth`;
+      const apiUrl = `${window.location.origin}/api/auth`;
       console.log("Auth API URL:", apiUrl);
       
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           action: 'login',
@@ -49,82 +47,53 @@ export const useAuthOperations = (
       });
       
       if (!response.ok) {
-        let errorText;
+        const errorText = await response.text();
+        let errorData;
+        
         try {
-          errorText = await response.text();
-          
-          // Check if the response is HTML instead of JSON
-          if (errorText.trim().startsWith('<!DOCTYPE html>') || 
-              errorText.trim().startsWith('<html>')) {
-            console.error("Received HTML instead of JSON:", errorText.substring(0, 200));
-            throw new Error("Le serveur a retourné une réponse HTML au lieu de JSON. Veuillez contacter l'administrateur.");
-          }
-          
-          let errorData;
-          try {
-            errorData = JSON.parse(errorText);
-          } catch (e) {
-            console.error("Failed to parse error response:", errorText);
-            throw new Error("Échec de l'analyse de la réponse du serveur");
-          }
-          
-          console.error("Login failed:", errorData);
-          throw new Error(errorData.error || "Échec de connexion");
+          errorData = JSON.parse(errorText);
         } catch (e) {
-          if (e.message.includes("HTML")) {
-            throw e; // Rethrow the HTML error
-          }
-          console.error("Error handling response:", e);
-          throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+          console.error("Failed to parse error response:", errorText);
+          throw new Error("Failed to parse server response");
         }
+        
+        console.error("Login failed:", errorData);
+        throw new Error(errorData.error || "Failed to login");
       }
       
-      let responseText;
+      const responseText = await response.text();
+      let responseData;
+      
       try {
-        responseText = await response.text();
-        
-        // Check if the response is HTML instead of JSON
-        if (responseText.trim().startsWith('<!DOCTYPE html>') || 
-            responseText.trim().startsWith('<html>')) {
-          console.error("Received HTML instead of JSON:", responseText.substring(0, 200));
-          throw new Error("Le serveur a retourné une réponse HTML au lieu de JSON. Veuillez contacter l'administrateur.");
-        }
-        
-        let responseData;
-        try {
-          responseData = JSON.parse(responseText);
-          console.log("Login response parsed successfully");
-        } catch (e) {
-          console.error("Failed to parse login response:", responseText.substring(0, 200));
-          throw new Error("Échec de l'analyse de la réponse du serveur");
-        }
-        
-        const { session, user } = responseData;
-        
-        if (!session || !user) {
-          console.error("Invalid authentication data:", responseData);
-          throw new Error("Données d'authentification invalides");
-        }
-        
-        console.log("Setting Supabase session");
-        // Update the session in client-side Supabase
-        await supabase.auth.setSession({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token
-        });
-        
-        console.log("Login successful");
-        setIsLoading(false);
-        // Auth state change listener will handle the rest
-        
+        responseData = JSON.parse(responseText);
+        console.log("Login response parsed successfully");
       } catch (e) {
-        console.error("Error processing login response:", e);
-        throw new Error(e.message || "Erreur lors du traitement de la réponse de connexion");
+        console.error("Failed to parse login response:", responseText);
+        throw new Error("Failed to parse server response");
       }
+      
+      const { session, user } = responseData;
+      
+      if (!session || !user) {
+        console.error("Invalid authentication data:", responseData);
+        throw new Error("Invalid authentication data");
+      }
+      
+      console.log("Setting Supabase session");
+      // Update the session in client-side Supabase
+      await supabase.auth.setSession({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token
+      });
+      
+      console.log("Login successful");
+      setIsLoading(false);
+      // Auth state change listener will handle the rest
+      
     } catch (error: any) {
       console.error("Login error:", error);
       setIsLoading(false);
-      throw new Error(error.message || "Erreur de connexion");
+      throw new Error(error.message || "Login error");
     }
   };
 
@@ -152,12 +121,10 @@ export const useAuthOperations = (
         // Call the edge function for logout if we have a token
         if (accessToken) {
           console.log("Calling auth edge function for logout");
-          const baseUrl = window.location.origin;
-          await fetch(`${baseUrl}/api/auth`, {
+          await fetch(`${window.location.origin}/api/auth`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Cache-Control': 'no-cache, no-store',
               'Authorization': `Bearer ${accessToken}`
             },
             body: JSON.stringify({
