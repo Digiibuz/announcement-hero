@@ -38,13 +38,14 @@ serve(async (req) => {
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
     
-    // Créer un objet de configuration sécurisé avec des tokens d'accès temporaires
-    // Au lieu de stocker les clés API directement dans l'objet de réponse
+    // Créer un objet de configuration avec l'ID du projet et la clé anon
     const responseData = {
-      projectId: "rdwqedmvzicerwotjseg", // Cet ID est public et peut être partagé
+      projectId: "rdwqedmvzicerwotjseg", 
+      anon_key: supabaseAnonKey,
+      url: supabaseUrl,
       timestamp: timestamp,
       sessionId: sessionId,
-      fingerprint: fingerprintHex.slice(0, 32), // Utiliser seulement une partie de l'empreinte
+      fingerprint: fingerprintHex.slice(0, 32),
     };
 
     return new Response(

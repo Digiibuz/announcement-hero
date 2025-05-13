@@ -52,7 +52,6 @@ serve(async (req) => {
     }
     
     // Retourner les informations d'authentification au client
-    // Ne renvoyer que la clé anonyme, jamais la clé de service
     return new Response(
       JSON.stringify({
         anon_key: supabaseAnonKey,
