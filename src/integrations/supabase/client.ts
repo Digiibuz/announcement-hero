@@ -3,15 +3,48 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// Hardcode the actual Supabase URL and anon key for this project
-const supabaseUrl = "https://rdwqedmvzicerwotjseg.supabase.co";
-const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkd3FlZG12emljZXJ3b3Rqc2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwNzg4MzEsImV4cCI6MjA1ODY1NDgzMX0.Ohle_vVvdoCvsObP9A_AdyM52XdzisIvHvH1D1a88zk";
+// Configuration initiale avec des valeurs par défaut
+let supabaseUrl = "";
+let supabaseAnonKey = "";
 
-// Create a Supabase client for client-side operations only
-export const supabase = createClient<Database>(
-  supabaseUrl, 
+// Client initial qui sera mis à jour après récupération des vraies données
+export let supabase = createClient<Database>(
+  supabaseUrl,
   supabaseAnonKey
 );
+
+// Fonction pour initialiser le client Supabase
+async function initializeSupabaseClient() {
+  try {
+    // Récupérer la configuration depuis l'Edge Function
+    const response = await fetch(`${window.location.origin}/api/get-public-config`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch Supabase configuration: ${response.statusText}`);
+    }
+    
+    const config = await response.json();
+    
+    if (!config.supabaseUrl || !config.supabaseAnonKey) {
+      throw new Error("Missing Supabase configuration values");
+    }
+    
+    // Recréer le client avec les vraies valeurs
+    supabaseUrl = config.supabaseUrl;
+    supabaseAnonKey = config.supabaseAnonKey;
+    
+    supabase = createClient<Database>(
+      supabaseUrl, 
+      supabaseAnonKey
+    );
+    
+    console.log("Supabase client initialized successfully");
+  } catch (error) {
+    console.error("Error initializing Supabase client:", error);
+  }
+}
+
+// Initialiser le client dès le chargement
+initializeSupabaseClient();
 
 // Note: This client only has anon permissions
 // For any sensitive operations, use edge functions that can access service role keys securely
