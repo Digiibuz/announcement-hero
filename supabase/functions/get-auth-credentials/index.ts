@@ -1,16 +1,11 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-
-// En-têtes CORS pour permettre l'accès depuis le frontend
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { corsHeaders, handleCorsOptions } from "../_shared/supabase.ts";
 
 serve(async (req) => {
   // Gestion des requêtes OPTIONS pour CORS
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return handleCorsOptions();
   }
 
   try {
@@ -50,4 +45,4 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
-})
+});
