@@ -25,4 +25,12 @@ export default defineConfig(({ mode }) => ({
     // Add this to handle the Deno global in browser builds
     "Deno": "undefined"
   },
+  optimizeDeps: {
+    include: ['crypto-js']
+  },
+  build: {
+    commonjsOptions: {
+      include: [/crypto-js/, /node_modules/]
+    }
+  }
 }));
