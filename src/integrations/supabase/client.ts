@@ -3,11 +3,12 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// Configuration initiale avec des valeurs par défaut
-let supabaseUrl = "";
-let supabaseAnonKey = "";
+// Configuration initiale avec des valeurs par défaut pour permettre l'initialisation immédiate
+// Ces valeurs sont publiques et peuvent être incluses côté client sans risque
+let supabaseUrl = "https://rdwqedmvzicerwotjseg.supabase.co";
+let supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkd3FlZG12emljZXJ3b3Rqc2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwNzg4MzEsImV4cCI6MjA1ODY1NDgzMX0.Ohle_vVvdoCvsObP9A_AdyM52XdzisIvHvH1D1a88zk";
 
-// Client initial qui sera mis à jour après récupération des vraies données
+// Créer le client avec les valeurs par défaut
 export let supabase = createClient<Database>(
   supabaseUrl,
   supabaseAnonKey
@@ -28,7 +29,7 @@ async function initializeSupabaseClient() {
       throw new Error("Missing Supabase configuration values");
     }
     
-    // Recréer le client avec les vraies valeurs
+    // Recréer le client avec les valeurs récupérées
     supabaseUrl = config.supabaseUrl;
     supabaseAnonKey = config.supabaseAnonKey;
     
@@ -40,7 +41,8 @@ async function initializeSupabaseClient() {
     console.log("Supabase client initialized successfully");
   } catch (error) {
     console.error("Error initializing Supabase client:", error);
-    throw new Error("Failed to initialize Supabase client. Please check your network connection and try again.");
+    // Erreur d'initialisation, mais l'application peut continuer car le client est déjà initialisé avec les valeurs par défaut
+    console.warn("Using default Supabase configuration");
   }
 }
 
