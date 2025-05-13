@@ -8,21 +8,28 @@ import type { Database } from './types';
 let supabaseUrl = "https://rdwqedmvzicerwotjseg.supabase.co";
 let supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkd3FlZG12emljZXJ3b3Rqc2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwNzg4MzEsImV4cCI6MjA1ODY1NDgzMX0.Ohle_vVvdoCvsObP9A_AdyM52XdzisIvHvH1D1a88zk";
 
-// Créer le client avec les valeurs par défaut
+// Créer le client avec les valeurs par défaut et les bonnes options d'authentification
 export let supabase = createClient<Database>(
   supabaseUrl,
-  supabaseAnonKey
+  supabaseAnonKey,
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: false // Disable auto detection of Auth tokens in URL
+    }
+  }
 );
 
 // Fonction pour initialiser le client Supabase
 async function initializeSupabaseClient() {
+  console.log("Initializing Supabase client...");
   try {
-    // En mode développement, utiliser les valeurs hardcodées directement
-    // En production, on essaiera de récupérer la configuration depuis l'Edge Function,
-    // mais on continuera à utiliser les valeurs par défaut en cas d'échec
-    
     // Récupérer la configuration depuis l'Edge Function
-    const response = await fetch(`${window.location.origin}/api/get-public-config`, {
+    const apiUrl = `${window.location.origin}/api/get-public-config`;
+    console.log("Fetching Supabase config from:", apiUrl);
+    
+    const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -31,27 +38,30 @@ async function initializeSupabaseClient() {
     });
     
     if (!response.ok) {
-      console.warn(`Échec de récupération de la configuration Supabase: ${response.status} ${response.statusText}`);
-      return; // Continuer avec les valeurs par défaut
+      console.warn(`Failed to retrieve Supabase configuration: ${response.status} ${response.statusText}`);
+      console.log("Using default configuration");
+      return; // Continue with default values
     }
     
     const responseText = await response.text();
-    let config;
+    console.log("Response received:", responseText.substring(0, 100) + "...");
     
+    let config;
     try {
       config = JSON.parse(responseText);
+      console.log("Config parsed successfully:", config);
     } catch (parseError) {
-      console.error("Erreur de parsing de la configuration:", parseError);
-      console.log("Réponse reçue:", responseText.substring(0, 100) + "...");
-      return; // Continuer avec les valeurs par défaut
+      console.error("Error parsing configuration:", parseError);
+      console.log("Response received:", responseText.substring(0, 100) + "...");
+      return; // Continue with default values
     }
     
-    if (!config.supabaseUrl || !config.supabaseAnonKey) {
-      console.warn("Configuration Supabase incomplète:", config);
-      return; // Continuer avec les valeurs par défaut
+    if (!config?.supabaseUrl || !config?.supabaseAnonKey) {
+      console.warn("Incomplete Supabase configuration:", config);
+      return; // Continue with default values
     }
     
-    // Recréer le client avec les valeurs récupérées
+    // Recreate the client with the retrieved values
     supabaseUrl = config.supabaseUrl;
     supabaseAnonKey = config.supabaseAnonKey;
     
@@ -61,23 +71,21 @@ async function initializeSupabaseClient() {
       {
         auth: {
           persistSession: true,
-          autoRefreshToken: true
+          autoRefreshToken: true,
+          detectSessionInUrl: false // Disable auto detection of Auth tokens in URL
         }
       }
     );
     
-    console.log("Client Supabase initialisé avec succès");
+    console.log("Supabase client successfully initialized with config from Edge Function");
   } catch (error) {
-    console.error("Erreur lors de l'initialisation du client Supabase:", error);
-    // L'application peut continuer car le client est déjà initialisé avec les valeurs par défaut
-    console.warn("Utilisation des valeurs par défaut pour Supabase");
+    console.error("Error initializing Supabase client:", error);
+    console.warn("Using default values for Supabase client");
   }
 }
 
-// Initialiser le client dès le chargement
-initializeSupabaseClient().catch(err => {
-  console.warn("Échec de l'initialisation du client Supabase, utilisation des valeurs par défaut:", err);
-});
+// Initialize the client on load
+initializeSupabaseClient().catch(console.error);
 
 // Note: This client only has anon permissions
 // For any sensitive operations, use edge functions that can access service role keys securely

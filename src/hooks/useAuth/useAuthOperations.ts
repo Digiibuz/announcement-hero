@@ -8,26 +8,33 @@ import { UserProfile } from "@/types/auth";
 export const useAuthOperations = (
   setUserProfile: (profile: UserProfile | null) => void
 ) => {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   
-  // Nouvelle implémentation de login utilisant l'edge function
+  // Login implementation using edge function
   const login = async (email: string, password: string) => {
     setIsLoading(true);
+    console.log("Login attempt for:", email);
     
     try {
-      // Nettoyer d'abord l'état d'authentification pour éviter les problèmes
+      // Clean up any existing auth state first
       cleanupAuthState();
+      console.log("Auth state cleaned up");
       
-      // Tentons de nous déconnecter globalement avant de nous connecter
+      // Try to sign out globally before logging in to prevent conflicts
       try {
         await supabase.auth.signOut({ scope: 'global' });
+        console.log("Global sign out completed");
       } catch (err) {
-        // Continuer même en cas d'échec
-        console.warn("Échec de la déconnexion globale:", err);
+        console.warn("Failed to sign out globally:", err);
+        // Continue anyway
       }
       
-      // Utiliser l'edge function pour l'authentification
-      const response = await fetch(`${window.location.origin}/api/auth`, {
+      // Use the edge function for authentication
+      console.log("Calling auth edge function for login");
+      const apiUrl = `${window.location.origin}/api/auth`;
+      console.log("Auth API URL:", apiUrl);
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -40,35 +47,65 @@ export const useAuthOperations = (
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Échec de la connexion");
+        const errorText = await response.text();
+        let errorData;
+        
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          console.error("Failed to parse error response:", errorText);
+          throw new Error("Failed to parse server response");
+        }
+        
+        console.error("Login failed:", errorData);
+        throw new Error(errorData.error || "Failed to login");
       }
       
-      const { session, user } = await response.json();
+      const responseText = await response.text();
+      let responseData;
+      
+      try {
+        responseData = JSON.parse(responseText);
+        console.log("Login response parsed successfully");
+      } catch (e) {
+        console.error("Failed to parse login response:", responseText);
+        throw new Error("Failed to parse server response");
+      }
+      
+      const { session, user } = responseData;
       
       if (!session || !user) {
-        throw new Error("Données d'authentification invalides");
+        console.error("Invalid authentication data:", responseData);
+        throw new Error("Invalid authentication data");
       }
       
-      // Mettre à jour la session dans Supabase côté client
+      console.log("Setting Supabase session");
+      // Update the session in client-side Supabase
       await supabase.auth.setSession({
         access_token: session.access_token,
         refresh_token: session.refresh_token
       });
       
-      // Le reste sera géré par le listener onAuthStateChange
+      console.log("Login successful");
+      setIsLoading(false);
+      // Auth state change listener will handle the rest
       
     } catch (error: any) {
+      console.error("Login error:", error);
       setIsLoading(false);
       throw new Error(error.message || "Login error");
     }
   };
 
-  // Nouvelle implémentation de logout utilisant l'edge function
+  // Logout implementation using edge function
   const logout = async () => {
+    console.log("Logout initiated");
     try {
-      // Nettoyer d'abord le stockage local
+      // Clean up local storage first
       cleanupAuthState();
+      console.log("Auth state cleaned up");
+      
+      // Clear additional storage items
       localStorage.removeItem('userRole');
       localStorage.removeItem('userId');
       sessionStorage.removeItem('lastAdminPath');
@@ -76,12 +113,14 @@ export const useAuthOperations = (
       localStorage.removeItem("originalUser");
       
       try {
-        // Récupérer le token actuel si disponible
+        // Get the current session token if available
         const sessionResult = await supabase.auth.getSession();
-        const accessToken = sessionResult.data.session?.access_token || '';
+        console.log("Session retrieved for logout");
+        const accessToken = sessionResult.data.session?.access_token;
         
-        // Appeler l'edge function pour la déconnexion uniquement si nous avons un token
+        // Call the edge function for logout if we have a token
         if (accessToken) {
+          console.log("Calling auth edge function for logout");
           await fetch(`${window.location.origin}/api/auth`, {
             method: 'POST',
             headers: {
@@ -92,17 +131,21 @@ export const useAuthOperations = (
               action: 'logout'
             })
           });
+          console.log("Logout API call completed");
         }
       } catch (apiError) {
-        console.warn("Échec de l'appel à l'API de déconnexion:", apiError);
-        // Continuer malgré l'erreur
+        console.warn("Failed to call logout API:", apiError);
+        // Continue despite the error
       }
       
-      // Nettoyage supplémentaire côté client
+      // Additional client-side cleanup
       await supabase.auth.signOut();
+      console.log("Client-side sign out completed");
       setUserProfile(null);
     } catch (error) {
       console.error("Error during logout:", error);
+      // Still try to clear the user profile
+      setUserProfile(null);
     }
   };
 

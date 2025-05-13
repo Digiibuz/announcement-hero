@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -19,9 +19,20 @@ const Login = () => {
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect if already authenticated
-  React.useEffect(() => {
+  // Log auth state for debugging
+  useEffect(() => {
+    console.log("Login component mounted");
+    console.log("isAuthenticated:", isAuthenticated);
+    
+    // Check for any leftover auth tokens
+    const hasAuthTokens = Object.keys(localStorage).some(
+      key => key.startsWith('supabase.auth.') || key.includes('sb-')
+    );
+    
+    console.log("Has auth tokens in localStorage:", hasAuthTokens);
+    
     if (isAuthenticated) {
+      console.log("User is authenticated, redirecting to dashboard");
       navigate("/dashboard");
     }
   }, [isAuthenticated, navigate]);
@@ -29,17 +40,22 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    console.log("Login form submitted for:", email);
     
     try {
+      console.log("Attempting login...");
       await login(email, password);
+      
+      console.log("Login successful");
       toast.success("Connexion réussie");
       
       // Redirect after successful login
+      console.log("Redirecting to dashboard");
       setTimeout(() => {
         navigate("/dashboard");
-      }, 300);
+      }, 500);
     } catch (error: any) {
-      console.error("Erreur de connexion:", error);
+      console.error("Login error:", error);
       toast.error(error.message || "Échec de la connexion");
     } finally {
       setIsLoading(false);
@@ -89,6 +105,7 @@ const Login = () => {
                   required
                   autoComplete="email"
                   disabled={isLoading}
+                  className="bg-white/80 dark:bg-gray-900/80" // Ensure good contrast
                 />
               </div>
               <div className="space-y-2">
@@ -114,6 +131,7 @@ const Login = () => {
                     required
                     autoComplete="current-password"
                     disabled={isLoading}
+                    className="bg-white/80 dark:bg-gray-900/80" // Ensure good contrast
                   />
                   <Button
                     type="button"

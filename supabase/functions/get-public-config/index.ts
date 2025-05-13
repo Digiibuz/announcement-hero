@@ -17,12 +17,15 @@ const supabaseConfig = {
 };
 
 serve(async (req) => {
+  console.log("PUBLIC CONFIG EDGE FUNCTION: Received request");
+  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders, status: 204 });
   }
   
   if (req.method !== "GET") {
+    console.log("PUBLIC CONFIG EDGE FUNCTION: Invalid method", req.method);
     return new Response(
       JSON.stringify({ error: "Method not allowed" }), 
       { headers: corsHeaders, status: 405 }
@@ -30,14 +33,14 @@ serve(async (req) => {
   }
   
   try {
-    // Au lieu d'utiliser Deno.env.get(), on retourne directement les valeurs hardcodées
-    // Cette approche est acceptable car ces valeurs sont déjà publiques (clé anon)
+    console.log("PUBLIC CONFIG EDGE FUNCTION: Returning config");
+    // Return the hardcoded values - these are already public
     return new Response(
       JSON.stringify(supabaseConfig),
       { headers: corsHeaders, status: 200 }
     );
   } catch (error) {
-    console.error("Error getting public config:", error);
+    console.error("PUBLIC CONFIG EDGE FUNCTION: Error", error);
     
     return new Response(
       JSON.stringify({ error: "An unexpected error occurred", details: error.message }),
