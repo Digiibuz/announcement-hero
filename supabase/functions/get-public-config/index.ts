@@ -34,7 +34,7 @@ serve(async (req) => {
     
     // Créer un objet de configuration avec l'ID du projet et la clé anon
     const responseData = {
-      projectId: "rdwqedmvzicerwotjseg", 
+      projectId: Deno.env.get("PROJECT_ID") || "",
       anon_key: supabaseAnonKey,
       url: supabaseUrl,
       timestamp: timestamp,
@@ -50,7 +50,7 @@ serve(async (req) => {
     console.error("Erreur lors de la génération de la configuration:", error);
     
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : "Erreur inconnue" }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500 
