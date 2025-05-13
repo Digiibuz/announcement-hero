@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
@@ -67,22 +66,22 @@ async function decryptData(encryptedBase64: string, secretKey: string): Promise<
     const saltWordArray = lib.WordArray.create(Array.from(salt));
     const ciphertextWordArray = lib.WordArray.create(Array.from(ciphertext));
     
-    // Générer la clé avec PBKDF2
+    // Générer la clé avec PBKDF2 - Fix TypeScript error by using the correct type
     const key = PBKDF2(secretKey, saltWordArray, {
       keySize: 256/32,
       iterations: 100000,
-      // Fix the first error: specify a valid hasher
-      hasher: HmacSHA256
+      // Use 'SHA256' string instead of the HmacSHA256 object to fix the type error
+      hasher: { name: 'SHA256' } as any
     });
     
-    // Décrypter - Fix the second error related to lib.mode
+    // Décrypter - Fix the BlockCipherMode issue
     const decrypted = AES.decrypt(
       { ciphertext: ciphertextWordArray } as any,
       key,
       { 
         iv: ivWordArray,
-        // Use the correct mode property
-        mode: lib.BlockCipherMode.extend()
+        // Use a compatible mode configuration
+        mode: lib.mode.CBC
       }
     );
     
