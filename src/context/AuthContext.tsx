@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { supabase, getSupabaseClient } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { useUserProfile, createProfileFromMetadata } from "@/hooks/useUserProfile";
@@ -29,11 +29,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Initialize auth state and set up listeners with improved persistence
   useEffect(() => {
     console.log("Setting up auth state listener");
-    let subscription: { unsubscribe: () => void } | undefined;
-    
-    try {
-      // Fonction pour gérer les changements d'état d'authentification
-      const handleAuthChange = async (event: string, session: any) => {
+    // Set up the auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
         console.log("Auth state changed:", event);
         setIsLoading(true);
         
@@ -56,38 +54,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUserProfile(null);
           setIsLoading(false);
         }
-      };
+      }
+    );
 
-      // Set up the auth state change listener once we have the Supabase client
-      getSupabaseClient().then((client) => {
-        const { data } = client.auth.onAuthStateChange(handleAuthChange);
-        subscription = data.subscription;
-
-        // Get initial session
-        client.auth.getSession().then(({ data: { session } }) => {
-          if (session?.user) {
-            handleAuthChange('INITIAL_SESSION', session);
-          } else {
-            setUserProfile(null);
+    // Get initial session with improved caching
+    const initializeAuth = async () => {
+      // First check if we have a locally cached user role
+      const cachedUserRole = localStorage.getItem('userRole');
+      const cachedUserId = localStorage.getItem('userId');
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        console.log("Session found during initialization");
+        // First set user from metadata
+        const initialProfile = createProfileFromMetadata(session.user);
+        
+        // Apply cached role if available for immediate UI
+        if (cachedUserRole && cachedUserId === session.user.id) {
+          initialProfile.role = cachedUserRole as any;
+          console.log("Applied cached role:", cachedUserRole);
+        }
+        
+        setUserProfile(initialProfile);
+        
+        // Then get complete profile
+        setTimeout(() => {
+          fetchFullProfile(session.user.id).then((success) => {
+            if (success) {
+              console.log("Successfully fetched complete profile");
+            } else {
+              console.warn("Failed to fetch complete profile, using metadata only");
+            }
             setIsLoading(false);
-          }
-        }).catch(error => {
-          console.error("Error getting initial session:", error);
-          setIsLoading(false);
-        });
-      }).catch(error => {
-        console.error("Error setting up auth state listener:", error);
+          });
+        }, 100);
+      } else {
+        console.log("No session found during initialization");
+        setUserProfile(null);
         setIsLoading(false);
-      });
-    } catch (error) {
-      console.error("Error setting up auth state listener:", error);
-      setIsLoading(false);
-    }
+      }
+    };
+
+    initializeAuth();
 
     return () => {
-      if (subscription) {
-        subscription.unsubscribe();
-      }
+      subscription.unsubscribe();
     };
   }, []);
 
@@ -107,8 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
-      const client = await getSupabaseClient();
-      const { data, error } = await client.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
@@ -131,8 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sessionStorage.removeItem('lastAdminPath');
       sessionStorage.removeItem('lastAuthenticatedPath');
       
-      const client = await getSupabaseClient();
-      await client.auth.signOut();
+      await supabase.auth.signOut();
       setUserProfile(null);
       localStorage.removeItem("originalUser");
     } catch (error) {
