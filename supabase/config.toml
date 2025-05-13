@@ -5,6 +5,3 @@ project_id = "rdwqedmvzicerwotjseg"
 [functions]
 [functions.get-public-config]
 verify_jwt = false
-
-[functions.auth]
-verify_jwt = false
