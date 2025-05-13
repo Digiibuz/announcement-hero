@@ -40,18 +40,7 @@ async function initializeSupabaseClient() {
     console.log("Supabase client initialized successfully");
   } catch (error) {
     console.error("Error initializing Supabase client:", error);
-    
-    // Fallback sur des valeurs directes en cas d'échec
-    // Cette approche est utilisée en dernier recours pour éviter le blocage complet
-    console.warn("Using fallback Supabase configuration");
-    
-    supabaseUrl = "https://rdwqedmvzicerwotjseg.supabase.co";
-    supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkd3FlZG12emljZXJ3b3Rqc2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwNzg4MzEsImV4cCI6MjA1ODY1NDgzMX0.Ohle_vVvdoCvsObP9A_AdyM52XdzisIvHvH1D1a88zk";
-    
-    supabase = createClient<Database>(
-      supabaseUrl, 
-      supabaseAnonKey
-    );
+    throw new Error("Failed to initialize Supabase client. Please check your network connection and try again.");
   }
 }
 
