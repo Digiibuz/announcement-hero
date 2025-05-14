@@ -69,7 +69,7 @@ export const useServerWordPressPublishing = () => {
       // Step 2: Call the Edge Function
       updatePublishingStep("server", "loading", "Envoi à WordPress", 40);
       
-      // Making the API call to the Edge Function
+      // Making the API call to the Edge Function with proper URL
       const response = await fetch(`https://rdwqedmvzicerwotjseg.supabase.co/functions/v1/wordpress-publish`, {
         method: 'POST',
         headers: {
@@ -82,17 +82,29 @@ export const useServerWordPressPublishing = () => {
         })
       });
       
+      // Detailed error handling
       if (!response.ok) {
         let errorText = "";
+        let errorDetail = "";
+        
         try {
           const errorData = await response.json();
           errorText = errorData.message || response.statusText;
+          
+          if (response.status === 401) {
+            errorDetail = "Problème d'authentification avec WordPress. Veuillez vérifier vos identifiants WordPress dans les paramètres.";
+          } else if (response.status === 404) {
+            errorDetail = "Point d'accès WordPress introuvable. Vérifiez l'URL du site WordPress.";
+          } else {
+            errorDetail = `Erreur ${response.status}: ${errorText}`;
+          }
         } catch (e) {
-          errorText = `Erreur ${response.status}`;
+          errorDetail = `Erreur inattendue: ${response.status} ${response.statusText}`;
         }
         
-        updatePublishingStep("server", "error", `Erreur: ${errorText}`, 60);
-        return { success: false, message: errorText, wordpressPostId: null };
+        console.error("Error response from Edge Function:", errorDetail);
+        updatePublishingStep("server", "error", `Erreur: ${errorDetail}`, 60);
+        return { success: false, message: errorDetail, wordpressPostId: null };
       }
       
       // Successful response processing
