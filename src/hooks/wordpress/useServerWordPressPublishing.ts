@@ -1,8 +1,8 @@
 
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { Announcement } from "@/types/announcement";
+import { toast } from "@/hooks/use-toast";
 
 export type PublishingStatus = "idle" | "loading" | "success" | "error";
 
@@ -49,61 +49,86 @@ export const useServerWordPressPublishing = () => {
   
   const publishToWordPressServer = async (
     announcement: Announcement, 
-    categoryId: string,
+    wordpressCategoryId: string,
     userId: string
   ): Promise<{ success: boolean; message: string; wordpressPostId: number | null }> => {
     setIsPublishing(true);
     resetPublishingState();
     
     try {
-      // Start with preparation step
+      // Step 1: Prepare data
       updatePublishingStep("prepare", "loading", "Préparation de la publication", 10);
       
-      if (!announcement || !categoryId || !userId) {
-        updatePublishingStep("prepare", "error", "Données de publication incomplètes");
+      if (!announcement.id) {
+        updatePublishingStep("prepare", "error", "ID d'annonce manquant");
         return {
           success: false,
-          message: "Données de publication incomplètes",
+          message: "ID d'annonce manquant",
           wordpressPostId: null
         };
       }
       
-      updatePublishingStep("prepare", "success", "Préparation terminée", 33);
+      if (!wordpressCategoryId) {
+        updatePublishingStep("prepare", "error", "ID de catégorie WordPress manquant");
+        return {
+          success: false,
+          message: "ID de catégorie WordPress manquant",
+          wordpressPostId: null
+        };
+      }
       
-      // Call the server-side function
-      updatePublishingStep("server", "loading", "Publication sur WordPress via le serveur", 50);
+      updatePublishingStep("prepare", "success", "Préparation terminée", 25);
       
-      const { data, error } = await supabase.functions.invoke('wordpress-publish', {
+      // Step 2: Call the WordPress publish edge function
+      updatePublishingStep("server", "loading", "Publication sur WordPress", 50);
+      
+      const { data: functionResponse, error: functionError } = await supabase.functions.invoke("wordpress-publish", {
         body: {
           announcementId: announcement.id,
-          userId: userId,
-          categoryId: categoryId
+          userId,
+          categoryId: wordpressCategoryId
         }
       });
       
-      if (error || !data?.success) {
-        console.error("Server publishing error:", error || data?.message);
-        updatePublishingStep("server", "error", `Erreur: ${error?.message || data?.message || "Unknown error"}`);
+      if (functionError) {
+        console.error("Edge function error:", functionError);
+        updatePublishingStep("server", "error", `Erreur de la fonction: ${functionError.message}`);
         return {
           success: false,
-          message: `Erreur de publication: ${error?.message || data?.message || "Erreur inconnue"}`,
+          message: `Erreur lors de la publication: ${functionError.message}`,
           wordpressPostId: null
         };
       }
       
-      // Success!
-      updatePublishingStep("server", "success", "Publication réussie", 75);
-      updatePublishingStep("database", "success", "Mise à jour des données", 100);
+      if (!functionResponse.success) {
+        console.error("WordPress publish error:", functionResponse.message);
+        updatePublishingStep("server", "error", functionResponse.message);
+        return {
+          success: false,
+          message: functionResponse.message,
+          wordpressPostId: null
+        };
+      }
+      
+      updatePublishingStep("server", "success", "Publication WordPress réussie", 75);
+      
+      // Step 3: Database update already handled by the Edge Function
+      updatePublishingStep("database", "success", "Base de données mise à jour", 100);
       
       return {
         success: true,
-        message: "Publication réussie sur WordPress",
-        wordpressPostId: data.data?.wordpressPostId || null
+        message: functionResponse.message || "Publication réussie",
+        wordpressPostId: functionResponse.data?.wordpressPostId || null
       };
       
     } catch (error: any) {
-      console.error("Error in server publishing:", error);
-      updatePublishingStep(publishingState.currentStep || "server", "error", `Erreur: ${error.message}`);
+      console.error("Error in server WordPress publishing:", error);
+      
+      // Update the current step with error status
+      if (publishingState.currentStep) {
+        updatePublishingStep(publishingState.currentStep, "error", `Erreur: ${error.message}`);
+      }
+      
       return {
         success: false,
         message: `Erreur lors de la publication: ${error.message}`,
