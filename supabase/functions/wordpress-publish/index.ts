@@ -1,4 +1,5 @@
 
+// Import from URLs using the import map
 import { serve } from "std/server";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "@supabase/supabase-js";
@@ -463,4 +464,3 @@ async function publishPostToWordPress(
     };
   }
 }
-
