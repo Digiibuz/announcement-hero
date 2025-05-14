@@ -104,10 +104,9 @@ export const useWordPressPublishing = () => {
       // Determine endpoints
       let useCustomTaxonomy = false;
       let customEndpointExists = false;
-      let postEndpoint = `${siteUrl}/wp-json/wp/v2/pages`; // Default to pages
+      let postEndpoint = `${siteUrl}/wp-json/wp/v2/posts`; // Utiliser posts comme endpoint par défaut
       
       try {
-        // Vérifier d'abord si la taxonomie personnalisée existe
         console.log("Checking if dipi_cpt_category endpoint exists...");
         const taxonomyResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt_category`, {
           method: 'HEAD',
@@ -123,7 +122,7 @@ export const useWordPressPublishing = () => {
           console.log("DipiPixel taxonomy endpoint found!");
           useCustomTaxonomy = true;
           
-          // Now check if dipi_cpt endpoint exists
+          // Vérification de l'endpoint dipi_cpt
           console.log("Checking if dipi_cpt endpoint exists...");
           const customPostTypeResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt`, {
             method: 'HEAD',
@@ -140,7 +139,7 @@ export const useWordPressPublishing = () => {
             postEndpoint = `${siteUrl}/wp-json/wp/v2/dipi_cpt`;
             customEndpointExists = true;
           } else {
-            // If dipi_cpt doesn't exist, try dipicpt as alternative
+            // Vérification de l'endpoint dipicpt
             console.log("Checking if dipicpt endpoint exists...");
             const altResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipicpt`, {
               method: 'HEAD',
@@ -157,8 +156,7 @@ export const useWordPressPublishing = () => {
               postEndpoint = `${siteUrl}/wp-json/wp/v2/dipicpt`;
               customEndpointExists = true;
             } else {
-              console.log("No custom post type endpoint found, falling back to pages");
-              // Si aucun endpoint personnalisé n'est trouvé, on utilise pages
+              console.log("No custom post type endpoint found, falling back to posts");
             }
           }
         } else {
@@ -166,31 +164,31 @@ export const useWordPressPublishing = () => {
         }
       } catch (error) {
         console.log("Error checking endpoints:", error);
-        console.log("Falling back to standard pages endpoint");
+        console.log("Falling back to standard posts endpoint");
       }
       
       console.log("Using WordPress endpoint:", postEndpoint, "with custom taxonomy:", useCustomTaxonomy);
       
-      // Prepare headers with authentication
+      // Préparation des headers pour l'authentification
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
       
-      // Vérifier quelles méthodes d'authentification sont disponibles
+      // Vérification et préparation des méthodes d'authentification
       if (wpConfig.app_username && wpConfig.app_password) {
-        // Application Password Format: "Basic base64(username:password)"
-        const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
-        headers['Authorization'] = `Basic ${basicAuth}`;
+        // Encodage correct des identifiants
+        const credentials = `${wpConfig.app_username}:${wpConfig.app_password}`;
+        const base64Credentials = btoa(credentials);
+        headers['Authorization'] = `Basic ${base64Credentials}`;
         console.log("Using Application Password authentication");
-        console.log("Auth header formatted as Basic (credentials hidden)");
+        console.log("Using credentials for:", wpConfig.app_username);
       } else if (wpConfig.rest_api_key) {
-        // API Key Format: "Bearer API_KEY"
         headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
         console.log("Using REST API Key authentication");
       } else if (wpConfig.username && wpConfig.password) {
-        // Legacy username/password auth
-        const basicAuth = btoa(`${wpConfig.username}:${wpConfig.password}`);
-        headers['Authorization'] = `Basic ${basicAuth}`;
+        const credentials = `${wpConfig.username}:${wpConfig.password}`;
+        const base64Credentials = btoa(credentials);
+        headers['Authorization'] = `Basic ${base64Credentials}`;
         console.log("Using Legacy Basic authentication");
       } else {
         updatePublishingStep("prepare", "error", "Aucune méthode d'authentification disponible");
@@ -201,15 +199,14 @@ export const useWordPressPublishing = () => {
         };
       }
       
-      // AMÉLIORATION: Traitement de l'image principale avant la création du post
+      // Traitement de l'image principale avant la création du post
       let featuredMediaId = null;
       
-      // Si des images sont disponibles, traiter l'image principale d'abord
       if (announcement.images && announcement.images.length > 0) {
         try {
           updatePublishingStep("image", "loading", "Téléversement de l'image principale", 40);
           
-          // 1. Télécharger l'image depuis l'URL
+          // Téléchargement de l'image depuis l'URL
           const imageUrl = announcement.images[0];
           const imageResponse = await fetch(imageUrl);
           
@@ -224,7 +221,7 @@ export const useWordPressPublishing = () => {
               type: imageBlob.type || 'image/jpeg' 
             });
             
-            // 2. Téléverser vers la bibliothèque média WordPress
+            // Téléversement vers la bibliothèque média WordPress
             console.log("Téléversement de l'image vers la bibliothèque média WordPress");
             const mediaFormData = new FormData();
             mediaFormData.append('file', imageFile);
@@ -234,7 +231,7 @@ export const useWordPressPublishing = () => {
             const mediaEndpoint = `${siteUrl}/wp-json/wp/v2/media`;
             console.log("Media endpoint:", mediaEndpoint);
             
-            // Créer des en-têtes pour le téléversement des médias sans Content-Type
+            // Headers pour le téléversement des médias
             const mediaHeaders = new Headers();
             if (headers.Authorization) {
               mediaHeaders.append('Authorization', headers.Authorization);
@@ -271,38 +268,38 @@ export const useWordPressPublishing = () => {
         updatePublishingStep("image", "success", "Aucune image à téléverser", 60);
       }
       
-      // Update WordPress step status
+      // Étape de publication WordPress
       updatePublishingStep("wordpress", "loading", "Publication sur WordPress", 70);
       
-      // Préparer les données du post selon le type d'endpoint
+      // Préparation des données pour le post
       const wpPostData: any = {
         title: announcement.title,
         content: announcement.description || "",
         status: announcement.status === 'scheduled' ? 'future' : 'publish',
       };
       
-      // Ajouter l'image mise en avant si disponible
+      // Ajout de l'image mise en avant si disponible
       if (featuredMediaId) {
         wpPostData.featured_media = featuredMediaId;
       }
       
-      // Ajouter la date pour les publications planifiées
+      // Ajout de la date pour les publications planifiées
       if (announcement.status === 'scheduled' && announcement.publish_date) {
         wpPostData.date = new Date(announcement.publish_date).toISOString();
       }
       
-      // Ajouter la catégorie selon le type d'endpoint
+      // Gestion des catégories selon le type d'endpoint
       if (useCustomTaxonomy && customEndpointExists) {
-        // Utiliser la taxonomie personnalisée DipiPixel
+        // Taxonomie personnalisée DipiPixel
         wpPostData.dipi_cpt_category = [parseInt(wordpressCategoryId)];
         console.log("Using custom taxonomy with category ID:", wordpressCategoryId);
       } else {
-        // Utiliser la catégorie standard WordPress
+        // Catégorie standard WordPress
         wpPostData.categories = [parseInt(wordpressCategoryId)];
         console.log("Using standard WordPress categories with ID:", wordpressCategoryId);
       }
       
-      // Ajouter les méta-données SEO si disponibles
+      // Ajout des méta-données SEO si disponibles
       if (announcement.seo_title || announcement.seo_description) {
         wpPostData.meta = {
           _yoast_wpseo_title: announcement.seo_title || "",
@@ -310,39 +307,87 @@ export const useWordPressPublishing = () => {
         };
       }
       
-      // Créer le post avec l'image (si disponible)
+      // Envoi de la requête pour créer le post
       console.log("Sending POST request to WordPress:", postEndpoint);
       console.log("Post data:", JSON.stringify(wpPostData, null, 2));
       
-      const postResponse = await fetch(postEndpoint, {
+      // Tentative initiale avec les identifiants configurés
+      let postResponse = await fetch(postEndpoint, {
         method: 'POST',
         headers: headers,
         body: JSON.stringify(wpPostData)
       });
       
-      if (!postResponse.ok) {
-        let errorText = await postResponse.text();
-        console.error("WordPress API error:", postResponse.status, errorText);
+      // Si échec d'authentification, essayer avec nonce/cookie (si disponible)
+      if (postResponse.status === 401 || postResponse.status === 403) {
+        console.log("Authentication error, trying alternative auth method...");
         
+        // Essai de l'authentification par cookie WordPress
+        if (wpConfig.username && wpConfig.password) {
+          try {
+            // Tentative de connexion via le formulaire de login WordPress
+            const loginEndpoint = `${siteUrl}/wp-login.php`;
+            const loginFormData = new FormData();
+            loginFormData.append('log', wpConfig.username);
+            loginFormData.append('pwd', wpConfig.password);
+            loginFormData.append('wp-submit', 'Log In');
+            loginFormData.append('redirect_to', `${siteUrl}/wp-admin/`);
+            loginFormData.append('testcookie', '1');
+            
+            // Essai d'obtention d'un cookie d'authentification
+            const loginResponse = await fetch(loginEndpoint, {
+              method: 'POST',
+              body: loginFormData,
+              redirect: 'follow',
+              credentials: 'include'
+            });
+            
+            if (loginResponse.ok || loginResponse.status === 302) {
+              console.log("Direct login attempt succeeded, retrying post creation with cookies");
+              
+              // Nouvel essai avec cookies et sans header d'autorisation
+              postResponse = await fetch(postEndpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(wpPostData),
+                credentials: 'include'
+              });
+            }
+          } catch (loginError) {
+            console.error("Error during alternative auth attempt:", loginError);
+          }
+        }
+        
+        // Si toujours en échec, essayer avec REST API sans autorisation (si le site le permet)
         if (postResponse.status === 401 || postResponse.status === 403) {
-          // Problème d'authentification
-          updatePublishingStep("wordpress", "error", `Erreur d'authentification (${postResponse.status})`);
-          return { 
-            success: false, 
-            message: `Erreur d'authentification WordPress (${postResponse.status}). Veuillez vérifier vos identifiants.`, 
-            wordpressPostId: null 
-          };
-        } else {
-          updatePublishingStep("wordpress", "error", `Erreur de publication (${postResponse.status})`);
-          return { 
-            success: false, 
-            message: `Erreur lors de la publication WordPress (${postResponse.status}): ${errorText}`, 
-            wordpressPostId: null 
-          };
+          console.log("Trying without authentication headers as last resort");
+          
+          try {
+            postResponse = await fetch(postEndpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(wpPostData)
+            });
+          } catch (e) {
+            console.error("Error during no-auth attempt:", e);
+          }
         }
       }
       
-      // Parse JSON response
+      // Vérification finale de la réponse
+      if (postResponse.status !== 200 && postResponse.status !== 201) {
+        let errorText = await postResponse.text();
+        console.error("WordPress API error:", postResponse.status, errorText);
+        
+        updatePublishingStep("wordpress", "error", `Erreur de publication (${postResponse.status})`);
+        return { 
+          success: false, 
+          message: `Erreur d'authentification WordPress (${postResponse.status}). Veuillez vérifier vos identifiants dans la configuration WordPress.`, 
+          wordpressPostId: null 
+        };
+      }
+      
+      // Traitement de la réponse JSON
       let wpResponseData;
       try {
         wpResponseData = await postResponse.json();
@@ -358,15 +403,15 @@ export const useWordPressPublishing = () => {
         };
       }
       
-      // Final database update
+      // Mise à jour finale de la base de données
       updatePublishingStep("database", "loading", "Mise à jour de la base de données", 90);
       
-      // Check if the response contains the WordPress post ID
+      // Vérification de l'ID du post WordPress
       if (wpResponseData && typeof wpResponseData.id === 'number') {
         const wordpressPostId = wpResponseData.id;
         console.log("WordPress post ID received:", wordpressPostId);
         
-        // Update the announcement in Supabase with the WordPress post ID
+        // Mise à jour de l'annonce dans Supabase avec l'ID du post WordPress
         const { error: updateError } = await supabase
           .from("announcements")
           .update({ 
@@ -399,7 +444,7 @@ export const useWordPressPublishing = () => {
       }
     } catch (error: any) {
       console.error("Error publishing to WordPress:", error);
-      // Update the current step with error status
+      // Mise à jour de l'étape actuelle avec le statut d'erreur
       if (publishingState.currentStep) {
         updatePublishingStep(publishingState.currentStep, "error", `Erreur: ${error.message}`);
       }
