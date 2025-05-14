@@ -217,8 +217,9 @@ async function detectWordPressEndpoints(siteUrl: string): Promise<{
   try {
     // Check for DipiPixel custom post type
     console.log("Checking if dipi_cpt_category endpoint exists...");
-    const dipiResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt_category`, { method: 'HEAD' })
-      .catch(() => ({ status: 404 }));
+    const dipiResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt_category`, {
+      method: 'HEAD',
+    }).catch(() => ({ status: 404 }));
     
     if (dipiResponse.status !== 404) {
       console.log("DipiPixel taxonomy endpoint found!");
@@ -226,8 +227,9 @@ async function detectWordPressEndpoints(siteUrl: string): Promise<{
       
       // Check if dipi_cpt endpoint exists
       console.log("Checking if dipi_cpt endpoint exists...");
-      const cptResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt`, { method: 'HEAD' })
-        .catch(() => ({ status: 404 }));
+      const cptResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt`, {
+        method: 'HEAD',
+      }).catch(() => ({ status: 404 }));
       
       if (cptResponse.status !== 404) {
         console.log("DipiPixel custom post type endpoint found!");
@@ -236,8 +238,9 @@ async function detectWordPressEndpoints(siteUrl: string): Promise<{
       } else {
         // Check alternative dipicpt endpoint
         console.log("Checking if dipicpt endpoint exists...");
-        const altResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipicpt`, { method: 'HEAD' })
-          .catch(() => ({ status: 404 }));
+        const altResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipicpt`, {
+          method: 'HEAD',
+        }).catch(() => ({ status: 404 }));
         
         if (altResponse.status !== 404) {
           console.log("Alternative dipicpt endpoint found!");
