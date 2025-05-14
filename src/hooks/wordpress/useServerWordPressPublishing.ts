@@ -82,6 +82,12 @@ export const useServerWordPressPublishing = () => {
       // Step 2: Call the WordPress publish edge function
       updatePublishingStep("server", "loading", "Publication sur WordPress", 50);
       
+      console.log("Calling wordpress-publish function with:", {
+        announcementId: announcement.id,
+        userId,
+        categoryId: wordpressCategoryId
+      });
+      
       const { data: functionResponse, error: functionError } = await supabase.functions.invoke("wordpress-publish", {
         body: {
           announcementId: announcement.id,
@@ -99,6 +105,8 @@ export const useServerWordPressPublishing = () => {
           wordpressPostId: null
         };
       }
+      
+      console.log("Function response:", functionResponse);
       
       if (!functionResponse.success) {
         console.error("WordPress publish error:", functionResponse.message);

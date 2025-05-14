@@ -1,7 +1,7 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "std/server";
 import { corsHeaders } from "../_shared/cors.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.1";
+import { createClient } from "@supabase/supabase-js";
 
 interface RequestPayload {
   announcementId: string;
@@ -18,46 +18,65 @@ interface WordPressConfig {
   password: string | null;
 }
 
-// Environment variables from Supabase
+// Environnement variables from Supabase
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
 serve(async (req) => {
-  // CORS handling
+  console.log("WordPress publish function called");
+
+  // Handling CORS
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
-  
+
   try {
+    // Initialize Supabase client with service role for admin access
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Parse request JSON
-    const { announcementId, userId, categoryId } = await req.json() as RequestPayload;
-    
+
+    // Parse request body
+    const requestData = await req.json() as RequestPayload;
+    const { announcementId, userId, categoryId } = requestData;
+
+    console.log("Request data:", { announcementId, userId, categoryId });
+
     if (!announcementId || !userId || !categoryId) {
+      console.error("Missing required fields");
       return new Response(
-        JSON.stringify({ success: false, message: "Missing required fields" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        JSON.stringify({ 
+          success: false, 
+          message: "Paramètres manquants: announcementId, userId et categoryId sont requis" 
+        }),
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+          status: 400 
+        }
       );
     }
-    
+
     // Step 1: Get the announcement data
     const { data: announcement, error: announcementError } = await supabase
       .from("announcements")
       .select("*")
       .eq("id", announcementId)
       .single();
-      
+
     if (announcementError || !announcement) {
+      console.error("Error fetching announcement:", announcementError);
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: `Announcement not found: ${announcementError?.message || "Unknown error"}` 
+          message: `Annonce non trouvée: ${announcementError?.message || "Erreur inconnue"}` 
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+          status: 404 
+        }
       );
     }
-    
+
+    console.log("Announcement found:", announcement.title);
+
     // Step 2: Get user's WordPress config
     const { data: userProfile, error: profileError } = await supabase
       .from('profiles')
@@ -66,39 +85,56 @@ serve(async (req) => {
       .single();
 
     if (profileError || !userProfile?.wordpress_config_id) {
+      console.error("Error fetching WordPress config ID:", profileError || "No WordPress config ID found");
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: "WordPress configuration not found for user" 
+          message: "Configuration WordPress non trouvée pour l'utilisateur" 
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+          status: 404 
+        }
       );
     }
-    
+
+    console.log("User profile found with WordPress config ID:", userProfile.wordpress_config_id);
+
     // Step 3: Get WordPress config details
     const { data: wpConfig, error: wpConfigError } = await supabase
       .from('wordpress_configs')
       .select('*')
       .eq('id', userProfile.wordpress_config_id)
       .single();
-      
+
     if (wpConfigError || !wpConfig) {
+      console.error("Error fetching WordPress config details:", wpConfigError || "No config found");
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: "WordPress configuration details not found" 
+          message: "Détails de configuration WordPress non trouvés" 
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+          status: 404 
+        }
       );
     }
-    
+
+    console.log("WordPress config found:", {
+      site_url: wpConfig.site_url,
+      hasAppUsername: !!wpConfig.app_username,
+      hasAppPassword: !!wpConfig.app_password
+    });
+
     // Step 4: Process the image if available
     let featuredMediaId = null;
     if (announcement.images && announcement.images.length > 0) {
       const imageUrl = announcement.images[0];
       featuredMediaId = await uploadImageToWordPress(wpConfig, imageUrl, announcement.title);
+      console.log("Featured media ID:", featuredMediaId);
     }
-    
+
     // Step 5: Publish the post to WordPress
     const publishResult = await publishPostToWordPress(
       wpConfig, 
@@ -106,14 +142,20 @@ serve(async (req) => {
       categoryId, 
       featuredMediaId
     );
-    
+
     if (!publishResult.success) {
+      console.error("Publish result error:", publishResult.message);
       return new Response(
         JSON.stringify(publishResult),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+          status: 400 
+        }
       );
     }
-    
+
+    console.log("Post published successfully, WordPress ID:", publishResult.wordpressPostId);
+
     // Step 6: Update the announcement record with WordPress ID
     if (publishResult.wordpressPostId) {
       const { error: updateError } = await supabase
@@ -123,28 +165,36 @@ serve(async (req) => {
           is_divipixel: publishResult.isCustomPostType
         })
         .eq("id", announcementId);
-        
+
       if (updateError) {
         console.error("Error updating announcement:", updateError);
-        // Don't fail the whole request if just the update fails
       }
     }
-    
+
     // Return success response
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Published successfully to WordPress",
+        message: "Publié avec succès sur WordPress",
         data: publishResult
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200  
+      }
     );
-    
+
   } catch (error) {
     console.error("Error in WordPress publish function:", error);
     return new Response(
-      JSON.stringify({ success: false, message: `Server error: ${error.message}` }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      JSON.stringify({ 
+        success: false, 
+        message: `Erreur serveur: ${error.message}` 
+      }),
+      { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+        status: 500 
+      }
     );
   }
 });
@@ -165,32 +215,46 @@ async function detectWordPressEndpoints(siteUrl: string): Promise<{
   
   try {
     // Check for DipiPixel custom post type
-    const dipiResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt_category`, { method: 'HEAD' });
+    console.log("Checking if dipi_cpt_category endpoint exists...");
+    const dipiResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt_category`, { method: 'HEAD' })
+      .catch(() => ({ status: 404 }));
     
     if (dipiResponse.status !== 404) {
+      console.log("DipiPixel taxonomy endpoint found!");
       useCustomTaxonomy = true;
       
       // Check if dipi_cpt endpoint exists
-      const cptResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt`, { method: 'HEAD' });
+      console.log("Checking if dipi_cpt endpoint exists...");
+      const cptResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt`, { method: 'HEAD' })
+        .catch(() => ({ status: 404 }));
       
       if (cptResponse.status !== 404) {
+        console.log("DipiPixel custom post type endpoint found!");
         postEndpoint = `${siteUrl}/wp-json/wp/v2/dipi_cpt`;
         isCustomPostType = true;
       } else {
         // Check alternative dipicpt endpoint
-        const altResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipicpt`, { method: 'HEAD' });
+        console.log("Checking if dipicpt endpoint exists...");
+        const altResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipicpt`, { method: 'HEAD' })
+          .catch(() => ({ status: 404 }));
         
         if (altResponse.status !== 404) {
+          console.log("Alternative dipicpt endpoint found!");
           postEndpoint = `${siteUrl}/wp-json/wp/v2/dipicpt`;
           isCustomPostType = true;
+        } else {
+          console.log("No custom post type endpoint found, falling back to posts");
         }
       }
+    } else {
+      console.log("No custom taxonomy endpoint found, using standard categories");
     }
   } catch (error) {
     console.error("Error detecting endpoints:", error);
-    // Fallback to default posts endpoint
+    console.log("Falling back to standard posts endpoint");
   }
   
+  console.log("Using WordPress endpoint:", postEndpoint, "with custom taxonomy:", useCustomTaxonomy);
   return { postEndpoint, useCustomTaxonomy, isCustomPostType };
 }
 
@@ -207,19 +271,22 @@ async function uploadImageToWordPress(
     // Setup authentication headers
     const headers = await getAuthHeaders(wpConfig);
     if (!headers) {
-      throw new Error("No authentication headers available");
+      throw new Error("Aucune méthode d'authentification disponible");
     }
     
     // Download the image
+    console.log("Downloading image from URL:", imageUrl);
     const imageResponse = await fetch(imageUrl);
     if (!imageResponse.ok) {
-      throw new Error(`Failed to download image: ${imageResponse.status}`);
+      throw new Error(`Échec du téléchargement de l'image: ${imageResponse.status}`);
     }
     
     // Get image data
     const imageBlob = await imageResponse.arrayBuffer();
     const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
     const fileName = imageUrl.split('/').pop() || `image-${Date.now()}.jpg`;
+    
+    console.log("Image downloaded successfully, content type:", contentType);
     
     // Upload to WordPress media library
     const mediaEndpoint = `${siteUrl}/wp-json/wp/v2/media`;
@@ -234,6 +301,7 @@ async function uploadImageToWordPress(
     formData.append('title', title);
     formData.append('alt_text', title);
     
+    console.log("Uploading image to WordPress media library:", mediaEndpoint);
     const mediaResponse = await fetch(mediaEndpoint, {
       method: 'POST',
       headers: uploadHeaders,
@@ -242,10 +310,11 @@ async function uploadImageToWordPress(
     
     if (!mediaResponse.ok) {
       const errorText = await mediaResponse.text();
-      throw new Error(`Media upload failed: ${mediaResponse.status} ${errorText}`);
+      throw new Error(`Échec du téléversement du média: ${mediaResponse.status} ${errorText}`);
     }
     
     const mediaData = await mediaResponse.json();
+    console.log("Image uploaded successfully, media ID:", mediaData.id);
     return mediaData.id;
   } catch (error) {
     console.error("Error uploading image:", error);
@@ -262,20 +331,25 @@ async function getAuthHeaders(wpConfig: WordPressConfig): Promise<Record<string,
   // Try app password first (most reliable)
   if (wpConfig.app_username && wpConfig.app_password) {
     const appCredentials = `${wpConfig.app_username.trim()}:${wpConfig.app_password.trim()}`;
-    headers["Authorization"] = `Basic ${btoa(appCredentials)}`;
+    const base64Credentials = btoa(appCredentials);
+    headers["Authorization"] = `Basic ${base64Credentials}`;
+    console.log("Using Application Password authentication");
     return headers;
   }
   
   // Try REST API key next
   if (wpConfig.rest_api_key) {
     headers["Authorization"] = `Bearer ${wpConfig.rest_api_key.trim()}`;
+    console.log("Using REST API Key authentication");
     return headers;
   }
   
   // Try regular username/password as last resort
   if (wpConfig.username && wpConfig.password) {
     const credentials = `${wpConfig.username.trim()}:${wpConfig.password.trim()}`;
-    headers["Authorization"] = `Basic ${btoa(credentials)}`;
+    const base64Credentials = btoa(credentials);
+    headers["Authorization"] = `Basic ${base64Credentials}`;
+    console.log("Using Legacy Basic authentication");
     return headers;
   }
   
@@ -306,7 +380,7 @@ async function publishPostToWordPress(
     if (!headers) {
       return {
         success: false,
-        message: "No authentication method available"
+        message: "Aucune méthode d'authentification disponible"
       };
     }
     
@@ -330,8 +404,10 @@ async function publishPostToWordPress(
     // Set category based on endpoint type
     if (useCustomTaxonomy && isCustomPostType) {
       wpPostData.dipi_cpt_category = [parseInt(categoryId)];
+      console.log("Using custom taxonomy with category ID:", categoryId);
     } else {
       wpPostData.categories = [parseInt(categoryId)];
+      console.log("Using standard WordPress categories with ID:", categoryId);
     }
     
     // Add SEO metadata if available
@@ -355,25 +431,27 @@ async function publishPostToWordPress(
     // Handle response
     if (!response.ok) {
       const errorText = await response.text();
+      console.error(`WordPress API error (${response.status}):`, errorText);
       return {
         success: false,
-        message: `WordPress API error (${response.status}): ${errorText}`
+        message: `Erreur de l'API WordPress (${response.status}): ${errorText}`
       };
     }
     
     const responseData = await response.json();
+    console.log("WordPress response:", responseData);
     
     if (responseData && typeof responseData.id === 'number') {
       return {
         success: true,
-        message: "Published successfully",
+        message: "Publication réussie",
         wordpressPostId: responseData.id,
         isCustomPostType
       };
     } else {
       return {
         success: false,
-        message: "WordPress response missing post ID"
+        message: "La réponse WordPress ne contient pas d'ID de publication"
       };
     }
     
@@ -381,7 +459,7 @@ async function publishPostToWordPress(
     console.error("Error publishing post:", error);
     return {
       success: false,
-      message: `Error publishing to WordPress: ${error.message}`
+      message: `Erreur lors de la publication sur WordPress: ${error.message}`
     };
   }
 }
