@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useForm } from "react-hook-form";
 import { toast } from "@/hooks/use-toast";
 import { Announcement } from "@/types/announcement";
-import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
+import { useServerWordPressPublishing } from "@/hooks/wordpress/useServerWordPressPublishing";
 import { Button } from "@/components/ui/button";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import PublishingLoadingOverlay, { PublishingStep as PublishingStepType } from "@/components/announcements/PublishingLoadingOverlay";
@@ -66,12 +66,15 @@ const CreateAnnouncement = () => {
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
+  
+  // Use the server publishing hook instead of the client one
   const {
-    publishToWordPress,
+    publishToWordPressServer,
     isPublishing,
     publishingState,
     resetPublishingState
-  } = useWordPressPublishing();
+  } = useServerWordPressPublishing();
+  
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [showPublishingOverlay, setShowPublishingOverlay] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -127,15 +130,9 @@ const CreateAnnouncement = () => {
       icon: <div className="h-5 w-5 text-muted-foreground"></div>
     },
     {
-      id: "image",
-      label: "Téléversement de l'image principale",
-      status: publishingState.steps.image?.status || "idle",
-      icon: <div className="h-5 w-5 text-muted-foreground"></div>
-    },
-    {
-      id: "wordpress",
+      id: "server",
       label: "Publication sur WordPress",
-      status: publishingState.steps.wordpress?.status || "idle",
+      status: publishingState.steps.server?.status || "idle",
       icon: <div className="h-5 w-5 text-muted-foreground"></div>
     },
     {
@@ -298,6 +295,7 @@ const CreateAnnouncement = () => {
         data: newAnnouncement,
         error
       } = await supabase.from("announcements").insert(announcementData).select().single();
+      
       if (error) throw error;
 
       toast({
@@ -310,6 +308,7 @@ const CreateAnnouncement = () => {
         message: "",
         wordpressPostId: null as number | null
       };
+      
       if ((formData.status === 'published' || formData.status === 'scheduled') && formData.wordpressCategory && user?.id) {
         if (!isMobile) {
           toast({
@@ -317,7 +316,14 @@ const CreateAnnouncement = () => {
             description: "Publication de l'annonce sur WordPress en cours..."
           });
         }
-        wordpressResult = await publishToWordPress(newAnnouncement as Announcement, formData.wordpressCategory, user.id);
+        
+        // Use the server publishing method instead of the client one
+        wordpressResult = await publishToWordPressServer(
+          newAnnouncement as Announcement, 
+          formData.wordpressCategory,
+          user.id
+        );
+        
         if (wordpressResult.success) {
           if (wordpressResult.wordpressPostId) {
             toast({
@@ -328,7 +334,8 @@ const CreateAnnouncement = () => {
         } else {
           toast({
             title: "Attention",
-            description: "Annonce enregistrée dans la base de données, mais la publication WordPress a échoué: " + (wordpressResult.message || "Erreur inconnue"),
+            description: "Annonce enregistrée dans la base de données, mais la publication WordPress a échoué: " + 
+              (wordpressResult.message || "Erreur inconnue"),
             variant: "destructive"
           });
         }
