@@ -18,53 +18,76 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useWordPressConnection, ConnectionResult } from "@/hooks/wordpress/useWordPressConnection";
 import { WordPressConfig } from "@/types/wordpress";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface WordPressConfigFormProps {
   onSubmit: (data: any) => void;
   isSubmitting: boolean;
+  config?: WordPressConfig;
+  buttonText?: string;
+  dialogTitle?: string;
+  dialogDescription?: string;
+  trigger?: React.ReactNode;
   initialData?: WordPressConfig;
 }
 
-const WordPressConfigForm = ({ onSubmit, isSubmitting, initialData }: WordPressConfigFormProps) => {
+const WordPressConfigForm: React.FC<WordPressConfigFormProps> = ({
+  onSubmit,
+  isSubmitting,
+  config,
+  buttonText = "Soumettre",
+  dialogTitle = "Configuration WordPress",
+  dialogDescription,
+  trigger,
+  initialData
+}) => {
+  const effectiveConfig = config || initialData;
   const [activeTab, setActiveTab] = useState("app-password");
   const [connectionResult, setConnectionResult] = useState<ConnectionResult | null>(null);
   const { isChecking, testConnection } = useWordPressConnection();
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const form = useForm({
     defaultValues: {
-      name: initialData?.name || "",
-      site_url: initialData?.site_url || "",
-      app_username: initialData?.app_username || "",
-      app_password: initialData?.app_password || "",
-      rest_api_key: initialData?.rest_api_key || "",
-      username: initialData?.username || "",
-      password: initialData?.password || "",
+      name: effectiveConfig?.name || "",
+      site_url: effectiveConfig?.site_url || "",
+      app_username: effectiveConfig?.app_username || "",
+      app_password: effectiveConfig?.app_password || "",
+      rest_api_key: effectiveConfig?.rest_api_key || "",
+      username: effectiveConfig?.username || "",
+      password: effectiveConfig?.password || "",
     },
   });
 
   useEffect(() => {
-    if (initialData) {
+    if (effectiveConfig) {
       // Déterminer l'onglet actif en fonction des données existantes
-      if (initialData.app_username && initialData.app_password) {
+      if (effectiveConfig.app_username && effectiveConfig.app_password) {
         setActiveTab("app-password");
-      } else if (initialData.rest_api_key) {
+      } else if (effectiveConfig.rest_api_key) {
         setActiveTab("api-key");
-      } else if (initialData.username && initialData.password) {
+      } else if (effectiveConfig.username && effectiveConfig.password) {
         setActiveTab("basic-auth");
       }
       
       // Définir les valeurs du formulaire
       form.reset({
-        name: initialData.name,
-        site_url: initialData.site_url,
-        app_username: initialData.app_username || "",
-        app_password: initialData.app_password || "",
-        rest_api_key: initialData.rest_api_key || "",
-        username: initialData.username || "",
-        password: initialData.password || "",
+        name: effectiveConfig.name,
+        site_url: effectiveConfig.site_url,
+        app_username: effectiveConfig.app_username || "",
+        app_password: effectiveConfig.app_password || "",
+        rest_api_key: effectiveConfig.rest_api_key || "",
+        username: effectiveConfig.username || "",
+        password: effectiveConfig.password || "",
       });
     }
-  }, [initialData, form]);
+  }, [effectiveConfig, form]);
 
   const handleSubmit = (data: any) => {
     // Préparer les données en fonction de l'onglet actif
@@ -91,6 +114,7 @@ const WordPressConfigForm = ({ onSubmit, isSubmitting, initialData }: WordPressC
     }
     
     onSubmit(formData);
+    setDialogOpen(false);
   };
 
   const handleTestConnection = async () => {
@@ -98,7 +122,7 @@ const WordPressConfigForm = ({ onSubmit, isSubmitting, initialData }: WordPressC
     
     // Créer un objet de configuration temporaire pour le test
     const testConfig: WordPressConfig = {
-      id: initialData?.id || "",
+      id: effectiveConfig?.id || "",
       name: currentValues.name,
       site_url: currentValues.site_url,
       app_username: activeTab === "app-password" ? currentValues.app_username : null,
@@ -106,15 +130,15 @@ const WordPressConfigForm = ({ onSubmit, isSubmitting, initialData }: WordPressC
       rest_api_key: activeTab === "api-key" ? currentValues.rest_api_key : null,
       username: activeTab === "basic-auth" ? currentValues.username : null,
       password: activeTab === "basic-auth" ? currentValues.password : null,
-      created_at: initialData?.created_at || new Date().toISOString(),
-      updated_at: initialData?.updated_at || new Date().toISOString()
+      created_at: effectiveConfig?.created_at || new Date().toISOString(),
+      updated_at: effectiveConfig?.updated_at || new Date().toISOString()
     };
     
     const result = await testConnection(testConfig);
     setConnectionResult(result);
   };
 
-  return (
+  const formContent = (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <FormField
@@ -318,13 +342,30 @@ const WordPressConfigForm = ({ onSubmit, isSubmitting, initialData }: WordPressC
                 Enregistrement...
               </>
             ) : (
-              "Enregistrer"
+              buttonText
             )}
           </Button>
         </div>
       </form>
     </Form>
   );
+
+  if (trigger) {
+    return (
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogTrigger asChild>{trigger}</DialogTrigger>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{dialogTitle}</DialogTitle>
+            {dialogDescription && <p className="text-sm text-muted-foreground">{dialogDescription}</p>}
+          </DialogHeader>
+          {formContent}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return formContent;
 };
 
 export default WordPressConfigForm;

@@ -15,6 +15,8 @@ export interface ConnectionResult {
 
 export const useWordPressConnection = () => {
   const [isChecking, setIsChecking] = useState(false);
+  const [status, setStatus] = useState<"connected" | "disconnected" | "unknown">("unknown");
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
 
   const testConnection = async (config: WordPressConfig): Promise<ConnectionResult> => {
     setIsChecking(true);
@@ -142,8 +144,52 @@ export const useWordPressConnection = () => {
     }
   };
 
+  const checkConnection = async (configId: string): Promise<ConnectionResult> => {
+    setIsChecking(true);
+    setStatus("unknown");
+    setErrorDetails(null);
+    
+    try {
+      // Fetch the WordPress config
+      const { data: config, error } = await supabase
+        .from('wordpress_configs')
+        .select('*')
+        .eq('id', configId)
+        .single();
+      
+      if (error || !config) {
+        console.error("Error fetching WordPress config:", error);
+        setStatus("disconnected");
+        setErrorDetails("Configuration introuvable");
+        return { success: false, message: "Configuration introuvable" };
+      }
+      
+      // Test the connection
+      const result = await testConnection(config);
+      
+      if (result.success) {
+        setStatus("connected");
+      } else {
+        setStatus("disconnected");
+        setErrorDetails(result.message);
+      }
+      
+      return result;
+    } catch (error: any) {
+      console.error("Error checking connection:", error);
+      setStatus("disconnected");
+      setErrorDetails(error.message || "Une erreur est survenue");
+      return { success: false, message: error.message || "Une erreur est survenue" };
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
   return {
+    status,
     isChecking,
-    testConnection
+    errorDetails,
+    testConnection,
+    checkConnection
   };
 };
