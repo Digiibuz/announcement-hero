@@ -1,53 +1,59 @@
 
-// Description: Get public configuration for the application
+// Import from URL instead of using relative imports
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.1";
 
-// Create a Supabase client
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+};
 
 serve(async (req) => {
-  // Enable CORS
-  const headers = new Headers({
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    "Content-Type": "application/json",
-  });
-
-  // Handle preflight OPTIONS request
-  if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers,
-      status: 204,
-    });
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
   }
-
+  
   try {
-    // Return public config (env variables marked as public)
-    const config = {
+    // Get project ID from config
+    const projectId = Deno.env.get("SUPABASE_PROJECT_ID") || "";
+    
+    // Create a public response with basic configuration
+    const publicConfig = {
+      projectId,
+      apiUrl: `https://${projectId}.supabase.co`,
       version: "1.0.0",
-      buildDate: new Date().toISOString(),
-      environment: Deno.env.get("ENVIRONMENT") || "development",
+      environment: Deno.env.get("ENVIRONMENT") || "production",
       features: {
-        registration: true,
-        oauth: false,
-        passwordReset: true,
-      },
+        auth: true,
+        storage: true,
+        database: true,
+        functions: true
+      }
     };
-
-    return new Response(JSON.stringify(config), {
-      headers,
-      status: 200,
-    });
-  } catch (error) {
-    console.error("Error:", error.message);
+    
     return new Response(
-      JSON.stringify({ error: "Failed to get public config" }),
-      {
-        headers,
-        status: 500,
+      JSON.stringify(publicConfig),
+      { 
+        headers: { 
+          ...corsHeaders,
+          "Content-Type": "application/json" 
+        },
+        status: 200 
+      }
+    );
+  } catch (error) {
+    console.error("Error in get-public-config:", error);
+    
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        headers: { 
+          ...corsHeaders,
+          "Content-Type": "application/json" 
+        },
+        status: 500 
       }
     );
   }

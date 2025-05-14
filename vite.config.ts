@@ -20,9 +20,11 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  // Define for Deno global in browser builds
+  // Define environment variables for browser builds
   define: {
-    // Add this to handle the Deno global in browser builds
-    "Deno": "undefined"
+    // Handle Deno global for browser builds
+    "Deno": "undefined",
+    // Ensure process.env is defined for Supabase
+    "process.env": {}
   },
 }));
