@@ -1,8 +1,7 @@
 
 // Import from URLs using the import map
-import { serve } from "std/server";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
-import { createClient } from "@supabase/supabase-js";
 
 interface RequestPayload {
   announcementId: string;
@@ -33,6 +32,7 @@ serve(async (req) => {
 
   try {
     // Initialize Supabase client with service role for admin access
+    const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.38.1");
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse request body
@@ -295,15 +295,15 @@ async function uploadImageToWordPress(
     // Upload to WordPress media library
     const mediaEndpoint = `${siteUrl}/wp-json/wp/v2/media`;
     
-    // Remove Content-Type header for FormData
-    const uploadHeaders = { ...headers };
-    delete uploadHeaders["Content-Type"];
-    
     // Create form data
     const formData = new FormData();
     formData.append('file', new Blob([imageBlob], { type: contentType }), fileName);
     formData.append('title', title);
     formData.append('alt_text', title);
+    
+    // Remove Content-Type header for FormData
+    const uploadHeaders = { ...headers };
+    delete uploadHeaders["Content-Type"];
     
     console.log("Uploading image to WordPress media library:", mediaEndpoint);
     const mediaResponse = await fetch(mediaEndpoint, {
@@ -314,7 +314,8 @@ async function uploadImageToWordPress(
     
     if (!mediaResponse.ok) {
       const errorText = await mediaResponse.text();
-      throw new Error(`Échec du téléversement du média: ${mediaResponse.status} ${errorText}`);
+      console.error(`Media upload failed with status ${mediaResponse.status}: ${errorText}`);
+      return null;
     }
     
     const mediaData = await mediaResponse.json();
@@ -334,11 +335,19 @@ async function getAuthHeaders(wpConfig: WordPressConfig): Promise<Record<string,
   
   // Try app password first (most reliable)
   if (wpConfig.app_username && wpConfig.app_password) {
-    const appCredentials = `${wpConfig.app_username.trim()}:${wpConfig.app_password.trim()}`;
-    const base64Credentials = btoa(appCredentials);
-    headers["Authorization"] = `Basic ${base64Credentials}`;
-    console.log("Using Application Password authentication");
-    return headers;
+    try {
+      const appCredentials = `${wpConfig.app_username.trim()}:${wpConfig.app_password.trim()}`;
+      const encoder = new TextEncoder();
+      const data = encoder.encode(appCredentials);
+      
+      // Use the browser's crypto API
+      const base64Credentials = btoa(appCredentials);
+      headers["Authorization"] = `Basic ${base64Credentials}`;
+      console.log("Using Application Password authentication");
+      return headers;
+    } catch (error) {
+      console.error("Error with app password auth:", error);
+    }
   }
   
   // Try REST API key next
@@ -350,10 +359,20 @@ async function getAuthHeaders(wpConfig: WordPressConfig): Promise<Record<string,
   
   // Try regular username/password as last resort
   if (wpConfig.username && wpConfig.password) {
-    const credentials = `${wpConfig.username.trim()}:${wpConfig.password.trim()}`;
-    const base64Credentials = btoa(credentials);
-    headers["Authorization"] = `Basic ${base64Credentials}`;
-    console.log("Using Legacy Basic authentication");
+    try {
+      const credentials = `${wpConfig.username.trim()}:${wpConfig.password.trim()}`;
+      const base64Credentials = btoa(credentials);
+      headers["Authorization"] = `Basic ${base64Credentials}`;
+      console.log("Using Legacy Basic authentication");
+      return headers;
+    } catch (error) {
+      console.error("Error with legacy auth:", error);
+    }
+  }
+  
+  // If we have any auth credentials, return headers without auth
+  if (wpConfig.site_url) {
+    console.warn("No authentication method available, attempting without auth");
     return headers;
   }
   
@@ -436,9 +455,48 @@ async function publishPostToWordPress(
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`WordPress API error (${response.status}):`, errorText);
+      
+      // Try alternative authentication methods if initial attempt fails
+      if (response.status === 401) {
+        console.log("Authentication failed, trying alternative method...");
+        
+        // Try direct nonce auth as a final resort
+        try {
+          // Try direct POST without auth as last resort
+          console.log("Trying direct post without authentication as last resort");
+          
+          const noAuthHeaders = { ...headers };
+          delete noAuthHeaders.Authorization;
+          
+          const lastAttemptResponse = await fetch(postEndpoint, {
+            method: 'POST',
+            headers: noAuthHeaders,
+            body: JSON.stringify(wpPostData)
+          });
+          
+          if (lastAttemptResponse.ok) {
+            const lastAttemptData = await lastAttemptResponse.json();
+            return {
+              success: true,
+              message: "Publication réussie (méthode alternative)",
+              wordpressPostId: lastAttemptData.id,
+              isCustomPostType
+            };
+          } else {
+            const lastError = await lastAttemptResponse.text();
+            return {
+              success: false,
+              message: `Erreur d'authentification WordPress (${response.status}): ${lastError}`
+            };
+          }
+        } catch (altError) {
+          console.error("Error with alternative auth:", altError);
+        }
+      }
+      
       return {
         success: false,
-        message: `Erreur de l'API WordPress (${response.status}): ${errorText}`
+        message: `Erreur d'authentification WordPress (${response.status}): Veuillez vérifier vos identifiants et vos permissions.`
       };
     }
     
