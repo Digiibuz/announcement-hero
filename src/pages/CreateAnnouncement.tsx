@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -5,7 +6,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useForm } from "react-hook-form";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Announcement } from "@/types/announcement";
 import { useServerWordPressPublishing } from "@/hooks/wordpress/useServerWordPressPublishing";
 import { Button } from "@/components/ui/button";
@@ -184,11 +185,7 @@ const CreateAnnouncement = () => {
       setIsSavingDraft(true);
       
       if (!user?.id) {
-        toast({
-          title: "Erreur",
-          description: "Vous devez être connecté pour enregistrer un brouillon",
-          variant: "destructive"
-        });
+        toast.error("Vous devez être connecté pour enregistrer un brouillon");
         return;
       }
 
@@ -196,11 +193,7 @@ const CreateAnnouncement = () => {
 
       // Vérifier si le formulaire est vide
       if (!formData.title && !formData.description && (!formData.images || formData.images.length === 0)) {
-        toast({
-          title: "Formulaire vide",
-          description: "Veuillez remplir au moins un champ avant d'enregistrer un brouillon",
-          variant: "destructive"
-        });
+        toast.error("Veuillez remplir au moins un champ avant d'enregistrer un brouillon");
         setIsSavingDraft(false);
         return;
       }
@@ -227,10 +220,7 @@ const CreateAnnouncement = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Succès",
-        description: "Brouillon enregistré avec succès"
-      });
+      toast.success("Brouillon enregistré avec succès");
 
       // Clear the form data from localStorage since it's now saved in the database
       clearSavedData();
@@ -252,11 +242,7 @@ const CreateAnnouncement = () => {
       navigate("/announcements");
     } catch (error: any) {
       console.error("Error saving draft:", error);
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de l'enregistrement du brouillon: " + error.message,
-        variant: "destructive"
-      });
+      toast.error("Erreur lors de l'enregistrement du brouillon: " + error.message);
     } finally {
       setIsSavingDraft(false);
     }
@@ -270,10 +256,7 @@ const CreateAnnouncement = () => {
       clearSavedData();
 
       if (isMobile) {
-        toast({
-          title: "Traitement en cours",
-          description: "Enregistrement de votre annonce..."
-        });
+        toast("Enregistrement de votre annonce...");
       }
 
       const formData = form.getValues();
@@ -298,10 +281,7 @@ const CreateAnnouncement = () => {
       
       if (error) throw error;
 
-      toast({
-        title: "Succès",
-        description: "Annonce enregistrée avec succès" + (isMobile ? ", publication en cours..." : "")
-      });
+      toast.success("Annonce enregistrée avec succès" + (isMobile ? ", publication en cours..." : ""));
 
       let wordpressResult = {
         success: true,
@@ -311,10 +291,7 @@ const CreateAnnouncement = () => {
       
       if ((formData.status === 'published' || formData.status === 'scheduled') && formData.wordpressCategory && user?.id) {
         if (!isMobile) {
-          toast({
-            title: "WordPress",
-            description: "Publication de l'annonce sur WordPress en cours..."
-          });
+          toast("Publication de l'annonce sur WordPress en cours...");
         }
         
         // Use the server publishing method instead of the client one
@@ -326,18 +303,11 @@ const CreateAnnouncement = () => {
         
         if (wordpressResult.success) {
           if (wordpressResult.wordpressPostId) {
-            toast({
-              title: "WordPress",
-              description: `Publication réussie (ID: ${wordpressResult.wordpressPostId})`
-            });
+            toast.success(`Publication réussie (ID: ${wordpressResult.wordpressPostId})`);
           }
         } else {
-          toast({
-            title: "Attention",
-            description: "Annonce enregistrée dans la base de données, mais la publication WordPress a échoué: " + 
-              (wordpressResult.message || "Erreur inconnue"),
-            variant: "destructive"
-          });
+          toast.error("Annonce enregistrée dans la base de données, mais la publication WordPress a échoué: " + 
+            (wordpressResult.message || "Erreur inconnue"));
         }
       }
 
@@ -361,11 +331,7 @@ const CreateAnnouncement = () => {
       }, 1500);
     } catch (error: any) {
       console.error("Error saving announcement:", error);
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de l'enregistrement: " + error.message,
-        variant: "destructive"
-      });
+      toast.error("Erreur lors de l'enregistrement: " + error.message);
       setShowPublishingOverlay(false);
       resetPublishingState();
     } finally {
@@ -381,19 +347,11 @@ const CreateAnnouncement = () => {
 
   const handleNext = () => {
     if (currentStepIndex === 0 && !form.getValues().wordpressCategory) {
-      toast({
-        title: "Champ requis",
-        description: "Veuillez sélectionner une catégorie avant de continuer.",
-        variant: "destructive"
-      });
+      toast.error("Veuillez sélectionner une catégorie avant de continuer.");
       return;
     }
     if (currentStepIndex === 1 && !form.getValues().title) {
-      toast({
-        title: "Champ requis",
-        description: "Veuillez saisir un titre avant de continuer.",
-        variant: "destructive"
-      });
+      toast.error("Veuillez saisir un titre avant de continuer.");
       return;
     }
     if (currentStepIndex < stepConfigs.length - 1) {

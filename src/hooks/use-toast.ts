@@ -1,41 +1,42 @@
 
-import { useState } from "react";
-import { toast as sonnerToast } from "sonner";
+import { useState, useRef } from "react";
+import { toast as sonnerToast, type ToastT } from "sonner";
 
-export type ToastProps = React.ComponentPropsWithoutRef<typeof sonnerToast>;
+export type ToastProps = React.ComponentProps<typeof sonnerToast>;
 
 export function useToast() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [toasts, setToasts] = useState<ToastT[]>([]);
   
-  const toast = ({ ...props }: ToastProps) => {
-    sonnerToast(props);
-    setIsOpen(true);
+  const toast = (props: string | ToastProps) => {
+    if (typeof props === 'string') {
+      sonnerToast(props);
+    } else {
+      sonnerToast(props);
+    }
+    return props;
   };
 
   toast.error = (message: string, options?: Omit<ToastProps, "children">) => {
     sonnerToast.error(message, options);
-    setIsOpen(true);
   };
 
   toast.success = (message: string, options?: Omit<ToastProps, "children">) => {
     sonnerToast.success(message, options);
-    setIsOpen(true);
   };
 
   toast.warning = (message: string, options?: Omit<ToastProps, "children">) => {
     sonnerToast.warning(message, options);
-    setIsOpen(true);
   };
 
   toast.info = (message: string, options?: Omit<ToastProps, "children">) => {
     sonnerToast.info(message, options);
-    setIsOpen(true);
   };
 
   return {
     toast,
-    isOpen,
+    toasts: [] // Placeholder pour la compatibilité avec l'API
   };
 }
 
+// Exporter directement toast depuis sonner pour l'utiliser sans le hook
 export { toast } from "sonner";
