@@ -1,31 +1,5 @@
 
-# Your Supabase project ID
 project_id = "rdwqedmvzicerwotjseg"
 
-[api]
-port = 54321
-schemas = ["public", "storage"]
-extra_search_path = ["public", "extensions"]
-max_rows = 1000
-
-[db]
-port = 54322
-
-[studio]
-port = 54323
-
-[inbucket]
-port = 54324
-
-[storage]
-file_size_limit = "50MiB"
-
-[auth]
-site_url = "http://localhost:8080"
-additional_redirect_urls = ["https://localhost:8080"]
-jwt_expiry = 3600
-enable_signup = true
-
-[functions]
-[functions.get-public-config]
-verify_jwt = false
+[functions.wordpress-publish]
+verify_jwt = true

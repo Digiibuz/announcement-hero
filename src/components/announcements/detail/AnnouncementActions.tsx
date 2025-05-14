@@ -19,7 +19,7 @@ import {
   deleteAnnouncement as apiDeleteAnnouncement,
   publishAnnouncement as apiPublishAnnouncement 
 } from "@/api/announcementApi";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 

@@ -1,6 +1,7 @@
 
 // Import from URLs using the import map
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.1";
 
 // Define CORS headers
 const corsHeaders = {
@@ -29,7 +30,6 @@ serve(async (req) => {
 
   try {
     // Initialize Supabase client with service role for admin access
-    const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.38.1");
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse request body
@@ -202,35 +202,40 @@ serve(async (req) => {
       'Content-Type': 'application/json',
     };
 
-    // Set up authentication headers
+    // Set up authentication headers - CRITICAL PART
+    let authenticationSuccess = false;
+    
     if (wpConfig.app_username && wpConfig.app_password) {
       try {
+        // Creating the credentials string and properly encoding it
         const credentials = `${wpConfig.app_username}:${wpConfig.app_password}`;
-        const base64Credentials = btoa(credentials);
+        // Use TextEncoder and TextDecoder for proper UTF-8 handling before base64 encoding
+        const encoder = new TextEncoder();
+        const data = encoder.encode(credentials);
+        const base64Credentials = btoa(String.fromCharCode(...new Uint8Array(data)));
+        
         headers['Authorization'] = `Basic ${base64Credentials}`;
-        console.log("Using Application Password authentication");
+        console.log("Using Application Password authentication with proper encoding");
+        console.log("Auth header format (not showing actual credentials):", "Basic ****");
+        authenticationSuccess = true;
       } catch (authError) {
         console.error("Error setting up auth headers:", authError);
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            message: "Erreur de configuration des identifiants WordPress" 
-          }),
-          { 
-            headers: { ...corsHeaders, "Content-Type": "application/json" }, 
-            status: 500 
-          }
-        );
+        // Continue to try other auth methods
       }
-    } else if (wpConfig.rest_api_key) {
+    }
+    
+    if (!authenticationSuccess && wpConfig.rest_api_key) {
       headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
       console.log("Using REST API Key authentication");
-    } else {
-      console.error("No authentication credentials available");
+      authenticationSuccess = true;
+    }
+    
+    if (!authenticationSuccess) {
+      console.error("No valid authentication credentials available");
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: "Aucune méthode d'authentification disponible pour WordPress" 
+          message: "Aucune méthode d'authentification valide disponible pour WordPress. Vérifiez vos identifiants." 
         }),
         { 
           headers: { ...corsHeaders, "Content-Type": "application/json" }, 

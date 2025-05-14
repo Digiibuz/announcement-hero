@@ -69,11 +69,15 @@ export const useServerWordPressPublishing = () => {
       // Step 2: Call the Edge Function
       updatePublishingStep("server", "loading", "Envoi à WordPress", 40);
       
-      // Making the API call to the Edge Function with proper URL
-      const response = await fetch(`https://rdwqedmvzicerwotjseg.supabase.co/functions/v1/wordpress-publish`, {
+      // Get Supabase URL from environment or use a default fallback
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://rdwqedmvzicerwotjseg.supabase.co";
+      
+      // Making the API call to the Edge Function with proper URL and authentication
+      const response = await fetch(`${supabaseUrl}/functions/v1/wordpress-publish`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
         },
         body: JSON.stringify({
           announcementId: announcement.id,
