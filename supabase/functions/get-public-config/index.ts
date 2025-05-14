@@ -1,43 +1,53 @@
 
+// Description: Get public configuration for the application
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "@supabase/supabase-js";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-// Configuration Supabase hardcodée pour cet Edge Function uniquement
-// Ces valeurs sont déjà publiques et sont destinées à être utilisées côté client
-const supabaseConfig = {
-  supabaseUrl: "https://rdwqedmvzicerwotjseg.supabase.co",
-  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkd3FlZG12emljZXJ3b3Rqc2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwNzg4MzEsImV4cCI6MjA1ODY1NDgzMX0.Ohle_vVvdoCvsObP9A_AdyM52XdzisIvHvH1D1a88zk",
-  projectId: "rdwqedmvzicerwotjseg"
-};
+// Create a Supabase client
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // Enable CORS
+  const headers = new Headers({
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Content-Type": "application/json",
+  });
+
+  // Handle preflight OPTIONS request
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response(null, {
+      headers,
+      status: 204,
+    });
   }
-  
+
   try {
-    // Au lieu d'utiliser Deno.env.get(), on retourne directement les valeurs hardcodées
-    // Cette approche est acceptable car ces valeurs sont déjà publiques (clé anon)
-    return new Response(
-      JSON.stringify(supabaseConfig),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200
-      }
-    );
+    // Return public config (env variables marked as public)
+    const config = {
+      version: "1.0.0",
+      buildDate: new Date().toISOString(),
+      environment: Deno.env.get("ENVIRONMENT") || "development",
+      features: {
+        registration: true,
+        oauth: false,
+        passwordReset: true,
+      },
+    };
+
+    return new Response(JSON.stringify(config), {
+      headers,
+      status: 200,
+    });
   } catch (error) {
-    console.error("Error getting public config:", error);
-    
+    console.error("Error:", error.message);
     return new Response(
-      JSON.stringify({ error: error.message || "An unexpected error occurred" }),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500
+      JSON.stringify({ error: "Failed to get public config" }),
+      {
+        headers,
+        status: 500,
       }
     );
   }
