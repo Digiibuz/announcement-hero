@@ -197,6 +197,7 @@ export const useWordPressConnection = () => {
     status,
     isChecking,
     errorDetails,
-    checkConnection
+    checkConnection,
+    testConnection // Important: Expose the testConnection method
   };
 };
