@@ -104,10 +104,9 @@ export const useWordPressPublishing = () => {
       // Determine endpoints
       let useCustomTaxonomy = false;
       let customEndpointExists = false;
-      let postEndpoint = `${siteUrl}/wp-json/wp/v2/posts`; // Changed from pages to posts as default
+      let postEndpoint = `${siteUrl}/wp-json/wp/v2/posts`; // Utiliser posts comme endpoint par défaut
       
       try {
-        // Vérifier d'abord si la taxonomie personnalisée existe
         console.log("Checking if dipi_cpt_category endpoint exists...");
         const taxonomyResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt_category`, {
           method: 'HEAD',
@@ -123,7 +122,7 @@ export const useWordPressPublishing = () => {
           console.log("DipiPixel taxonomy endpoint found!");
           useCustomTaxonomy = true;
           
-          // Now check if dipi_cpt endpoint exists
+          // Vérification de l'endpoint dipi_cpt
           console.log("Checking if dipi_cpt endpoint exists...");
           const customPostTypeResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt`, {
             method: 'HEAD',
@@ -140,7 +139,7 @@ export const useWordPressPublishing = () => {
             postEndpoint = `${siteUrl}/wp-json/wp/v2/dipi_cpt`;
             customEndpointExists = true;
           } else {
-            // If dipi_cpt doesn't exist, try dipicpt as alternative
+            // Vérification de l'endpoint dipicpt
             console.log("Checking if dipicpt endpoint exists...");
             const altResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipicpt`, {
               method: 'HEAD',
@@ -170,25 +169,28 @@ export const useWordPressPublishing = () => {
       
       console.log("Using WordPress endpoint:", postEndpoint, "with custom taxonomy:", useCustomTaxonomy);
       
-      // Prepare headers with authentication
+      // Préparation des headers pour l'authentification
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
       
-      // Vérifier quelles méthodes d'authentification sont disponibles
+      // CORRECTION: Encodage correct des identifiants en Base64
       if (wpConfig.app_username && wpConfig.app_password) {
-        // Base64 encode the credentials manually to ensure proper format
-        const credentials = `${wpConfig.app_username}:${wpConfig.app_password}`;
+        // Encodage sans espace dans les identifiants
+        const appUsername = wpConfig.app_username.trim();
+        const appPassword = wpConfig.app_password.trim();
+        
+        // Ne pas modifier les espaces dans le mot de passe d'application WordPress
+        // car ils font partie du mot de passe
+        const credentials = `${appUsername}:${appPassword}`;
         const base64Credentials = btoa(credentials);
         headers['Authorization'] = `Basic ${base64Credentials}`;
         console.log("Using Application Password authentication");
-        console.log("Using credentials for:", wpConfig.app_username);
+        console.log("Username for auth:", appUsername);
       } else if (wpConfig.rest_api_key) {
-        // API Key Format: "Bearer API_KEY"
         headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
         console.log("Using REST API Key authentication");
       } else if (wpConfig.username && wpConfig.password) {
-        // Legacy username/password auth
         const credentials = `${wpConfig.username}:${wpConfig.password}`;
         const base64Credentials = btoa(credentials);
         headers['Authorization'] = `Basic ${base64Credentials}`;
@@ -202,15 +204,14 @@ export const useWordPressPublishing = () => {
         };
       }
       
-      // AMÉLIORATION: Traitement de l'image principale avant la création du post
+      // Traitement de l'image principale avant la création du post
       let featuredMediaId = null;
       
-      // Si des images sont disponibles, traiter l'image principale d'abord
       if (announcement.images && announcement.images.length > 0) {
         try {
           updatePublishingStep("image", "loading", "Téléversement de l'image principale", 40);
           
-          // 1. Télécharger l'image depuis l'URL
+          // Téléchargement de l'image depuis l'URL
           const imageUrl = announcement.images[0];
           const imageResponse = await fetch(imageUrl);
           
@@ -225,7 +226,7 @@ export const useWordPressPublishing = () => {
               type: imageBlob.type || 'image/jpeg' 
             });
             
-            // 2. Téléverser vers la bibliothèque média WordPress
+            // Téléversement vers la bibliothèque média WordPress
             console.log("Téléversement de l'image vers la bibliothèque média WordPress");
             const mediaFormData = new FormData();
             mediaFormData.append('file', imageFile);
@@ -235,7 +236,7 @@ export const useWordPressPublishing = () => {
             const mediaEndpoint = `${siteUrl}/wp-json/wp/v2/media`;
             console.log("Media endpoint:", mediaEndpoint);
             
-            // Créer des en-têtes pour le téléversement des médias sans Content-Type
+            // Créer un nouvel objet Headers pour le téléversement de média (sans Content-Type)
             const mediaHeaders = new Headers();
             if (headers.Authorization) {
               mediaHeaders.append('Authorization', headers.Authorization);
@@ -272,38 +273,38 @@ export const useWordPressPublishing = () => {
         updatePublishingStep("image", "success", "Aucune image à téléverser", 60);
       }
       
-      // Update WordPress step status
+      // Étape de publication WordPress
       updatePublishingStep("wordpress", "loading", "Publication sur WordPress", 70);
       
-      // Préparer les données du post selon le type d'endpoint
+      // Préparation des données pour le post
       const wpPostData: any = {
         title: announcement.title,
         content: announcement.description || "",
         status: announcement.status === 'scheduled' ? 'future' : 'publish',
       };
       
-      // Ajouter l'image mise en avant si disponible
+      // Ajout de l'image mise en avant si disponible
       if (featuredMediaId) {
         wpPostData.featured_media = featuredMediaId;
       }
       
-      // Ajouter la date pour les publications planifiées
+      // Ajout de la date pour les publications planifiées
       if (announcement.status === 'scheduled' && announcement.publish_date) {
         wpPostData.date = new Date(announcement.publish_date).toISOString();
       }
       
-      // Ajouter la catégorie selon le type d'endpoint
+      // Gestion des catégories selon le type d'endpoint
       if (useCustomTaxonomy && customEndpointExists) {
-        // Utiliser la taxonomie personnalisée DipiPixel
+        // Taxonomie personnalisée DipiPixel
         wpPostData.dipi_cpt_category = [parseInt(wordpressCategoryId)];
         console.log("Using custom taxonomy with category ID:", wordpressCategoryId);
       } else {
-        // Utiliser la catégorie standard WordPress
+        // Catégorie standard WordPress
         wpPostData.categories = [parseInt(wordpressCategoryId)];
         console.log("Using standard WordPress categories with ID:", wordpressCategoryId);
       }
       
-      // Ajouter les méta-données SEO si disponibles
+      // Ajout des méta-données SEO si disponibles
       if (announcement.seo_title || announcement.seo_description) {
         wpPostData.meta = {
           _yoast_wpseo_title: announcement.seo_title || "",
@@ -311,163 +312,339 @@ export const useWordPressPublishing = () => {
         };
       }
       
-      // Créer le post avec l'image (si disponible)
-      console.log("Sending POST request to WordPress:", postEndpoint);
+      // Affichage des données complètes pour le débogage
       console.log("Post data:", JSON.stringify(wpPostData, null, 2));
       
-      const postResponse = await fetch(postEndpoint, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify(wpPostData)
-      });
+      // CORRECTION: Essai avec l'API WordPress
+      console.log("Sending POST request to WordPress:", postEndpoint);
       
-      if (!postResponse.ok) {
-        let errorText = await postResponse.text();
-        console.error("WordPress API error:", postResponse.status, errorText);
+      // Mise en cache des identifiants pour les méthodes alternatives
+      const credentials = {
+        username: wpConfig.app_username || wpConfig.username || '',
+        password: wpConfig.app_password || wpConfig.password || '',
+        hasAppAuth: !!(wpConfig.app_username && wpConfig.app_password),
+        hasBasicAuth: !!(wpConfig.username && wpConfig.password)
+      };
+      
+      try {
+        // Tentative avec l'authentification configurée
+        const postResponse = await fetch(postEndpoint, {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify(wpPostData)
+        });
         
-        if (postResponse.status === 401 || postResponse.status === 403) {
-          // Problème d'authentification - essayons une autre méthode
-          console.log("Authentication error, trying alternative auth method...");
+        if (postResponse.status !== 200 && postResponse.status !== 201) {
+          const errorText = await postResponse.text();
+          console.error("WordPress API error:", postResponse.status, errorText);
           
-          // Essayer directement l'authentification HTTP par cookie (fallback)
-          try {
-            const loginEndpoint = `${siteUrl}/wp-login.php`;
-            const loginFormData = new FormData();
+          // Si l'erreur est liée à l'authentification, essayer avec des méthodes alternatives
+          if (postResponse.status === 401 || postResponse.status === 403) {
+            console.log("Authentication error, trying alternative auth method...");
             
-            if (wpConfig.username && wpConfig.password) {
-              loginFormData.append('log', wpConfig.username);
-              loginFormData.append('pwd', wpConfig.password);
-              loginFormData.append('wp-submit', 'Log In');
-              
-              const loginResponse = await fetch(loginEndpoint, {
-                method: 'POST',
-                body: loginFormData,
-                credentials: 'include'
-              });
-              
-              if (loginResponse.ok) {
-                console.log("Direct login successful, retrying post creation...");
-                
-                // Retry the post creation with cookies
-                const retryResponse = await fetch(postEndpoint, {
+            // NOUVELLE APPROCHE: Essayer avec wp-json/jwt-auth/v1/token si disponible
+            if (credentials.username && credentials.password) {
+              try {
+                // Tentative d'authentification via JWT
+                const jwtAuthEndpoint = `${siteUrl}/wp-json/jwt-auth/v1/token`;
+                const jwtResponse = await fetch(jwtAuthEndpoint, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(wpPostData),
+                  body: JSON.stringify({
+                    username: credentials.username,
+                    password: credentials.password
+                  })
+                });
+                
+                if (jwtResponse.ok) {
+                  const jwtData = await jwtResponse.json();
+                  if (jwtData.token) {
+                    console.log("JWT authentication successful, retrying with token");
+                    
+                    // Réessayer avec le token JWT
+                    const jwtHeaders = {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${jwtData.token}`
+                    };
+                    
+                    const jwtPostResponse = await fetch(postEndpoint, {
+                      method: 'POST',
+                      headers: jwtHeaders,
+                      body: JSON.stringify(wpPostData)
+                    });
+                    
+                    if (jwtPostResponse.ok) {
+                      const responseData = await jwtPostResponse.json();
+                      
+                      // Si le post a été créé avec succès, mettre à jour l'annonce dans Supabase
+                      if (responseData && responseData.id) {
+                        updatePublishingStep("wordpress", "success", "Publication WordPress réussie via JWT", 85);
+                        updatePublishingStep("database", "loading", "Mise à jour de la base de données", 90);
+                        
+                        const { error: updateError } = await supabase
+                          .from("announcements")
+                          .update({ 
+                            wordpress_post_id: responseData.id,
+                            is_divipixel: useCustomTaxonomy && customEndpointExists
+                          })
+                          .eq("id", announcement.id);
+                          
+                        if (updateError) {
+                          console.error("Error updating announcement with WordPress post ID:", updateError);
+                          updatePublishingStep("database", "error", "Erreur de mise à jour de la base de données");
+                        } else {
+                          updatePublishingStep("database", "success", "Mise à jour finalisée", 100);
+                        }
+                        
+                        return { 
+                          success: true, 
+                          message: "Publié avec succès sur WordPress via JWT" + (featuredMediaId ? " avec image principale" : ""), 
+                          wordpressPostId: responseData.id 
+                        };
+                      }
+                    }
+                  }
+                }
+              } catch (jwtError) {
+                console.error("JWT authentication failed:", jwtError);
+              }
+            }
+            
+            // Tentative de connexion via le formulaire de login
+            if (credentials.username && credentials.password) {
+              try {
+                console.log("Trying form-based authentication as last resort");
+                
+                // Préparation d'un cookie jar pour conserver les cookies entre les requêtes
+                const cookieJar = new Map<string, string>();
+                
+                // Fonction helper pour extraire les cookies des réponses
+                const extractCookies = (response: Response) => {
+                  const setCookieHeader = response.headers.get('set-cookie');
+                  if (setCookieHeader) {
+                    const cookies = setCookieHeader.split(',');
+                    cookies.forEach(cookie => {
+                      const [nameValue] = cookie.split(';');
+                      const [name, value] = nameValue.split('=');
+                      if (name && value) {
+                        cookieJar.set(name.trim(), value.trim());
+                      }
+                    });
+                  }
+                };
+                
+                // Fonction helper pour construire un header cookie à partir du jar
+                const getCookieHeader = () => {
+                  let cookieStr = '';
+                  cookieJar.forEach((value, name) => {
+                    cookieStr += `${name}=${value}; `;
+                  });
+                  return cookieStr;
+                };
+                
+                // Requête au formulaire de connexion pour obtenir un nonce
+                const loginPageResponse = await fetch(`${siteUrl}/wp-login.php`, {
+                  method: 'GET',
                   credentials: 'include'
                 });
                 
-                if (retryResponse.ok) {
-                  const retryData = await retryResponse.json();
-                  updatePublishingStep("wordpress", "success", "Publication WordPress réussie (méthode alternative)", 85);
+                extractCookies(loginPageResponse);
+                
+                // Construction du FormData pour la connexion
+                const loginFormData = new FormData();
+                loginFormData.append('log', credentials.username);
+                loginFormData.append('pwd', credentials.password);
+                loginFormData.append('wp-submit', 'Log In');
+                loginFormData.append('redirect_to', `${siteUrl}/wp-admin/`);
+                loginFormData.append('testcookie', '1');
+                
+                // Tentative de connexion
+                const loginResponse = await fetch(`${siteUrl}/wp-login.php`, {
+                  method: 'POST',
+                  body: loginFormData,
+                  credentials: 'include',
+                  headers: {
+                    'Cookie': getCookieHeader()
+                  }
+                });
+                
+                extractCookies(loginResponse);
+                
+                // Vérification du statut de la connexion
+                if (loginResponse.ok || loginResponse.status === 302) {
+                  console.log("Form login successful, retry post creation with session cookies");
                   
-                  // Update the database with WordPress post ID
-                  if (retryData && typeof retryData.id === 'number') {
-                    const { error: updateError } = await supabase
-                      .from("announcements")
-                      .update({ 
-                        wordpress_post_id: retryData.id,
-                        is_divipixel: useCustomTaxonomy && customEndpointExists
-                      })
-                      .eq("id", announcement.id);
-                      
-                    if (updateError) {
-                      console.error("Error updating announcement with WordPress post ID:", updateError);
-                      updatePublishingStep("database", "error", "Erreur de mise à jour de la base de données");
-                    } else {
-                      updatePublishingStep("database", "success", "Mise à jour finalisée", 100);
-                    }
+                  // Construction des headers avec les cookies
+                  const cookieHeaders = {
+                    'Content-Type': 'application/json',
+                    'Cookie': getCookieHeader()
+                  };
+                  
+                  // Nouvelle tentative avec les cookies de session
+                  const cookiePostResponse = await fetch(postEndpoint, {
+                    method: 'POST',
+                    headers: cookieHeaders,
+                    body: JSON.stringify(wpPostData),
+                    credentials: 'include'
+                  });
+                  
+                  if (cookiePostResponse.ok) {
+                    // Traitement de la réponse
+                    const responseData = await cookiePostResponse.json();
                     
-                    return { 
-                      success: true, 
-                      message: "Publié avec succès sur WordPress (méthode alternative)" + (featuredMediaId ? " avec image principale" : ""), 
-                      wordpressPostId: retryData.id 
-                    };
+                    // Mise à jour de la base de données
+                    if (responseData && responseData.id) {
+                      updatePublishingStep("wordpress", "success", "Publication WordPress réussie via cookies", 85);
+                      updatePublishingStep("database", "loading", "Mise à jour de la base de données", 90);
+                      
+                      const { error: updateError } = await supabase
+                        .from("announcements")
+                        .update({ 
+                          wordpress_post_id: responseData.id,
+                          is_divipixel: useCustomTaxonomy && customEndpointExists
+                        })
+                        .eq("id", announcement.id);
+                        
+                      if (updateError) {
+                        console.error("Error updating announcement with WordPress post ID:", updateError);
+                        updatePublishingStep("database", "error", "Erreur de mise à jour de la base de données");
+                      } else {
+                        updatePublishingStep("database", "success", "Mise à jour finalisée", 100);
+                      }
+                      
+                      return { 
+                        success: true, 
+                        message: "Publié avec succès sur WordPress via connexion formulaire" + (featuredMediaId ? " avec image principale" : ""), 
+                        wordpressPostId: responseData.id 
+                      };
+                    }
+                  } else {
+                    console.error("Form-based auth post failed:", await cookiePostResponse.text());
                   }
                 } else {
-                  console.error("Retry failed:", await retryResponse.text());
+                  console.error("Form login failed:", loginResponse.status);
                 }
-              } else {
-                console.error("Direct login failed");
+              } catch (formLoginError) {
+                console.error("Form login error:", formLoginError);
               }
             }
-          } catch (loginError) {
-            console.error("Error during alternative auth attempt:", loginError);
+            
+            // Dernière tentative: envoi direct sans authentification (si le site le permet)
+            try {
+              console.log("Trying direct post without authentication as last resort");
+              
+              const noAuthResponse = await fetch(postEndpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(wpPostData)
+              });
+              
+              if (noAuthResponse.ok) {
+                const responseData = await noAuthResponse.json();
+                
+                if (responseData && responseData.id) {
+                  updatePublishingStep("wordpress", "success", "Publication WordPress réussie sans authentification", 85);
+                  updatePublishingStep("database", "loading", "Mise à jour de la base de données", 90);
+                  
+                  const { error: updateError } = await supabase
+                    .from("announcements")
+                    .update({ 
+                      wordpress_post_id: responseData.id,
+                      is_divipixel: useCustomTaxonomy && customEndpointExists
+                    })
+                    .eq("id", announcement.id);
+                    
+                  if (updateError) {
+                    console.error("Error updating announcement with WordPress post ID:", updateError);
+                    updatePublishingStep("database", "error", "Erreur de mise à jour de la base de données");
+                  } else {
+                    updatePublishingStep("database", "success", "Mise à jour finalisée", 100);
+                  }
+                  
+                  return { 
+                    success: true, 
+                    message: "Publié avec succès sur WordPress sans authentification" + (featuredMediaId ? " avec image principale" : ""), 
+                    wordpressPostId: responseData.id 
+                  };
+                }
+              }
+            } catch (noAuthError) {
+              console.error("No auth post error:", noAuthError);
+            }
+            
+            // Toutes les méthodes alternatives ont échoué
+            updatePublishingStep("wordpress", "error", `Échec d'authentification (${postResponse.status})`);
+            return { 
+              success: false, 
+              message: `Erreur d'authentification WordPress (${postResponse.status}). Veuillez vérifier vos identifiants et vos permissions.`, 
+              wordpressPostId: null 
+            };
+          } else {
+            // Autre type d'erreur
+            updatePublishingStep("wordpress", "error", `Erreur de publication (${postResponse.status})`);
+            return { 
+              success: false, 
+              message: `Erreur lors de la publication WordPress (${postResponse.status}): ${errorText}`, 
+              wordpressPostId: null 
+            };
           }
-          
-          updatePublishingStep("wordpress", "error", `Erreur d'authentification (${postResponse.status})`);
-          return { 
-            success: false, 
-            message: `Erreur d'authentification WordPress (${postResponse.status}). Veuillez vérifier vos identifiants.`, 
-            wordpressPostId: null 
-          };
-        } else {
-          updatePublishingStep("wordpress", "error", `Erreur de publication (${postResponse.status})`);
-          return { 
-            success: false, 
-            message: `Erreur lors de la publication WordPress (${postResponse.status}): ${errorText}`, 
-            wordpressPostId: null 
-          };
         }
-      }
-      
-      // Parse JSON response
-      let wpResponseData;
-      try {
-        wpResponseData = await postResponse.json();
+        
+        // Traitement de la réponse réussie
+        const wpResponseData = await postResponse.json();
         console.log("WordPress response data:", wpResponseData);
         updatePublishingStep("wordpress", "success", "Publication WordPress réussie", 85);
-      } catch (error) {
-        console.error("Error parsing WordPress response:", error);
-        updatePublishingStep("wordpress", "error", "Erreur d'analyse de la réponse");
-        return {
-          success: false,
-          message: "Erreur lors de l'analyse de la réponse WordPress",
-          wordpressPostId: null
-        };
-      }
-      
-      // Final database update
-      updatePublishingStep("database", "loading", "Mise à jour de la base de données", 90);
-      
-      // Check if the response contains the WordPress post ID
-      if (wpResponseData && typeof wpResponseData.id === 'number') {
-        const wordpressPostId = wpResponseData.id;
-        console.log("WordPress post ID received:", wordpressPostId);
         
-        // Update the announcement in Supabase with the WordPress post ID
-        const { error: updateError } = await supabase
-          .from("announcements")
-          .update({ 
-            wordpress_post_id: wordpressPostId,
-            is_divipixel: useCustomTaxonomy && customEndpointExists
-          })
-          .eq("id", announcement.id);
+        // Vérification de l'ID du post WordPress
+        if (wpResponseData && typeof wpResponseData.id === 'number') {
+          const wordpressPostId = wpResponseData.id;
+          console.log("WordPress post ID received:", wordpressPostId);
           
-        if (updateError) {
-          console.error("Error updating announcement with WordPress post ID:", updateError);
-          updatePublishingStep("database", "error", "Erreur de mise à jour de la base de données");
-          toast.error("L'annonce a été publiée sur WordPress mais l'ID n'a pas pu être enregistré dans la base de données");
+          // Mise à jour de l'annonce dans Supabase avec l'ID du post WordPress
+          updatePublishingStep("database", "loading", "Mise à jour de la base de données", 90);
+          
+          const { error: updateError } = await supabase
+            .from("announcements")
+            .update({ 
+              wordpress_post_id: wordpressPostId,
+              is_divipixel: useCustomTaxonomy && customEndpointExists
+            })
+            .eq("id", announcement.id);
+            
+          if (updateError) {
+            console.error("Error updating announcement with WordPress post ID:", updateError);
+            updatePublishingStep("database", "error", "Erreur de mise à jour de la base de données");
+            toast.error("L'annonce a été publiée sur WordPress mais l'ID n'a pas pu être enregistré dans la base de données");
+          } else {
+            updatePublishingStep("database", "success", "Mise à jour finalisée", 100);
+          }
+          
+          return { 
+            success: true, 
+            message: "Publié avec succès sur WordPress" + (featuredMediaId ? " avec image principale" : ""), 
+            wordpressPostId 
+          };
         } else {
-          updatePublishingStep("database", "success", "Mise à jour finalisée", 100);
+          console.error("WordPress response does not contain post ID or ID is not a number", wpResponseData);
+          updatePublishingStep("database", "error", "Données incomplètes");
+          return { 
+            success: false, 
+            message: "La réponse WordPress ne contient pas l'ID du post", 
+            wordpressPostId: null 
+          };
         }
-        
-        return { 
-          success: true, 
-          message: "Publié avec succès sur WordPress" + (featuredMediaId ? " avec image principale" : ""), 
-          wordpressPostId 
-        };
-      } else {
-        console.error("WordPress response does not contain post ID or ID is not a number", wpResponseData);
-        updatePublishingStep("database", "error", "Données incomplètes");
+      } catch (error: any) {
+        console.error("Error in fetch operation:", error);
+        updatePublishingStep("wordpress", "error", `Erreur de communication: ${error.message}`);
         return { 
           success: false, 
-          message: "La réponse WordPress ne contient pas l'ID du post", 
+          message: `Erreur de communication avec WordPress: ${error.message}`, 
           wordpressPostId: null 
         };
       }
     } catch (error: any) {
       console.error("Error publishing to WordPress:", error);
-      // Update the current step with error status
+      // Mise à jour de l'étape actuelle avec le statut d'erreur
       if (publishingState.currentStep) {
         updatePublishingStep(publishingState.currentStep, "error", `Erreur: ${error.message}`);
       }

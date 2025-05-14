@@ -37,14 +37,17 @@ export const useWordPressConnection = () => {
       // Test first with app password
       if (config.app_username && config.app_password) {
         console.log("Testing with Application Password authentication");
-        const basicAuth = btoa(`${config.app_username}:${config.app_password}`);
+        // Encodage en base64 en JavaScript - important pour l'authentification Basic
+        const credentials = `${config.app_username}:${config.app_password}`;
+        const basicAuth = btoa(credentials);
         headers['Authorization'] = `Basic ${basicAuth}`;
       } else if (config.rest_api_key) {
         console.log("Testing with REST API Key authentication");
         headers['Authorization'] = `Bearer ${config.rest_api_key}`;
       } else if (config.username && config.password) {
         console.log("Testing with legacy Basic authentication");
-        const basicAuth = btoa(`${config.username}:${config.password}`);
+        const credentials = `${config.username}:${config.password}`;
+        const basicAuth = btoa(credentials);
         headers['Authorization'] = `Basic ${basicAuth}`;
       } else {
         return {
@@ -127,48 +130,53 @@ export const useWordPressConnection = () => {
       
       return {
         success: true,
-        message: "Connexion réussie à WordPress",
+        message: "Connexion établie avec succès",
         hasCategories,
         hasCustomPost,
         hasAppAuth,
         hasBearerAuth
       };
     } catch (error: any) {
-      console.error("Error testing WordPress connection:", error);
+      console.error("Error testing connection:", error);
       return {
         success: false,
-        message: `Erreur de connexion: ${error.message || "Une erreur est survenue"}`
+        message: `Erreur lors du test de connexion: ${error.message}`
       };
     } finally {
       setIsChecking(false);
     }
   };
-
-  const checkConnection = async (configId: string): Promise<ConnectionResult> => {
+  
+  const checkConnection = async (configId?: string) => {
     setIsChecking(true);
-    setStatus("unknown");
     setErrorDetails(null);
     
     try {
-      // Fetch the WordPress config
+      if (!configId) {
+        setStatus("unknown");
+        return { success: false, message: "No WordPress configuration ID provided" };
+      }
+      
+      // Get WordPress config details
       const { data: config, error } = await supabase
         .from('wordpress_configs')
         .select('*')
         .eq('id', configId)
         .single();
-      
+        
       if (error || !config) {
-        console.error("Error fetching WordPress config:", error);
+        console.error("Error fetching WordPress config:", error || "No config found");
         setStatus("disconnected");
-        setErrorDetails("Configuration introuvable");
-        return { success: false, message: "Configuration introuvable" };
+        setErrorDetails("Configuration WordPress introuvable");
+        return { success: false, message: "WordPress configuration not found" };
       }
       
-      // Test the connection
+      // Test connection with the config
       const result = await testConnection(config);
       
       if (result.success) {
         setStatus("connected");
+        setErrorDetails(null);
       } else {
         setStatus("disconnected");
         setErrorDetails(result.message);
@@ -176,20 +184,19 @@ export const useWordPressConnection = () => {
       
       return result;
     } catch (error: any) {
-      console.error("Error checking connection:", error);
+      console.error("Error checking WordPress connection:", error);
       setStatus("disconnected");
-      setErrorDetails(error.message || "Une erreur est survenue");
-      return { success: false, message: error.message || "Une erreur est survenue" };
+      setErrorDetails(error.message);
+      return { success: false, message: error.message };
     } finally {
       setIsChecking(false);
     }
   };
-
+  
   return {
     status,
     isChecking,
     errorDetails,
-    testConnection,
     checkConnection
   };
 };
