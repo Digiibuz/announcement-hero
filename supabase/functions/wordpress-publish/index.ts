@@ -1,4 +1,3 @@
-
 // Import from URLs using the import map
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createServerSupabaseClient } from "../_shared/serverClient.ts";
@@ -28,6 +27,7 @@ serve(async (req) => {
     // Vérification de l'authentification
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
+      console.error("Missing authorization header");
       return new Response(
         JSON.stringify({ 
           code: 401, 

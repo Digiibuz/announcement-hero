@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -293,6 +292,12 @@ const CreateAnnouncement = () => {
         if (!isMobile) {
           toast("Publication de l'annonce sur WordPress en cours...");
         }
+        
+        console.log("Submitting to WordPress with:", {
+          announcement: newAnnouncement,
+          category: formData.wordpressCategory,
+          userId: user.id
+        });
         
         // Use the server publishing method instead of the client one
         wordpressResult = await publishToWordPressServer(

@@ -93,8 +93,17 @@ export const useServerWordPressPublishing = () => {
         throw new Error("Token d'accès non trouvé. Veuillez vous reconnecter.");
       }
       
+      // CORRECTION: Utiliser la bonne URL de l'API Edge Function
+      // Modification du chemin de l'API pour utiliser l'URL complète de l'Edge Function
+      const supabaseUrl = window.location.hostname.includes('localhost') 
+        ? "http://localhost:54321"
+        : "https://rdwqedmvzicerwotjseg.supabase.co";
+      
+      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/wordpress-publish`;
+      console.log("Calling edge function at URL:", edgeFunctionUrl);
+      
       // Call the Edge Function with proper authorization
-      const response = await fetch("/api/wordpress-publish", {
+      const response = await fetch(edgeFunctionUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -105,7 +114,7 @@ export const useServerWordPressPublishing = () => {
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("Error response from Edge Function:", errorText);
+        console.error("Error response from Edge Function:", response.status, errorText);
         throw new Error(`Erreur du serveur: ${response.status} ${errorText}`);
       }
       
