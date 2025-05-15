@@ -3,4 +3,3 @@ project_id = "rdwqedmvzicerwotjseg"
 
 [functions.wordpress-publish]
 verify_jwt = true
-

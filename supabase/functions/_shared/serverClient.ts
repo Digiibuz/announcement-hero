@@ -1,6 +1,5 @@
 
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@/integrations/supabase/types';
 
 /**
  * This module provides utility functions for creating a Supabase client
@@ -8,7 +7,6 @@ import type { Database } from '@/integrations/supabase/types';
  * 
  * IMPORTANT: This file should only be imported in Supabase Edge Functions.
  * It uses Deno APIs which are only available in the Edge Function environment.
- * Do not import this file in client-side code.
  */
 
 // TypeScript declaration for Deno global
@@ -41,14 +39,5 @@ export const createServerSupabaseClient = () => {
   }
   
   // Create a client with the service role key for admin operations
-  return createClient<Database>(supabaseUrl, supabaseServiceKey);
+  return createClient(supabaseUrl, supabaseServiceKey);
 };
-
-// For TypeScript type checking only - will be removed during build
-// This allows the file to be imported without runtime errors
-if (typeof window !== 'undefined') {
-  console.warn(
-    'Warning: serverClient.ts should only be imported in Edge Functions. ' +
-    'This code is running in a browser environment.'
-  );
-}

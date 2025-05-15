@@ -1,6 +1,7 @@
+
 // Import from URLs using the import map
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createServerSupabaseClient } from "../../lib/supabase/serverClient.ts";
+import { createServerSupabaseClient } from "../_shared/serverClient.ts";
 
 // Define CORS headers
 const corsHeaders = {
