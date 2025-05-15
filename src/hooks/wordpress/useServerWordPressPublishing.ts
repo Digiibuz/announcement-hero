@@ -52,54 +52,69 @@ export const useServerWordPressPublishing = () => {
       updatePublishingStep("prepare", "success", "Préparation terminée", 30);
       updatePublishingStep("server", "loading", "Publication sur WordPress via serveur", 40);
       
-      // Add additional logging to help troubleshoot
-      console.log("Calling edge function with payload:", {
+      // Add clear payload logging for debugging
+      const payload = {
         announcementId: announcement.id,
         userId: userId,
         categoryId: wordpressCategoryId
-      });
+      };
       
-      // Call the edge function with extended timeout
-      const { data, error } = await supabase.functions.invoke("wordpress-publish", {
-        body: {
-          announcementId: announcement.id,
-          userId: userId,
-          categoryId: wordpressCategoryId
-        },
-        headers: {
-          "Content-Type": "application/json"
-        }
-      });
+      console.log("Calling edge function with payload:", JSON.stringify(payload, null, 2));
       
-      // Log the response for debugging
-      console.log("Edge function response:", data);
-      
-      if (error) {
-        console.error("Edge function error:", error);
+      // Call the edge function with extended timeout and debug
+      let response;
+      try {
+        response = await supabase.functions.invoke("wordpress-publish", {
+          body: payload,
+          headers: {
+            "Content-Type": "application/json"
+          }
+        });
+
+        console.log("Edge function raw response:", response);
+      } catch (invokeError) {
+        console.error("Edge function invoke error:", invokeError);
         
-        // Add detailed error information for troubleshooting
-        let errorMessage = error.message || "Erreur inconnue";
-        
-        // Check for CORS issues
-        if (errorMessage.includes("CORS") || error.name === "TypeError") {
-          errorMessage = "Erreur CORS: Assurez-vous que l'API WordPress est correctement configurée pour accepter les requêtes externes.";
-          toast.error("Erreur CORS détectée. Vérifiez la configuration du site WordPress.");
-        }
-        
-        updatePublishingStep("server", "error", `Erreur: ${errorMessage}`, 50);
+        updatePublishingStep("server", "error", `Erreur d'invocation: ${invokeError.message || "Erreur inconnue"}`, 50);
         return { 
           success: false, 
-          message: `Erreur lors de la publication: ${errorMessage}`, 
+          message: `Erreur d'invocation de la fonction: ${invokeError.message || "Erreur inconnue"}`, 
           wordpressPostId: null 
         };
       }
       
-      if (!data.success) {
-        console.error("WordPress publishing failed:", data.message);
-        updatePublishingStep("server", "error", `Échec: ${data.message || "Échec inconnu"}`, 50);
+      // Process the response with better error handling
+      if (!response) {
+        console.error("Edge function returned null response");
+        updatePublishingStep("server", "error", "Réponse vide de la fonction", 50);
         return { 
           success: false, 
-          message: data.message || "Échec de la publication WordPress", 
+          message: "La fonction n'a pas renvoyé de réponse", 
+          wordpressPostId: null 
+        };
+      }
+      
+      // Check for error in response
+      if (response.error) {
+        console.error("Edge function error:", response.error);
+        
+        updatePublishingStep("server", "error", `Erreur: ${response.error.message || "Erreur serveur"}`, 50);
+        return { 
+          success: false, 
+          message: `Erreur lors de la publication: ${response.error.message || "Erreur serveur"}`, 
+          wordpressPostId: null 
+        };
+      }
+      
+      const data = response.data;
+      console.log("Edge function data response:", data);
+      
+      if (!data || data.success === false) {
+        console.error("WordPress publishing failed:", data ? data.message : "No data returned");
+        updatePublishingStep("server", "error", `Échec: ${data?.message || "Échec inconnu"}`, 50);
+        return { 
+          success: false, 
+          message: data?.message || "Échec de la publication WordPress", 
           wordpressPostId: null 
         };
       }
