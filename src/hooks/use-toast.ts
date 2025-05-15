@@ -1,7 +1,7 @@
 
 "use client";
 
-import { toast as sonnerToast, type Toast, type ExternalToast } from "sonner";
+import { toast as sonnerToast, type ExternalToast } from "sonner";
 
 // We'll use Sonner's ExternalToast type for our options
 export type ToastProps = ExternalToast;
