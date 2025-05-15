@@ -114,6 +114,11 @@ const fetchWordPressConfig = async (supabase: any, configId: string) => {
       hasAppPassword: !!wpConfig.app_password
     });
 
+    // Check for spaces in credentials (common issue)
+    if (wpConfig.app_password && wpConfig.app_password.includes(' ')) {
+      console.error("WARNING: App password contains spaces - may cause auth issues");
+    }
+
     return { ...wpConfig, site_url: siteUrl };
   } catch (error) {
     console.error("Error fetching WordPress config:", error);
@@ -501,6 +506,59 @@ const sendWordPressPost = async (
 };
 
 /**
+ * Verifies that a post was actually published on WordPress
+ */
+const verifyPostPublication = async (
+  siteUrl: string,
+  postId: number,
+  headers: Record<string, string>
+): Promise<{ success: boolean; postUrl: string | null }> => {
+  try {
+    console.log(`Verifying post publication for ID ${postId}...`);
+    
+    // Create a timeout for the request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    
+    // Get post URL from WordPress
+    const getEndpoint = `${siteUrl}/wp-json/wp/v2/posts/${postId}`;
+    console.log(`Checking post at: ${getEndpoint}`);
+    
+    const getResponse = await fetch(getEndpoint, {
+      headers,
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!getResponse.ok) {
+      console.error(`Post verification failed with status: ${getResponse.status}`);
+      return { success: false, postUrl: null };
+    }
+    
+    const postData = await getResponse.json();
+    console.log("Post verification data:", {
+      id: postData.id,
+      title: postData.title?.rendered,
+      status: postData.status,
+      link: postData.link
+    });
+    
+    // Check if the post is published and has a URL
+    if (postData.status === "publish" && postData.link) {
+      console.log(`Post verified and published at: ${postData.link}`);
+      return { success: true, postUrl: postData.link };
+    } else {
+      console.error(`Post found but not published. Status: ${postData.status}`);
+      return { success: false, postUrl: null };
+    }
+  } catch (error) {
+    console.error("Error verifying post publication:", error);
+    return { success: false, postUrl: null };
+  }
+};
+
+/**
  * Assigns categories to a post after creation
  * This helps with some WordPress setups where categories aren't properly assigned during creation
  */
@@ -561,14 +619,14 @@ const updateAnnouncementWithPostId = async (
   postUrl?: string
 ) => {
   try {
-    const updateData = { 
+    const updateData: any = { 
       wordpress_post_id: wordpressPostId,
       is_divipixel: isCustomPostType
     };
     
     // Add post URL if available
     if (postUrl) {
-      updateData['wordpress_post_url'] = postUrl;
+      updateData.wordpress_post_url = postUrl;
     }
     
     const { error: updateError } = await supabase
@@ -621,39 +679,25 @@ const handleWordPressPublish = async (req: Request) => {
     console.log("App password type:", typeof wpConfig.app_password);
     console.log("App password length:", wpConfig.app_password ? wpConfig.app_password.length : 0);
     
-    // Double-check credentials are valid format
-    if (wpConfig.app_username && wpConfig.app_username.includes(' ')) {
-      console.warn("WARNING: App username contains spaces - may cause auth issues");
-    }
     if (wpConfig.app_password && wpConfig.app_password.includes(' ')) {
-      console.warn("WARNING: App password contains spaces - may cause auth issues");
+      console.error("WARNING: App password contains spaces - may cause auth issues");
     }
     
     // Detect WordPress API endpoints
     const { postEndpoint, useCustomTaxonomy, isCustomPostType } = 
       await detectWordPressEndpoints(wpConfig.site_url);
     
-    // Create authentication headers
+    // Create proper authentication headers
     const { headers, authenticationSuccess } = createAuthHeaders(wpConfig);
     
     if (!authenticationSuccess) {
-      console.error("No valid authentication credentials available");
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: "Aucune méthode d'authentification valide disponible pour WordPress. Veuillez vérifier vos identifiants dans votre profil." 
-        }),
-        { 
-          headers: { ...corsHeaders, "Content-Type": "application/json" }, 
-          status: 400 
-        }
-      );
+      throw new Error("Aucune méthode d'authentification valide disponible pour WordPress");
     }
     
-    // Process featured image if available
+    // Process and upload featured image
     const featuredMediaId = await processImage(announcement, wpConfig.site_url, headers);
     
-    // Create post data for WordPress
+    // Create post data
     const postData = createPostData(
       announcement,
       categoryId,
@@ -663,26 +707,17 @@ const handleWordPressPublish = async (req: Request) => {
     );
     
     // Send post to WordPress
-    const wpResponse = await sendWordPressPost(postEndpoint, headers, postData);
+    const wordpressResponse = await sendWordPressPost(postEndpoint, headers, postData);
     
-    if (!wpResponse || !wpResponse.id) {
-      console.error("No valid WordPress post ID returned");
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: "La publication a échoué: Aucun ID de post n'a été retourné par WordPress."
-        }),
-        { 
-          headers: { ...corsHeaders, "Content-Type": "application/json" }, 
-          status: 500 
-        }
-      );
+    // Get WordPress post ID
+    if (!wordpressResponse || typeof wordpressResponse.id !== 'number') {
+      throw new Error("La réponse WordPress ne contient pas d'ID de post valide");
     }
     
-    const wordpressPostId = wpResponse.id;
-    const postUrl = wpResponse.link || wpResponse.guid?.rendered || null;
+    const wordpressPostId = wordpressResponse.id;
+    let postUrl = wordpressResponse.link || null;
     
-    // Ensure categories are properly assigned (sometimes they don't stick on first creation)
+    // Ensure categories are properly assigned (common issue)
     await assignCategoriesToPost(
       wpConfig.site_url,
       wordpressPostId,
@@ -691,8 +726,22 @@ const handleWordPressPublish = async (req: Request) => {
       isCustomPostType
     );
     
-    // Update announcement in database with WordPress post ID and URL
-    const updateSuccess = await updateAnnouncementWithPostId(
+    // Verify publication
+    const verificationResult = await verifyPostPublication(
+      wpConfig.site_url,
+      wordpressPostId,
+      headers
+    );
+    
+    if (verificationResult.success) {
+      // Use the verified post URL if available
+      postUrl = verificationResult.postUrl || postUrl;
+    } else {
+      console.log("⚠️ Post verification failed - continuing anyway as post was created");
+    }
+    
+    // Update the announcement in Supabase with WordPress post ID
+    await updateAnnouncementWithPostId(
       supabase,
       announcementId,
       wordpressPostId,
@@ -700,7 +749,6 @@ const handleWordPressPublish = async (req: Request) => {
       postUrl
     );
     
-    // Return success response
     return new Response(
       JSON.stringify({
         success: true,
@@ -711,47 +759,54 @@ const handleWordPressPublish = async (req: Request) => {
           isCustomPostType
         }
       }),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" }, 
-        status: 200 
+      {
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders
+        }
       }
     );
   } catch (error: any) {
-    console.error("Error in WordPress publish function:", error);
+    console.error("WordPress publishing error:", error);
     
     return new Response(
       JSON.stringify({
         success: false,
-        message: error.message || "Erreur inconnue lors de la publication WordPress",
+        message: error.message || "Erreur lors de la publication sur WordPress",
       }),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" }, 
-        status: 500 
+      {
+        status: 400,
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders
+        }
       }
     );
   }
 };
 
-// Handle requests
-serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+// Handle OPTIONS request for CORS
+const handleOptions = () => {
+  return new Response(null, {
+    headers: corsHeaders
+  });
+};
 
-  try {
-    if (req.method === "POST") {
-      return await handleWordPressPublish(req);
-    } else {
-      return new Response(
-        JSON.stringify({ error: "Method not allowed" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 405 }
-      );
-    }
-  } catch (error: any) {
-    return new Response(
-      JSON.stringify({ error: error.message || "Une erreur inconnue s'est produite" }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-    );
+// Main handler function
+serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return handleOptions();
   }
+  
+  if (req.method === "POST") {
+    return await handleWordPressPublish(req);
+  }
+  
+  return new Response(JSON.stringify({ error: "Method not allowed" }), {
+    status: 405,
+    headers: {
+      "Content-Type": "application/json",
+      ...corsHeaders
+    }
+  });
 });

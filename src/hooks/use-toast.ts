@@ -28,30 +28,10 @@ export const toast = {
     promise: Promise<T>,
     messages: {
       loading: string;
-      success: string | ((data: T) => string);
+      success: string;
       error: string | ((error: unknown) => string);
     }
   ) => {
     return window.toast?.promise(promise, messages) || sonnerToast.promise(promise, messages);
   },
 };
-
-// Augment window interface for global toast access
-declare global {
-  interface Window {
-    toast?: {
-      success: (message: string) => void;
-      error: (message: string) => void;
-      warning: (message: string) => void;
-      info: (message: string) => void;
-      promise: <T>(
-        promise: Promise<T>,
-        messages: {
-          loading: string;
-          success: string | ((data: T) => string);
-          error: string | ((error: unknown) => string);
-        }
-      ) => Promise<T>;
-    };
-  }
-}

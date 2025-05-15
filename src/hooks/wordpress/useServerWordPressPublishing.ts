@@ -80,9 +80,7 @@ export const useServerWordPressPublishing = () => {
         };
       }
       
-      // Get function URL without using the protected property
-      const functionUrl = `${supabase.functions.invoke.name}/wordpress-publish`;
-      console.log("Calling edge function at URL:", functionUrl);
+      console.log("Calling edge function at URL: invoke/wordpress-publish");
       
       const { data, error } = await supabase.functions.invoke("wordpress-publish", {
         body: {
@@ -120,6 +118,38 @@ export const useServerWordPressPublishing = () => {
       
       // Database work was handled by the server function
       updatePublishingStep("database", "success", "Mise à jour finalisée", 100);
+      
+      // Check if we have details about the WordPress post URL
+      if (data.data?.postUrl) {
+        console.log("WordPress post published at URL:", data.data.postUrl);
+        
+        // Try to verify the post is actually accessible
+        try {
+          const verifyUrl = data.data.postUrl;
+          console.log(`Verifying post accessibility at: ${verifyUrl}`);
+          
+          const verifyResponse = await fetch(verifyUrl, {
+            method: 'HEAD',
+            redirect: 'follow',
+            cache: 'no-store',
+            headers: {
+              'Cache-Control': 'no-cache'
+            }
+          }).catch(e => {
+            console.warn("Post verification fetch failed:", e);
+            return { ok: false, status: 0 };
+          });
+          
+          if (verifyResponse.ok) {
+            console.log("✅ Post verified and accessible!");
+          } else {
+            console.warn(`⚠️ Post URL returned status ${verifyResponse.status} - may not be publicly accessible yet`);
+            // Don't fail the process, as some WordPress sites may take time to make posts public
+          }
+        } catch (verifyError) {
+          console.warn("Error verifying post accessibility:", verifyError);
+        }
+      }
       
       return {
         success: true,
