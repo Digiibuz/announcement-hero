@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { supabase, supabaseUrl } from "@/integrations/supabase/client";
 import { Announcement } from "@/types/announcement";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 
 export type PublishingStatus = "idle" | "loading" | "success" | "error";
 
@@ -74,7 +74,7 @@ export const useServerWordPressPublishing = () => {
         throw new Error("Session invalide. Veuillez vous reconnecter.");
       }
       
-      // Use the exported supabaseUrl instead of accessing it through the client
+      // Construire l'URL de la fonction edge avec le projet ID correct
       const functionUrl = `${supabaseUrl}/functions/v1/wordpress-publish`;
       console.log("Calling edge function at URL:", functionUrl);
       
