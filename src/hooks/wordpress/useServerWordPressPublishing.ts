@@ -52,28 +52,44 @@ export const useServerWordPressPublishing = () => {
       updatePublishingStep("prepare", "success", "Préparation terminée", 30);
       updatePublishingStep("server", "loading", "Publication sur WordPress via serveur", 40);
       
-      // Prepare payload for the edge function
-      const payload = {
+      // Add additional logging to help troubleshoot
+      console.log("Calling edge function with payload:", {
         announcementId: announcement.id,
         userId: userId,
         categoryId: wordpressCategoryId
-      };
-      
-      console.log("Calling edge function with payload:", payload);
-      
-      // Call the edge function
-      const { data, error } = await supabase.functions.invoke("wordpress-publish", {
-        body: payload
       });
       
+      // Call the edge function with extended timeout
+      const { data, error } = await supabase.functions.invoke("wordpress-publish", {
+        body: {
+          announcementId: announcement.id,
+          userId: userId,
+          categoryId: wordpressCategoryId
+        },
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+      
+      // Log the response for debugging
       console.log("Edge function response:", data);
       
       if (error) {
         console.error("Edge function error:", error);
-        updatePublishingStep("server", "error", `Erreur: ${error.message || "Erreur inconnue"}`, 50);
+        
+        // Add detailed error information for troubleshooting
+        let errorMessage = error.message || "Erreur inconnue";
+        
+        // Check for CORS issues
+        if (errorMessage.includes("CORS") || error.name === "TypeError") {
+          errorMessage = "Erreur CORS: Assurez-vous que l'API WordPress est correctement configurée pour accepter les requêtes externes.";
+          toast.error("Erreur CORS détectée. Vérifiez la configuration du site WordPress.");
+        }
+        
+        updatePublishingStep("server", "error", `Erreur: ${errorMessage}`, 50);
         return { 
           success: false, 
-          message: `Erreur lors de la publication: ${error.message || "Erreur inconnue"}`, 
+          message: `Erreur lors de la publication: ${errorMessage}`, 
           wordpressPostId: null 
         };
       }
@@ -104,7 +120,7 @@ export const useServerWordPressPublishing = () => {
         isCustomPostType: data.data?.isCustomPostType
       });
       
-      // Check if the post is accessible by doing a HEAD request
+      // Check if the post is accessible
       if (data.data?.postUrl) {
         try {
           const postUrlCheckMessage = "Vérification de l'accessibilité de l'article...";
@@ -113,7 +129,7 @@ export const useServerWordPressPublishing = () => {
           
           const response = await fetch(data.data.postUrl, {
             method: 'HEAD',
-            mode: 'no-cors' // Use no-cors mode to bypass CORS issues
+            mode: 'no-cors' // Use no-cors mode to bypass CORS issues with verification
           });
           
           console.log("Post URL check response:", response.status);

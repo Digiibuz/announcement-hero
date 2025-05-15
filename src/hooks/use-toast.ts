@@ -1,65 +1,54 @@
 
+"use client";
+
 import { toast as sonnerToast } from "sonner";
 
-// Add type declaration for the window.toast property
-declare global {
-  interface Window {
-    toast?: {
-      error: (message: string) => void;
-      success: (message: string) => void;
-      warning: (message: string) => void;
-      info: (message: string) => void;
-      promise: <T>(
-        promise: Promise<T>,
-        messages: {
-          loading: string;
-          success: string;
-          error: string | ((error: unknown) => string);
-        }
-      ) => Promise<T>;
-    };
-  }
-}
+// Define the shape of our toast methods
+type ToastType = {
+  success: (message: string, options?: object) => void;
+  error: (message: string, options?: object) => void;
+  info: (message: string, options?: object) => void;
+  warning: (message: string, options?: object) => void;
+  promise: <T>(
+    promise: Promise<T>,
+    options: {
+      loading: string;
+      success: string | ((data: T) => string);
+      error: string | ((error: unknown) => string);
+    }
+  ) => Promise<T>;
+};
 
-export const useToast = () => {
+// Create a type safe hook that accesses either window.toast or sonner
+export const useToast = (): ToastType => {
   return {
-    toast
+    success: (message: string, options = {}) => sonnerToast.success(message, options),
+    error: (message: string, options = {}) => sonnerToast.error(message, options),
+    info: (message: string, options = {}) => sonnerToast.info(message, options),
+    warning: (message: string, options = {}) => sonnerToast.warning(message, options),
+    promise: <T>(
+      promise: Promise<T>,
+      options: {
+        loading: string;
+        success: string | ((data: T) => string);
+        error: string | ((error: unknown) => string);
+      }
+    ) => sonnerToast.promise(promise, options)
   };
 };
 
-export const toast = {
-  error: (message: string) => {
-    if (window.toast?.error) {
-      window.toast.error(message);
-    }
-    sonnerToast.error(message);
-  },
-  success: (message: string) => {
-    if (window.toast?.success) {
-      window.toast.success(message);
-    }
-    sonnerToast.success(message);
-  },
-  warning: (message: string) => {
-    if (window.toast?.warning) {
-      window.toast.warning(message);
-    }
-    sonnerToast.warning(message);
-  },
-  info: (message: string) => {
-    if (window.toast?.info) {
-      window.toast.info(message);
-    }
-    sonnerToast.info(message);
-  },
+// Make toast accessible both as a hook and as a direct import
+export const toast: ToastType = {
+  success: (message: string, options = {}) => sonnerToast.success(message, options),
+  error: (message: string, options = {}) => sonnerToast.error(message, options),
+  info: (message: string, options = {}) => sonnerToast.info(message, options), 
+  warning: (message: string, options = {}) => sonnerToast.warning(message, options),
   promise: <T>(
     promise: Promise<T>,
-    messages: {
+    options: {
       loading: string;
-      success: string;
+      success: string | ((data: T) => string);
       error: string | ((error: unknown) => string);
     }
-  ) => {
-    return (window.toast?.promise?.(promise, messages)) || sonnerToast.promise(promise, messages);
-  },
+  ) => sonnerToast.promise(promise, options)
 };
