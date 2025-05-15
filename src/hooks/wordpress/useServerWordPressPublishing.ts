@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { Announcement } from "@/types/announcement";
 import { toast } from "sonner";
-import { supabase, supabaseUrl } from "@/integrations/supabase/client";
 
 export type PublishingStatus = "idle" | "loading" | "success" | "error";
 
@@ -30,7 +29,7 @@ const initialPublishingState: PublishingState = {
 export const useServerWordPressPublishing = () => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishingState, setPublishingState] = useState<PublishingState>(initialPublishingState);
-
+  
   const updatePublishingStep = (stepId: string, status: PublishingStatus, message?: string, progress?: number) => {
     setPublishingState(prev => ({
       ...prev,
@@ -42,82 +41,95 @@ export const useServerWordPressPublishing = () => {
       progress: progress !== undefined ? progress : prev.progress
     }));
   };
-
+  
   const resetPublishingState = () => {
     setPublishingState(initialPublishingState);
   };
-
+  
   const publishToWordPressServer = async (
-    announcement: Announcement,
-    wordpressCategoryId: string,
+    announcement: Announcement, 
+    categoryId: string,
     userId: string
   ): Promise<{ success: boolean; message: string; wordpressPostId: number | null }> => {
     setIsPublishing(true);
     resetPublishingState();
-
+    
     try {
-      // Mise à jour de l'étape de préparation
-      updatePublishingStep("prepare", "loading", "Préparation des données", 20);
-
-      // Préparation des données pour la requête Edge Function
+      // Step 1: Prepare the request
+      updatePublishingStep("prepare", "loading", "Préparation de la publication", 20);
+      
+      // Prepare the payload data
       const payload = {
         announcementId: announcement.id,
         userId: userId,
-        categoryId: wordpressCategoryId
+        categoryId: categoryId
       };
-
-      console.log("Publishing announcement", payload);
-
-      updatePublishingStep("prepare", "success", "Données préparées", 40);
-      updatePublishingStep("server", "loading", "Envoi à WordPress en cours", 60);
-
-      // Using the supabaseUrl imported directly from the client file
-      const functionUrl = `${supabaseUrl}/functions/v1/wordpress-publish`;
       
-      // Appel direct à l'Edge Function (maintenant sans authentification requise)
-      const response = await fetch(functionUrl, {
-        method: 'POST',
+      console.log("Publishing announcement", payload);
+      
+      updatePublishingStep("prepare", "success", "Préparation terminée", 30);
+      
+      // Step 2: Make the server call
+      updatePublishingStep("server", "loading", "Envoi vers WordPress", 40);
+      
+      // Get JWT token from localStorage for authorization
+      const accessToken = localStorage.getItem('supabase.auth.token') || localStorage.getItem('sb-rdwqedmvzicerwotjseg-auth-token');
+      
+      if (!accessToken) {
+        throw new Error("Token d'authentification non trouvé. Veuillez vous reconnecter.");
+      }
+      
+      let parsedToken;
+      try {
+        parsedToken = JSON.parse(accessToken);
+      } catch (e) {
+        console.error("Erreur lors de la lecture du token:", e);
+        throw new Error("Format de token invalide. Veuillez vous reconnecter.");
+      }
+      
+      const token = parsedToken?.currentSession?.access_token || parsedToken?.access_token;
+      
+      if (!token) {
+        throw new Error("Token d'accès non trouvé. Veuillez vous reconnecter.");
+      }
+      
+      // Call the Edge Function with proper authorization
+      const response = await fetch("/api/wordpress-publish", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json'
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify(payload)
       });
-
-      // Traitement de la réponse
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error("Error response from Edge Function:", errorData);
-        updatePublishingStep("server", "error", "Échec de la publication sur WordPress");
-        
-        // Message d'erreur adapté
-        let errorMessage = "Problème de connexion avec le serveur WordPress";
-        if (response.status === 401) {
-          errorMessage = "Problème d'authentification avec WordPress. Veuillez vérifier vos identifiants WordPress dans les paramètres.";
-        }
-        
-        return {
-          success: false,
-          message: errorMessage,
-          wordpressPostId: null
-        };
-      }
-
-      const result = await response.json();
       
-      if (result.success) {
-        updatePublishingStep("server", "success", "Publication WordPress réussie", 80);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Error response from Edge Function:", errorText);
+        throw new Error(`Erreur du serveur: ${response.status} ${errorText}`);
+      }
+      
+      // Parse and process the response
+      const responseData = await response.json();
+      updatePublishingStep("server", "success", "Publication sur WordPress réussie", 70);
+      
+      // Step 3: Update the database status if necessary
+      updatePublishingStep("database", "loading", "Mise à jour de la base de données", 80);
+      
+      if (responseData.success && responseData.data?.wordpressPostId) {
+        // The Edge Function already updates the announcement record
         updatePublishingStep("database", "success", "Base de données mise à jour", 100);
         
         return {
           success: true,
           message: "Publication réussie",
-          wordpressPostId: result.data?.wordpressPostId || null
+          wordpressPostId: responseData.data.wordpressPostId
         };
       } else {
-        updatePublishingStep("server", "error", result.message || "Erreur inconnue");
+        updatePublishingStep("database", "error", "Erreur lors de la mise à jour", 80);
         return {
           success: false,
-          message: result.message || "Erreur inconnue lors de la publication",
+          message: responseData.message || "Erreur inconnue",
           wordpressPostId: null
         };
       }
@@ -126,19 +138,19 @@ export const useServerWordPressPublishing = () => {
       updatePublishingStep(
         publishingState.currentStep || "server", 
         "error", 
-        `Erreur: ${error.message || "Erreur inconnue"}`
+        `Erreur: ${error.message || "Erreur inconnue"}`,
+        50
       );
-      
       return {
         success: false,
-        message: `Erreur: ${error.message || "Erreur inconnue"}`,
+        message: error.message || "Une erreur est survenue lors de la publication",
         wordpressPostId: null
       };
     } finally {
       setIsPublishing(false);
     }
   };
-
+  
   return {
     publishToWordPressServer,
     isPublishing,

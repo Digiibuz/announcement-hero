@@ -1,7 +1,6 @@
-
 // Import from URLs using the import map
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.1";
+import { createServerSupabaseClient } from "../../lib/supabase/serverClient.ts";
 
 // Define CORS headers
 const corsHeaders = {
@@ -16,10 +15,6 @@ interface RequestPayload {
   categoryId: string;
 }
 
-// Environnement variables from Supabase
-const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-
 serve(async (req) => {
   console.log("WordPress publish function called");
 
@@ -29,8 +24,23 @@ serve(async (req) => {
   }
 
   try {
+    // Vérification de l'authentification
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ 
+          code: 401, 
+          message: "Missing authorization header" 
+        }),
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+          status: 401 
+        }
+      );
+    }
+
     // Initialize Supabase client with service role for admin access
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = createServerSupabaseClient();
 
     // Parse request body
     const requestData = await req.json() as RequestPayload;
