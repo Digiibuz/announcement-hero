@@ -71,8 +71,12 @@ export const useServerWordPressPublishing = () => {
       updatePublishingStep("prepare", "success", "Données préparées", 40);
       updatePublishingStep("server", "loading", "Envoi à WordPress en cours", 60);
 
+      // Utilisons l'URL récupérée depuis la configuration Supabase
+      // Utilisation de l'URL complète pour l'appel à l'Edge Function
+      const functionUrl = `https://rdwqedmvzicerwotjseg.supabase.co/functions/v1/wordpress-publish`;
+      
       // Appel direct à l'Edge Function (maintenant sans authentification requise)
-      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/wordpress-publish`, {
+      const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
