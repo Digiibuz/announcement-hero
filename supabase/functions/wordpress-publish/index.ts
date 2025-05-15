@@ -115,51 +115,58 @@ const detectWordPressEndpoints = async (siteUrl: string) => {
     const taxonomyCheckUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt_category`;
     console.log("Testing endpoint:", taxonomyCheckUrl);
     
+    // Using fetch with timeout to prevent hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
     const dipiResponse = await fetch(taxonomyCheckUrl, {
       method: 'HEAD',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    }).catch(() => ({ status: 404 }));
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal
+    }).catch(err => {
+      console.log("Error checking taxonomy endpoint:", err);
+      return { status: 404 };
+    });
+    
+    clearTimeout(timeoutId);
     
     if (dipiResponse.status !== 404) {
       console.log("DipiPixel taxonomy endpoint found!");
       useCustomTaxonomy = true;
       
-      // Check if dipi_cpt endpoint exists
-      const cptCheckUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt`;
-      console.log("Testing endpoint:", cptCheckUrl);
+      // Check primary custom endpoint
+      const cptEndpoints = [
+        `${siteUrl}/wp-json/wp/v2/dipi_cpt`,
+        `${siteUrl}/wp-json/wp/v2/dipicpt`
+      ];
       
-      const cptResponse = await fetch(cptCheckUrl, {
-        method: 'HEAD',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }).catch(() => ({ status: 404 }));
-      
-      if (cptResponse.status !== 404) {
-        console.log("DipiPixel custom post type endpoint found!");
-        postEndpoint = cptCheckUrl;
-        isCustomPostType = true;
-      } else {
-        // Check alternative dipicpt endpoint
-        const altCheckUrl = `${siteUrl}/wp-json/wp/v2/dipicpt`;
-        console.log("Testing alternative endpoint:", altCheckUrl);
-        
-        const altResponse = await fetch(altCheckUrl, {
-          method: 'HEAD',
-          headers: {
-            'Content-Type': 'application/json'
+      for (const endpoint of cptEndpoints) {
+        console.log("Testing endpoint:", endpoint);
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          
+          const response = await fetch(endpoint, {
+            method: 'HEAD',
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (response.status !== 404) {
+            console.log(`Custom post type endpoint found: ${endpoint}`);
+            postEndpoint = endpoint;
+            isCustomPostType = true;
+            break;
           }
-        }).catch(() => ({ status: 404 }));
-        
-        if (altResponse.status !== 404) {
-          console.log("Alternative dipicpt endpoint found!");
-          postEndpoint = altCheckUrl;
-          isCustomPostType = true;
-        } else {
-          console.log("No custom post type endpoint found, falling back to posts");
+        } catch (err) {
+          console.log(`Error checking endpoint ${endpoint}:`, err);
         }
+      }
+      
+      if (!isCustomPostType) {
+        console.log("No custom post type endpoint found, falling back to posts");
       }
     } else {
       console.log("No custom taxonomy endpoint found, using standard categories");
@@ -174,67 +181,80 @@ const detectWordPressEndpoints = async (siteUrl: string) => {
 };
 
 /**
- * Creates authentication headers for WordPress API
+ * CORRECTION: Create proper authentication headers for WordPress API
+ * Fixing base64 encoding and properly handling credentials
  */
 const createAuthHeaders = (wpConfig: any) => {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
 
-  // Set up authentication headers - CRITICAL PART - IMPROVED
   let authenticationSuccess = false;
   
+  // Application password method (preferred)
   if (wpConfig.app_username && wpConfig.app_password) {
     try {
-      // MÉTHODE CORRIGÉE: Utilisation correcte de l'encodage base64 pour l'authentification
-      const appUsername = wpConfig.app_username.trim();
-      const appPassword = wpConfig.app_password.trim();
-      const credentials = `${appUsername}:${appPassword}`;
-      console.log("Using credentials for:", appUsername);
+      // CORRECTION: Properly create base64 credentials with trimming
+      const appUsername = String(wpConfig.app_username).trim();
+      const appPassword = String(wpConfig.app_password).trim();
       
-      // Utilisation de l'API standard pour l'encodage Base64 (compatible avec Deno)
-      const encoder = new TextEncoder();
-      const data = encoder.encode(credentials);
-      
-      // Conversion correcte en base64
-      const base64Credentials = btoa(String.fromCharCode(...new Uint8Array(data)));
-      
-      headers['Authorization'] = `Basic ${base64Credentials}`;
-      console.log("Auth header created successfully (not showing actual credentials)");
-      authenticationSuccess = true;
+      if (appUsername && appPassword) {
+        const credentials = `${appUsername}:${appPassword}`;
+        console.log("Using credentials for:", appUsername);
+        
+        // Proper base64 encoding for Deno
+        const encoder = new TextEncoder();
+        const data = encoder.encode(credentials);
+        const base64Credentials = btoa(String.fromCharCode(...Array.from(new Uint8Array(data))));
+        
+        headers['Authorization'] = `Basic ${base64Credentials}`;
+        console.log("Auth header created successfully using application password");
+        authenticationSuccess = true;
+      }
     } catch (authError) {
-      console.error("Error setting up auth headers:", authError);
-      // Continue to try other auth methods
+      console.error("Error setting up application password auth:", authError);
     }
   }
   
+  // REST API key method (fallback)
   if (!authenticationSuccess && wpConfig.rest_api_key) {
-    headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
-    console.log("Using REST API Key authentication");
-    authenticationSuccess = true;
+    const apiKey = String(wpConfig.rest_api_key).trim();
+    if (apiKey) {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+      console.log("Using REST API Key authentication");
+      authenticationSuccess = true;
+    }
   }
   
-  // Tentative avec les identifiants standard si disponibles
+  // Standard username/password (last resort)
   if (!authenticationSuccess && wpConfig.username && wpConfig.password) {
     try {
-      const username = wpConfig.username.trim();
-      const password = wpConfig.password.trim();
-      const credentials = `${username}:${password}`;
+      const username = String(wpConfig.username).trim();
+      const password = String(wpConfig.password).trim();
       
-      // Utilisation de l'API standard pour l'encodage Base64 (compatible avec Deno)
-      const encoder = new TextEncoder();
-      const data = encoder.encode(credentials);
-      
-      // Conversion correcte en base64
-      const base64Credentials = btoa(String.fromCharCode(...new Uint8Array(data)));
-      
-      headers['Authorization'] = `Basic ${base64Credentials}`;
-      console.log("Using standard credentials for authentication");
-      authenticationSuccess = true;
+      if (username && password) {
+        const credentials = `${username}:${password}`;
+        
+        // Proper base64 encoding for Deno
+        const encoder = new TextEncoder();
+        const data = encoder.encode(credentials);
+        const base64Credentials = btoa(String.fromCharCode(...Array.from(new Uint8Array(data))));
+        
+        headers['Authorization'] = `Basic ${base64Credentials}`;
+        console.log("Using standard credentials for authentication");
+        authenticationSuccess = true;
+      }
     } catch (error) {
       console.error("Error with standard credentials:", error);
     }
   }
+
+  // Log full headers for debugging (excluding actual credential values)
+  const debugHeaders = {...headers};
+  if (debugHeaders['Authorization']) {
+    debugHeaders['Authorization'] = 'AUTH_HEADER_SET_BUT_NOT_DISPLAYED';
+  }
+  console.log("Created headers:", JSON.stringify(debugHeaders));
 
   return { headers, authenticationSuccess };
 };
@@ -250,47 +270,68 @@ const processImage = async (announcement: any, siteUrl: string, headers: Record<
       const imageUrl = announcement.images[0];
       console.log("Processing image:", imageUrl);
       
-      // Download the image
-      const imageResponse = await fetch(imageUrl);
+      // Download the image with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const imageResponse = await fetch(imageUrl, { signal: controller.signal })
+        .catch(err => {
+          console.error("Failed to fetch image:", err);
+          return { ok: false };
+        });
+      
+      clearTimeout(timeoutId);
+      
       if (!imageResponse.ok) {
         console.error("Failed to download image:", imageResponse.status);
-        // Continue without image
-      } else {
-        const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
-        const imageBlob = await imageResponse.arrayBuffer();
-        const fileName = imageUrl.split('/').pop() || `image-${Date.now()}.jpg`;
-        
-        // Upload to WordPress media library
-        const mediaEndpoint = `${siteUrl}/wp-json/wp/v2/media`;
-        console.log("Uploading to media endpoint:", mediaEndpoint);
-        
-        // Create form data (special handling for Deno)
-        const formData = new FormData();
-        formData.append('file', new Blob([imageBlob], { type: contentType }), fileName);
-        formData.append('title', announcement.title);
-        
-        // Remove Content-Type for form data upload
-        const uploadHeaders = { ...headers };
-        delete uploadHeaders["Content-Type"];
-        
-        const mediaResponse = await fetch(mediaEndpoint, {
-          method: 'POST',
-          headers: uploadHeaders,
-          body: formData
-        });
-        
-        if (!mediaResponse.ok) {
-          const errorText = await mediaResponse.text();
-          console.error("Media upload failed:", mediaResponse.status, errorText);
-        } else {
-          const mediaData = await mediaResponse.json();
-          featuredMediaId = mediaData.id;
-          console.log("Media uploaded successfully, ID:", featuredMediaId);
-        }
+        return null;
       }
+
+      const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
+      const imageBlob = await imageResponse.arrayBuffer();
+      const fileName = imageUrl.split('/').pop() || `image-${Date.now()}.jpg`;
+      
+      // Upload to WordPress media library
+      const mediaEndpoint = `${siteUrl}/wp-json/wp/v2/media`;
+      console.log("Uploading to media endpoint:", mediaEndpoint);
+      
+      // Create form data for Deno
+      const formData = new FormData();
+      formData.append('file', new Blob([imageBlob], { type: contentType }), fileName);
+      formData.append('title', announcement.title || "Image");
+      
+      // Remove Content-Type for form data upload
+      const uploadHeaders = { ...headers };
+      delete uploadHeaders["Content-Type"];
+      
+      // Upload with timeout
+      const uploadController = new AbortController();
+      const uploadTimeoutId = setTimeout(() => uploadController.abort(), 15000);
+      
+      const mediaResponse = await fetch(mediaEndpoint, {
+        method: 'POST',
+        headers: uploadHeaders,
+        body: formData,
+        signal: uploadController.signal
+      }).catch(err => {
+        console.error("Media upload error:", err);
+        return { ok: false };
+      });
+      
+      clearTimeout(uploadTimeoutId);
+      
+      if (!mediaResponse.ok) {
+        const errorText = await mediaResponse.text();
+        console.error("Media upload failed:", mediaResponse.status, errorText);
+        return null;
+      }
+      
+      const mediaData = await mediaResponse.json();
+      featuredMediaId = mediaData.id;
+      console.log("Media uploaded successfully, ID:", featuredMediaId);
     } catch (imageError) {
       console.error("Error processing image:", imageError);
-      // Continue without image
+      return null;
     }
   }
 
@@ -326,9 +367,13 @@ const createPostData = (
   
   // Set category based on endpoint type
   if (useCustomTaxonomy && isCustomPostType) {
+    // For DipiPixel
     postData.dipi_cpt_category = [parseInt(categoryId)];
+    console.log("Using custom taxonomy with category ID:", categoryId);
   } else {
+    // Standard WP categories
     postData.categories = [parseInt(categoryId)];
+    console.log("Using standard WordPress categories with ID:", categoryId);
   }
   
   // Add SEO metadata if available
@@ -339,12 +384,12 @@ const createPostData = (
     };
   }
   
-  console.log("Sending post data:", JSON.stringify(postData));
+  console.log("Prepared post data:", JSON.stringify(postData, null, 2));
   return postData;
 };
 
 /**
- * Sends the post to WordPress API
+ * Sends the post to WordPress API with improved error handling
  */
 const sendWordPressPost = async (
   postEndpoint: string, 
@@ -352,27 +397,34 @@ const sendWordPressPost = async (
   postData: any
 ) => {
   try {
-    // Afficher les détails de la requête pour le débogage
     console.log("Sending WordPress request to:", postEndpoint);
-    console.log("Request headers:", Object.keys(headers).join(", "));
+    console.log("With headers:", Object.keys(headers).join(", "));
+    
+    // Create a timeout for the request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
     
     // Send post to WordPress
     const postResponse = await fetch(postEndpoint, {
       method: 'POST',
       headers: headers,
-      body: JSON.stringify(postData)
+      body: JSON.stringify(postData),
+      signal: controller.signal
     });
     
-    // Handle response
+    clearTimeout(timeoutId);
+    
+    // Handle error responses
     if (!postResponse.ok) {
       let errorText = await postResponse.text();
       console.error("WordPress API error:", postResponse.status, errorText);
       
+      // Format specific error messages based on status code
       let errorMessage = "Échec de la publication sur WordPress";
       if (postResponse.status === 401) {
-        errorMessage = "Erreur d'authentification WordPress: Veuillez vérifier vos identifiants";
+        errorMessage = "Erreur d'authentification WordPress: Vos identifiants ne sont pas acceptés par le site WordPress. Veuillez vérifier vos identifiants d'application WordPress dans votre profil.";
       } else if (postResponse.status === 403) {
-        errorMessage = "Accès refusé: Permissions insuffisantes dans WordPress";
+        errorMessage = "Accès refusé par WordPress: Votre compte n'a pas les permissions nécessaires pour publier des articles.";
       } else {
         errorMessage = `Erreur WordPress (${postResponse.status}): ${errorText.substring(0, 100)}`;
       }
@@ -381,7 +433,11 @@ const sendWordPressPost = async (
     }
     
     return await postResponse.json();
-  } catch (error) {
+  } catch (error: any) {
+    // Handle timeout errors
+    if (error.name === "AbortError") {
+      throw new Error("La requête vers WordPress a expiré. Veuillez vérifier que votre site WordPress est accessible.");
+    }
     console.error("Error in WordPress post request:", error);
     throw error;
   }
@@ -444,7 +500,7 @@ const handleWordPressPublish = async (req: Request) => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: "Aucune méthode d'authentification valide disponible pour WordPress. Vérifiez vos identifiants." 
+          message: "Aucune méthode d'authentification valide disponible pour WordPress. Veuillez vérifier vos identifiants dans votre profil." 
         }),
         { 
           headers: { ...corsHeaders, "Content-Type": "application/json" }, 
@@ -511,7 +567,7 @@ const handleWordPressPublish = async (req: Request) => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        message: `Erreur serveur: ${error.message || "Erreur inconnue"}` 
+        message: `${error.message || "Erreur inconnue lors de la publication"}` 
       }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" }, 
@@ -528,6 +584,20 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
   
-  // Process WordPress publish request
-  return handleWordPressPublish(req);
+  try {
+    // Process WordPress publish request
+    return await handleWordPressPublish(req);
+  } catch (error) {
+    console.error("Unhandled error in server function:", error);
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        message: "Erreur serveur interne" 
+      }),
+      { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+        status: 500 
+      }
+    );
+  }
 });
