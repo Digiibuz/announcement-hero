@@ -1,5 +1,6 @@
 
-import { createClient } from '@supabase/supabase-js';
+// Import the Supabase client from the ESM URL using the import map
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.1";
 
 /**
  * This module provides utility functions for creating a Supabase client
