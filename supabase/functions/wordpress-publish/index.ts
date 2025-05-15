@@ -481,6 +481,7 @@ const sendWordPressPost = async (
     // Try to parse the WordPress response
     try {
       const responseData = await postResponse.json();
+      console.log("WordPress response:", responseData);
       console.log("WordPress response parsed successfully");
       return responseData;
     } catch (parseError) {
@@ -500,29 +501,92 @@ const sendWordPressPost = async (
 };
 
 /**
+ * Assigns categories to a post after creation
+ * This helps with some WordPress setups where categories aren't properly assigned during creation
+ */
+const assignCategoriesToPost = async (
+  siteUrl: string,
+  postId: number,
+  categoryId: string,
+  headers: Record<string, string>,
+  isCustomPostType: boolean
+) => {
+  try {
+    // Determine which taxonomy to use
+    const taxonomy = isCustomPostType ? "dipi_cpt_category" : "categories";
+    const endpoint = `${siteUrl}/wp-json/wp/v2/posts/${postId}`;
+    
+    console.log(`Assigning ${taxonomy} to post ${postId}`, { categoryId });
+    
+    const categoryData = isCustomPostType 
+      ? { dipi_cpt_category: [parseInt(categoryId)] }
+      : { categories: [parseInt(categoryId)] };
+    
+    // Create a timeout for the request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    
+    const updateResponse = await fetch(endpoint, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(categoryData),
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!updateResponse.ok) {
+      console.error(`Failed to update post categories: ${updateResponse.status}`);
+      const errorText = await updateResponse.text();
+      console.error(`Category assignment error: ${errorText.substring(0, 200)}`);
+      return false;
+    }
+    
+    console.log("Categories successfully assigned to post");
+    return true;
+  } catch (error) {
+    console.error("Error assigning categories:", error);
+    return false;
+  }
+};
+
+/**
  * Updates the announcement in Supabase with WordPress post ID
  */
 const updateAnnouncementWithPostId = async (
   supabase: any, 
   announcementId: string, 
   wordpressPostId: number, 
-  isCustomPostType: boolean
+  isCustomPostType: boolean,
+  postUrl?: string
 ) => {
   try {
+    const updateData = { 
+      wordpress_post_id: wordpressPostId,
+      is_divipixel: isCustomPostType
+    };
+    
+    // Add post URL if available
+    if (postUrl) {
+      updateData['wordpress_post_url'] = postUrl;
+    }
+    
     const { error: updateError } = await supabase
       .from("announcements")
-      .update({ 
-        wordpress_post_id: wordpressPostId,
-        is_divipixel: isCustomPostType
-      })
+      .update(updateData)
       .eq("id", announcementId);
       
     if (updateError) {
       console.error("Error updating announcement with WordPress ID:", updateError);
       // We don't throw error here as post was successful
+      return false;
     }
+    
+    console.log("Successfully updated announcement record with WordPress post ID:", wordpressPostId);
+    return true;
   } catch (error) {
     console.error("Error updating announcement:", error);
+    return false;
   }
 };
 
@@ -589,62 +653,76 @@ const handleWordPressPublish = async (req: Request) => {
     // Process featured image if available
     const featuredMediaId = await processImage(announcement, wpConfig.site_url, headers);
     
-    // Create WordPress post data
+    // Create post data for WordPress
     const postData = createPostData(
-      announcement, 
-      categoryId, 
-      useCustomTaxonomy, 
-      isCustomPostType, 
+      announcement,
+      categoryId,
+      useCustomTaxonomy,
+      isCustomPostType,
       featuredMediaId
     );
     
     // Send post to WordPress
-    const responseData = await sendWordPressPost(postEndpoint, headers, postData);
+    const wpResponse = await sendWordPressPost(postEndpoint, headers, postData);
     
-    console.log("WordPress response:", responseData);
-    
-    if (responseData && typeof responseData.id === 'number') {
-      // Update announcement with WordPress ID
-      await updateAnnouncementWithPostId(
-        supabase, 
-        announcementId, 
-        responseData.id, 
-        isCustomPostType
-      );
-      
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: "Publication réussie sur WordPress",
-          data: {
-            wordpressPostId: responseData.id,
-            postUrl: responseData.link || null,
-            isCustomPostType
-          }
-        }),
-        { 
-          headers: { ...corsHeaders, "Content-Type": "application/json" }, 
-          status: 200 
-        }
-      );
-    } else {
+    if (!wpResponse || !wpResponse.id) {
+      console.error("No valid WordPress post ID returned");
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: "La réponse WordPress ne contient pas d'ID de publication" 
+          message: "La publication a échoué: Aucun ID de post n'a été retourné par WordPress."
         }),
         { 
           headers: { ...corsHeaders, "Content-Type": "application/json" }, 
-          status: 400 
+          status: 500 
         }
       );
     }
+    
+    const wordpressPostId = wpResponse.id;
+    const postUrl = wpResponse.link || wpResponse.guid?.rendered || null;
+    
+    // Ensure categories are properly assigned (sometimes they don't stick on first creation)
+    await assignCategoriesToPost(
+      wpConfig.site_url,
+      wordpressPostId,
+      categoryId,
+      headers,
+      isCustomPostType
+    );
+    
+    // Update announcement in database with WordPress post ID and URL
+    const updateSuccess = await updateAnnouncementWithPostId(
+      supabase,
+      announcementId,
+      wordpressPostId,
+      isCustomPostType,
+      postUrl
+    );
+    
+    // Return success response
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: "Publication réussie sur WordPress",
+        data: {
+          wordpressPostId,
+          postUrl,
+          isCustomPostType
+        }
+      }),
+      { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+        status: 200 
+      }
+    );
   } catch (error: any) {
     console.error("Error in WordPress publish function:", error);
+    
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        message: error.message || "Erreur d'authentification WordPress: Veuillez vérifier vos identifiants"
+      JSON.stringify({
+        success: false,
+        message: error.message || "Erreur inconnue lors de la publication WordPress",
       }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" }, 
@@ -654,27 +732,26 @@ const handleWordPressPublish = async (req: Request) => {
   }
 };
 
-// Main serve function
+// Handle requests
 serve(async (req) => {
-  // Handling CORS preflight requests
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders });
   }
-  
+
   try {
-    // Process WordPress publish request
-    return await handleWordPressPublish(req);
-  } catch (error) {
-    console.error("Unhandled error in server function:", error);
+    if (req.method === "POST") {
+      return await handleWordPressPublish(req);
+    } else {
+      return new Response(
+        JSON.stringify({ error: "Method not allowed" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 405 }
+      );
+    }
+  } catch (error: any) {
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        message: "Erreur serveur interne" 
-      }),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" }, 
-        status: 500 
-      }
+      JSON.stringify({ error: error.message || "Une erreur inconnue s'est produite" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
     );
   }
 });

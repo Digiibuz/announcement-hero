@@ -1,66 +1,51 @@
 
-"use client";
+import { useToast as useToastSonner } from "sonner";
 
-import { toast as sonnerToast } from "sonner";
-import { useCallback } from "react";
-
-export type ToastProps = {
-  title?: string;
-  description?: string;
-  variant?: "default" | "destructive" | "success";
-  duration?: number;
+export const useToast = () => {
+  return useToastSonner();
 };
 
-export function useToast() {
-  const toast = useCallback(
-    ({ title, description, variant = "default", duration = 5000 }: ToastProps) => {
-      if (variant === "destructive") {
-        sonnerToast.error(title, {
-          description,
-          duration,
-        });
-      } else if (variant === "success") {
-        sonnerToast.success(title, {
-          description,
-          duration,
-        });
-      } else {
-        sonnerToast(title, {
-          description,
-          duration,
-        });
-      }
-    },
-    []
-  );
-
-  return { toast };
-}
-
-// Export a simpler toast function for direct usage
 export const toast = {
-  // Standard toast
-  default: (message: string, options?: any) => {
-    sonnerToast(message, options);
+  error: (message: string) => {
+    window.toast?.error(message);
   },
-  
-  // Success toast
-  success: (message: string, options?: any) => {
-    sonnerToast.success(message, options);
+  success: (message: string) => {
+    window.toast?.success(message);
   },
-  
-  // Error toast
-  error: (message: string, options?: any) => {
-    sonnerToast.error(message, options);
+  warning: (message: string) => {
+    window.toast?.warning(message);
   },
-  
-  // Warning toast
-  warning: (message: string, options?: any) => {
-    sonnerToast.warning(message, options);
+  info: (message: string) => {
+    window.toast?.info(message);
   },
-  
-  // Info toast
-  info: (message: string, options?: any) => {
-    sonnerToast.info(message, options);
-  }
+  promise: <T>(
+    promise: Promise<T>,
+    messages: {
+      loading: string;
+      success: string | ((data: T) => string);
+      error: string | ((error: unknown) => string);
+    }
+  ) => {
+    return window.toast?.promise(promise, messages);
+  },
 };
+
+// Augment window interface for global toast access
+declare global {
+  interface Window {
+    toast?: {
+      success: (message: string) => void;
+      error: (message: string) => void;
+      warning: (message: string) => void;
+      info: (message: string) => void;
+      promise: <T>(
+        promise: Promise<T>,
+        messages: {
+          loading: string;
+          success: string | ((data: T) => string);
+          error: string | ((error: unknown) => string);
+        }
+      ) => Promise<T>;
+    };
+  }
+}
