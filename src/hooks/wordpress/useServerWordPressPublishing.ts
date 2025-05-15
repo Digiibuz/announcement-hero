@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Announcement } from "@/types/announcement";
 import { toast } from "sonner";
 
@@ -48,111 +49,88 @@ export const useServerWordPressPublishing = () => {
   
   const publishToWordPressServer = async (
     announcement: Announcement, 
-    categoryId: string,
+    wordpressCategoryId: string,
     userId: string
   ): Promise<{ success: boolean; message: string; wordpressPostId: number | null }> => {
-    setIsPublishing(true);
-    resetPublishingState();
-    
     try {
-      // Step 1: Prepare the request
-      updatePublishingStep("prepare", "loading", "Préparation de la publication", 20);
+      setIsPublishing(true);
+      resetPublishingState();
       
-      // Prepare the payload data
-      const payload = {
+      // Start preparation step
+      updatePublishingStep("prepare", "loading", "Préparation de la publication", 30);
+      
+      console.log("Publishing announcement", {
         announcementId: announcement.id,
-        userId: userId,
-        categoryId: categoryId
-      };
-      
-      console.log("Publishing announcement", payload);
-      
-      updatePublishingStep("prepare", "success", "Préparation terminée", 30);
-      
-      // Step 2: Make the server call
-      updatePublishingStep("server", "loading", "Envoi vers WordPress", 40);
-      
-      // Get JWT token from localStorage for authorization
-      const accessToken = localStorage.getItem('supabase.auth.token') || localStorage.getItem('sb-rdwqedmvzicerwotjseg-auth-token');
-      
-      if (!accessToken) {
-        throw new Error("Token d'authentification non trouvé. Veuillez vous reconnecter.");
-      }
-      
-      let parsedToken;
-      try {
-        parsedToken = JSON.parse(accessToken);
-      } catch (e) {
-        console.error("Erreur lors de la lecture du token:", e);
-        throw new Error("Format de token invalide. Veuillez vous reconnecter.");
-      }
-      
-      const token = parsedToken?.currentSession?.access_token || parsedToken?.access_token;
-      
-      if (!token) {
-        throw new Error("Token d'accès non trouvé. Veuillez vous reconnecter.");
-      }
-      
-      // CORRECTION: Utiliser la bonne URL de l'API Edge Function
-      // Modification du chemin de l'API pour utiliser l'URL complète de l'Edge Function
-      const supabaseUrl = window.location.hostname.includes('localhost') 
-        ? "http://localhost:54321"
-        : "https://rdwqedmvzicerwotjseg.supabase.co";
-      
-      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/wordpress-publish`;
-      console.log("Calling edge function at URL:", edgeFunctionUrl);
-      
-      // Call the Edge Function with proper authorization
-      const response = await fetch(edgeFunctionUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
+        userId,
+        categoryId: wordpressCategoryId
       });
       
+      // Call Edge function to handle WordPress publishing
+      const functionUrl = `https://rdwqedmvzicerwotjseg.supabase.co/functions/v1/wordpress-publish`;
+      console.log("Calling edge function at URL:", functionUrl);
+      
+      updatePublishingStep("server", "loading", "Publication sur WordPress via serveur", 50);
+      
+      // Appel à la fonction Edge avec l'authentification JWT
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionData.session?.access_token || ''}`
+        },
+        body: JSON.stringify({
+          announcementId: announcement.id,
+          userId,
+          categoryId: wordpressCategoryId
+        })
+      });
+      
+      // Check if the response is not OK (HTTP error)
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("Error response from Edge Function:", response.status, errorText);
+        console.error(`Error response from Edge Function: ${response.status} ${errorText}`);
+        
+        updatePublishingStep("server", "error", `Erreur du serveur: ${response.status}`, 60);
+        
         throw new Error(`Erreur du serveur: ${response.status} ${errorText}`);
       }
       
-      // Parse and process the response
+      // Parse JSON response
       const responseData = await response.json();
-      updatePublishingStep("server", "success", "Publication sur WordPress réussie", 70);
+      console.log("Server response:", responseData);
       
-      // Step 3: Update the database status if necessary
-      updatePublishingStep("database", "loading", "Mise à jour de la base de données", 80);
-      
-      if (responseData.success && responseData.data?.wordpressPostId) {
-        // The Edge Function already updates the announcement record
-        updatePublishingStep("database", "success", "Base de données mise à jour", 100);
-        
-        return {
-          success: true,
-          message: "Publication réussie",
-          wordpressPostId: responseData.data.wordpressPostId
-        };
-      } else {
-        updatePublishingStep("database", "error", "Erreur lors de la mise à jour", 80);
+      // Check for success in response
+      if (!responseData.success) {
+        updatePublishingStep("server", "error", responseData.message || "Erreur inconnue", 60);
         return {
           success: false,
           message: responseData.message || "Erreur inconnue",
           wordpressPostId: null
         };
       }
+      
+      // Success case
+      updatePublishingStep("server", "success", "Publication réussie sur WordPress", 80);
+      updatePublishingStep("database", "success", "Mise à jour complète", 100);
+      
+      return {
+        success: true,
+        message: responseData.message || "Publication réussie",
+        wordpressPostId: responseData.data?.wordpressPostId || null
+      };
     } catch (error: any) {
       console.error("Error in publishToWordPressServer:", error);
-      updatePublishingStep(
-        publishingState.currentStep || "server", 
-        "error", 
-        `Erreur: ${error.message || "Erreur inconnue"}`,
-        50
-      );
+      
+      // Ensure current step shows error
+      if (publishingState.currentStep) {
+        updatePublishingStep(publishingState.currentStep, "error", `Erreur: ${error.message}`, 60);
+      }
+      
       return {
         success: false,
-        message: error.message || "Une erreur est survenue lors de la publication",
+        message: `Erreur lors de la publication: ${error.message}`,
         wordpressPostId: null
       };
     } finally {

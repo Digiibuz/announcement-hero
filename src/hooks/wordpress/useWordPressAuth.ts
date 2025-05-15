@@ -1,5 +1,5 @@
 
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 
 /**
  * Prepares authentication headers for WordPress API requests
@@ -44,7 +44,9 @@ export const prepareWordPressAuthHeaders = (wpConfig: {
   // Try regular credentials as last resort
   if (!authenticationSuccess && wpConfig.username && wpConfig.password) {
     try {
-      const credentials = `${wpConfig.username}:${wpConfig.password}`;
+      const username = wpConfig.username.trim();
+      const password = wpConfig.password.trim();
+      const credentials = `${username}:${password}`;
       const base64Credentials = btoa(credentials);
       headers['Authorization'] = `Basic ${base64Credentials}`;
       console.log("Using Legacy Basic authentication");

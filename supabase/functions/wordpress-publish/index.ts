@@ -187,8 +187,10 @@ const createAuthHeaders = (wpConfig: any) => {
   if (wpConfig.app_username && wpConfig.app_password) {
     try {
       // MÉTHODE CORRIGÉE: Utilisation correcte de l'encodage base64 pour l'authentification
-      const credentials = `${wpConfig.app_username}:${wpConfig.app_password}`;
-      console.log("Using credentials for:", wpConfig.app_username);
+      const appUsername = wpConfig.app_username.trim();
+      const appPassword = wpConfig.app_password.trim();
+      const credentials = `${appUsername}:${appPassword}`;
+      console.log("Using credentials for:", appUsername);
       
       // Utilisation de l'API standard pour l'encodage Base64 (compatible avec Deno)
       const encoder = new TextEncoder();
@@ -215,8 +217,17 @@ const createAuthHeaders = (wpConfig: any) => {
   // Tentative avec les identifiants standard si disponibles
   if (!authenticationSuccess && wpConfig.username && wpConfig.password) {
     try {
-      const credentials = `${wpConfig.username}:${wpConfig.password}`;
-      const base64Credentials = btoa(credentials);
+      const username = wpConfig.username.trim();
+      const password = wpConfig.password.trim();
+      const credentials = `${username}:${password}`;
+      
+      // Utilisation de l'API standard pour l'encodage Base64 (compatible avec Deno)
+      const encoder = new TextEncoder();
+      const data = encoder.encode(credentials);
+      
+      // Conversion correcte en base64
+      const base64Credentials = btoa(String.fromCharCode(...new Uint8Array(data)));
+      
       headers['Authorization'] = `Basic ${base64Credentials}`;
       console.log("Using standard credentials for authentication");
       authenticationSuccess = true;
@@ -340,31 +351,40 @@ const sendWordPressPost = async (
   headers: Record<string, string>, 
   postData: any
 ) => {
-  // Send post to WordPress
-  const postResponse = await fetch(postEndpoint, {
-    method: 'POST',
-    headers: headers,
-    body: JSON.stringify(postData)
-  });
-  
-  // Handle response
-  if (!postResponse.ok) {
-    let errorText = await postResponse.text();
-    console.error("WordPress API error:", postResponse.status, errorText);
+  try {
+    // Afficher les détails de la requête pour le débogage
+    console.log("Sending WordPress request to:", postEndpoint);
+    console.log("Request headers:", Object.keys(headers).join(", "));
     
-    let errorMessage = "Échec de la publication sur WordPress";
-    if (postResponse.status === 401) {
-      errorMessage = "Erreur d'authentification WordPress: Veuillez vérifier vos identifiants";
-    } else if (postResponse.status === 403) {
-      errorMessage = "Accès refusé: Permissions insuffisantes dans WordPress";
-    } else {
-      errorMessage = `Erreur WordPress (${postResponse.status}): ${errorText.substring(0, 100)}`;
+    // Send post to WordPress
+    const postResponse = await fetch(postEndpoint, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(postData)
+    });
+    
+    // Handle response
+    if (!postResponse.ok) {
+      let errorText = await postResponse.text();
+      console.error("WordPress API error:", postResponse.status, errorText);
+      
+      let errorMessage = "Échec de la publication sur WordPress";
+      if (postResponse.status === 401) {
+        errorMessage = "Erreur d'authentification WordPress: Veuillez vérifier vos identifiants";
+      } else if (postResponse.status === 403) {
+        errorMessage = "Accès refusé: Permissions insuffisantes dans WordPress";
+      } else {
+        errorMessage = `Erreur WordPress (${postResponse.status}): ${errorText.substring(0, 100)}`;
+      }
+      
+      throw new Error(errorMessage);
     }
     
-    throw new Error(errorMessage);
+    return await postResponse.json();
+  } catch (error) {
+    console.error("Error in WordPress post request:", error);
+    throw error;
   }
-  
-  return await postResponse.json();
 };
 
 /**
@@ -397,22 +417,6 @@ const handleWordPressPublish = async (req: Request) => {
   console.log("WordPress publish function called");
 
   try {
-    // Verify authentication
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
-      console.error("Missing authorization header");
-      return new Response(
-        JSON.stringify({ 
-          code: 401, 
-          message: "Missing authorization header" 
-        }),
-        { 
-          headers: { ...corsHeaders, "Content-Type": "application/json" }, 
-          status: 401 
-        }
-      );
-    }
-
     // Initialize Supabase client
     const supabase = createServerSupabaseClient();
     
