@@ -227,6 +227,10 @@ const createAuthHeaders = (wpConfig: any) => {
         const data = encoder.encode(credentials);
         const base64Credentials = btoa(String.fromCharCode(...new Uint8Array(data)));
         
+        // Log out the credentials format (not the actual value) for debugging
+        console.log("Credentials format check: username:password");
+        console.log("Using encoded credentials of length:", base64Credentials.length);
+        
         headers['Authorization'] = `Basic ${base64Credentials}`;
         console.log("Auth header created successfully using application password");
         authenticationSuccess = true;
@@ -434,15 +438,27 @@ const sendWordPressPost = async (
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 20000);
     
+    // Dump full request details for debugging (excluding sensitive data)
+    console.log("Request method: POST");
+    console.log("Request headers:", Object.keys(headers).join(", "));
+    console.log("Request body type:", typeof postData);
+    
+    // Convert headers to Headers object for better compatibility
+    const requestHeaders = new Headers();
+    Object.entries(headers).forEach(([key, value]) => {
+      requestHeaders.set(key, value);
+    });
+    
     // Send post to WordPress
     const postResponse = await fetch(postEndpoint, {
       method: 'POST',
-      headers: headers,
+      headers: requestHeaders,
       body: JSON.stringify(postData),
       signal: controller.signal
     });
     
     clearTimeout(timeoutId);
+    console.log("WordPress response status:", postResponse.status);
     
     // Handle error responses
     if (!postResponse.ok) {
@@ -462,7 +478,17 @@ const sendWordPressPost = async (
       throw new Error(errorMessage);
     }
     
-    return await postResponse.json();
+    // Try to parse the WordPress response
+    try {
+      const responseData = await postResponse.json();
+      console.log("WordPress response parsed successfully");
+      return responseData;
+    } catch (parseError) {
+      console.error("Error parsing WordPress response:", parseError);
+      const responseText = await postResponse.text();
+      console.log("Raw response:", responseText.substring(0, 500));
+      throw new Error("Impossible de parser la réponse WordPress");
+    }
   } catch (error: any) {
     // Handle timeout errors
     if (error.name === "AbortError") {
@@ -521,6 +547,23 @@ const handleWordPressPublish = async (req: Request) => {
     
     // Fetch WordPress config details
     const wpConfig = await fetchWordPressConfig(supabase, wordpressConfigId);
+    
+    // Log raw credential format for debugging
+    console.log("WordPress Credentials Format Check:");
+    console.log("App username exists:", !!wpConfig.app_username);
+    console.log("App username type:", typeof wpConfig.app_username);
+    console.log("App username length:", wpConfig.app_username ? wpConfig.app_username.length : 0);
+    console.log("App password exists:", !!wpConfig.app_password);
+    console.log("App password type:", typeof wpConfig.app_password);
+    console.log("App password length:", wpConfig.app_password ? wpConfig.app_password.length : 0);
+    
+    // Double-check credentials are valid format
+    if (wpConfig.app_username && wpConfig.app_username.includes(' ')) {
+      console.warn("WARNING: App username contains spaces - may cause auth issues");
+    }
+    if (wpConfig.app_password && wpConfig.app_password.includes(' ')) {
+      console.warn("WARNING: App password contains spaces - may cause auth issues");
+    }
     
     // Detect WordPress API endpoints
     const { postEndpoint, useCustomTaxonomy, isCustomPostType } = 
@@ -601,7 +644,7 @@ const handleWordPressPublish = async (req: Request) => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        message: `Erreur d'authentification WordPress: Veuillez vérifier vos identifiants` 
+        message: error.message || "Erreur d'authentification WordPress: Veuillez vérifier vos identifiants"
       }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" }, 

@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { supabase, supabaseUrl } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { Announcement } from "@/types/announcement";
 import { toast } from "@/hooks/use-toast";
 
@@ -75,7 +75,9 @@ export const useServerWordPressPublishing = () => {
       }
       
       // Construire l'URL de la fonction edge avec le projet ID correct
-      const functionUrl = `${supabaseUrl}/functions/v1/wordpress-publish`;
+      // Récupérer le projet ID depuis config.toml
+      const projectId = "rdwqedmvzicerwotjseg"; // ID du projet Supabase
+      const functionUrl = `https://${projectId}.supabase.co/functions/v1/wordpress-publish`;
       console.log("Calling edge function at URL:", functionUrl);
       
       updatePublishingStep("server", "loading", "Publication sur WordPress via serveur", 50);
