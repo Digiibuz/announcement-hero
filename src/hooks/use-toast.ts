@@ -4,7 +4,7 @@
 import * as React from "react";
 import { toast as sonnerToast, type ExternalToast } from "sonner";
 
-// Define a type that can handle both ReactNode content and ExternalToast options
+// Clarify our type with a union type - it can be EITHER a ReactNode OR an ExternalToast object
 type ToastContent = React.ReactNode | ExternalToast;
 type ToastOptions = Omit<ExternalToast, 'description'>;
 
@@ -16,37 +16,33 @@ const createToast = (baseToast: typeof sonnerToast) => {
       if (typeof content === 'string' || React.isValidElement(content)) {
         return baseToast(content, options);
       }
-      // Handle ExternalToast directly - baseToast accepts this directly without type assertion
-      return baseToast(content);
+      // For ExternalToast objects, cast explicitly and pass directly
+      return baseToast(content as ExternalToast);
     },
     // Override specific toast variants
     error: (content: ToastContent, options?: ToastOptions) => {
       if (typeof content === 'string' || React.isValidElement(content)) {
         return baseToast.error(content, options);
       }
-      // Handle ExternalToast directly - baseToast accepts this directly without type assertion
-      return baseToast.error(content);
+      return baseToast.error(content as ExternalToast);
     },
     success: (content: ToastContent, options?: ToastOptions) => {
       if (typeof content === 'string' || React.isValidElement(content)) {
         return baseToast.success(content, options);
       }
-      // Handle ExternalToast directly - baseToast accepts this directly without type assertion
-      return baseToast.success(content);
+      return baseToast.success(content as ExternalToast);
     },
     warning: (content: ToastContent, options?: ToastOptions) => {
       if (typeof content === 'string' || React.isValidElement(content)) {
         return baseToast.warning(content, options);
       }
-      // Handle ExternalToast directly - baseToast accepts this directly without type assertion
-      return baseToast.warning(content);
+      return baseToast.warning(content as ExternalToast);
     },
     info: (content: ToastContent, options?: ToastOptions) => {
       if (typeof content === 'string' || React.isValidElement(content)) {
         return baseToast.info(content, options);
       }
-      // Handle ExternalToast directly - baseToast accepts this directly without type assertion
-      return baseToast.info(content);
+      return baseToast.info(content as ExternalToast);
     }
   };
 };
