@@ -80,8 +80,8 @@ export const useServerWordPressPublishing = () => {
         };
       }
       
-      // Log the function URL to debug issues
-      const functionUrl = `${supabase.functions.url}/wordpress-publish`;
+      // Get function URL without using the protected property
+      const functionUrl = `${supabase.functions.invoke.name}/wordpress-publish`;
       console.log("Calling edge function at URL:", functionUrl);
       
       const { data, error } = await supabase.functions.invoke("wordpress-publish", {
