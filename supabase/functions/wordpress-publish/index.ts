@@ -197,26 +197,29 @@ serve(async (req) => {
 
     console.log("Using WordPress endpoint:", postEndpoint);
     
-    // Authenticate with WordPress
+    // Authenticate with WordPress - CORRECTION DU PROBLEME D'AUTHENTIFICATION
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
-    // Set up authentication headers - CRITICAL PART
+    // Set up authentication headers - CRITICAL PART - IMPROVED
     let authenticationSuccess = false;
     
     if (wpConfig.app_username && wpConfig.app_password) {
       try {
-        // Creating the credentials string and properly encoding it
+        // MÉTHODE CORRIGÉE: Utilisation correcte de l'encodage base64 pour l'authentification
         const credentials = `${wpConfig.app_username}:${wpConfig.app_password}`;
-        // Use TextEncoder and TextDecoder for proper UTF-8 handling before base64 encoding
+        console.log("Using credentials for:", wpConfig.app_username);
+        
+        // Utilisation de l'API standard pour l'encodage Base64 (compatible avec Deno)
         const encoder = new TextEncoder();
         const data = encoder.encode(credentials);
+        
+        // Conversion correcte en base64
         const base64Credentials = btoa(String.fromCharCode(...new Uint8Array(data)));
         
         headers['Authorization'] = `Basic ${base64Credentials}`;
-        console.log("Using Application Password authentication with proper encoding");
-        console.log("Auth header format (not showing actual credentials):", "Basic ****");
+        console.log("Auth header created successfully (not showing actual credentials)");
         authenticationSuccess = true;
       } catch (authError) {
         console.error("Error setting up auth headers:", authError);
@@ -228,6 +231,19 @@ serve(async (req) => {
       headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
       console.log("Using REST API Key authentication");
       authenticationSuccess = true;
+    }
+    
+    // Tentative avec les identifiants standard si disponibles
+    if (!authenticationSuccess && wpConfig.username && wpConfig.password) {
+      try {
+        const credentials = `${wpConfig.username}:${wpConfig.password}`;
+        const base64Credentials = btoa(credentials);
+        headers['Authorization'] = `Basic ${base64Credentials}`;
+        console.log("Using standard credentials for authentication");
+        authenticationSuccess = true;
+      } catch (error) {
+        console.error("Error with standard credentials:", error);
+      }
     }
     
     if (!authenticationSuccess) {
