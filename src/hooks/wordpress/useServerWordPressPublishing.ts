@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Announcement } from "@/types/announcement";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseUrl } from "@/integrations/supabase/client";
 
 export type PublishingStatus = "idle" | "loading" | "success" | "error";
 
@@ -71,9 +71,8 @@ export const useServerWordPressPublishing = () => {
       updatePublishingStep("prepare", "success", "Données préparées", 40);
       updatePublishingStep("server", "loading", "Envoi à WordPress en cours", 60);
 
-      // Utilisons l'URL récupérée depuis la configuration Supabase
-      // Utilisation de l'URL complète pour l'appel à l'Edge Function
-      const functionUrl = `https://rdwqedmvzicerwotjseg.supabase.co/functions/v1/wordpress-publish`;
+      // Using the supabaseUrl imported directly from the client file
+      const functionUrl = `${supabaseUrl}/functions/v1/wordpress-publish`;
       
       // Appel direct à l'Edge Function (maintenant sans authentification requise)
       const response = await fetch(functionUrl, {

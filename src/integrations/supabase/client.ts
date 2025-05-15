@@ -5,17 +5,14 @@ import type { Database } from './types';
 
 // Configuration avec des valeurs fixes pour éviter les problèmes de parsing JSON
 // Ces valeurs sont publiques et peuvent être incluses côté client sans risque
-const supabaseUrl = "https://rdwqedmvzicerwotjseg.supabase.co";
-const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkd3FlZG12emljZXJ3b3Rqc2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwNzg4MzEsImV4cCI6MjA1ODY1NDgzMX0.Ohle_vVvdoCvsObP9A_AdyM52XdzisIvHvH1D1a88zk";
+export const supabaseUrl = "https://rdwqedmvzicerwotjseg.supabase.co";
+export const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkd3FlZG12emljZXJ3b3Rqc2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwNzg4MzEsImV4cCI6MjA1ODY1NDgzMX0.Ohle_vVvdoCvsObP9A_AdyM52XdzisIvHvH1D1a88zk";
 
 // Créer le client avec les valeurs fixes sans tenter de les récupérer dynamiquement
 export const supabase = createClient<Database>(
   supabaseUrl,
   supabaseAnonKey
 );
-
-// Exportation directe pour éviter les erreurs d'accès
-export { supabaseUrl, supabaseAnonKey };
 
 // Note: This client only has anon permissions
 // For any sensitive operations, use edge functions that can access service role keys securely
