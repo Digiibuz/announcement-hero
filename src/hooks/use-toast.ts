@@ -4,65 +4,66 @@
 import * as React from "react";
 import { toast as sonnerToast, type ExternalToast } from "sonner";
 
-// We need to properly type our toast functions
+// Définir des types plus précis
+type ToastContent = React.ReactNode | string;
 type ToastOptions = Omit<ExternalToast, 'description'>;
 
-// Create a proper wrapper for the sonner toast functions
+// Créer un wrapper pour les fonctions toast de sonner
 const createToast = () => {
-  // Basic toast function that handles both string/ReactNode and ExternalToast object
+  // Fonction toast de base qui gère les contenus de type string/ReactNode
   const toast = (
-    content: React.ReactNode | Omit<ExternalToast, 'action' | 'cancel' | 'className' | 'description' | 'duration' | 'icon' | 'id' | 'important' | 'onAutoClose' | 'onDismiss' | 'position' | 'promise' | 'style'> & { description?: React.ReactNode },
+    content: ToastContent | { title?: string; description?: React.ReactNode },
     options?: ToastOptions
   ) => {
     if (typeof content === 'string' || React.isValidElement(content)) {
       return sonnerToast(content, options);
     }
-    // For object-based calls, pass directly to sonnerToast
-    return sonnerToast({ ...content } as unknown as string);
+    // Pour les appels basés sur un objet, on transmet directement à sonnerToast
+    return sonnerToast(content as any);
   };
 
-  // Error variant
+  // Variante error
   const error = (
-    content: React.ReactNode | Omit<ExternalToast, 'action' | 'cancel' | 'className' | 'description' | 'duration' | 'icon' | 'id' | 'important' | 'onAutoClose' | 'onDismiss' | 'position' | 'promise' | 'style'> & { description?: React.ReactNode },
+    content: ToastContent | { title?: string; description?: React.ReactNode },
     options?: ToastOptions
   ) => {
     if (typeof content === 'string' || React.isValidElement(content)) {
       return sonnerToast.error(content, options);
     }
-    return sonnerToast.error({ ...content } as unknown as string);
+    return sonnerToast.error(content as any);
   };
 
-  // Success variant
+  // Variante success
   const success = (
-    content: React.ReactNode | Omit<ExternalToast, 'action' | 'cancel' | 'className' | 'description' | 'duration' | 'icon' | 'id' | 'important' | 'onAutoClose' | 'onDismiss' | 'position' | 'promise' | 'style'> & { description?: React.ReactNode },
+    content: ToastContent | { title?: string; description?: React.ReactNode },
     options?: ToastOptions
   ) => {
     if (typeof content === 'string' || React.isValidElement(content)) {
       return sonnerToast.success(content, options);
     }
-    return sonnerToast.success({ ...content } as unknown as string);
+    return sonnerToast.success(content as any);
   };
 
-  // Warning variant
+  // Variante warning
   const warning = (
-    content: React.ReactNode | Omit<ExternalToast, 'action' | 'cancel' | 'className' | 'description' | 'duration' | 'icon' | 'id' | 'important' | 'onAutoClose' | 'onDismiss' | 'position' | 'promise' | 'style'> & { description?: React.ReactNode },
+    content: ToastContent | { title?: string; description?: React.ReactNode },
     options?: ToastOptions
   ) => {
     if (typeof content === 'string' || React.isValidElement(content)) {
       return sonnerToast.warning(content, options);
     }
-    return sonnerToast.warning({ ...content } as unknown as string);
+    return sonnerToast.warning(content as any);
   };
 
-  // Info variant
+  // Variante info
   const info = (
-    content: React.ReactNode | Omit<ExternalToast, 'action' | 'cancel' | 'className' | 'description' | 'duration' | 'icon' | 'id' | 'important' | 'onAutoClose' | 'onDismiss' | 'position' | 'promise' | 'style'> & { description?: React.ReactNode },
+    content: ToastContent | { title?: string; description?: React.ReactNode },
     options?: ToastOptions
   ) => {
     if (typeof content === 'string' || React.isValidElement(content)) {
       return sonnerToast.info(content, options);
     }
-    return sonnerToast.info({ ...content } as unknown as string);
+    return sonnerToast.info(content as any);
   };
 
   return {
