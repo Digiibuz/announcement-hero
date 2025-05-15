@@ -4,50 +4,78 @@
 import * as React from "react";
 import { toast as sonnerToast, type ExternalToast } from "sonner";
 
-// Clarify our type with a union type - it can be EITHER a ReactNode OR an ExternalToast object
-type ToastContent = React.ReactNode | ExternalToast;
+// We need to properly type our toast functions
 type ToastOptions = Omit<ExternalToast, 'description'>;
 
-const createToast = (baseToast: typeof sonnerToast) => {
-  return {
-    ...baseToast,
-    // Override default toast method
-    toast: (content: ToastContent, options?: ToastOptions) => {
-      if (typeof content === 'string' || React.isValidElement(content)) {
-        return baseToast(content, options);
-      }
-      // For ExternalToast objects, cast explicitly and pass directly
-      return baseToast(content as ExternalToast);
-    },
-    // Override specific toast variants
-    error: (content: ToastContent, options?: ToastOptions) => {
-      if (typeof content === 'string' || React.isValidElement(content)) {
-        return baseToast.error(content, options);
-      }
-      return baseToast.error(content as ExternalToast);
-    },
-    success: (content: ToastContent, options?: ToastOptions) => {
-      if (typeof content === 'string' || React.isValidElement(content)) {
-        return baseToast.success(content, options);
-      }
-      return baseToast.success(content as ExternalToast);
-    },
-    warning: (content: ToastContent, options?: ToastOptions) => {
-      if (typeof content === 'string' || React.isValidElement(content)) {
-        return baseToast.warning(content, options);
-      }
-      return baseToast.warning(content as ExternalToast);
-    },
-    info: (content: ToastContent, options?: ToastOptions) => {
-      if (typeof content === 'string' || React.isValidElement(content)) {
-        return baseToast.info(content, options);
-      }
-      return baseToast.info(content as ExternalToast);
+// Create a proper wrapper for the sonner toast functions
+const createToast = () => {
+  // Basic toast function that handles both string/ReactNode and ExternalToast object
+  const toast = (
+    content: React.ReactNode | Omit<ExternalToast, 'action' | 'cancel' | 'className' | 'description' | 'duration' | 'icon' | 'id' | 'important' | 'onAutoClose' | 'onDismiss' | 'position' | 'promise' | 'style'> & { description?: React.ReactNode },
+    options?: ToastOptions
+  ) => {
+    if (typeof content === 'string' || React.isValidElement(content)) {
+      return sonnerToast(content, options);
     }
+    // For object-based calls, pass directly to sonnerToast
+    return sonnerToast({ ...content } as unknown as string);
+  };
+
+  // Error variant
+  const error = (
+    content: React.ReactNode | Omit<ExternalToast, 'action' | 'cancel' | 'className' | 'description' | 'duration' | 'icon' | 'id' | 'important' | 'onAutoClose' | 'onDismiss' | 'position' | 'promise' | 'style'> & { description?: React.ReactNode },
+    options?: ToastOptions
+  ) => {
+    if (typeof content === 'string' || React.isValidElement(content)) {
+      return sonnerToast.error(content, options);
+    }
+    return sonnerToast.error({ ...content } as unknown as string);
+  };
+
+  // Success variant
+  const success = (
+    content: React.ReactNode | Omit<ExternalToast, 'action' | 'cancel' | 'className' | 'description' | 'duration' | 'icon' | 'id' | 'important' | 'onAutoClose' | 'onDismiss' | 'position' | 'promise' | 'style'> & { description?: React.ReactNode },
+    options?: ToastOptions
+  ) => {
+    if (typeof content === 'string' || React.isValidElement(content)) {
+      return sonnerToast.success(content, options);
+    }
+    return sonnerToast.success({ ...content } as unknown as string);
+  };
+
+  // Warning variant
+  const warning = (
+    content: React.ReactNode | Omit<ExternalToast, 'action' | 'cancel' | 'className' | 'description' | 'duration' | 'icon' | 'id' | 'important' | 'onAutoClose' | 'onDismiss' | 'position' | 'promise' | 'style'> & { description?: React.ReactNode },
+    options?: ToastOptions
+  ) => {
+    if (typeof content === 'string' || React.isValidElement(content)) {
+      return sonnerToast.warning(content, options);
+    }
+    return sonnerToast.warning({ ...content } as unknown as string);
+  };
+
+  // Info variant
+  const info = (
+    content: React.ReactNode | Omit<ExternalToast, 'action' | 'cancel' | 'className' | 'description' | 'duration' | 'icon' | 'id' | 'important' | 'onAutoClose' | 'onDismiss' | 'position' | 'promise' | 'style'> & { description?: React.ReactNode },
+    options?: ToastOptions
+  ) => {
+    if (typeof content === 'string' || React.isValidElement(content)) {
+      return sonnerToast.info(content, options);
+    }
+    return sonnerToast.info({ ...content } as unknown as string);
+  };
+
+  return {
+    ...sonnerToast,
+    toast,
+    error,
+    success,
+    warning,
+    info,
   };
 };
 
-export const toast = createToast(sonnerToast);
+export const toast = createToast();
 
 export const useToast = () => {
   return { toast };
