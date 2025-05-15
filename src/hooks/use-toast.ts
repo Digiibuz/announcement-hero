@@ -23,7 +23,7 @@ declare global {
 
 export const useToast = () => {
   return {
-    toast: sonnerToast
+    toast
   };
 };
 

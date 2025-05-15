@@ -2,20 +2,8 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Announcement } from "@/types/announcement";
-import { toast } from "@/hooks/use-toast";
-
-export type PublishingStatus = "idle" | "loading" | "success" | "error";
-
-export interface PublishingState {
-  currentStep: string | null;
-  steps: {
-    [key: string]: {
-      status: PublishingStatus;
-      message?: string;
-    }
-  };
-  progress: number;
-}
+import { toast } from "sonner";
+import { PublishingState, PublishingStatus } from "../useWordPressPublishing";
 
 const initialPublishingState: PublishingState = {
   currentStep: null,
@@ -49,124 +37,120 @@ export const useServerWordPressPublishing = () => {
   
   const publishToWordPressServer = async (
     announcement: Announcement, 
-    categoryId: string,
+    wordpressCategoryId: string,
     userId: string
   ): Promise<{ success: boolean; message: string; wordpressPostId: number | null }> => {
     setIsPublishing(true);
     resetPublishingState();
     
-    // Start preparing publication 
+    // Start with preparation step
     updatePublishingStep("prepare", "loading", "Préparation de la publication", 10);
     
     try {
-      console.log("Publishing announcement", {
+      console.log("Starting server-side WordPress publishing...");
+      
+      updatePublishingStep("prepare", "success", "Préparation terminée", 30);
+      updatePublishingStep("server", "loading", "Publication sur WordPress via serveur", 40);
+      
+      // Prepare payload for the edge function
+      const payload = {
         announcementId: announcement.id,
-        userId,
-        categoryId
-      });
+        userId: userId,
+        categoryId: wordpressCategoryId
+      };
       
-      // Update to calling the server function
-      updatePublishingStep("server", "loading", "Publication sur WordPress", 50);
+      console.log("Calling edge function with payload:", payload);
       
-      // Need to use full URL for Edge Functions to work properly
-      const { data: session } = await supabase.auth.getSession();
-      
-      if (!session?.session?.access_token) {
-        updatePublishingStep("server", "error", "Session non disponible");
-        return {
-          success: false,
-          message: "Votre session a expiré. Veuillez vous reconnecter.",
-          wordpressPostId: null
-        };
-      }
-      
-      console.log("Calling edge function at URL: invoke/wordpress-publish");
-      
+      // Call the edge function
       const { data, error } = await supabase.functions.invoke("wordpress-publish", {
-        body: {
-          announcementId: announcement.id,
-          userId,
-          categoryId
-        }
+        body: payload
       });
       
-      console.log("Server response:", data);
+      console.log("Edge function response:", data);
       
       if (error) {
-        console.error("Error from edge function:", error);
-        updatePublishingStep("server", "error", `Erreur: ${error.message}`);
-        return {
-          success: false,
-          message: `Erreur lors de la publication: ${error.message}`,
-          wordpressPostId: null
+        console.error("Edge function error:", error);
+        updatePublishingStep("server", "error", `Erreur: ${error.message || "Erreur inconnue"}`, 50);
+        return { 
+          success: false, 
+          message: `Erreur lors de la publication: ${error.message || "Erreur inconnue"}`, 
+          wordpressPostId: null 
         };
       }
       
-      if (!data?.success) {
-        const errorMessage = data?.message || "Erreur inconnue lors de la publication";
-        console.error("Publication error:", errorMessage);
-        updatePublishingStep("server", "error", `Échec: ${errorMessage}`);
-        return {
-          success: false,
-          message: errorMessage,
-          wordpressPostId: null
+      if (!data.success) {
+        console.error("WordPress publishing failed:", data.message);
+        updatePublishingStep("server", "error", `Échec: ${data.message || "Échec inconnu"}`, 50);
+        return { 
+          success: false, 
+          message: data.message || "Échec de la publication WordPress", 
+          wordpressPostId: null 
         };
       }
       
-      // Server function was successful
-      updatePublishingStep("server", "success", "Publication sur WordPress réussie", 80);
+      // Success! Update UI and return result
+      updatePublishingStep("server", "success", "Publication WordPress réussie", 80);
+      updatePublishingStep("database", "success", "Mise à jour de la base de données terminée", 100);
       
-      // Database work was handled by the server function
-      updatePublishingStep("database", "success", "Mise à jour finalisée", 100);
+      let postLink = "";
+      if (data.data && data.data.postUrl) {
+        postLink = ` (URL: ${data.data.postUrl})`;
+      }
       
-      // Check if we have details about the WordPress post URL
+      // Log the success for debugging
+      console.log("WordPress publishing completed successfully:", {
+        wordpressPostId: data.data?.wordpressPostId,
+        postUrl: data.data?.postUrl,
+        isCustomPostType: data.data?.isCustomPostType
+      });
+      
+      // Check if the post is accessible by doing a HEAD request
       if (data.data?.postUrl) {
-        console.log("WordPress post published at URL:", data.data.postUrl);
-        
-        // Try to verify the post is actually accessible
         try {
-          const verifyUrl = data.data.postUrl;
-          console.log(`Verifying post accessibility at: ${verifyUrl}`);
+          const postUrlCheckMessage = "Vérification de l'accessibilité de l'article...";
+          console.log(postUrlCheckMessage);
+          toast.info(postUrlCheckMessage);
           
-          const verifyResponse = await fetch(verifyUrl, {
+          const response = await fetch(data.data.postUrl, {
             method: 'HEAD',
-            redirect: 'follow',
-            cache: 'no-store',
-            headers: {
-              'Cache-Control': 'no-cache'
-            }
-          }).catch(e => {
-            console.warn("Post verification fetch failed:", e);
-            return { ok: false, status: 0 };
+            mode: 'no-cors' // Use no-cors mode to bypass CORS issues
           });
           
-          if (verifyResponse.ok) {
-            console.log("✅ Post verified and accessible!");
+          console.log("Post URL check response:", response.status);
+          
+          if (response.status === 200) {
+            console.log("Post is accessible!");
+            toast.success("L'article est accessible publiquement");
           } else {
-            console.warn(`⚠️ Post URL returned status ${verifyResponse.status} - may not be publicly accessible yet`);
-            // Don't fail the process, as some WordPress sites may take time to make posts public
+            console.warn("Post may not be publicly accessible yet:", response.status);
+            toast.warning("L'article a été publié mais pourrait ne pas être immédiatement accessible");
           }
-        } catch (verifyError) {
-          console.warn("Error verifying post accessibility:", verifyError);
+        } catch (e) {
+          console.warn("Failed to check post accessibility:", e);
         }
       }
       
-      return {
-        success: true,
-        message: data.message || "Publié avec succès sur WordPress",
-        wordpressPostId: data.data?.wordpressPostId || null
+      return { 
+        success: true, 
+        message: `Publication réussie avec ID: ${data.data?.wordpressPostId}${postLink}`, 
+        wordpressPostId: data.data?.wordpressPostId || null 
       };
     } catch (error: any) {
-      console.error("Error publishing to WordPress Server:", error);
+      console.error("Error in server publishing process:", error);
       
+      // Update the current step with error
       if (publishingState.currentStep) {
-        updatePublishingStep(publishingState.currentStep, "error", `Erreur: ${error.message}`);
+        updatePublishingStep(
+          publishingState.currentStep, 
+          "error", 
+          `Erreur: ${error.message || "Erreur inconnue"}`
+        );
       }
       
-      return {
-        success: false,
-        message: `Erreur lors de la publication: ${error.message}`,
-        wordpressPostId: null
+      return { 
+        success: false, 
+        message: `Erreur lors de la publication: ${error.message || "Erreur inconnue"}`, 
+        wordpressPostId: null 
       };
     } finally {
       setIsPublishing(false);
