@@ -1,10 +1,10 @@
 
 "use client";
 
-import { toast as sonnerToast } from "sonner";
+import { toast as sonnerToast, type Toast, type ExternalToast } from "sonner";
 
-// Define the types for our toast props
-type ToastProps = React.ComponentProps<typeof sonnerToast>;
+// We'll use Sonner's ExternalToast type for our options
+export type ToastProps = ExternalToast;
 
 export function toast(message: string, options?: ToastProps) {
   return sonnerToast(message, options);
