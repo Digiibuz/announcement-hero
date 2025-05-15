@@ -74,8 +74,8 @@ export const useServerWordPressPublishing = () => {
         throw new Error("Session invalide. Veuillez vous reconnecter.");
       }
       
-      // Call Edge function to handle WordPress publishing
-      const functionUrl = `${supabase.functions.url}/wordpress-publish`;
+      // Utiliser le bon format d'URL pour la fonction Edge
+      const functionUrl = `${supabase.supabaseUrl}/functions/v1/wordpress-publish`;
       console.log("Calling edge function at URL:", functionUrl);
       
       updatePublishingStep("server", "loading", "Publication sur WordPress via serveur", 50);
@@ -116,7 +116,7 @@ export const useServerWordPressPublishing = () => {
           
           updatePublishingStep("server", "error", `${errorMessage}`, 60);
           
-          throw new Error(errorMessage);
+          throw new Error(`Erreur du serveur: ${response.status} ${errorText}`);
         }
         
         // Parse JSON response

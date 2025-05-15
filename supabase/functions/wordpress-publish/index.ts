@@ -20,85 +20,105 @@ interface RequestPayload {
  * Validates the request payload and returns the validated data
  */
 const validateRequest = async (req: Request): Promise<RequestPayload> => {
-  // Parse request body
-  const requestData = await req.json() as RequestPayload;
-  const { announcementId, userId, categoryId } = requestData;
+  try {
+    // Parse request body
+    const requestData = await req.json() as RequestPayload;
+    const { announcementId, userId, categoryId } = requestData;
 
-  console.log("Request data:", { announcementId, userId, categoryId });
+    console.log("Request data:", { announcementId, userId, categoryId });
 
-  if (!announcementId || !userId || !categoryId) {
-    console.error("Missing required fields");
-    throw new Error("Paramètres manquants: announcementId, userId et categoryId sont requis");
+    if (!announcementId || !userId || !categoryId) {
+      console.error("Missing required fields");
+      throw new Error("Paramètres manquants: announcementId, userId et categoryId sont requis");
+    }
+
+    return requestData;
+  } catch (error) {
+    console.error("Error validating request:", error);
+    throw new Error(`Erreur de validation de la requête: ${error.message}`);
   }
-
-  return requestData;
 };
 
 /**
  * Fetches the announcement data from Supabase
  */
 const fetchAnnouncementData = async (supabase: any, announcementId: string) => {
-  const { data: announcement, error: announcementError } = await supabase
-    .from("announcements")
-    .select("*")
-    .eq("id", announcementId)
-    .single();
+  try {
+    const { data: announcement, error: announcementError } = await supabase
+      .from("announcements")
+      .select("*")
+      .eq("id", announcementId)
+      .single();
 
-  if (announcementError || !announcement) {
-    console.error("Error fetching announcement:", announcementError);
-    throw new Error(`Annonce non trouvée: ${announcementError?.message || "Erreur inconnue"}`);
+    if (announcementError || !announcement) {
+      console.error("Error fetching announcement:", announcementError);
+      throw new Error(`Annonce non trouvée: ${announcementError?.message || "Erreur inconnue"}`);
+    }
+
+    console.log("Announcement found:", announcement.title);
+    return announcement;
+  } catch (error) {
+    console.error("Error fetching announcement data:", error);
+    throw new Error(`Erreur lors de la récupération de l'annonce: ${error.message}`);
   }
-
-  console.log("Announcement found:", announcement.title);
-  return announcement;
 };
 
 /**
  * Fetches the user's WordPress configuration ID from Supabase
  */
 const fetchUserWordPressConfigId = async (supabase: any, userId: string) => {
-  const { data: userProfile, error: profileError } = await supabase
-    .from('profiles')
-    .select('wordpress_config_id')
-    .eq('id', userId)
-    .single();
+  try {
+    const { data: userProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('wordpress_config_id')
+      .eq('id', userId)
+      .single();
 
-  if (profileError || !userProfile?.wordpress_config_id) {
-    console.error("Error fetching WordPress config ID:", profileError || "No WordPress config ID found");
-    throw new Error("Configuration WordPress non trouvée pour l'utilisateur");
+    if (profileError || !userProfile?.wordpress_config_id) {
+      console.error("Error fetching WordPress config ID:", profileError || "No WordPress config ID found");
+      throw new Error("Configuration WordPress non trouvée pour l'utilisateur");
+    }
+
+    console.log("User profile found with WordPress config ID:", userProfile.wordpress_config_id);
+    return userProfile.wordpress_config_id;
+  } catch (error) {
+    console.error("Error fetching WordPress config ID:", error);
+    throw new Error(`Erreur lors de la récupération de la configuration WordPress: ${error.message}`);
   }
-
-  console.log("User profile found with WordPress config ID:", userProfile.wordpress_config_id);
-  return userProfile.wordpress_config_id;
 };
 
 /**
  * Fetches the WordPress configuration details from Supabase
  */
 const fetchWordPressConfig = async (supabase: any, configId: string) => {
-  const { data: wpConfig, error: wpConfigError } = await supabase
-    .from('wordpress_configs')
-    .select('*')
-    .eq('id', configId)
-    .single();
+  try {
+    const { data: wpConfig, error: wpConfigError } = await supabase
+      .from('wordpress_configs')
+      .select('*')
+      .eq('id', configId)
+      .single();
 
-  if (wpConfigError || !wpConfig) {
-    console.error("Error fetching WordPress config details:", wpConfigError || "No config found");
-    throw new Error("Détails de configuration WordPress non trouvés");
+    if (wpConfigError || !wpConfig) {
+      console.error("Error fetching WordPress config details:", wpConfigError || "No config found");
+      throw new Error("Détails de configuration WordPress non trouvés");
+    }
+
+    // Ensure site_url is properly formatted
+    const siteUrl = wpConfig.site_url.endsWith('/') 
+      ? wpConfig.site_url.slice(0, -1) 
+      : wpConfig.site_url;
+    
+    console.log("WordPress config found:", {
+      site_url: siteUrl,
+      hasAppUsername: !!wpConfig.app_username,
+      hasAppPassword: !!wpConfig.app_password
+    });
+
+    return { ...wpConfig, site_url: siteUrl };
+  } catch (error) {
+    console.error("Error fetching WordPress config:", error);
+    throw new Error(`Erreur lors de la récupération des détails de configuration WordPress: ${error.message}`);
   }
-
-  // Ensure site_url is properly formatted
-  const siteUrl = wpConfig.site_url.endsWith('/') 
-    ? wpConfig.site_url.slice(0, -1) 
-    : wpConfig.site_url;
-  
-  console.log("WordPress config found:", {
-    site_url: siteUrl,
-    hasAppUsername: !!wpConfig.app_username,
-    hasAppPassword: !!wpConfig.app_password
-  });
-
-  return { ...wpConfig, site_url: siteUrl };
 };
 
 /**
@@ -181,7 +201,7 @@ const detectWordPressEndpoints = async (siteUrl: string) => {
 };
 
 /**
- * CORRECTION: Create proper authentication headers for WordPress API
+ * Create proper authentication headers for WordPress API
  * Fixing base64 encoding and properly handling credentials
  */
 const createAuthHeaders = (wpConfig: any) => {
@@ -194,22 +214,24 @@ const createAuthHeaders = (wpConfig: any) => {
   // Application password method (preferred)
   if (wpConfig.app_username && wpConfig.app_password) {
     try {
-      // CORRECTION: Properly create base64 credentials with trimming
+      // Properly create base64 credentials with explicit trimming
       const appUsername = String(wpConfig.app_username).trim();
       const appPassword = String(wpConfig.app_password).trim();
       
       if (appUsername && appPassword) {
         const credentials = `${appUsername}:${appPassword}`;
-        console.log("Using credentials for:", appUsername);
+        console.log("Using application password for:", appUsername);
         
         // Proper base64 encoding for Deno
         const encoder = new TextEncoder();
         const data = encoder.encode(credentials);
-        const base64Credentials = btoa(String.fromCharCode(...Array.from(new Uint8Array(data))));
+        const base64Credentials = btoa(String.fromCharCode(...new Uint8Array(data)));
         
         headers['Authorization'] = `Basic ${base64Credentials}`;
         console.log("Auth header created successfully using application password");
         authenticationSuccess = true;
+      } else {
+        console.error("Application credentials are empty after trimming");
       }
     } catch (authError) {
       console.error("Error setting up application password auth:", authError);
@@ -223,6 +245,8 @@ const createAuthHeaders = (wpConfig: any) => {
       headers['Authorization'] = `Bearer ${apiKey}`;
       console.log("Using REST API Key authentication");
       authenticationSuccess = true;
+    } else {
+      console.error("REST API key is empty after trimming");
     }
   }
   
@@ -238,23 +262,29 @@ const createAuthHeaders = (wpConfig: any) => {
         // Proper base64 encoding for Deno
         const encoder = new TextEncoder();
         const data = encoder.encode(credentials);
-        const base64Credentials = btoa(String.fromCharCode(...Array.from(new Uint8Array(data))));
+        const base64Credentials = btoa(String.fromCharCode(...new Uint8Array(data)));
         
         headers['Authorization'] = `Basic ${base64Credentials}`;
         console.log("Using standard credentials for authentication");
         authenticationSuccess = true;
+      } else {
+        console.error("Standard credentials are empty after trimming");
       }
     } catch (error) {
       console.error("Error with standard credentials:", error);
     }
   }
 
-  // Log full headers for debugging (excluding actual credential values)
+  // Log headers for debugging (excluding actual credential values)
   const debugHeaders = {...headers};
   if (debugHeaders['Authorization']) {
     debugHeaders['Authorization'] = 'AUTH_HEADER_SET_BUT_NOT_DISPLAYED';
   }
   console.log("Created headers:", JSON.stringify(debugHeaders));
+
+  if (!authenticationSuccess) {
+    console.error("No valid authentication credentials available");
+  }
 
   return { headers, authenticationSuccess };
 };
@@ -452,17 +482,21 @@ const updateAnnouncementWithPostId = async (
   wordpressPostId: number, 
   isCustomPostType: boolean
 ) => {
-  const { error: updateError } = await supabase
-    .from("announcements")
-    .update({ 
-      wordpress_post_id: wordpressPostId,
-      is_divipixel: isCustomPostType
-    })
-    .eq("id", announcementId);
-    
-  if (updateError) {
-    console.error("Error updating announcement with WordPress ID:", updateError);
-    // We don't throw error here as post was successful
+  try {
+    const { error: updateError } = await supabase
+      .from("announcements")
+      .update({ 
+        wordpress_post_id: wordpressPostId,
+        is_divipixel: isCustomPostType
+      })
+      .eq("id", announcementId);
+      
+    if (updateError) {
+      console.error("Error updating announcement with WordPress ID:", updateError);
+      // We don't throw error here as post was successful
+    }
+  } catch (error) {
+    console.error("Error updating announcement:", error);
   }
 };
 
@@ -567,7 +601,7 @@ const handleWordPressPublish = async (req: Request) => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        message: `${error.message || "Erreur inconnue lors de la publication"}` 
+        message: `Erreur d'authentification WordPress: Veuillez vérifier vos identifiants` 
       }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" }, 
