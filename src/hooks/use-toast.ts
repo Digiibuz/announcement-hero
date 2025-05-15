@@ -1,6 +1,26 @@
 
 import { toast as sonnerToast } from "sonner";
 
+// Add type declaration for the window.toast property
+declare global {
+  interface Window {
+    toast?: {
+      error: (message: string) => void;
+      success: (message: string) => void;
+      warning: (message: string) => void;
+      info: (message: string) => void;
+      promise: <T>(
+        promise: Promise<T>,
+        messages: {
+          loading: string;
+          success: string;
+          error: string | ((error: unknown) => string);
+        }
+      ) => Promise<T>;
+    };
+  }
+}
+
 export const useToast = () => {
   return {
     toast: sonnerToast
@@ -9,19 +29,27 @@ export const useToast = () => {
 
 export const toast = {
   error: (message: string) => {
-    window.toast?.error(message);
+    if (window.toast?.error) {
+      window.toast.error(message);
+    }
     sonnerToast.error(message);
   },
   success: (message: string) => {
-    window.toast?.success(message);
+    if (window.toast?.success) {
+      window.toast.success(message);
+    }
     sonnerToast.success(message);
   },
   warning: (message: string) => {
-    window.toast?.warning(message);
+    if (window.toast?.warning) {
+      window.toast.warning(message);
+    }
     sonnerToast.warning(message);
   },
   info: (message: string) => {
-    window.toast?.info(message);
+    if (window.toast?.info) {
+      window.toast.info(message);
+    }
     sonnerToast.info(message);
   },
   promise: <T>(
@@ -32,6 +60,6 @@ export const toast = {
       error: string | ((error: unknown) => string);
     }
   ) => {
-    return window.toast?.promise(promise, messages) || sonnerToast.promise(promise, messages);
+    return (window.toast?.promise?.(promise, messages)) || sonnerToast.promise(promise, messages);
   },
 };
