@@ -1,371 +1,161 @@
 
-import React, { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { CheckCircle, AlertTriangle, Loader2, TestTube } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useWordPressConnection, ConnectionResult } from "@/hooks/wordpress/useWordPressConnection";
-import { WordPressConfig } from "@/types/wordpress";
+import React from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { WordPressConfig } from "@/types/wordpress";
+
+const wordpressConfigSchema = z.object({
+  name: z.string().min(1, "Le nom est requis"),
+  site_url: z.string().url("L'URL doit être valide").min(1, "L'URL du site est requise"),
+  app_username: z.string().optional(),
+  app_password: z.string().optional(),
+});
+
+type WordPressConfigFormValues = z.infer<typeof wordpressConfigSchema>;
 
 interface WordPressConfigFormProps {
-  onSubmit: (data: any) => void;
-  isSubmitting: boolean;
-  config?: WordPressConfig;
+  onSubmit: (data: WordPressConfigFormValues) => Promise<void>;
+  defaultValues?: Partial<WordPressConfig>;
   buttonText?: string;
   dialogTitle?: string;
   dialogDescription?: string;
+  isSubmitting?: boolean;
   trigger?: React.ReactNode;
-  initialData?: WordPressConfig;
+  config?: WordPressConfig;
 }
 
 const WordPressConfigForm: React.FC<WordPressConfigFormProps> = ({
   onSubmit,
-  isSubmitting,
-  config,
-  buttonText = "Soumettre",
-  dialogTitle = "Configuration WordPress",
-  dialogDescription,
+  defaultValues = {},
+  buttonText = "Ajouter",
+  dialogTitle = "Ajouter une configuration WordPress",
+  dialogDescription = "Entrez les détails de votre site WordPress",
+  isSubmitting = false,
   trigger,
-  initialData
+  config
 }) => {
-  const effectiveConfig = config || initialData;
-  const [activeTab, setActiveTab] = useState("app-password");
-  const [connectionResult, setConnectionResult] = useState<ConnectionResult | null>(null);
-  const { isChecking, testConnection } = useWordPressConnection();
-  const [dialogOpen, setDialogOpen] = useState(false);
-
-  const form = useForm({
+  const [open, setOpen] = React.useState(false);
+  
+  const form = useForm<WordPressConfigFormValues>({
+    resolver: zodResolver(wordpressConfigSchema),
     defaultValues: {
-      name: effectiveConfig?.name || "",
-      site_url: effectiveConfig?.site_url || "",
-      app_username: effectiveConfig?.app_username || "",
-      app_password: effectiveConfig?.app_password || "",
-      rest_api_key: effectiveConfig?.rest_api_key || "",
-      username: effectiveConfig?.username || "",
-      password: effectiveConfig?.password || "",
-    },
+      name: config?.name || defaultValues.name || "",
+      site_url: config?.site_url || defaultValues.site_url || "",
+      app_username: config?.app_username || defaultValues.app_username || "",
+      app_password: config?.app_password || defaultValues.app_password || "",
+    }
   });
 
-  useEffect(() => {
-    if (effectiveConfig) {
-      // Déterminer l'onglet actif en fonction des données existantes
-      if (effectiveConfig.app_username && effectiveConfig.app_password) {
-        setActiveTab("app-password");
-      } else if (effectiveConfig.rest_api_key) {
-        setActiveTab("api-key");
-      } else if (effectiveConfig.username && effectiveConfig.password) {
-        setActiveTab("basic-auth");
-      }
-      
-      // Définir les valeurs du formulaire
-      form.reset({
-        name: effectiveConfig.name,
-        site_url: effectiveConfig.site_url,
-        app_username: effectiveConfig.app_username || "",
-        app_password: effectiveConfig.app_password || "",
-        rest_api_key: effectiveConfig.rest_api_key || "",
-        username: effectiveConfig.username || "",
-        password: effectiveConfig.password || "",
-      });
+  const handleSubmit = async (data: WordPressConfigFormValues) => {
+    try {
+      await onSubmit(data);
+      setOpen(false);
+      form.reset();
+    } catch (error) {
+      console.error("Error submitting form:", error);
     }
-  }, [effectiveConfig, form]);
-
-  const handleSubmit = (data: any) => {
-    // Préparer les données en fonction de l'onglet actif
-    const formData = {
-      name: data.name,
-      site_url: data.site_url,
-      // Réinitialiser toutes les valeurs d'authentification
-      app_username: null,
-      app_password: null,
-      rest_api_key: null,
-      username: null,
-      password: null,
-    };
-
-    // Ajouter uniquement les informations d'authentification de l'onglet actif
-    if (activeTab === "app-password") {
-      formData.app_username = data.app_username;
-      formData.app_password = data.app_password;
-    } else if (activeTab === "api-key") {
-      formData.rest_api_key = data.rest_api_key;
-    } else if (activeTab === "basic-auth") {
-      formData.username = data.username;
-      formData.password = data.password;
-    }
-    
-    onSubmit(formData);
-    setDialogOpen(false);
   };
 
-  const handleTestConnection = async () => {
-    const currentValues = form.getValues();
-    
-    // Créer un objet de configuration temporaire pour le test
-    const testConfig: WordPressConfig = {
-      id: effectiveConfig?.id || "",
-      name: currentValues.name,
-      site_url: currentValues.site_url,
-      app_username: activeTab === "app-password" ? currentValues.app_username : null,
-      app_password: activeTab === "app-password" ? currentValues.app_password : null,
-      rest_api_key: activeTab === "api-key" ? currentValues.rest_api_key : null,
-      username: activeTab === "basic-auth" ? currentValues.username : null,
-      password: activeTab === "basic-auth" ? currentValues.password : null,
-      created_at: effectiveConfig?.created_at || new Date().toISOString(),
-      updated_at: effectiveConfig?.updated_at || new Date().toISOString()
-    };
-    
-    const result = await testConnection(testConfig);
-    setConnectionResult(result);
-  };
-
-  const formContent = (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nom de la configuration</FormLabel>
-              <FormControl>
-                <Input required placeholder="Site Web du Client" {...field} />
-              </FormControl>
-              <FormDescription>
-                Nom unique pour identifier cette configuration WordPress
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="site_url"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>URL du site WordPress</FormLabel>
-              <FormControl>
-                <Input 
-                  required 
-                  placeholder="https://www.example.com" 
-                  type="url" 
-                  {...field} 
-                />
-              </FormControl>
-              <FormDescription>
-                L'adresse complète de votre site WordPress (avec https://)
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="border rounded-md p-4 space-y-4">
-          <Label>Méthode d'authentification</Label>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4 w-full">
-              <TabsTrigger value="app-password" className="flex-1">
-                Mot de passe d'application
-              </TabsTrigger>
-              <TabsTrigger value="api-key" className="flex-1">
-                Clé API REST
-              </TabsTrigger>
-              <TabsTrigger value="basic-auth" className="flex-1">
-                Basic Auth
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="app-password">
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="app_username"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nom d'utilisateur</FormLabel>
-                      <FormControl>
-                        <Input placeholder="admin" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="app_password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Mot de passe d'application</FormLabel>
-                      <FormControl>
-                        <Input placeholder="XXXX XXXX XXXX XXXX XXXX XXXX" {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        Créé dans le profil WordPress (Utilisateurs &gt; Profil &gt; Mots de passe d'application)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="api-key">
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="rest_api_key"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Clé API REST</FormLabel>
-                      <FormControl>
-                        <Input placeholder="eyJhbGciOiJIUzI1..." {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        Généré par un plugin comme JWT Authentication ou similaire
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="basic-auth">
-              <div className="space-y-4">
-                <Alert className="bg-yellow-50">
-                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                  <AlertDescription className="text-yellow-800">
-                    Cette méthode est moins sécurisée. Utilisez un mot de passe d'application si possible.
-                  </AlertDescription>
-                </Alert>
-
-                <FormField
-                  control={form.control}
-                  name="username"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nom d'utilisateur</FormLabel>
-                      <FormControl>
-                        <Input placeholder="admin" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Mot de passe</FormLabel>
-                      <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
-        
-        {connectionResult && (
-          <Alert className={connectionResult.success ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}>
-            {connectionResult.success ? (
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            ) : (
-              <AlertTriangle className="h-4 w-4 text-red-600" />
-            )}
-            <AlertDescription className={connectionResult.success ? "text-green-800" : "text-red-800"}>
-              {connectionResult.message}
-              {connectionResult.success && connectionResult.hasCustomPost && (
-                <div className="mt-2 text-green-700">
-                  ✓ Plugin DipiPixel détecté
-                </div>
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {trigger || <Button variant="outline">{buttonText}</Button>}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{dialogTitle}</DialogTitle>
+          <DialogDescription>{dialogDescription}</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={form.handleSubmit(handleSubmit)}>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Nom
+              </Label>
+              <Input
+                id="name"
+                placeholder="Mon site WordPress"
+                className="col-span-3"
+                {...form.register("name")}
+              />
+              {form.formState.errors.name && (
+                <p className="col-span-4 text-sm text-red-500 text-right">
+                  {form.formState.errors.name.message}
+                </p>
               )}
-              {connectionResult.success && connectionResult.hasCategories && (
-                <div className="text-green-700">
-                  ✓ Catégories disponibles
-                </div>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="site_url" className="text-right">
+                URL du site
+              </Label>
+              <Input
+                id="site_url"
+                placeholder="https://monsite.com"
+                className="col-span-3"
+                {...form.register("site_url")}
+              />
+              {form.formState.errors.site_url && (
+                <p className="col-span-4 text-sm text-red-500 text-right">
+                  {form.formState.errors.site_url.message}
+                </p>
               )}
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        <div className="flex gap-3 items-center justify-between">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleTestConnection}
-            disabled={isChecking || !form.getValues().site_url}
-          >
-            {isChecking ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Test en cours...
-              </>
-            ) : (
-              <>
-                <TestTube className="mr-2 h-4 w-4" />
-                Tester la connexion
-              </>
-            )}
-          </Button>
-          
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Enregistrement...
-              </>
-            ) : (
-              buttonText
-            )}
-          </Button>
-        </div>
-      </form>
-    </Form>
+            </div>
+
+            <div className="my-2">
+              <h3 className="text-sm font-medium mb-2">Méthode d'authentification</h3>
+              <p className="text-xs text-muted-foreground mb-4">
+                Veuillez fournir les identifiants d'Application Password pour vous connecter à WordPress.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="app_username" className="text-right">
+                Nom d'utilisateur (App)
+              </Label>
+              <Input
+                id="app_username"
+                placeholder="admin"
+                className="col-span-3"
+                {...form.register("app_username")}
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="app_password" className="text-right">
+                Mot de passe (App)
+              </Label>
+              <Input
+                id="app_password"
+                type="password"
+                placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"
+                className="col-span-3"
+                {...form.register("app_password")}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Enregistrement..." : "Enregistrer"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
-
-  if (trigger) {
-    return (
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogTrigger asChild>{trigger}</DialogTrigger>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{dialogTitle}</DialogTitle>
-            {dialogDescription && <p className="text-sm text-muted-foreground">{dialogDescription}</p>}
-          </DialogHeader>
-          {formContent}
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  return formContent;
 };
 
 export default WordPressConfigForm;

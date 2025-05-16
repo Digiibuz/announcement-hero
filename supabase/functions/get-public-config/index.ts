@@ -1,60 +1,47 @@
 
-// Import from URL instead of using relative imports
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.1";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Content-Type": "application/json"
+};
+
+// Configuration Supabase hardcodée pour cet Edge Function uniquement
+// Ces valeurs sont déjà publiques et sont destinées à être utilisées côté client
+const supabaseConfig = {
+  supabaseUrl: "https://rdwqedmvzicerwotjseg.supabase.co",
+  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkd3FlZG12emljZXJ3b3Rqc2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwNzg4MzEsImV4cCI6MjA1ODY1NDgzMX0.Ohle_vVvdoCvsObP9A_AdyM52XdzisIvHvH1D1a88zk",
+  projectId: "rdwqedmvzicerwotjseg"
 };
 
 serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders, status: 204 });
+  }
+  
+  if (req.method !== "GET") {
+    return new Response(
+      JSON.stringify({ error: "Method not allowed" }), 
+      { headers: corsHeaders, status: 405 }
+    );
   }
   
   try {
-    // Get project ID from config
-    const projectId = Deno.env.get("SUPABASE_PROJECT_ID") || "";
-    
-    // Create a public response with basic configuration
-    const publicConfig = {
-      projectId,
-      apiUrl: `https://${projectId}.supabase.co`,
-      version: "1.0.0",
-      environment: Deno.env.get("ENVIRONMENT") || "production",
-      features: {
-        auth: true,
-        storage: true,
-        database: true,
-        functions: true
-      }
-    };
-    
+    // Au lieu d'utiliser Deno.env.get(), on retourne directement les valeurs hardcodées
+    // Cette approche est acceptable car ces valeurs sont déjà publiques (clé anon)
     return new Response(
-      JSON.stringify(publicConfig),
-      { 
-        headers: { 
-          ...corsHeaders,
-          "Content-Type": "application/json" 
-        },
-        status: 200 
-      }
+      JSON.stringify(supabaseConfig),
+      { headers: corsHeaders, status: 200 }
     );
   } catch (error) {
-    console.error("Error in get-public-config:", error);
+    console.error("Error getting public config:", error);
     
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        headers: { 
-          ...corsHeaders,
-          "Content-Type": "application/json" 
-        },
-        status: 500 
-      }
+      JSON.stringify({ error: "An unexpected error occurred", details: error.message }),
+      { headers: corsHeaders, status: 500 }
     );
   }
 });

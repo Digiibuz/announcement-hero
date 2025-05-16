@@ -1,139 +1,194 @@
 
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { toast as sonnerToast, ToastT } from "sonner";
+import * as React from "react"
 
-// Déclarer l'interface globale pour les méthodes toast sur window
-declare global {
-  interface Window {
-    toast: {
-      error: (message: string, options?: any) => string | number;
-      success: (message: string, options?: any) => string | number;
-      info: (message: string, options?: any) => string | number;
-      warning: (message: string, options?: any) => string | number;
-      promise: <T>(
-        promise: Promise<T>, 
-        options: {
-          loading: string;
-          success: string | ((data: T) => string);
-          error: string | ((error: unknown) => string);
+import type {
+  ToastActionElement,
+  ToastProps,
+} from "@/components/ui/toast"
+
+const TOAST_LIMIT = 1
+const TOAST_REMOVE_DELAY = 1000000
+
+type ToasterToast = ToastProps & {
+  id: string
+  title?: React.ReactNode
+  description?: React.ReactNode
+  action?: ToastActionElement
+}
+
+const actionTypes = {
+  ADD_TOAST: "ADD_TOAST",
+  UPDATE_TOAST: "UPDATE_TOAST",
+  DISMISS_TOAST: "DISMISS_TOAST",
+  REMOVE_TOAST: "REMOVE_TOAST",
+} as const
+
+let count = 0
+
+function genId() {
+  count = (count + 1) % Number.MAX_SAFE_INTEGER
+  return count.toString()
+}
+
+type ActionType = typeof actionTypes
+
+type Action =
+  | {
+      type: ActionType["ADD_TOAST"]
+      toast: ToasterToast
+    }
+  | {
+      type: ActionType["UPDATE_TOAST"]
+      toast: Partial<ToasterToast>
+    }
+  | {
+      type: ActionType["DISMISS_TOAST"]
+      toastId?: ToasterToast["id"]
+    }
+  | {
+      type: ActionType["REMOVE_TOAST"]
+      toastId?: ToasterToast["id"]
+    }
+
+interface State {
+  toasts: ToasterToast[]
+}
+
+const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
+
+const addToRemoveQueue = (toastId: string) => {
+  if (toastTimeouts.has(toastId)) {
+    return
+  }
+
+  const timeout = setTimeout(() => {
+    toastTimeouts.delete(toastId)
+    dispatch({
+      type: "REMOVE_TOAST",
+      toastId: toastId,
+    })
+  }, TOAST_REMOVE_DELAY)
+
+  toastTimeouts.set(toastId, timeout)
+}
+
+export const reducer = (state: State, action: Action): State => {
+  switch (action.type) {
+    case "ADD_TOAST":
+      return {
+        ...state,
+        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
+      }
+
+    case "UPDATE_TOAST":
+      return {
+        ...state,
+        toasts: state.toasts.map((t) =>
+          t.id === action.toast.id ? { ...t, ...action.toast } : t
+        ),
+      }
+
+    case "DISMISS_TOAST": {
+      const { toastId } = action
+
+      // ! Side effects ! - This could be extracted into a dismissToast() action,
+      // but I'll keep it here for simplicity
+      if (toastId) {
+        addToRemoveQueue(toastId)
+      } else {
+        state.toasts.forEach((toast) => {
+          addToRemoveQueue(toast.id)
+        })
+      }
+
+      return {
+        ...state,
+        toasts: state.toasts.map((t) =>
+          t.id === toastId || toastId === undefined
+            ? {
+                ...t,
+                open: false,
+              }
+            : t
+        ),
+      }
+    }
+    case "REMOVE_TOAST":
+      if (action.toastId === undefined) {
+        return {
+          ...state,
+          toasts: [],
         }
-      ) => Promise<T>;
-      dismiss: (toastId?: string | number) => void;
-    };
+      }
+      return {
+        ...state,
+        toasts: state.toasts.filter((t) => t.id !== action.toastId),
+      }
   }
 }
 
-export const useToast = () => {
-  const [isMounted, setIsMounted] = useState(false);
+const listeners: Array<(state: State) => void> = []
 
-  useEffect(() => {
-    setIsMounted(true);
+let memoryState: State = { toasts: [] }
 
-    // Initialiser window.toast avec les fonctions toast sonner
-    window.toast = {
-      error: (message, options) => sonnerToast.error(message, options),
-      success: (message, options) => sonnerToast.success(message, options),
-      info: (message, options) => sonnerToast.info(message, options),
-      warning: (message, options) => sonnerToast.warning(message, options),
-      promise: <T>(promise: Promise<T>, options: {
-        loading: string;
-        success: string | ((data: T) => string);
-        error: string | ((error: unknown) => string);
-      }) => {
-        // Cela doit renvoyer la promesse elle-même pour un typage correct
-        sonnerToast.promise(promise, options);
-        return promise;
+function dispatch(action: Action) {
+  memoryState = reducer(memoryState, action)
+  listeners.forEach((listener) => {
+    listener(memoryState)
+  })
+}
+
+type Toast = Omit<ToasterToast, "id">
+
+function toast({ ...props }: Toast) {
+  const id = genId()
+
+  const update = (props: ToasterToast) =>
+    dispatch({
+      type: "UPDATE_TOAST",
+      toast: { ...props, id },
+    })
+  const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
+
+  dispatch({
+    type: "ADD_TOAST",
+    toast: {
+      ...props,
+      id,
+      open: true,
+      onOpenChange: (open) => {
+        if (!open) dismiss()
       },
-      dismiss: (toastId) => sonnerToast.dismiss(toastId)
-    };
-  }, []);
+    },
+  })
 
-  const toast = {
-    error: (message: string, options?: any) => {
-      if (isMounted) {
-        return sonnerToast.error(message, options);
-      }
-      return "";
-    },
-    success: (message: string, options?: any) => {
-      if (isMounted) {
-        return sonnerToast.success(message, options);
-      }
-      return "";
-    },
-    info: (message: string, options?: any) => {
-      if (isMounted) {
-        return sonnerToast.info(message, options);
-      }
-      return "";
-    },
-    warning: (message: string, options?: any) => {
-      if (isMounted) {
-        return sonnerToast.warning(message, options);
-      }
-      return "";
-    },
-    promise: <T>(promise: Promise<T>, options: {
-      loading: string;
-      success: string | ((data: T) => string);
-      error: string | ((error: unknown) => string);
-    }) => {
-      if (isMounted) {
-        sonnerToast.promise(promise, options);
-      }
-      return promise; // Renvoyer la promesse originale pour le chaînage
-    },
-    dismiss: (toastId?: string | number) => {
-      if (isMounted) {
-        sonnerToast.dismiss(toastId);
-      }
-    },
-  };
+  return {
+    id: id,
+    dismiss,
+    update,
+  }
+}
 
-  return toast;
-};
+function useToast() {
+  const [state, setState] = React.useState<State>(memoryState)
 
-// Exporter toast pour une consommation directe
-export const toast = {
-  error: (message: string, options?: any) => {
-    if (typeof window !== "undefined" && window.toast) {
-      return window.toast.error(message, options);
+  React.useEffect(() => {
+    listeners.push(setState)
+    return () => {
+      const index = listeners.indexOf(setState)
+      if (index > -1) {
+        listeners.splice(index, 1)
+      }
     }
-    return "";
-  },
-  success: (message: string, options?: any) => {
-    if (typeof window !== "undefined" && window.toast) {
-      return window.toast.success(message, options);
-    }
-    return "";
-  },
-  info: (message: string, options?: any) => {
-    if (typeof window !== "undefined" && window.toast) {
-      return window.toast.info(message, options);
-    }
-    return "";
-  },
-  warning: (message: string, options?: any) => {
-    if (typeof window !== "undefined" && window.toast) {
-      return window.toast.warning(message, options);
-    }
-    return "";
-  },
-  promise: <T>(promise: Promise<T>, options: {
-    loading: string;
-    success: string | ((data: T) => string);
-    error: string | ((error: unknown) => string);
-  }) => {
-    if (typeof window !== "undefined" && window.toast) {
-      window.toast.promise(promise, options);
-    }
-    return promise; // Renvoyer la promesse originale pour le chaînage
-  },
-  dismiss: (toastId?: string | number) => {
-    if (typeof window !== "undefined" && window.toast) {
-      window.toast.dismiss(toastId);
-    }
-  },
-};
+  }, [state])
+
+  return {
+    ...state,
+    toast,
+    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+  }
+}
+
+export { useToast, toast }

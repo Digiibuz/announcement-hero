@@ -3,16 +3,81 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// Configuration avec des valeurs fixes pour éviter les problèmes de parsing JSON
+// Configuration initiale avec des valeurs par défaut pour permettre l'initialisation immédiate
 // Ces valeurs sont publiques et peuvent être incluses côté client sans risque
-export const supabaseUrl = "https://rdwqedmvzicerwotjseg.supabase.co";
-export const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkd3FlZG12emljZXJ3b3Rqc2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwNzg4MzEsImV4cCI6MjA1ODY1NDgzMX0.Ohle_vVvdoCvsObP9A_AdyM52XdzisIvHvH1D1a88zk";
+let supabaseUrl = "https://rdwqedmvzicerwotjseg.supabase.co";
+let supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkd3FlZG12emljZXJ3b3Rqc2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwNzg4MzEsImV4cCI6MjA1ODY1NDgzMX0.Ohle_vVvdoCvsObP9A_AdyM52XdzisIvHvH1D1a88zk";
 
-// Créer le client avec les valeurs fixes sans tenter de les récupérer dynamiquement
-export const supabase = createClient<Database>(
+// Créer le client avec les valeurs par défaut
+export let supabase = createClient<Database>(
   supabaseUrl,
   supabaseAnonKey
 );
+
+// Fonction pour initialiser le client Supabase
+async function initializeSupabaseClient() {
+  try {
+    // En mode développement, utiliser les valeurs hardcodées directement
+    // En production, on essaiera de récupérer la configuration depuis l'Edge Function,
+    // mais on continuera à utiliser les valeurs par défaut en cas d'échec
+    
+    // Récupérer la configuration depuis l'Edge Function
+    const response = await fetch(`${window.location.origin}/api/get-public-config`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store'
+      }
+    });
+    
+    if (!response.ok) {
+      console.warn(`Échec de récupération de la configuration Supabase: ${response.status} ${response.statusText}`);
+      return; // Continuer avec les valeurs par défaut
+    }
+    
+    const responseText = await response.text();
+    let config;
+    
+    try {
+      config = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("Erreur de parsing de la configuration:", parseError);
+      console.log("Réponse reçue:", responseText.substring(0, 100) + "...");
+      return; // Continuer avec les valeurs par défaut
+    }
+    
+    if (!config.supabaseUrl || !config.supabaseAnonKey) {
+      console.warn("Configuration Supabase incomplète:", config);
+      return; // Continuer avec les valeurs par défaut
+    }
+    
+    // Recréer le client avec les valeurs récupérées
+    supabaseUrl = config.supabaseUrl;
+    supabaseAnonKey = config.supabaseAnonKey;
+    
+    supabase = createClient<Database>(
+      supabaseUrl, 
+      supabaseAnonKey, 
+      {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true
+        }
+      }
+    );
+    
+    console.log("Client Supabase initialisé avec succès");
+  } catch (error) {
+    console.error("Erreur lors de l'initialisation du client Supabase:", error);
+    // L'application peut continuer car le client est déjà initialisé avec les valeurs par défaut
+    console.warn("Utilisation des valeurs par défaut pour Supabase");
+  }
+}
+
+// Initialiser le client dès le chargement
+initializeSupabaseClient().catch(err => {
+  console.warn("Échec de l'initialisation du client Supabase, utilisation des valeurs par défaut:", err);
+});
 
 // Note: This client only has anon permissions
 // For any sensitive operations, use edge functions that can access service role keys securely

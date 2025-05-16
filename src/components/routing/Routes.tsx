@@ -6,11 +6,11 @@ import { LoadingIndicator } from "@/components/ui/loading-indicator";
 import Login from "@/pages/Login";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { AdminRoute } from "./AdminRoute";
-import Dashboard from "@/pages/Dashboard"; // Import Dashboard directly instead of using lazy loading
 
 // Lazy loading pages
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const CreateAnnouncement = lazy(() => import("@/pages/CreateAnnouncement"));
 const Announcements = lazy(() => import("@/pages/Announcements"));
 const AnnouncementDetail = lazy(() => import("@/pages/AnnouncementDetail"));

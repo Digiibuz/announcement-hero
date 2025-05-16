@@ -19,7 +19,7 @@ import {
   deleteAnnouncement as apiDeleteAnnouncement,
   publishAnnouncement as apiPublishAnnouncement 
 } from "@/api/announcementApi";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -34,12 +34,17 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ id, status, w
   const [isPublishing, setIsPublishing] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { user } = useAuth();
 
   const deleteAnnouncement = async () => {
     try {
       if (!user?.id) {
-        toast.error("Utilisateur non identifié.");
+        toast({
+          title: "Erreur",
+          description: "Utilisateur non identifié.",
+          variant: "destructive",
+        });
         return;
       }
       
@@ -50,13 +55,20 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ id, status, w
         ? "L'annonce a été supprimée de l'application et de WordPress."
         : "L'annonce a été supprimée avec succès.";
       
-      toast.success(successMessage);
+      toast({
+        title: "Annonce supprimée",
+        description: successMessage,
+      });
       
       navigate("/announcements");
       queryClient.invalidateQueries({ queryKey: ["announcements"] });
     } catch (error) {
       console.error("Error deleting announcement:", error);
-      toast.error("Impossible de supprimer l'annonce.");
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer l'annonce.",
+        variant: "destructive",
+      });
     } finally {
       setIsDeleting(false);
     }
@@ -66,11 +78,18 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ id, status, w
     try {
       setIsPublishing(true);
       await apiPublishAnnouncement(id);
-      toast.success("L'annonce a été publiée avec succès.");
+      toast({
+        title: "Annonce publiée",
+        description: "L'annonce a été publiée avec succès.",
+      });
       queryClient.invalidateQueries({ queryKey: ["announcement", id] });
     } catch (error) {
       console.error("Error publishing announcement:", error);
-      toast.error("Impossible de publier l'annonce.");
+      toast({
+        title: "Erreur",
+        description: "Impossible de publier l'annonce.",
+        variant: "destructive",
+      });
     } finally {
       setIsPublishing(false);
     }

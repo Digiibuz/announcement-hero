@@ -1,6 +1,10 @@
 
+# Votre ID de projet Supabase
 project_id = "rdwqedmvzicerwotjseg"
 
-[functions.wordpress-publish]
+[functions]
+[functions.get-public-config]
 verify_jwt = false
 
+[functions.auth]
+verify_jwt = false

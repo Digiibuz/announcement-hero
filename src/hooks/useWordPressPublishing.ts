@@ -2,9 +2,6 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Announcement } from "@/types/announcement";
 import { toast } from "sonner";
-import { prepareWordPressAuthHeaders, tryJwtAuthentication, tryFormAuthentication } from "./wordpress/useWordPressAuth";
-import { detectWordPressEndpoints } from "./wordpress/useWordPressEndpoints";
-import { uploadFeatureImage } from "./wordpress/useWordPressMedia";
 
 export type PublishingStatus = "idle" | "loading" | "success" | "error";
 
@@ -18,8 +15,6 @@ export interface PublishingState {
   };
   progress: number;
 }
-
-export type PublishingStep = "idle" | "loading" | "success" | "error";
 
 const initialPublishingState: PublishingState = {
   currentStep: null,
@@ -60,7 +55,7 @@ export const useWordPressPublishing = () => {
     setIsPublishing(true);
     resetPublishingState();
     
-    // Start preparation step
+    // Start with preparation step
     updatePublishingStep("prepare", "loading", "Préparation de la publication", 10);
     
     try {
@@ -100,19 +95,87 @@ export const useWordPressPublishing = () => {
       
       updatePublishingStep("prepare", "success", "Préparation terminée", 25);
       
-      // Format site URL
+      // Ensure site_url has proper format
       const siteUrl = wpConfig.site_url.endsWith('/')
         ? wpConfig.site_url.slice(0, -1)
         : wpConfig.site_url;
       
-      // Detect WordPress API endpoints
-      const { postEndpoint, useCustomTaxonomy, customEndpointExists } = 
-        await detectWordPressEndpoints(siteUrl);
+      // Determine endpoints
+      let useCustomTaxonomy = false;
+      let postEndpoint = `${siteUrl}/wp-json/wp/v2/pages`; // Default to pages
       
-      // Prepare authentication headers
-      const { headers, authenticationSuccess } = prepareWordPressAuthHeaders(wpConfig);
+      try {
+        // First try to access the dipi_cpt_category endpoint with a timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
+        const response = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt_category`, {
+          method: 'HEAD',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          signal: controller.signal
+        }).catch(() => ({ status: 404 }));
+        
+        clearTimeout(timeoutId);
+        
+        if (response && response.status !== 404) {
+          useCustomTaxonomy = true;
+          
+          // Now check if dipi_cpt endpoint exists (with timeout)
+          const dipiController = new AbortController();
+          const dipiTimeoutId = setTimeout(() => dipiController.abort(), 5000);
+          
+          const dipiResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt`, {
+            method: 'HEAD',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            signal: dipiController.signal
+          }).catch(() => ({ status: 404 }));
+          
+          clearTimeout(dipiTimeoutId);
+          
+          if (dipiResponse && dipiResponse.status !== 404) {
+            postEndpoint = `${siteUrl}/wp-json/wp/v2/dipi_cpt`;
+          } else {
+            // Try alternative endpoint (with timeout)
+            const altController = new AbortController();
+            const altTimeoutId = setTimeout(() => altController.abort(), 5000);
+            
+            const altResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipicpt`, {
+              method: 'HEAD',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              signal: altController.signal
+            }).catch(() => ({ status: 404 }));
+            
+            clearTimeout(altTimeoutId);
+            
+            if (altResponse && altResponse.status !== 404) {
+              postEndpoint = `${siteUrl}/wp-json/wp/v2/dipicpt`;
+            }
+          }
+        }
+      } catch (error) {
+        console.log("Error checking endpoints:", error);
+        console.log("Falling back to standard pages endpoint");
+      }
       
-      if (!authenticationSuccess) {
+      console.log("Using WordPress endpoint:", postEndpoint, "with custom taxonomy:", useCustomTaxonomy);
+      
+      // Prepare headers with authentication
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Check for authentication credentials
+      if (wpConfig.app_username && wpConfig.app_password) {
+        // Application Password Format: "Basic base64(username:password)"
+        const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
+        headers['Authorization'] = `Basic ${basicAuth}`;
+      } else {
         updatePublishingStep("prepare", "error", "Aucune méthode d'authentification disponible");
         return { 
           success: false, 
@@ -121,44 +184,100 @@ export const useWordPressPublishing = () => {
         };
       }
       
-      // Upload featured image if available
-      const featuredMediaId = await uploadFeatureImage(
-        announcement, 
-        siteUrl, 
-        headers, 
-        updatePublishingStep
-      );
+      // AMÉLIORATION: Traitement de l'image principale avant la création du post
+      let featuredMediaId = null;
       
-      // Start WordPress publishing step
+      // Si des images sont disponibles, traiter l'image principale d'abord
+      if (announcement.images && announcement.images.length > 0) {
+        try {
+          updatePublishingStep("image", "loading", "Téléversement de l'image principale", 40);
+          
+          // 1. Télécharger l'image depuis l'URL
+          const imageUrl = announcement.images[0];
+          const imageResponse = await fetch(imageUrl);
+          
+          if (!imageResponse.ok) {
+            console.error("Échec de la récupération de l'image depuis l'URL:", imageUrl);
+            updatePublishingStep("image", "error", "Échec de récupération de l'image");
+            toast.warning("L'image principale n'a pas pu être préparée, publication sans image");
+          } else {
+            const imageBlob = await imageResponse.blob();
+            const fileName = imageUrl.split('/').pop() || `image-${Date.now()}.jpg`;
+            const imageFile = new File([imageBlob], fileName, { 
+              type: imageBlob.type || 'image/jpeg' 
+            });
+            
+            // 2. Téléverser vers la bibliothèque média WordPress
+            console.log("Téléversement de l'image vers la bibliothèque média WordPress");
+            const mediaFormData = new FormData();
+            mediaFormData.append('file', imageFile);
+            mediaFormData.append('title', announcement.title);
+            mediaFormData.append('alt_text', announcement.title);
+            
+            const mediaEndpoint = `${postEndpoint.split('/wp-json/')[0]}/wp-json/wp/v2/media`;
+            
+            // Créer des en-têtes pour le téléversement des médias sans Content-Type
+            const mediaHeaders = new Headers();
+            if (headers.Authorization) {
+              mediaHeaders.append('Authorization', headers.Authorization);
+            }
+            
+            const mediaResponse = await fetch(mediaEndpoint, {
+              method: 'POST',
+              headers: mediaHeaders,
+              body: mediaFormData
+            });
+            
+            if (!mediaResponse.ok) {
+              const mediaErrorText = await mediaResponse.text();
+              console.error("Erreur lors du téléversement du média:", mediaErrorText);
+              updatePublishingStep("image", "error", "Échec du téléversement de l'image");
+              toast.warning("L'image principale n'a pas pu être téléversée, publication sans image");
+            } else {
+              const mediaData = await mediaResponse.json();
+              
+              if (mediaData && mediaData.id) {
+                featuredMediaId = mediaData.id;
+                updatePublishingStep("image", "success", "Image téléversée avec succès", 60);
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Erreur lors du traitement de l'image principale:", error);
+          updatePublishingStep("image", "error", "Erreur lors du traitement de l'image");
+          toast.warning("Erreur lors du traitement de l'image principale, publication sans image");
+        }
+      } else {
+        updatePublishingStep("image", "success", "Aucune image à téléverser", 60);
+      }
+      
+      // Update WordPress step status
       updatePublishingStep("wordpress", "loading", "Publication sur WordPress", 70);
       
-      // Prepare post data
+      // Prepare post data - toujours utiliser "publish" pour publier immédiatement
       const wpPostData: any = {
         title: announcement.title,
         content: announcement.description || "",
-        status: announcement.status === 'scheduled' ? 'future' : 'publish',
+        status: announcement.status === 'scheduled' ? 'future' : 'publish', // Passer directement à "publish" sans étape draft/ready
       };
       
-      // Add featured image if available
+      // Set featured image if available
       if (featuredMediaId) {
         wpPostData.featured_media = featuredMediaId;
       }
       
-      // Add scheduled date if needed
+      // Add date for scheduled posts
       if (announcement.status === 'scheduled' && announcement.publish_date) {
         wpPostData.date = new Date(announcement.publish_date).toISOString();
       }
       
-      // Add categories based on endpoint type
-      if (useCustomTaxonomy && customEndpointExists) {
+      // Add category based on endpoint type
+      if (useCustomTaxonomy) {
+        // Use the custom taxonomy for DipiPixel
         wpPostData.dipi_cpt_category = [parseInt(wordpressCategoryId)];
-        console.log("Using custom taxonomy with category ID:", wordpressCategoryId);
-      } else {
-        wpPostData.categories = [parseInt(wordpressCategoryId)];
-        console.log("Using standard WordPress categories with ID:", wordpressCategoryId);
       }
       
-      // Add SEO metadata if available
+      // Add SEO metadata if available - simplified
       if (announcement.seo_title || announcement.seo_description) {
         wpPostData.meta = {
           _yoast_wpseo_title: announcement.seo_title || "",
@@ -166,155 +285,83 @@ export const useWordPressPublishing = () => {
         };
       }
       
-      console.log("Post data:", JSON.stringify(wpPostData, null, 2));
+      // Create post with image (if available)
       console.log("Sending POST request to WordPress:", postEndpoint);
+      const postResponse = await fetch(postEndpoint, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(wpPostData)
+      });
       
-      // Cache credentials for alternative auth methods
-      const credentials = {
-        username: wpConfig.app_username || wpConfig.username || '',
-        password: wpConfig.app_password || wpConfig.password || '',
-        hasAppAuth: !!(wpConfig.app_username && wpConfig.app_password),
-        hasBasicAuth: !!(wpConfig.username && wpConfig.password)
-      };
-      
-      try {
-        // Initial attempt with configured authentication
-        const postResponse = await fetch(postEndpoint, {
-          method: 'POST',
-          headers: headers,
-          body: JSON.stringify(wpPostData)
-        });
-        
-        // Handle authentication errors
-        if (postResponse.status === 401 || postResponse.status === 403) {
-          console.log("Authentication error, trying alternative auth methods...");
-          
-          let altAuthResult = null;
-          
-          // Try JWT authentication
-          if (credentials.username && credentials.password) {
-            altAuthResult = await tryJwtAuthentication(
-              siteUrl,
-              credentials,
-              wpPostData
-            );
-            
-            if (altAuthResult.success) {
-              // Success with JWT auth
-              updatePublishingStep("wordpress", "success", "Publication WordPress réussie via JWT", 85);
-              
-              // Update database
-              return await finishPublication(
-                announcement,
-                useCustomTaxonomy,
-                customEndpointExists,
-                altAuthResult.responseData,
-                featuredMediaId,
-                updatePublishingStep
-              );
-            }
-          }
-          
-          // Try form-based authentication
-          if (!altAuthResult?.success && credentials.username && credentials.password) {
-            altAuthResult = await tryFormAuthentication(
-              siteUrl,
-              credentials,
-              wpPostData,
-              postEndpoint
-            );
-            
-            if (altAuthResult.success) {
-              // Success with form auth
-              updatePublishingStep("wordpress", "success", "Publication WordPress réussie via connexion formulaire", 85);
-              
-              // Update database
-              return await finishPublication(
-                announcement,
-                useCustomTaxonomy,
-                customEndpointExists,
-                altAuthResult.responseData,
-                featuredMediaId,
-                updatePublishingStep
-              );
-            }
-          }
-          
-          // Try direct post without authentication
-          try {
-            console.log("Trying direct post without authentication as last resort");
-            
-            const noAuthResponse = await fetch(postEndpoint, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(wpPostData)
-            });
-            
-            if (noAuthResponse.ok) {
-              const responseData = await noAuthResponse.json();
-              
-              if (responseData && responseData.id) {
-                updatePublishingStep("wordpress", "success", "Publication WordPress réussie sans authentification", 85);
-                
-                // Update database
-                return await finishPublication(
-                  announcement,
-                  useCustomTaxonomy,
-                  customEndpointExists,
-                  responseData,
-                  featuredMediaId,
-                  updatePublishingStep
-                );
-              }
-            }
-          } catch (noAuthError) {
-            console.error("No auth post error:", noAuthError);
-          }
-          
-          // All alternative methods failed
-          updatePublishingStep("wordpress", "error", `Échec d'authentification (${postResponse.status})`);
-          return { 
-            success: false, 
-            message: `Erreur d'authentification WordPress (${postResponse.status}). Veuillez vérifier vos identifiants et vos permissions.`, 
-            wordpressPostId: null 
-          };
-        } else if (!postResponse.ok) {
-          // Other API errors
-          const errorText = await postResponse.text();
-          updatePublishingStep("wordpress", "error", `Erreur de publication (${postResponse.status})`);
-          return { 
-            success: false, 
-            message: `Erreur lors de la publication WordPress (${postResponse.status}): ${errorText.substring(0, 100)}`, 
-            wordpressPostId: null 
-          };
-        }
-        
-        // Successful response with initial auth
-        const wpResponseData = await postResponse.json();
-        console.log("WordPress response data:", wpResponseData);
-        updatePublishingStep("wordpress", "success", "Publication WordPress réussie", 85);
-        
-        // Update database with WordPress post ID
-        return await finishPublication(
-          announcement,
-          useCustomTaxonomy,
-          customEndpointExists,
-          wpResponseData,
-          featuredMediaId,
-          updatePublishingStep
-        );
-      } catch (error: any) {
-        console.error("Error in fetch operation:", error);
-        updatePublishingStep("wordpress", "error", `Erreur de communication: ${error.message}`);
+      if (!postResponse.ok) {
+        let errorText = await postResponse.text();
+        console.error("WordPress API error:", errorText);
+        updatePublishingStep("wordpress", "error", "Erreur lors de la publication");
         return { 
           success: false, 
-          message: `Erreur de communication avec WordPress: ${error.message}`, 
+          message: `Erreur lors de la publication WordPress (${postResponse.status}): ${errorText}`, 
+          wordpressPostId: null 
+        };
+      }
+      
+      // Parse JSON response
+      let wpResponseData;
+      try {
+        wpResponseData = await postResponse.json();
+        console.log("WordPress response data:", wpResponseData);
+        updatePublishingStep("wordpress", "success", "Publication WordPress réussie", 85);
+      } catch (error) {
+        console.error("Error parsing WordPress response:", error);
+        updatePublishingStep("wordpress", "error", "Erreur d'analyse de la réponse");
+        return {
+          success: false,
+          message: "Erreur lors de l'analyse de la réponse WordPress",
+          wordpressPostId: null
+        };
+      }
+      
+      // Final database update
+      updatePublishingStep("database", "loading", "Mise à jour de la base de données", 90);
+      
+      // Check if the response contains the WordPress post ID
+      if (wpResponseData && typeof wpResponseData.id === 'number') {
+        const wordpressPostId = wpResponseData.id;
+        console.log("WordPress post ID received:", wordpressPostId);
+        
+        // Update the announcement in Supabase with the WordPress post ID
+        const { error: updateError } = await supabase
+          .from("announcements")
+          .update({ 
+            wordpress_post_id: wordpressPostId,
+            is_divipixel: useCustomTaxonomy 
+          })
+          .eq("id", announcement.id);
+          
+        if (updateError) {
+          console.error("Error updating announcement with WordPress post ID:", updateError);
+          updatePublishingStep("database", "error", "Erreur de mise à jour de la base de données");
+          toast.error("L'annonce a été publiée sur WordPress mais l'ID n'a pas pu être enregistré dans la base de données");
+        } else {
+          updatePublishingStep("database", "success", "Mise à jour finalisée", 100);
+        }
+        
+        return { 
+          success: true, 
+          message: "Publié avec succès sur WordPress" + (featuredMediaId ? " avec image principale" : ""), 
+          wordpressPostId 
+        };
+      } else {
+        console.error("WordPress response does not contain post ID or ID is not a number", wpResponseData);
+        updatePublishingStep("database", "error", "Données incomplètes");
+        return { 
+          success: false, 
+          message: "La réponse WordPress ne contient pas l'ID du post", 
           wordpressPostId: null 
         };
       }
     } catch (error: any) {
       console.error("Error publishing to WordPress:", error);
-      // Update current step with error status
+      // Update the current step with error status
       if (publishingState.currentStep) {
         updatePublishingStep(publishingState.currentStep, "error", `Erreur: ${error.message}`);
       }
@@ -325,57 +372,6 @@ export const useWordPressPublishing = () => {
       };
     } finally {
       setIsPublishing(false);
-    }
-  };
-  
-  /**
-   * Handles the final database update after successful WordPress publication
-   */
-  const finishPublication = async (
-    announcement: Announcement,
-    useCustomTaxonomy: boolean,
-    customEndpointExists: boolean,
-    wpResponseData: any,
-    featuredMediaId: number | null,
-    updatePublishingStep: (stepId: string, status: PublishingStatus, message?: string, progress?: number) => void
-  ) => {
-    updatePublishingStep("database", "loading", "Mise à jour de la base de données", 90);
-    
-    // Verify WordPress post ID
-    if (wpResponseData && typeof wpResponseData.id === 'number') {
-      const wordpressPostId = wpResponseData.id;
-      console.log("WordPress post ID received:", wordpressPostId);
-      
-      // Update announcement with WordPress post ID
-      const { error: updateError } = await supabase
-        .from("announcements")
-        .update({ 
-          wordpress_post_id: wordpressPostId,
-          is_divipixel: useCustomTaxonomy && customEndpointExists
-        })
-        .eq("id", announcement.id);
-        
-      if (updateError) {
-        console.error("Error updating announcement with WordPress post ID:", updateError);
-        updatePublishingStep("database", "error", "Erreur de mise à jour de la base de données");
-        toast.error("L'annonce a été publiée sur WordPress mais l'ID n'a pas pu être enregistré dans la base de données");
-      } else {
-        updatePublishingStep("database", "success", "Mise à jour finalisée", 100);
-      }
-      
-      return { 
-        success: true, 
-        message: "Publié avec succès sur WordPress" + (featuredMediaId ? " avec image principale" : ""), 
-        wordpressPostId 
-      };
-    } else {
-      console.error("WordPress response does not contain post ID or ID is not a number", wpResponseData);
-      updatePublishingStep("database", "error", "Données incomplètes");
-      return { 
-        success: false, 
-        message: "La réponse WordPress ne contient pas l'ID du post", 
-        wordpressPostId: null 
-      };
     }
   };
   
