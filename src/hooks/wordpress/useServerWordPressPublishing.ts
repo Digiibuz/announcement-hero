@@ -43,38 +43,70 @@ export const useServerWordPressPublishing = () => {
     setIsPublishing(true);
     resetPublishingState();
     
-    // Start with preparation step
+    // Étape de préparation
     updatePublishingStep("prepare", "loading", "Préparation de la publication", 10);
     
     try {
-      console.log("Starting server-side WordPress publishing...");
+      console.log("Démarrage de la publication WordPress côté serveur...");
       
       updatePublishingStep("prepare", "success", "Préparation terminée", 30);
       updatePublishingStep("server", "loading", "Publication sur WordPress via serveur", 40);
       
-      // Add clear payload logging for debugging
+      // Journaliser clairement la charge utile pour le débogage
       const payload = {
         announcementId: announcement.id,
         userId: userId,
         categoryId: wordpressCategoryId
       };
       
-      console.log("Calling edge function with payload:", JSON.stringify(payload, null, 2));
+      console.log("Appel de la fonction edge avec la charge utile:", JSON.stringify(payload, null, 2));
       
-      // Call the edge function with extended timeout and debug
+      // Appeler la fonction edge avec un timeout étendu et le débogage
       let response;
       try {
-        response = await supabase.functions.invoke("wordpress-publish", {
+        // Définir un délai d'attente plus long pour la fonction edge
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error("Délai d'attente dépassé lors de l'appel à la fonction edge")), 30000);
+        });
+        
+        // Appeler la fonction edge avec gestion améliorée des erreurs
+        const fetchPromise = supabase.functions.invoke("wordpress-publish", {
           body: payload,
           headers: {
             "Content-Type": "application/json"
           }
         });
-
-        console.log("Edge function raw response:", response);
-      } catch (invokeError) {
-        console.error("Edge function invoke error:", invokeError);
         
+        // Utiliser Promise.race pour éviter les attentes infinies
+        response = await Promise.race([fetchPromise, timeoutPromise]);
+        
+        console.log("Réponse brute de la fonction edge:", response);
+      } catch (invokeError: any) {
+        console.error("Erreur d'invocation de la fonction edge:", invokeError);
+        console.error("Message d'erreur:", invokeError.message);
+        console.error("Stack d'erreur:", invokeError.stack);
+        
+        // Vérifier si c'est une erreur de CORS
+        if (invokeError.message && invokeError.message.includes('CORS')) {
+          updatePublishingStep("server", "error", `Erreur CORS: ${invokeError.message}`, 50);
+          return { 
+            success: false, 
+            message: `Erreur CORS lors de l'invocation de la fonction: ${invokeError.message}`, 
+            wordpressPostId: null 
+          };
+        }
+        
+        // Vérifier si c'est une erreur de timeout
+        if (invokeError.message && invokeError.message.includes('timeout')) {
+          updatePublishingStep("server", "error", `Délai d'attente dépassé: ${invokeError.message}`, 50);
+          return { 
+            success: false, 
+            message: `Délai d'attente dépassé lors de l'appel à la fonction: ${invokeError.message}`, 
+            wordpressPostId: null 
+          };
+        }
+        
+        // Autres erreurs d'invocation
         updatePublishingStep("server", "error", `Erreur d'invocation: ${invokeError.message || "Erreur inconnue"}`, 50);
         return { 
           success: false, 
@@ -83,9 +115,9 @@ export const useServerWordPressPublishing = () => {
         };
       }
       
-      // Process the response with better error handling
+      // Traiter la réponse avec une meilleure gestion des erreurs
       if (!response) {
-        console.error("Edge function returned null response");
+        console.error("La fonction edge a renvoyé une réponse nulle");
         updatePublishingStep("server", "error", "Réponse vide de la fonction", 50);
         return { 
           success: false, 
@@ -94,23 +126,34 @@ export const useServerWordPressPublishing = () => {
         };
       }
       
-      // Check for error in response
+      // Vérifier les erreurs dans la réponse
       if (response.error) {
-        console.error("Edge function error:", response.error);
+        console.error("Erreur de la fonction edge:", response.error);
         
-        updatePublishingStep("server", "error", `Erreur: ${response.error.message || "Erreur serveur"}`, 50);
+        // Essayer d'extraire plus de détails de l'erreur
+        let errorMessage = response.error.message || "Erreur serveur";
+        let errorDetails = "";
+        
+        if (response.error.value && typeof response.error.value === 'object') {
+          errorDetails = JSON.stringify(response.error.value);
+          if (response.error.value.message) {
+            errorMessage = response.error.value.message;
+          }
+        }
+        
+        updatePublishingStep("server", "error", `Erreur: ${errorMessage}`, 50);
         return { 
           success: false, 
-          message: `Erreur lors de la publication: ${response.error.message || "Erreur serveur"}`, 
+          message: `Erreur lors de la publication: ${errorMessage}`, 
           wordpressPostId: null 
         };
       }
       
       const data = response.data;
-      console.log("Edge function data response:", data);
+      console.log("Réponse de données de la fonction edge:", data);
       
       if (!data || data.success === false) {
-        console.error("WordPress publishing failed:", data ? data.message : "No data returned");
+        console.error("Échec de la publication WordPress:", data ? data.message : "Aucune donnée renvoyée");
         updatePublishingStep("server", "error", `Échec: ${data?.message || "Échec inconnu"}`, 50);
         return { 
           success: false, 
@@ -119,7 +162,7 @@ export const useServerWordPressPublishing = () => {
         };
       }
       
-      // Success! Update UI and return result
+      // Succès ! Mettre à jour l'interface utilisateur et renvoyer le résultat
       updatePublishingStep("server", "success", "Publication WordPress réussie", 80);
       updatePublishingStep("database", "success", "Mise à jour de la base de données terminée", 100);
       
@@ -128,14 +171,14 @@ export const useServerWordPressPublishing = () => {
         postLink = ` (URL: ${data.data.postUrl})`;
       }
       
-      // Log the success for debugging
-      console.log("WordPress publishing completed successfully:", {
+      // Journaliser le succès pour le débogage
+      console.log("Publication WordPress terminée avec succès:", {
         wordpressPostId: data.data?.wordpressPostId,
         postUrl: data.data?.postUrl,
         isCustomPostType: data.data?.isCustomPostType
       });
       
-      // Check if the post is accessible
+      // Vérifier si le post est accessible
       if (data.data?.postUrl) {
         try {
           const postUrlCheckMessage = "Vérification de l'accessibilité de l'article...";
@@ -144,20 +187,20 @@ export const useServerWordPressPublishing = () => {
           
           const response = await fetch(data.data.postUrl, {
             method: 'HEAD',
-            mode: 'no-cors' // Use no-cors mode to bypass CORS issues with verification
+            mode: 'no-cors' // Utiliser le mode no-cors pour contourner les problèmes de CORS avec la vérification
           });
           
-          console.log("Post URL check response:", response.status);
+          console.log("Statut de la réponse de vérification d'URL du post:", response.status);
           
           if (response.status === 200) {
-            console.log("Post is accessible!");
+            console.log("Le post est accessible !");
             toast.success("L'article est accessible publiquement");
           } else {
-            console.warn("Post may not be publicly accessible yet:", response.status);
+            console.warn("Le post pourrait ne pas être accessible publiquement pour le moment:", response.status);
             toast.warning("L'article a été publié mais pourrait ne pas être immédiatement accessible");
           }
         } catch (e) {
-          console.warn("Failed to check post accessibility:", e);
+          console.warn("Échec de la vérification de l'accessibilité du post:", e);
         }
       }
       
@@ -167,9 +210,11 @@ export const useServerWordPressPublishing = () => {
         wordpressPostId: data.data?.wordpressPostId || null 
       };
     } catch (error: any) {
-      console.error("Error in server publishing process:", error);
+      console.error("Erreur dans le processus de publication serveur:", error);
+      console.error("Message d'erreur:", error.message);
+      console.error("Stack d'erreur:", error.stack);
       
-      // Update the current step with error
+      // Mettre à jour l'étape actuelle avec l'erreur
       if (publishingState.currentStep) {
         updatePublishingStep(
           publishingState.currentStep, 

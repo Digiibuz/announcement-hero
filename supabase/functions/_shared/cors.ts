@@ -7,3 +7,14 @@ export const corsHeaders = {
   "Access-Control-Allow-Credentials": "true",
   "Content-Type": "application/json"
 };
+
+// Fonction utilitaire pour gérer les requêtes OPTIONS CORS
+export const handleCors = (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders
+    });
+  }
+  return null;
+};

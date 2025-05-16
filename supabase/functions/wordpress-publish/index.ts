@@ -1,29 +1,20 @@
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.32.0";
-import { corsHeaders } from "../_shared/cors.ts";
-
-// Setup Supabase client
-const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { createServerSupabaseClient } from "../_shared/serverClient.ts";
 
 serve(async (req) => {
   console.log("WordPress publish function called");
   console.log("Request method:", req.method);
   console.log("Request URL:", req.url);
+  console.log("Request headers:", Object.fromEntries(req.headers.entries()));
 
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    console.log("Handling OPTIONS request for CORS preflight");
-    return new Response(null, {
-      status: 204,
-      headers: corsHeaders,
-    });
-  }
+  // Gérer CORS préalablement
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
 
   try {
-    // Check for proper request method
+    // Vérifier la méthode HTTP
     if (req.method !== "POST") {
       return new Response(JSON.stringify({
         success: false,
@@ -34,16 +25,31 @@ serve(async (req) => {
       });
     }
 
-    // Parse request data with robust error handling
+    // Initialiser le client Supabase
+    const supabase = createServerSupabaseClient();
+    if (!supabase) {
+      return new Response(JSON.stringify({
+        success: false,
+        message: "Impossible d'initialiser le client Supabase",
+      }), {
+        status: 500,
+        headers: { ...corsHeaders },
+      });
+    }
+
+    // Analyser les données de la requête avec une meilleure gestion des erreurs
     let requestData;
     try {
       const requestText = await req.text();
-      console.log("Request raw text:", requestText);
+      console.log("Request body raw:", requestText);
       
       if (!requestText || requestText.trim() === '') {
         return new Response(JSON.stringify({
           success: false,
-          message: "Empty request body",
+          message: "Corps de la requête vide",
+          debug: { 
+            headers: Object.fromEntries(req.headers.entries()) 
+          }
         }), {
           status: 400,
           headers: { ...corsHeaders },
@@ -51,31 +57,34 @@ serve(async (req) => {
       }
       
       requestData = JSON.parse(requestText);
-      console.log("Request data parsed successfully:", requestData);
+      console.log("Request data parsed:", requestData);
     } catch (parseError) {
-      console.error("JSON parse error:", parseError.message);
+      console.error("JSON parse error:", parseError);
       return new Response(JSON.stringify({
         success: false,
-        message: `Invalid JSON format: ${parseError.message}`,
+        message: `Format JSON invalide: ${parseError.message}`,
+        error: parseError.toString(),
+        stack: parseError.stack
       }), {
         status: 400,
         headers: { ...corsHeaders },
       });
     }
 
+    // Vérifier les champs obligatoires
     const { announcementId, userId, categoryId } = requestData;
-
     if (!announcementId || !userId || !categoryId) {
       return new Response(JSON.stringify({
         success: false,
-        message: "Missing required fields: announcementId, userId, or categoryId",
+        message: "Champs obligatoires manquants: announcementId, userId, ou categoryId",
+        received: { announcementId, userId, categoryId }
       }), {
         status: 400,
         headers: { ...corsHeaders },
       });
     }
 
-    // Fetch announcement data
+    // Récupérer les données de l'annonce
     const { data: announcement, error: announcementError } = await supabase
       .from("announcements")
       .select("*")
@@ -83,19 +92,20 @@ serve(async (req) => {
       .single();
 
     if (announcementError || !announcement) {
-      console.error("Error fetching announcement:", announcementError);
+      console.error("Erreur lors de la récupération de l'annonce:", announcementError);
       return new Response(JSON.stringify({
         success: false,
-        message: `Announcement not found: ${announcementError?.message || "Unknown error"}`,
+        message: `Annonce non trouvée: ${announcementError?.message || "Erreur inconnue"}`,
+        error: announcementError
       }), {
         status: 404,
         headers: { ...corsHeaders },
       });
     }
 
-    console.log("Announcement found:", announcement.title);
+    console.log("Annonce trouvée:", announcement.title);
 
-    // Get user's WordPress config
+    // Récupérer le profil utilisateur
     const { data: userProfile, error: profileError } = await supabase
       .from("profiles")
       .select("wordpress_config_id")
@@ -103,19 +113,20 @@ serve(async (req) => {
       .single();
 
     if (profileError || !userProfile?.wordpress_config_id) {
-      console.error("Error fetching user profile:", profileError);
+      console.error("Erreur lors de la récupération du profil utilisateur:", profileError);
       return new Response(JSON.stringify({
         success: false,
-        message: `User profile not found: ${profileError?.message || "No WordPress configuration found"}`,
+        message: `Profil utilisateur non trouvé ou configuration WordPress manquante`,
+        error: profileError
       }), {
         status: 404,
         headers: { ...corsHeaders },
       });
     }
 
-    console.log("User profile found with WordPress config ID:", userProfile.wordpress_config_id);
+    console.log("Profil utilisateur trouvé avec ID de config WordPress:", userProfile.wordpress_config_id);
 
-    // Get WordPress config details
+    // Récupérer la configuration WordPress
     const { data: wpConfig, error: configError } = await supabase
       .from("wordpress_configs")
       .select("*")
@@ -123,158 +134,154 @@ serve(async (req) => {
       .single();
 
     if (configError || !wpConfig) {
-      console.error("Error fetching WordPress config:", configError);
+      console.error("Erreur lors de la récupération de la configuration WordPress:", configError);
       return new Response(JSON.stringify({
         success: false,
-        message: `WordPress configuration not found: ${configError?.message || "Unknown error"}`,
+        message: `Configuration WordPress non trouvée: ${configError?.message || "Erreur inconnue"}`,
+        error: configError
       }), {
         status: 404,
         headers: { ...corsHeaders },
       });
     }
 
-    console.log("WordPress config found:", {
+    console.log("Configuration WordPress trouvée:", {
       site_url: wpConfig.site_url,
       hasAppUsername: !!wpConfig.app_username,
       hasAppPassword: !!wpConfig.app_password
     });
 
-    // Verify WordPress credentials
+    // Vérifier les identifiants WordPress
     if (!wpConfig.app_username || !wpConfig.app_password) {
       return new Response(JSON.stringify({
         success: false,
-        message: "WordPress credentials missing. Please set up application passwords in WordPress configuration.",
+        message: "Identifiants WordPress manquants. Veuillez configurer les application passwords dans la configuration WordPress.",
       }), {
         status: 400,
         headers: { ...corsHeaders },
       });
     }
 
-    // Credentials format check
-    console.log("WordPress Credentials Format Check:");
-    console.log("App username exists:", !!wpConfig.app_username);
+    // Vérification du format des identifiants
+    console.log("Vérification des identifiants WordPress:");
+    console.log("App username existe:", !!wpConfig.app_username);
     console.log("App username type:", typeof wpConfig.app_username);
-    console.log("App username length:", wpConfig.app_username.length);
-    console.log("App password exists:", !!wpConfig.app_password);
+    console.log("App username longueur:", wpConfig.app_username.length);
+    console.log("App password existe:", !!wpConfig.app_password);
     console.log("App password type:", typeof wpConfig.app_password);
-    console.log("App password length:", wpConfig.app_password.length);
+    console.log("App password longueur:", wpConfig.app_password.length);
     
-    // Warning for potential issues
-    if (wpConfig.app_password.includes(" ")) {
-      console.log("WARNING: App password contains spaces - this is normal for application passwords");
-    }
-
-    // Format site URL
+    // Formater l'URL du site
     const siteUrl = wpConfig.site_url.endsWith("/")
       ? wpConfig.site_url.slice(0, -1)
       : wpConfig.site_url;
 
-    // Check for custom endpoints
-    console.log("Checking for custom endpoints...");
+    // Vérifier les points de terminaison personnalisés
+    console.log("Vérification des points de terminaison personnalisés...");
 
-    // First check for custom taxonomies
+    // D'abord, vérifier les taxonomies personnalisées
     let useCustomTaxonomy = false;
     let customEndpointExists = false;
     let postEndpoint = `${siteUrl}/wp-json/wp/v2/posts`;
 
     try {
-      console.log("Testing endpoint:", `${siteUrl}/wp-json/wp/v2/dipi_cpt_category`);
+      console.log("Test du point de terminaison:", `${siteUrl}/wp-json/wp/v2/dipi_cpt_category`);
       const taxonomyResponse = await fetch(
         `${siteUrl}/wp-json/wp/v2/dipi_cpt_category`,
         { 
           method: "HEAD",
           headers: { 
-            "Origin": supabaseUrl,
+            "Origin": "*",
             "Access-Control-Request-Method": "HEAD"
           }
         }
       );
       
-      console.log("Taxonomy response status:", taxonomyResponse.status);
+      console.log("Statut de réponse de taxonomie:", taxonomyResponse.status);
       
       if (taxonomyResponse.status !== 404) {
-        console.log("DipiPixel taxonomy endpoint found!");
+        console.log("Point de terminaison de taxonomie DipiPixel trouvé!");
         useCustomTaxonomy = true;
         
-        // Check for custom post type
-        console.log("Testing endpoint:", `${siteUrl}/wp-json/wp/v2/dipi_cpt`);
+        // Vérifier le type de publication personnalisé
+        console.log("Test du point de terminaison:", `${siteUrl}/wp-json/wp/v2/dipi_cpt`);
         const cptResponse = await fetch(
           `${siteUrl}/wp-json/wp/v2/dipi_cpt`,
           { 
             method: "HEAD",
             headers: { 
-              "Origin": supabaseUrl,
+              "Origin": "*",
               "Access-Control-Request-Method": "HEAD"
             }
           }
         );
         
-        console.log("Custom post type response status:", cptResponse.status);
+        console.log("Statut de réponse de CPT:", cptResponse.status);
         
         if (cptResponse.status !== 404) {
           postEndpoint = `${siteUrl}/wp-json/wp/v2/dipi_cpt`;
           customEndpointExists = true;
-          console.log("Using dipi_cpt endpoint");
+          console.log("Utilisation du point de terminaison dipi_cpt");
         } else {
-          // Check alternative endpoint
-          console.log("Testing endpoint:", `${siteUrl}/wp-json/wp/v2/dipicpt`);
+          // Vérifier le point de terminaison alternatif
+          console.log("Test du point de terminaison:", `${siteUrl}/wp-json/wp/v2/dipicpt`);
           const altResponse = await fetch(
             `${siteUrl}/wp-json/wp/v2/dipicpt`,
             { 
               method: "HEAD",
               headers: { 
-                "Origin": supabaseUrl,
+                "Origin": "*",
                 "Access-Control-Request-Method": "HEAD"
               }
             }
           );
           
-          console.log("Alternative endpoint response status:", altResponse.status);
+          console.log("Statut de réponse du point de terminaison alternatif:", altResponse.status);
           
           if (altResponse.status !== 404) {
             postEndpoint = `${siteUrl}/wp-json/wp/v2/dipicpt`;
             customEndpointExists = true;
-            console.log("Using dipicpt endpoint");
+            console.log("Utilisation du point de terminaison dipicpt");
           } else {
-            console.log("No custom post type endpoint found, falling back to posts");
+            console.log("Aucun point de terminaison personnalisé trouvé, utilisation de posts par défaut");
           }
         }
       } else {
-        console.log("No DipiPixel taxonomy found, using standard categories");
+        console.log("Aucune taxonomie DipiPixel trouvée, utilisation des catégories standard");
       }
     } catch (error) {
-      console.log("Error checking custom endpoints:", error);
-      console.log("Falling back to standard posts endpoint");
+      console.log("Erreur lors de la vérification des points de terminaison personnalisés:", error);
+      console.log("Utilisation du point de terminaison posts standard");
     }
 
-    console.log("Using WordPress endpoint:", postEndpoint);
+    console.log("Utilisation du point de terminaison WordPress:", postEndpoint);
 
-    // Create authentication headers
+    // Créer les en-têtes d'authentification
     const credentials = `${wpConfig.app_username}:${wpConfig.app_password}`;
-    console.log("Credentials format:", "username:password");
+    console.log("Format des identifiants:", "username:password");
     
-    // Base64 encode the credentials
+    // Encoder les identifiants en Base64
     const encodedCredentials = btoa(credentials);
-    console.log("Using encoded credentials of length:", encodedCredentials.length);
+    console.log("Utilisation des identifiants encodés de longueur:", encodedCredentials.length);
     
-    // Creating auth header
-    console.log("Auth header created successfully using application password");
+    // Créer l'en-tête d'authentification
+    console.log("En-tête d'authentification créé avec succès en utilisant l'application password");
     
-    // Prepare full request headers
+    // Préparer les en-têtes de requête complets
     const headers = {
       "Content-Type": "application/json",
-      "Origin": `${supabaseUrl}`,
+      "Origin": "*",
       "Authorization": `Basic ${encodedCredentials}`
     };
     
-    // Log headers without showing actual auth value
-    console.log("Created headers:", JSON.stringify({...headers, "Authorization": "AUTH_HEADER_SET_BUT_NOT_DISPLAYED"}));
+    // Journalisation des en-têtes sans montrer la valeur réelle de l'authentification
+    console.log("En-têtes créés:", JSON.stringify({...headers, "Authorization": "AUTH_HEADER_SET_BUT_NOT_DISPLAYED"}));
 
-    // Prepare post data
-    // Set categories based on endpoint type
+    // Préparer les données du post
+    // Définir les catégories en fonction du type de point de terminaison
     let postData;
     if (useCustomTaxonomy && customEndpointExists) {
-      console.log("Using DipiPixel custom taxonomy with category ID:", categoryId);
+      console.log("Utilisation de la taxonomie personnalisée DipiPixel avec ID de catégorie:", categoryId);
       postData = {
         title: announcement.title,
         content: announcement.description || "",
@@ -282,7 +289,7 @@ serve(async (req) => {
         dipi_cpt_category: [parseInt(categoryId)]
       };
     } else {
-      console.log("Using standard WordPress categories with ID:", categoryId);
+      console.log("Utilisation des catégories WordPress standard avec ID:", categoryId);
       postData = {
         title: announcement.title,
         content: announcement.description || "",
@@ -291,18 +298,17 @@ serve(async (req) => {
       };
     }
 
-    // Add scheduled date if needed
+    // Ajouter une date programmée si nécessaire
     if (announcement.status === 'scheduled' && announcement.publish_date) {
       postData.date = new Date(announcement.publish_date).toISOString();
     }
 
-    // Add featured image if available
+    // Ajouter une image à la une si disponible
     if (announcement.images && announcement.images.length > 0) {
-      console.log("Image available in announcement, will attempt to upload after post creation");
-      // Implementation for featured image upload will be done after post creation
+      console.log("Image disponible dans l'annonce, tentative de téléchargement après création du post");
     }
 
-    // Add SEO metadata if available
+    // Ajouter des métadonnées SEO si disponibles
     if (announcement.seo_title || announcement.seo_description) {
       postData.meta = {
         _yoast_wpseo_title: announcement.seo_title || "",
@@ -310,16 +316,14 @@ serve(async (req) => {
       };
     }
 
-    console.log("Prepared post data:", JSON.stringify(postData, null, 2));
+    console.log("Données du post préparées:", JSON.stringify(postData, null, 2));
     
-    // Send request to WordPress
-    console.log("Sending WordPress request to:", postEndpoint);
-    console.log("With headers:", Object.keys(headers).join(", "));
-    console.log("Request method: POST");
+    // Envoyer la requête à WordPress
+    console.log("Envoi de la requête WordPress à:", postEndpoint);
+    console.log("Avec en-têtes:", Object.keys(headers).join(", "));
+    console.log("Méthode de requête: POST");
     
-    console.log("Attempting to send WordPress post request...");
-    
-    // Send the actual request
+    // Envoyer la requête
     let wpResponse;
     try {
       wpResponse = await fetch(postEndpoint, {
@@ -328,31 +332,47 @@ serve(async (req) => {
         body: JSON.stringify(postData)
       });
 
-      console.log("WordPress response status:", wpResponse.status);
+      console.log("Statut de réponse WordPress:", wpResponse.status);
+      
+      // Lire le corps de la réponse pour le journaliser
+      const responseClone = wpResponse.clone();
+      const responseText = await responseClone.text();
+      console.log("Corps de la réponse WordPress:", responseText);
+      
+      // Recréer la réponse pour l'utiliser ensuite
+      const responseBody = responseText;
+      wpResponse = new Response(responseBody, {
+        status: wpResponse.status,
+        statusText: wpResponse.statusText,
+        headers: wpResponse.headers
+      });
+      
     } catch (fetchError) {
-      console.error("Fetch error:", fetchError);
+      console.error("Erreur fetch:", fetchError);
       return new Response(JSON.stringify({
         success: false,
-        message: `Network error: ${fetchError.message}`,
+        message: `Erreur réseau: ${fetchError.message}`,
+        error: fetchError.toString(),
+        stack: fetchError.stack
       }), {
         status: 500,
         headers: { ...corsHeaders },
       });
     }
     
-    // Process response
+    // Traiter la réponse
     if (wpResponse.status !== 201 && wpResponse.status !== 200) {
       let errorText;
       try {
         errorText = await wpResponse.text();
       } catch (e) {
-        errorText = "Could not read error response";
+        errorText = "Impossible de lire la réponse d'erreur";
       }
       
-      console.log("WordPress error response:", errorText);
+      console.log("Réponse d'erreur WordPress:", errorText);
       return new Response(JSON.stringify({
         success: false,
-        message: `WordPress API error (${wpResponse.status}): ${errorText}`,
+        message: `Erreur API WordPress (${wpResponse.status}): ${errorText}`,
         details: { status: wpResponse.status }
       }), {
         status: wpResponse.status >= 400 && wpResponse.status < 600 ? wpResponse.status : 500,
@@ -360,27 +380,30 @@ serve(async (req) => {
       });
     }
 
-    // Parse successful response with robust error handling
+    // Analyser la réponse réussie
     let wpResponseData;
     try {
-      wpResponseData = await wpResponse.json();
-      console.log("WordPress response parsed successfully");
+      const responseText = await wpResponse.text();
+      console.log("Texte de réponse WordPress:", responseText);
+      wpResponseData = JSON.parse(responseText);
+      console.log("Réponse WordPress analysée avec succès");
     } catch (parseError) {
-      console.error("Error parsing WordPress response:", parseError);
+      console.error("Erreur d'analyse de la réponse WordPress:", parseError);
       return new Response(JSON.stringify({
         success: false,
-        message: `Error parsing WordPress response: ${parseError.message}`,
+        message: `Erreur d'analyse de la réponse WordPress: ${parseError.message}`,
+        error: parseError.toString()
       }), {
         status: 500,
         headers: { ...corsHeaders },
       });
     }
     
-    // Check for post ID
+    // Vérifier l'ID du post
     if (!wpResponseData || typeof wpResponseData.id !== 'number') {
       return new Response(JSON.stringify({
         success: false,
-        message: "WordPress response did not contain a valid post ID",
+        message: "La réponse WordPress ne contenait pas d'ID de post valide",
         response: wpResponseData
       }), {
         status: 500,
@@ -388,45 +411,45 @@ serve(async (req) => {
       });
     }
 
-    console.log("Post created successfully with ID:", wpResponseData.id);
+    console.log("Post créé avec succès avec ID:", wpResponseData.id);
     
-    // Get post URL
+    // Obtenir l'URL du post
     let postUrl = null;
     if (wpResponseData.link) {
       postUrl = wpResponseData.link;
-      console.log("Post URL from response:", postUrl);
+      console.log("URL du post depuis la réponse:", postUrl);
     }
     
-    // Feature image if available
+    // Image à la une si disponible
     if (announcement.images && announcement.images.length > 0 && wpResponseData.id) {
       try {
-        console.log("Attempting to set featured image");
+        console.log("Tentative de définir l'image à la une");
         const imageUrl = announcement.images[0];
-        console.log("Image URL:", imageUrl);
+        console.log("URL de l'image:", imageUrl);
         
-        // First, download the image
+        // D'abord, télécharger l'image
         let imageResponse;
         try {
           imageResponse = await fetch(imageUrl);
           if (!imageResponse.ok) {
-            throw new Error(`Failed to download image: ${imageResponse.status}`);
+            throw new Error(`Échec du téléchargement de l'image: ${imageResponse.status}`);
           }
         } catch (imageError) {
-          console.error("Error downloading image:", imageError);
-          // Continue with post creation, just log the error
+          console.error("Erreur de téléchargement de l'image:", imageError);
+          // Continuer avec la création du post, journaliser simplement l'erreur
         }
         
         if (imageResponse && imageResponse.ok) {
-          // Get image as blob
+          // Obtenir l'image sous forme de blob
           const imageBlob = await imageResponse.blob();
           
-          // Create form data for media upload
+          // Créer des données de formulaire pour le téléchargement de média
           const formData = new FormData();
           formData.append('file', new File([imageBlob], 'featured-image.jpg', { type: imageBlob.type || 'image/jpeg' }));
           
-          // Upload to WordPress media library
+          // Télécharger vers la bibliothèque de médias WordPress
           const mediaEndpoint = `${siteUrl}/wp-json/wp/v2/media`;
-          console.log("Uploading to media endpoint:", mediaEndpoint);
+          console.log("Téléchargement vers le point de terminaison média:", mediaEndpoint);
           
           const mediaResponse = await fetch(mediaEndpoint, {
             method: 'POST',
@@ -439,9 +462,9 @@ serve(async (req) => {
           if (mediaResponse.ok) {
             const mediaData = await mediaResponse.json();
             if (mediaData && mediaData.id) {
-              console.log("Media uploaded successfully with ID:", mediaData.id);
+              console.log("Média téléchargé avec succès avec ID:", mediaData.id);
               
-              // Set as featured image
+              // Définir comme image à la une
               const updatePostEndpoint = `${postEndpoint}/${wpResponseData.id}`;
               const updateResponse = await fetch(updatePostEndpoint, {
                 method: 'POST',
@@ -452,27 +475,27 @@ serve(async (req) => {
               });
               
               if (updateResponse.ok) {
-                console.log("Featured image set successfully");
+                console.log("Image à la une définie avec succès");
               } else {
-                console.error("Failed to set featured image:", await updateResponse.text());
+                console.error("Échec de la définition de l'image à la une:", await updateResponse.text());
               }
             }
           } else {
-            console.error("Failed to upload media:", await mediaResponse.text());
+            console.error("Échec du téléchargement du média:", await mediaResponse.text());
           }
         }
       } catch (mediaError) {
-        console.error("Error handling featured image:", mediaError);
-        // Continue with post creation, just log the error
+        console.error("Erreur de gestion de l'image à la une:", mediaError);
+        // Continuer avec la création du post, journaliser simplement l'erreur
       }
     }
     
-    // Assign categories if needed
-    console.log("Assigning categories to post", wpResponseData.id, { categoryId });
+    // Assigner des catégories si nécessaire
+    console.log("Assignation de catégories au post", wpResponseData.id, { categoryId });
     
     try {
-      console.log("Sending category assignment request");
-      // Implementation depends on the WordPress REST API version
+      console.log("Envoi de la requête d'assignation de catégorie");
+      // L'implémentation dépend de la version de l'API REST WordPress
       const categoryAssignUrl = `${postEndpoint}/${wpResponseData.id}`;
       const categoryData = useCustomTaxonomy && customEndpointExists
           ? { dipi_cpt_category: [parseInt(categoryId)] }
@@ -485,22 +508,22 @@ serve(async (req) => {
       });
       
       if (catResponse.ok) {
-        console.log("Categories successfully assigned to post");
+        console.log("Catégories assignées avec succès au post");
       } else {
-        console.log("Category assignment response:", await catResponse.text());
+        console.log("Réponse d'assignation de catégorie:", await catResponse.text());
       }
     } catch (error) {
-      console.log("Error assigning categories:", error);
+      console.log("Erreur d'assignation de catégories:", error);
     }
     
-    // Verify post was published successfully
-    console.log("Verifying post publication for ID", wpResponseData.id + "...");
+    // Vérifier que le post a été publié avec succès
+    console.log("Vérification de la publication du post pour l'ID", wpResponseData.id + "...");
     
     let verifiedPostUrl = null;
     
     try {
-      // Strategy 1: Direct API verification
-      console.log("Strategy 1: Trying direct API verification...");
+      // Stratégie 1: Vérification directe de l'API
+      console.log("Stratégie 1: Tentative de vérification directe de l'API...");
       const verifyResponse = await fetch(`${siteUrl}/wp-json/wp/v2/${useCustomTaxonomy && customEndpointExists ? 'dipi_cpt' : 'posts'}/${wpResponseData.id}`, {
         method: "GET",
         headers: headers
@@ -508,35 +531,35 @@ serve(async (req) => {
       
       if (verifyResponse.ok) {
         const verifyData = await verifyResponse.json();
-        console.log("Post verification data:", verifyData);
+        console.log("Données de vérification du post:", verifyData);
         
         if (verifyData && verifyData.status === "publish" && verifyData.link) {
-          console.log("Post verified and published at:", verifyData.link);
+          console.log("Post vérifié et publié à:", verifyData.link);
           verifiedPostUrl = verifyData.link;
-          console.log("Post verification succeeded with strategy 1");
+          console.log("Vérification du post réussie avec la stratégie 1");
         }
       } else {
-        console.log("Verification failed with status:", verifyResponse.status);
+        console.log("Échec de la vérification avec statut:", verifyResponse.status);
       }
       
     } catch (error) {
-      console.log("Error during post verification:", error);
+      console.log("Erreur lors de la vérification du post:", error);
     }
     
-    // Use the verified URL or fall back to the response URL
+    // Utiliser l'URL vérifiée ou revenir à l'URL de réponse
     const finalPostUrl = verifiedPostUrl || postUrl;
     if (finalPostUrl) {
-      console.log("Final post URL:", finalPostUrl);
+      console.log("URL finale du post:", finalPostUrl);
     }
     
-    // Update the announcement record with WordPress post ID
-    console.log("Updating announcement with:", {
+    // Mettre à jour l'enregistrement de l'annonce avec l'ID du post WordPress
+    console.log("Mise à jour de l'annonce avec:", {
       wordpress_post_id: wpResponseData.id,
       is_divipixel: useCustomTaxonomy && customEndpointExists,
       wordpress_post_url: finalPostUrl
     });
     
-    // Update the announcement record
+    // Mettre à jour l'enregistrement de l'annonce
     const { error: updateError } = await supabase
       .from("announcements")
       .update({
@@ -546,21 +569,21 @@ serve(async (req) => {
       .eq("id", announcementId);
     
     if (updateError) {
-      console.log("Error updating announcement record:", updateError);
+      console.log("Erreur de mise à jour de l'enregistrement de l'annonce:", updateError);
       return new Response(JSON.stringify({
         success: true,
-        message: "Post published to WordPress but failed to update local record",
+        message: "Post publié sur WordPress mais échec de mise à jour de l'enregistrement local",
         data: { wordpressPostId: wpResponseData.id, postUrl: finalPostUrl, isCustomPostType: useCustomTaxonomy && customEndpointExists }
       }), {
-        status: 207, // Partial success
+        status: 207, // Succès partiel
         headers: { ...corsHeaders },
       });
     }
     
-    console.log("Successfully updated announcement record with WordPress post ID:", wpResponseData.id);
+    console.log("Mise à jour réussie de l'enregistrement de l'annonce avec l'ID de post WordPress:", wpResponseData.id);
     
-    // Return success response
-    console.log("WordPress publication process completed successfully");
+    // Renvoyer une réponse de succès
+    console.log("Processus de publication WordPress terminé avec succès");
     return new Response(JSON.stringify({
       success: true,
       message: "Publication réussie sur WordPress",
@@ -575,10 +598,12 @@ serve(async (req) => {
     });
     
   } catch (error) {
-    console.error("Unhandled error in edge function:", error);
+    console.error("Erreur non gérée dans la fonction edge:", error);
     return new Response(JSON.stringify({
       success: false,
-      message: `Server error: ${error.message || "Unknown error"}`,
+      message: `Erreur serveur: ${error.message || "Erreur inconnue"}`,
+      error: error.toString(),
+      stack: error.stack
     }), {
       status: 500,
       headers: { ...corsHeaders },

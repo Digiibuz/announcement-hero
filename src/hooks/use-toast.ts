@@ -2,9 +2,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { toast as sonnerToast } from "sonner";
+import { toast as sonnerToast, ToastT } from "sonner";
 
-// Declare global interface for toast methods on window
+// Déclarer l'interface globale pour les méthodes toast sur window
 declare global {
   interface Window {
     toast: {
@@ -31,7 +31,7 @@ export const useToast = () => {
   useEffect(() => {
     setIsMounted(true);
 
-    // Initialize window.toast with sonner toast functions
+    // Initialiser window.toast avec les fonctions toast sonner
     window.toast = {
       error: (message, options) => sonnerToast.error(message, options),
       success: (message, options) => sonnerToast.success(message, options),
@@ -42,7 +42,7 @@ export const useToast = () => {
         success: string | ((data: T) => string);
         error: string | ((error: unknown) => string);
       }) => {
-        // This needs to return the promise itself for correct typing
+        // Cela doit renvoyer la promesse elle-même pour un typage correct
         sonnerToast.promise(promise, options);
         return promise;
       },
@@ -83,7 +83,7 @@ export const useToast = () => {
       if (isMounted) {
         sonnerToast.promise(promise, options);
       }
-      return promise; // Return the original promise for chaining
+      return promise; // Renvoyer la promesse originale pour le chaînage
     },
     dismiss: (toastId?: string | number) => {
       if (isMounted) {
@@ -95,7 +95,7 @@ export const useToast = () => {
   return toast;
 };
 
-// Export toast for direct consumption (this will be re-exported in use-toast.ts in the UI folder)
+// Exporter toast pour une consommation directe
 export const toast = {
   error: (message: string, options?: any) => {
     if (typeof window !== "undefined" && window.toast) {
@@ -129,7 +129,7 @@ export const toast = {
     if (typeof window !== "undefined" && window.toast) {
       window.toast.promise(promise, options);
     }
-    return promise; // Return the original promise for chaining
+    return promise; // Renvoyer la promesse originale pour le chaînage
   },
   dismiss: (toastId?: string | number) => {
     if (typeof window !== "undefined" && window.toast) {
