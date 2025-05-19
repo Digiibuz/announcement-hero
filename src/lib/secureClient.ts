@@ -30,9 +30,9 @@ class SecureSupabaseClient {
   private functionEndpoint: string;
 
   constructor() {
-    // URL de l'Edge Function - ne contient pas d'informations sensibles
-    // Remplacez par votre URL de fonction déployée
-    this.functionEndpoint = "https://rdwqedmvzicerwotjseg.supabase.co/functions/v1/secure-client";
+    // URL de l'Edge Function - nous utilisons l'URL de la fonction déployée
+    // et non pas directement l'URL Supabase ou la clé
+    this.functionEndpoint = "/api/secure-client";
   }
 
   /**

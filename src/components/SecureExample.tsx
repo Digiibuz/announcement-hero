@@ -21,7 +21,7 @@ const SecureExample = () => {
     setError(null);
     
     try {
-      // Remplacez 'announcements' par le nom d'une table accessible dans votre projet
+      // Utilisation du client sécurisé
       const result = await secureClient.select('announcements', {
         limit: 10,
         order: { column: 'created_at', ascending: false }
