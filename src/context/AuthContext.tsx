@@ -9,26 +9,6 @@ import { UserProfile, AuthContextType } from "@/types/auth";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Fonction utilitaire pour nettoyer le stockage local des jetons d'authentification
-const cleanupAuthState = () => {
-  // Supprimer les jetons standard
-  localStorage.removeItem('supabase.auth.token');
-  
-  // Supprimer toutes les clés d'authentification Supabase de localStorage
-  Object.keys(localStorage).forEach((key) => {
-    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-      localStorage.removeItem(key);
-    }
-  });
-  
-  // Supprimer de sessionStorage si utilisé
-  Object.keys(sessionStorage || {}).forEach((key) => {
-    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-      sessionStorage.removeItem(key);
-    }
-  });
-};
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const { userProfile, setUserProfile, fetchFullProfile } = useUserProfile();
@@ -135,86 +115,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [userProfile?.role, userProfile?.id]);
 
-  // Nouvelle implémentation de login utilisant l'edge function
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     
     try {
-      // Nettoyer d'abord l'état d'authentification pour éviter les problèmes
-      cleanupAuthState();
-      
-      // Tentons de nous déconnecter globalement avant de nous connecter
-      try {
-        await supabase.auth.signOut({ scope: 'global' });
-      } catch (err) {
-        // Continuer même en cas d'échec
-        console.warn("Échec de la déconnexion globale:", err);
-      }
-      
-      // Utiliser l'edge function pour l'authentification
-      const response = await fetch(`${window.location.origin}/api/auth`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          action: 'login',
-          email,
-          password
-        })
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Échec de la connexion");
+      if (error) {
+        throw error;
       }
       
-      const { session, user } = await response.json();
-      
-      if (!session || !user) {
-        throw new Error("Données d'authentification invalides");
-      }
-      
-      // Mettre à jour la session dans Supabase côté client
-      await supabase.auth.setSession({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token
-      });
-      
-      // Le reste sera géré par le listener onAuthStateChange
-      
+      // User will be set by the auth state change listener
     } catch (error: any) {
       setIsLoading(false);
       throw new Error(error.message || "Login error");
     }
   };
 
-  // Nouvelle implémentation de logout utilisant l'edge function
   const logout = async () => {
     try {
-      // Nettoyer d'abord le stockage local
-      cleanupAuthState();
       localStorage.removeItem('userRole');
       localStorage.removeItem('userId');
       sessionStorage.removeItem('lastAdminPath');
       sessionStorage.removeItem('lastAuthenticatedPath');
-      localStorage.removeItem("originalUser");
       
-      // Appeler l'edge function pour la déconnexion
-      await fetch(`${window.location.origin}/api/auth`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.auth.getSession() ? (await supabase.auth.getSession()).data.session?.access_token || '' : ''}`
-        },
-        body: JSON.stringify({
-          action: 'logout'
-        })
-      });
-      
-      // Nettoyage supplémentaire côté client
       await supabase.auth.signOut();
       setUserProfile(null);
+      localStorage.removeItem("originalUser");
     } catch (error) {
       console.error("Error during logout:", error);
     }
