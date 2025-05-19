@@ -11,18 +11,30 @@ let supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 // Créer le client avec les valeurs par défaut
 export let supabase = createClient<Database>(
   supabaseUrl,
-  supabaseAnonKey
+  supabaseAnonKey,
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      storage: localStorage
+    }
+  }
 );
 
-// Fonction pour initialiser le client Supabase
+// Fonction pour initialiser le client Supabase avec gestion d'erreurs améliorée
 async function initializeSupabaseClient() {
   try {
+    console.log("Initialisation du client Supabase...");
+    
     // En mode développement, utiliser les valeurs hardcodées directement
     // En production, on essaiera de récupérer la configuration depuis l'Edge Function,
     // mais on continuera à utiliser les valeurs par défaut en cas d'échec
     
     // Récupérer la configuration depuis l'Edge Function
-    const response = await fetch(`${window.location.origin}/api/get-public-config`, {
+    const edgeFunctionURL = `${window.location.origin}/api/get-public-config`;
+    console.log("Récupération de la configuration depuis:", edgeFunctionURL);
+    
+    const response = await fetch(edgeFunctionURL, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -35,9 +47,11 @@ async function initializeSupabaseClient() {
       return; // Continuer avec les valeurs par défaut
     }
     
+    // Analyser la réponse avec gestion d'erreur
     const responseText = await response.text();
-    let config;
+    console.log("Réponse brute:", responseText.substring(0, 300) + (responseText.length > 300 ? '...' : ''));
     
+    let config;
     try {
       config = JSON.parse(responseText);
     } catch (parseError) {
@@ -55,13 +69,16 @@ async function initializeSupabaseClient() {
     supabaseUrl = config.supabaseUrl;
     supabaseAnonKey = config.supabaseAnonKey;
     
+    console.log("Création d'un nouveau client avec les valeurs récupérées");
+    
     supabase = createClient<Database>(
       supabaseUrl, 
       supabaseAnonKey, 
       {
         auth: {
           persistSession: true,
-          autoRefreshToken: true
+          autoRefreshToken: true,
+          storage: localStorage
         }
       }
     );

@@ -34,7 +34,7 @@ const Login = () => {
       await login(email, password);
       toast.success("Connexion réussie");
       
-      // Redirect after successful login
+      // Redirect after successful login with a small delay
       setTimeout(() => {
         navigate("/dashboard");
       }, 300);

@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
@@ -134,7 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [userProfile?.role, userProfile?.id]);
 
-  // Nouvelle implémentation de login utilisant l'edge function
+  // Fonction de login améliorée avec détection des erreurs et journalisation
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     
@@ -142,16 +143,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Nettoyer d'abord l'état d'authentification pour éviter les problèmes
       cleanupAuthState();
       
-      // Tentons de nous déconnecter globalement avant de nous connecter
-      try {
-        await supabase.auth.signOut({ scope: 'global' });
-      } catch (err) {
-        // Continuer même en cas d'échec
-        console.warn("Échec de la déconnexion globale:", err);
-      }
+      console.log("Tentative de connexion via Edge Function pour:", email);
       
-      // Utiliser l'edge function pour l'authentification
-      const response = await fetch(`${window.location.origin}/api/auth`, {
+      // Construire l'URL complète pour l'Edge Function
+      const edgeFunctionURL = `${window.location.origin}/api/auth`;
+      console.log("URL de l'Edge Function:", edgeFunctionURL);
+      
+      // Utiliser l'Edge Function pour l'authentification
+      const response = await fetch(edgeFunctionURL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -163,16 +162,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         })
       });
       
+      // Vérifier si la réponse est OK et analyser le JSON
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Échec de la connexion");
+        const responseText = await response.text();
+        console.error("Réponse d'erreur non-JSON:", responseText);
+        
+        let errorMessage = "Échec de la connexion";
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          console.error("Impossible de parser la réponse d'erreur:", parseError);
+        }
+        
+        throw new Error(errorMessage);
       }
       
-      const { session, user } = await response.json();
+      // Analyser la réponse JSON
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error("Erreur lors du parsing de la réponse JSON:", jsonError);
+        throw new Error("Format de réponse invalide du serveur");
+      }
+      
+      const { session, user } = data;
       
       if (!session || !user) {
         throw new Error("Données d'authentification invalides");
       }
+      
+      console.log("Session récupérée avec succès");
       
       // Mettre à jour la session dans Supabase côté client
       await supabase.auth.setSession({
@@ -180,11 +201,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         refresh_token: session.refresh_token
       });
       
+      console.log("Session mise à jour côté client");
+      
       // Le reste sera géré par le listener onAuthStateChange
       
     } catch (error: any) {
+      console.error("Erreur complète lors de la connexion:", error);
       setIsLoading(false);
-      throw new Error(error.message || "Login error");
+      throw new Error(error.message || "Erreur de connexion");
     }
   };
 
@@ -199,6 +223,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sessionStorage.removeItem('lastAuthenticatedPath');
       localStorage.removeItem("originalUser");
       
+      // Récupérer l'URL complète pour l'Edge Function
+      const edgeFunctionURL = `${window.location.origin}/api/auth`;
+      
       try {
         // Récupérer le token actuel si disponible
         const sessionResult = await supabase.auth.getSession();
@@ -206,7 +233,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // Appeler l'edge function pour la déconnexion uniquement si nous avons un token
         if (accessToken) {
-          await fetch(`${window.location.origin}/api/auth`, {
+          console.log("Appel de l'Edge Function pour la déconnexion");
+          await fetch(edgeFunctionURL, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -216,6 +244,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               action: 'logout'
             })
           });
+          console.log("Déconnexion via Edge Function réussie");
         }
       } catch (apiError) {
         console.warn("Échec de l'appel à l'API de déconnexion:", apiError);
@@ -225,6 +254,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Nettoyage supplémentaire côté client
       await supabase.auth.signOut();
       setUserProfile(null);
+      console.log("Nettoyage local et déconnexion Supabase effectués");
     } catch (error) {
       console.error("Error during logout:", error);
     }

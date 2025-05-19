@@ -56,13 +56,20 @@ serve(async (req) => {
           throw new Error("Email et mot de passe requis");
         }
         
+        console.log(`Tentative de connexion pour l'utilisateur: ${email}`);
+        
         // Utiliser signInWithPassword pour authentifier l'utilisateur
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password
         });
         
-        if (error) throw error;
+        if (error) {
+          console.error("Erreur d'authentification:", error);
+          throw error;
+        }
+        
+        console.log(`Connexion réussie pour: ${email}`);
         
         // Ne renvoyer que les données nécessaires (pas d'URL Supabase)
         result = {
@@ -76,8 +83,12 @@ serve(async (req) => {
           scope: 'global'
         });
         
-        if (logoutError) throw logoutError;
+        if (logoutError) {
+          console.error("Erreur de déconnexion:", logoutError);
+          throw logoutError;
+        }
         
+        console.log("Déconnexion globale réussie");
         result = { success: true };
         break;
         
