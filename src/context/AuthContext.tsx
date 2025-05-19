@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
@@ -199,28 +200,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sessionStorage.removeItem('lastAuthenticatedPath');
       localStorage.removeItem("originalUser");
       
-      try {
-        // Récupérer le token actuel si disponible
-        const sessionResult = await supabase.auth.getSession();
-        const accessToken = sessionResult.data.session?.access_token || '';
-        
-        // Appeler l'edge function pour la déconnexion uniquement si nous avons un token
-        if (accessToken) {
-          await fetch(`${window.location.origin}/api/auth`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${accessToken}`
-            },
-            body: JSON.stringify({
-              action: 'logout'
-            })
-          });
-        }
-      } catch (apiError) {
-        console.warn("Échec de l'appel à l'API de déconnexion:", apiError);
-        // Continuer malgré l'erreur
-      }
+      // Appeler l'edge function pour la déconnexion
+      await fetch(`${window.location.origin}/api/auth`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.auth.getSession() ? (await supabase.auth.getSession()).data.session?.access_token || '' : ''}`
+        },
+        body: JSON.stringify({
+          action: 'logout'
+        })
+      });
       
       // Nettoyage supplémentaire côté client
       await supabase.auth.signOut();

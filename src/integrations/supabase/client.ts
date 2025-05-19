@@ -17,38 +17,16 @@ export let supabase = createClient<Database>(
 // Fonction pour initialiser le client Supabase
 async function initializeSupabaseClient() {
   try {
-    // En mode développement, utiliser les valeurs hardcodées directement
-    // En production, on essaiera de récupérer la configuration depuis l'Edge Function,
-    // mais on continuera à utiliser les valeurs par défaut en cas d'échec
-    
     // Récupérer la configuration depuis l'Edge Function
-    const response = await fetch(`${window.location.origin}/api/get-public-config`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache, no-store'
-      }
-    });
-    
+    const response = await fetch(`${window.location.origin}/api/get-public-config`);
     if (!response.ok) {
-      console.warn(`Échec de récupération de la configuration Supabase: ${response.status} ${response.statusText}`);
-      return; // Continuer avec les valeurs par défaut
+      throw new Error(`Failed to fetch Supabase configuration: ${response.statusText}`);
     }
     
-    const responseText = await response.text();
-    let config;
-    
-    try {
-      config = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error("Erreur de parsing de la configuration:", parseError);
-      console.log("Réponse reçue:", responseText.substring(0, 100) + "...");
-      return; // Continuer avec les valeurs par défaut
-    }
+    const config = await response.json();
     
     if (!config.supabaseUrl || !config.supabaseAnonKey) {
-      console.warn("Configuration Supabase incomplète:", config);
-      return; // Continuer avec les valeurs par défaut
+      throw new Error("Missing Supabase configuration values");
     }
     
     // Recréer le client avec les valeurs récupérées
@@ -57,27 +35,19 @@ async function initializeSupabaseClient() {
     
     supabase = createClient<Database>(
       supabaseUrl, 
-      supabaseAnonKey, 
-      {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true
-        }
-      }
+      supabaseAnonKey
     );
     
-    console.log("Client Supabase initialisé avec succès");
+    console.log("Supabase client initialized successfully");
   } catch (error) {
-    console.error("Erreur lors de l'initialisation du client Supabase:", error);
-    // L'application peut continuer car le client est déjà initialisé avec les valeurs par défaut
-    console.warn("Utilisation des valeurs par défaut pour Supabase");
+    console.error("Error initializing Supabase client:", error);
+    // Erreur d'initialisation, mais l'application peut continuer car le client est déjà initialisé avec les valeurs par défaut
+    console.warn("Using default Supabase configuration");
   }
 }
 
 // Initialiser le client dès le chargement
-initializeSupabaseClient().catch(err => {
-  console.warn("Échec de l'initialisation du client Supabase, utilisation des valeurs par défaut:", err);
-});
+initializeSupabaseClient();
 
 // Note: This client only has anon permissions
 // For any sensitive operations, use edge functions that can access service role keys securely

@@ -4,8 +4,6 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Content-Type": "application/json"
 };
 
 // Configuration Supabase hardcodée pour cet Edge Function uniquement
@@ -19,14 +17,7 @@ const supabaseConfig = {
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders, status: 204 });
-  }
-  
-  if (req.method !== "GET") {
-    return new Response(
-      JSON.stringify({ error: "Method not allowed" }), 
-      { headers: corsHeaders, status: 405 }
-    );
+    return new Response("ok", { headers: corsHeaders });
   }
   
   try {
@@ -34,14 +25,20 @@ serve(async (req) => {
     // Cette approche est acceptable car ces valeurs sont déjà publiques (clé anon)
     return new Response(
       JSON.stringify(supabaseConfig),
-      { headers: corsHeaders, status: 200 }
+      { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200
+      }
     );
   } catch (error) {
     console.error("Error getting public config:", error);
     
     return new Response(
-      JSON.stringify({ error: "An unexpected error occurred", details: error.message }),
-      { headers: corsHeaders, status: 500 }
+      JSON.stringify({ error: error.message || "An unexpected error occurred" }),
+      { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500
+      }
     );
   }
 });
