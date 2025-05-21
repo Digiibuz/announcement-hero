@@ -22,6 +22,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useAuth } from "@/context/AuthContext";
+import { generateRandomSuffix, saveSuffixForUser } from "@/utils/passwordUtils";
 
 // Schema de validation pour le formulaire
 const passwordSchema = z.object({
@@ -47,6 +48,7 @@ const ResetPassword = () => {
   const [isChecking, setIsChecking] = useState(true);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -95,6 +97,11 @@ const ResetPassword = () => {
           } else {
             console.log("Session configurée avec succès:", data);
             setIsTokenValid(true);
+            
+            // Stocker l'email de l'utilisateur pour pouvoir enregistrer le suffixe de mot de passe
+            if (data.user?.email) {
+              setUserEmail(data.user.email);
+            }
           }
         } else {
           // Sinon, nous vérifions si l'utilisateur a une session valide
@@ -107,6 +114,11 @@ const ResetPassword = () => {
           } else if (data?.session?.user) {
             console.log("Session utilisateur trouvée:", data.session.user);
             setIsTokenValid(true);
+            
+            // Stocker l'email de l'utilisateur pour pouvoir enregistrer le suffixe de mot de passe
+            if (data.session.user.email) {
+              setUserEmail(data.session.user.email);
+            }
           } else {
             console.log("Aucune session trouvée et pas de token dans l'URL");
             setIsTokenValid(false);
@@ -142,13 +154,25 @@ const ResetPassword = () => {
         });
       }
       
-      // Mettre à jour le mot de passe
+      // Générer un nouveau suffixe aléatoire pour le mot de passe
+      const randomSuffix = generateRandomSuffix();
+      const securedPassword = `${data.password}${randomSuffix}`;
+      
+      // Mettre à jour le mot de passe avec le suffixe
       const { error } = await supabase.auth.updateUser({ 
-        password: data.password 
+        password: securedPassword
       });
       
       if (error) {
         throw error;
+      }
+      
+      // Enregistrer le suffixe associé à l'email de l'utilisateur
+      if (userEmail) {
+        saveSuffixForUser(userEmail, randomSuffix);
+        console.log(`Nouveau suffixe enregistré pour ${userEmail}`);
+      } else {
+        console.warn("Impossible d'enregistrer le suffixe: email de l'utilisateur inconnu");
       }
       
       setIsSubmitted(true);
