@@ -6,7 +6,9 @@ import { toast } from "sonner";
 import { useUserProfile, createProfileFromMetadata } from "@/hooks/useUserProfile";
 import { useImpersonation } from "@/hooks/useImpersonation";
 import { UserProfile, AuthContextType } from "@/types/auth";
-import { generateRandomSuffix, getSuffixForUser } from "@/utils/passwordUtils";
+
+// Constante pour le suffixe de sécurité (à ne pas changer une fois définie)
+const PASSWORD_SUFFIX = "ZZ"; // Suffixe à ajouter à tous les mots de passe
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -18,24 +20,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isOnResetPasswordPage, setIsOnResetPasswordPage] = useState(false);
 
   // Fonction utilitaire pour ajouter le suffixe au mot de passe
-  const addSuffixToPassword = (password: string, email?: string): string => {
-    // Pour la création d'un nouvel utilisateur, générer un nouveau suffixe
-    if (!email) {
-      const randomSuffix = generateRandomSuffix();
-      // Stocker temporairement le suffixe dans localStorage pour pouvoir le récupérer après création
-      sessionStorage.setItem('tempPasswordSuffix', randomSuffix);
-      return `${password}${randomSuffix}`;
-    } 
-    
-    // Pour une connexion, essayer de récupérer le suffixe associé à l'email
-    const storedSuffix = getSuffixForUser(email);
-    if (storedSuffix) {
-      return `${password}${storedSuffix}`;
-    }
-    
-    // Si nous n'avons pas de suffixe en mémoire pour cet utilisateur, on tente quand même la connexion
-    // (le suffixe sera récupéré après connexion réussie)
-    return password;
+  const addSuffixToPassword = (password: string): string => {
+    return `${password}${PASSWORD_SUFFIX}`;
   };
 
   // Vérifier si nous sommes sur la page de réinitialisation de mot de passe
@@ -141,8 +127,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
-      // Ajouter le suffixe au mot de passe si disponible pour cet email
-      const securedPassword = addSuffixToPassword(password, email);
+      // Ajouter le suffixe au mot de passe
+      const securedPassword = addSuffixToPassword(password);
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,

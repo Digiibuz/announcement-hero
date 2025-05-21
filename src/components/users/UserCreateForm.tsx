@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
 import { useAuth } from "@/context/AuthContext";
-import { saveTempSuffixForNewUser } from "@/utils/passwordUtils";
 import {
   Form,
   FormControl,
@@ -79,8 +78,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       
       console.log("Envoi des données:", values);
       
-      // Appliquer le suffixe aléatoire au mot de passe avant de l'envoyer
-      // Pas d'email ici car c'est un nouvel utilisateur, un nouveau suffixe sera généré
+      // Appliquer le suffixe au mot de passe avant de l'envoyer
       const securedPassword = addSuffixToPassword(values.password);
       
       // Call the Edge function with better error handling
@@ -116,9 +114,6 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
         }
         return;
       }
-      
-      // Enregistrer le suffixe temporaire pour le nouvel utilisateur
-      saveTempSuffixForNewUser(values.email);
       
       toast.dismiss(toastId);
       toast.success("Utilisateur créé avec succès");
