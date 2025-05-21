@@ -30,7 +30,7 @@ export interface AuthContextType {
   originalUser: UserProfile | null;
   isImpersonating: boolean;
   isOnResetPasswordPage: boolean;
-  addSuffixToPassword: (password: string) => string;
+  addSuffixToPassword: (password: string, email?: string) => string;
 }
 
 export interface GoogleBusinessProfile {
