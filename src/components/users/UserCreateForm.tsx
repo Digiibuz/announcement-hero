@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
+import { useAuth } from "@/context/AuthContext";
 import {
   Form,
   FormControl,
@@ -54,6 +56,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { configs } = useWordPressConfigs();
+  const { addSuffixToPassword } = useAuth();
 
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
@@ -75,12 +78,15 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       
       console.log("Envoi des données:", values);
       
+      // Appliquer le suffixe au mot de passe avant de l'envoyer
+      const securedPassword = addSuffixToPassword(values.password);
+      
       // Call the Edge function with better error handling
       const { data, error: functionCallError } = await supabase.functions.invoke("create-user", {
         body: {
           email: values.email,
           name: values.name,
-          password: values.password,
+          password: securedPassword,
           role: values.role,
           wordpressConfigId: values.role === "client" ? values.wordpressConfigId : null,
         },

@@ -7,6 +7,9 @@ import { useUserProfile, createProfileFromMetadata } from "@/hooks/useUserProfil
 import { useImpersonation } from "@/hooks/useImpersonation";
 import { UserProfile, AuthContextType } from "@/types/auth";
 
+// Constante pour le suffixe de sécurité (à ne pas changer une fois définie)
+const PASSWORD_SUFFIX = "ZZ"; // Suffixe à ajouter à tous les mots de passe
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -15,6 +18,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { originalUser, isImpersonating, impersonateUser: startImpersonation, stopImpersonating: endImpersonation } = useImpersonation(userProfile);
   // État pour suivre si nous sommes sur une page de réinitialisation de mot de passe
   const [isOnResetPasswordPage, setIsOnResetPasswordPage] = useState(false);
+
+  // Fonction utilitaire pour ajouter le suffixe au mot de passe
+  const addSuffixToPassword = (password: string): string => {
+    return `${password}${PASSWORD_SUFFIX}`;
+  };
 
   // Vérifier si nous sommes sur la page de réinitialisation de mot de passe
   useEffect(() => {
@@ -119,9 +127,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
+      // Ajouter le suffixe au mot de passe
+      const securedPassword = addSuffixToPassword(password);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password
+        password: securedPassword
       });
       
       if (error) {
@@ -182,6 +193,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     originalUser,
     isImpersonating,
     isOnResetPasswordPage,
+    // Exposer la fonction addSuffixToPassword pour qu'elle soit disponible dans toute l'application
+    addSuffixToPassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
