@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
@@ -41,9 +42,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Vérifier si nous sommes sur la page de réinitialisation ET si nous avons des tokens dans l'URL
     const isResetPasswordPage = window.location.pathname === '/reset-password';
-    const hasRecoveryToken = window.location.hash.includes('type=recovery');
+    const hasRecoveryToken = window.location.hash.includes('type=recovery') || 
+                             window.location.hash.includes('access_token');
     
-    setIsOnResetPasswordPage(isResetPasswordPage && (hasRecoveryToken || isResetPasswordPage));
+    setIsOnResetPasswordPage(isResetPasswordPage && hasRecoveryToken);
     console.log("Is on reset password page:", isResetPasswordPage, "Has recovery token:", hasRecoveryToken);
   }, [window.location.pathname, window.location.hash]);
 

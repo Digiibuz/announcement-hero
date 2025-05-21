@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -80,12 +79,12 @@ const ResetPassword = () => {
           fullHash: location.hash
         });
         
-        if (token && type === 'recovery') {
+        if (token) {
           console.log("Token de récupération trouvé, configuration de la session...");
           setAccessToken(token);
           if (refresh) setRefreshToken(refresh);
           
-          // Si nous avons un token de récupération dans l'URL hash, nous le configurons dans la session
+          // Si nous avons un token dans l'URL hash, nous le configurons dans la session
           const { data, error } = await supabase.auth.setSession({
             access_token: token,
             refresh_token: refresh || '',
