@@ -31,7 +31,6 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      // Le suffixe est ajouté automatiquement dans la fonction login du contexte d'authentification
       await login(email, password);
       toast.success("Connexion réussie");
       
