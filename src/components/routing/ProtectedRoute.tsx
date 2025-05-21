@@ -22,12 +22,11 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // Autoriser l'accès à la page de réinitialisation de mot de passe si nous détectons que l'utilisateur est sur cette page
-  if (isOnResetPasswordPage) {
-    return <>{children}</>;
-  }
-
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !isOnResetPasswordPage) {
+    const hasRecoveryToken = window.location.hash.includes('type=recovery');
+    if (location.pathname === '/reset-password' && hasRecoveryToken) {
+      return <>{children}</>;
+    }
     return <Navigate to="/login" replace />;
   }
 

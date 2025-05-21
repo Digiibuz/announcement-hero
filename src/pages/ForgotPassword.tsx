@@ -28,7 +28,7 @@ const ForgotPassword = () => {
     setIsLoading(true);
     
     try {
-      // L'URL de redirection doit être une URL absolue et correcte
+      // L'URL de redirection doit être une URL absolue
       const origin = window.location.origin;
       const redirectTo = `${origin}/reset-password`;
       
