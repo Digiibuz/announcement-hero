@@ -15,7 +15,7 @@ export function useAuthActions({
   setUserProfile,
   setIsLoading
 }: UseAuthActionsProps): AuthActions {
-  const { startImpersonation, endImpersonation } = useImpersonation(userProfile);
+  const { impersonateUser: startImpersonation, stopImpersonating: endImpersonation } = useImpersonation(userProfile);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
