@@ -6,47 +6,47 @@ export const useImpersonation = (currentUser: UserProfile | null) => {
   const [originalUser, setOriginalUser] = useState<UserProfile | null>(null);
   const [isImpersonating, setIsImpersonating] = useState(false);
 
-  // Check if we are already impersonating a user on init
+  // Initialize impersonation state from localStorage if present
   useEffect(() => {
     const storedOriginalUser = localStorage.getItem("originalUser");
     if (storedOriginalUser) {
-      try {
-        const parsedOriginalUser = JSON.parse(storedOriginalUser);
-        setOriginalUser(parsedOriginalUser);
-        setIsImpersonating(true);
-      } catch (error) {
-        console.error("Error parsing stored original user:", error);
-        localStorage.removeItem("originalUser");
-      }
+      setOriginalUser(JSON.parse(storedOriginalUser));
+      setIsImpersonating(true);
     }
   }, []);
 
-  const startImpersonation = (userToImpersonate: UserProfile): UserProfile | null => {
-    if (!currentUser) return null;
+  // Function to start impersonating a user
+  const impersonateUser = (userToImpersonate: UserProfile) => {
+    // Only allow admins to impersonate
+    if (!currentUser || currentUser.role !== "admin") return;
     
-    // Store the current user as the original user
-    localStorage.setItem("originalUser", JSON.stringify(currentUser));
+    // Store the original user
     setOriginalUser(currentUser);
+    localStorage.setItem("originalUser", JSON.stringify(currentUser));
     setIsImpersonating(true);
     
     return userToImpersonate;
   };
 
-  const endImpersonation = (): UserProfile | null => {
+  // Function to stop impersonating
+  const stopImpersonating = () => {
     if (!originalUser) return null;
     
-    localStorage.removeItem("originalUser");
+    // Restore the original user
     setIsImpersonating(false);
-    const returnUser = originalUser;
+    
+    // Clear impersonation state
+    localStorage.removeItem("originalUser");
+    const user = originalUser;
     setOriginalUser(null);
     
-    return returnUser;
+    return user;
   };
 
   return {
     originalUser,
     isImpersonating,
-    impersonateUser: startImpersonation,
-    stopImpersonating: endImpersonation
+    impersonateUser,
+    stopImpersonating
   };
 };
