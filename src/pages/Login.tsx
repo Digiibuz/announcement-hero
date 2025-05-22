@@ -34,15 +34,22 @@ const Login = () => {
     
     try {
       console.log("Tentative de connexion avec:", email);
+      
+      // Tentative de connexion
       const result = await login(email, password);
       console.log("Résultat de connexion:", result);
       
-      toast.success("Connexion réussie");
-      
-      // Redirect after successful login
-      setTimeout(() => {
-        navigate("/dashboard");
-      }, 300);
+      if (result && result.user) {
+        toast.success("Connexion réussie");
+        console.log("Connexion réussie pour:", result.user.email);
+        
+        // Redirect after successful login
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 300);
+      } else {
+        throw new Error("Aucun utilisateur retourné après connexion");
+      }
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
       
@@ -50,7 +57,7 @@ const Login = () => {
       let errorMessage = "Échec de la connexion";
       
       if (error.message && error.message.includes("Invalid login credentials")) {
-        errorMessage = "Email ou mot de passe incorrect. Vérifiez vos identifiants.";
+        errorMessage = "Email ou mot de passe incorrect. Vérifiez vos identifiants et assurez-vous que cet utilisateur existe dans l'authentification Supabase.";
       } else if (error.message) {
         errorMessage = error.message;
       }
