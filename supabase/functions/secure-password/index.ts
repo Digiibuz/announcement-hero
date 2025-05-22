@@ -22,6 +22,8 @@ function generateRandomSuffix(minLength = 5, maxLength = 10) {
 
 // Fonction pour renforcer un mot de passe avec un suffixe
 export function securePassword(password: string): string {
+  if (!password) return password;
+  
   const suffix = generateRandomSuffix();
   console.log(`Renforcement du mot de passe avec suffixe de ${suffix.length} caractères`);
   return `${password}${suffix}`;

@@ -118,6 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Fonction pour renforcer le mot de passe avec un suffixe via la fonction Edge
   const securePassword = async (password: string) => {
     try {
+      console.log("Début de la sécurisation du mot de passe");
       const supabaseUrl = "https://rdwqedmvzicerwotjseg.supabase.co";
       const response = await fetch(`${supabaseUrl}/functions/v1/secure-password`, {
         method: "POST",
@@ -128,7 +129,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       if (!response.ok) {
-        console.error("Erreur lors du renforcement du mot de passe:", await response.text());
+        const errorText = await response.text();
+        console.error("Erreur lors du renforcement du mot de passe:", errorText);
+        console.error("Status:", response.status);
         // En cas d'échec, utilisez le mot de passe original
         return password;
       }

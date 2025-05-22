@@ -57,7 +57,7 @@ const Login = () => {
       let errorMsg = "Échec de la connexion";
       
       if (error.message && error.message.includes("Invalid login credentials")) {
-        errorMsg = "Email ou mot de passe incorrect. Vérifiez que l'utilisateur existe bien dans l'authentification Supabase (et pas seulement dans la table profiles).";
+        errorMsg = "Email ou mot de passe incorrect. Veuillez vérifier vos identifiants.";
       } else if (error.message) {
         errorMsg = error.message;
       }
