@@ -73,6 +73,34 @@ const Login = () => {
     setShowPassword(!showPassword);
   };
 
+  const clearBrowserCache = () => {
+    try {
+      // Nettoyer le localStorage
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      // Nettoyer le sessionStorage
+      Object.keys(sessionStorage || {}).forEach(key => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+      
+      toast.success("Cache de l'authentification nettoyé");
+      
+      // Recharger la page après nettoyage
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    } catch (err) {
+      console.error("Erreur lors du nettoyage du cache:", err);
+      toast.error("Erreur lors du nettoyage du cache");
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
       <ImpersonationBanner />
@@ -173,6 +201,17 @@ const Login = () => {
                   </>
                 )}
               </Button>
+              
+              <div className="text-center">
+                <Button 
+                  type="button" 
+                  variant="link" 
+                  onClick={clearBrowserCache} 
+                  className="text-xs text-muted-foreground"
+                >
+                  Problèmes de connexion ? Cliquez ici pour nettoyer le cache
+                </Button>
+              </div>
             </form>
           </CardContent>
           <CardFooter>

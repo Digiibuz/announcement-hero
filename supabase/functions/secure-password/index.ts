@@ -27,33 +27,35 @@ function generateRandomSuffix(minLength = 5, maxLength = 10) {
   return result;
 }
 
-// Fonction pour vérifier le mot de passe original et retourner un token valide
-async function verifyOriginalPasswordAndGetSession(email: string, password: string) {
+// Fonction pour vérifier les identifiants avec signInWithPassword
+async function verifyCredentials(email: string, password: string) {
   try {
-    console.log(`Vérification du mot de passe pour: ${email}`);
-    
-    // Utiliser signInWithPassword pour vérifier les identifiants
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+    // Essayer de se connecter avec les identifiants fournis
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-    
-    if (signInError) {
-      console.error(`Échec de vérification: ${signInError.message}`);
-      return { success: false, error: signInError.message };
+
+    if (error) {
+      console.error(`Échec de connexion: ${error.message}`);
+      return { success: false, error: error.message };
     }
-    
-    if (!signInData || !signInData.user) {
+
+    if (!data || !data.user) {
       console.error("Aucun utilisateur trouvé après connexion");
       return { success: false, error: "Aucun utilisateur trouvé" };
     }
+
+    console.log(`Vérification des identifiants réussie pour: ${email}`);
     
-    console.log(`Vérification réussie pour: ${email}`);
+    // Délogger immédiatement l'utilisateur après vérification
+    await supabase.auth.admin.signOut(data.user.id);
     
-    // Déconnecter l'utilisateur immédiatement après vérification
-    await supabase.auth.admin.signOut(signInData.user.id);
-    
-    return { success: true, user: signInData.user, session: signInData.session };
+    return { 
+      success: true, 
+      user: data.user, 
+      session: data.session 
+    };
   } catch (error: any) {
     console.error(`Erreur lors de la vérification: ${error.message}`);
     return { success: false, error: error.message };
@@ -80,6 +82,7 @@ serve(async (req) => {
     const { email, password } = await req.json();
     
     if (!email || !password) {
+      console.error("Email ou mot de passe manquant");
       return new Response(
         JSON.stringify({ error: "Email et mot de passe requis" }),
         {
@@ -89,13 +92,13 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Étape 1: Vérification du mot de passe original pour: ${email}`);
+    console.log(`Vérification des identifiants pour: ${email}`);
     
-    // D'abord, vérifier si le mot de passe original est correct
-    const verification = await verifyOriginalPasswordAndGetSession(email, password);
+    // Vérifier les identifiants
+    const verification = await verifyCredentials(email, password);
     
     if (!verification.success) {
-      console.error(`Étape 2: Échec de vérification pour ${email}: ${verification.error}`);
+      console.error(`Échec de vérification pour ${email}: ${verification.error}`);
       return new Response(
         JSON.stringify({ 
           error: "Identifiants invalides", 
@@ -108,17 +111,16 @@ serve(async (req) => {
       );
     }
     
-    // Mot de passe vérifié avec succès, maintenant renforcer avec un suffixe pour la session
-    console.log(`Étape 3: Mot de passe vérifié avec succès pour ${email}, génération du suffixe`);
+    // Les identifiants sont corrects, renforcer le mot de passe avec un suffixe pour la session
+    console.log(`Identifiants vérifiés avec succès pour ${email}, génération du suffixe`);
     const securedPassword = securePassword(password);
-    console.log(`Étape 4: Mot de passe renforcé généré pour ${email}: ${password} -> ${securedPassword}`);
     
     return new Response(
       JSON.stringify({ 
         success: true, 
         securedPassword,
         user: verification.user,
-        originalPassword: password // Inclure le mot de passe original pour aider au débogage
+        originalPassword: password // Inclure le mot de passe original pour faciliter l'authentification
       }),
       {
         status: 200,

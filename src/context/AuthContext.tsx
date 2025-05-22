@@ -115,14 +115,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [userProfile?.role, userProfile?.id]);
 
-  // Fonction pour authentifier via la fonction Edge et se connecter avec le mot de passe original
-  const authenticateAndSecurePassword = async (email: string, password: string) => {
+  // Fonction pour authentifier via la fonction Edge
+  const authenticateWithSecurePassword = async (email: string, password: string) => {
     try {
       console.log("Envoi de la demande d'authentification sécurisée");
       const supabaseUrl = "https://rdwqedmvzicerwotjseg.supabase.co";
       
       // Afficher les détails de la requête pour le débogage
-      console.log(`Appel à ${supabaseUrl}/functions/v1/secure-password avec:`, { email });
+      console.log(`Appel à ${supabaseUrl}/functions/v1/secure-password avec email: ${email}`);
       
       const response = await fetch(`${supabaseUrl}/functions/v1/secure-password`, {
         method: "POST",
@@ -135,13 +135,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Log pour vérifier la réponse brute
       console.log("Statut de la réponse:", response.status);
       
-      const data = await response.json();
-      console.log("Réponse complète reçue:", data);
-      
       if (!response.ok) {
-        console.error("Échec de l'authentification:", data.error, data.details);
-        throw new Error(data.error || "Identifiants invalides");
+        const errorData = await response.json();
+        console.error("Échec de l'authentification:", errorData);
+        throw new Error(errorData.error || "Identifiants invalides");
       }
+      
+      const data = await response.json();
+      console.log("Réponse de l'authentification:", data);
       
       if (!data.success || !data.user) {
         console.error("La réponse ne contient pas d'informations d'utilisateur valides");
@@ -198,21 +199,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Continuer même si cela échoue
       }
 
-      // Étape 1: Authentifier et récupérer le mot de passe sécurisé
-      console.log("Étape 1: Authentification et récupération du mot de passe sécurisé");
-      const authResult = await authenticateAndSecurePassword(email, password);
+      // Étape 1: Vérification des identifiants via la fonction edge
+      console.log("Étape 1: Vérification des identifiants");
+      const authResult = await authenticateWithSecurePassword(email, password);
       
       if (!authResult || !authResult.success || !authResult.user) {
         throw new Error("Échec de l'authentification");
       }
       
-      console.log("Étape 2: Authentification réussie, connexion avec mot de passe original");
+      console.log("Étape 2: Vérification réussie, connexion avec le mot de passe original");
       
-      // Si l'authentification est réussie, connecter directement avec le mot de passe original
-      // car la fonction edge a déjà vérifié que ce mot de passe est correct
+      // Si la vérification est réussie, connecter avec le mot de passe original
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password // Utiliser le mot de passe original qui a été vérifié par la fonction edge
+        password
       });
       
       if (error) {
