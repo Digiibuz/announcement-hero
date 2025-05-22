@@ -7,6 +7,26 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Fonction pour générer un suffixe aléatoire
+function generateRandomSuffix(minLength = 5, maxLength = 10) {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const length = Math.floor(Math.random() * (maxLength - minLength + 1)) + minLength;
+  let result = "";
+  
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  
+  return result;
+}
+
+// Fonction pour renforcer un mot de passe avec un suffixe
+function securePassword(password: string): string {
+  const suffix = generateRandomSuffix();
+  console.log(`Renforcement du mot de passe avec suffixe de ${suffix.length} caractères`);
+  return `${password}${suffix}`;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -52,6 +72,10 @@ serve(async (req) => {
       );
     }
 
+    // Renforcer le mot de passe avant la création de l'utilisateur
+    const securedPassword = securePassword(password);
+    console.log("Mot de passe renforcé pour la création d'utilisateur");
+
     // Vérifier si l'utilisateur existe déjà dans l'authentification
     let existingUser = null;
     try {
@@ -88,7 +112,7 @@ serve(async (req) => {
         console.log("Création de l'utilisateur dans auth avec email:", email);
         const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
           email,
-          password,
+          password: securedPassword,
           email_confirm: true,
           user_metadata: {
             name,
@@ -132,7 +156,7 @@ serve(async (req) => {
               role,
               wordpressConfigId: role === "client" ? wordpressConfigId : null,
             },
-            password: password,  // Mise à jour du mot de passe
+            password: securedPassword,  // Mise à jour du mot de passe avec suffixe
           }
         );
         
