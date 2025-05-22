@@ -120,6 +120,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log("Envoi de la demande d'authentification sécurisée");
       const supabaseUrl = "https://rdwqedmvzicerwotjseg.supabase.co";
+      
+      // Afficher les détails de la requête pour le débogage
+      console.log(`Appel à ${supabaseUrl}/functions/v1/secure-password avec:`, { email });
+      
       const response = await fetch(`${supabaseUrl}/functions/v1/secure-password`, {
         method: "POST",
         headers: {
@@ -128,11 +132,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: JSON.stringify({ email, password }),
       });
       
+      // Log pour vérifier la réponse brute
+      console.log("Statut de la réponse:", response.status);
+      
       const data = await response.json();
+      console.log("Réponse complète reçue:", data);
       
       if (!response.ok) {
         console.error("Échec de l'authentification:", data.error, data.details);
         throw new Error(data.error || "Identifiants invalides");
+      }
+      
+      if (!data.securedPassword) {
+        console.error("La réponse ne contient pas de mot de passe sécurisé");
+        throw new Error("Erreur de sécurisation du mot de passe");
       }
       
       console.log("Authentification réussie et mot de passe renforcé");
@@ -185,9 +198,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Continuer même si cela échoue
       }
 
-      // Authentifier et sécuriser le mot de passe en une seule étape
+      // Étape 1: Authentifier et récupérer le mot de passe sécurisé
+      console.log("Étape 1: Authentification et récupération du mot de passe sécurisé");
       const authResult = await authenticateAndSecurePassword(email, password);
-      console.log("Authentification réussie, connexion avec mot de passe sécurisé");
+      
+      if (!authResult || !authResult.success || !authResult.securedPassword) {
+        throw new Error("Échec de l'authentification");
+      }
+      
+      console.log("Étape 2: Authentification réussie, connexion avec mot de passe sécurisé");
       
       // Si l'authentification est réussie, connecter avec le mot de passe sécurisé
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -200,7 +219,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
       
-      console.log("Connexion réussie:", data.user?.email);
+      console.log("Étape 3: Connexion réussie:", data.user?.email);
+      toast.success("Connexion réussie");
       
       if (!data?.user) {
         throw new Error("L'utilisateur n'a pas été trouvé après connexion");

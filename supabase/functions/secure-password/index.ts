@@ -30,28 +30,31 @@ function generateRandomSuffix(minLength = 5, maxLength = 10) {
 // Fonction pour vérifier le mot de passe original avec Supabase
 async function verifyOriginalPassword(email: string, password: string) {
   try {
-    // Créer un client temporaire pour la vérification
-    const tempAuthClient = createClient(supabaseUrl, supabaseKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
-
-    // Tenter une connexion administrateur pour vérifier les identifiants
-    const { data, error } = await tempAuthClient.auth.signInWithPassword({
+    console.log(`Vérification du mot de passe pour: ${email}`);
+    
+    // Créer un client temporaire pour la vérification avec le service role
+    const authAdmin = createClient(supabaseUrl, supabaseKey).auth.admin;
+    
+    // Tentative de connexion avec l'API d'administration pour vérifier les identifiants
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-
-    if (error) {
-      console.error("Échec de vérification:", error.message);
-      return { success: false, error: error.message };
+    
+    if (signInError) {
+      console.error(`Échec de vérification: ${signInError.message}`);
+      return { success: false, error: signInError.message };
     }
-
-    return { success: true, user: data.user };
-  } catch (error) {
-    console.error("Erreur lors de la vérification:", error.message);
+    
+    if (!signInData || !signInData.user) {
+      console.error("Aucun utilisateur trouvé après connexion");
+      return { success: false, error: "Aucun utilisateur trouvé" };
+    }
+    
+    console.log(`Vérification réussie pour: ${email}`);
+    return { success: true, user: signInData.user };
+  } catch (error: any) {
+    console.error(`Erreur lors de la vérification: ${error.message}`);
     return { success: false, error: error.message };
   }
 }
@@ -75,9 +78,9 @@ serve(async (req) => {
     // Récupérer les données de la requête
     const { email, password } = await req.json();
     
-    if (!password) {
+    if (!email || !password) {
       return new Response(
-        JSON.stringify({ error: "Mot de passe requis" }),
+        JSON.stringify({ error: "Email et mot de passe requis" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -85,53 +88,45 @@ serve(async (req) => {
       );
     }
 
-    // Si l'email est fourni, vérifier le mot de passe original
-    if (email) {
-      console.log("Vérification du mot de passe original pour:", email);
-      const verification = await verifyOriginalPassword(email, password);
-      
-      if (!verification.success) {
-        return new Response(
-          JSON.stringify({ error: "Identifiants invalides", details: verification.error }),
-          {
-            status: 401,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
-      
-      // Mot de passe vérifié, maintenant renforcer avec un suffixe pour la session
-      const securedPassword = securePassword(password);
-      console.log("Mot de passe vérifié et renforcé avec succès");
-      
+    console.log(`Étape 1: Vérification du mot de passe original pour: ${email}`);
+    // D'abord, vérifier si le mot de passe original est correct
+    const verification = await verifyOriginalPassword(email, password);
+    
+    if (!verification.success) {
+      console.error(`Étape 2: Échec de vérification pour ${email}: ${verification.error}`);
       return new Response(
         JSON.stringify({ 
-          success: true, 
-          securedPassword,
-          user: verification.user 
+          error: "Identifiants invalides", 
+          details: verification.error 
         }),
         {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    } else {
-      // Cas où seul le mot de passe est fourni (création/modification utilisateur)
-      const securedPassword = securePassword(password);
-      
-      return new Response(
-        JSON.stringify({ securedPassword }),
-        {
-          status: 200,
+          status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
-  } catch (error) {
-    console.error("Erreur:", error.message);
+    
+    // Mot de passe vérifié avec succès, maintenant renforcer avec un suffixe pour la session
+    console.log(`Étape 3: Mot de passe vérifié avec succès pour ${email}, génération du suffixe`);
+    const securedPassword = securePassword(password);
+    console.log(`Étape 4: Mot de passe renforcé généré: ${password} -> ${securedPassword}`);
     
     return new Response(
-      JSON.stringify({ error: "Erreur lors du traitement de la demande" }),
+      JSON.stringify({ 
+        success: true, 
+        securedPassword,
+        user: verification.user 
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  } catch (error: any) {
+    console.error(`Erreur serveur: ${error.message}`);
+    
+    return new Response(
+      JSON.stringify({ error: "Erreur lors du traitement de la demande", details: error.message }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
