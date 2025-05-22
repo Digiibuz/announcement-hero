@@ -15,7 +15,7 @@ export function useAuthActions({
   setUserProfile,
   setIsLoading
 }: UseAuthActionsProps): AuthActions {
-  const { impersonateUser, stopImpersonating } = useImpersonation(userProfile);
+  const { impersonateUser: startImpersonation, stopImpersonating: endImpersonation } = useImpersonation(userProfile);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
@@ -100,8 +100,8 @@ export function useAuthActions({
   };
 
   // Impersonation wrappers
-  const impersonateUserWrapper = (userToImpersonate: UserProfile) => {
-    const impersonatedUser = impersonateUser(userToImpersonate);
+  const impersonateUser = (userToImpersonate: UserProfile) => {
+    const impersonatedUser = startImpersonation(userToImpersonate);
     if (impersonatedUser) {
       setUserProfile(impersonatedUser);
       localStorage.setItem('userRole', impersonatedUser.role);
@@ -109,8 +109,8 @@ export function useAuthActions({
     }
   };
 
-  const stopImpersonatingWrapper = () => {
-    const originalUserProfile = stopImpersonating();
+  const stopImpersonating = () => {
+    const originalUserProfile = endImpersonation();
     if (originalUserProfile) {
       setUserProfile(originalUserProfile);
       localStorage.setItem('userRole', originalUserProfile.role);
@@ -121,7 +121,7 @@ export function useAuthActions({
   return {
     login,
     logout,
-    impersonateUser: impersonateUserWrapper,
-    stopImpersonating: stopImpersonatingWrapper
+    impersonateUser,
+    stopImpersonating
   };
 }

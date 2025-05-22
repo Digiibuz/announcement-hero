@@ -1,7 +1,7 @@
 
-import { Routes as RouterRoutes, Route, Navigate, useLocation } from "react-router-dom";
+import { Routes as RouterRoutes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Suspense, lazy, useEffect } from 'react';
+import { Suspense, lazy } from 'react';
 import { LoadingIndicator } from "@/components/ui/loading-indicator";
 import Login from "@/pages/Login";
 import { ProtectedRoute } from "./ProtectedRoute";
@@ -27,59 +27,32 @@ const LoadingFallback = () => (
   </div>
 );
 
-// Composant pour diagnostiquer les problèmes de routage
-const DiagnosticRoute = () => {
-  const { isAuthenticated, isLoading, user } = useAuth();
-  const location = useLocation();
-  
-  useEffect(() => {
-    console.log("DiagnosticRoute - Path:", location.pathname);
-    console.log("DiagnosticRoute - Auth Status:", { isAuthenticated, isLoading, user });
-  }, [location, isAuthenticated, isLoading, user]);
-  
-  if (isLoading) return <LoadingFallback />;
-  
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
-  }
-  
-  return <Navigate to="/login" replace />;
-};
-
-export const Routes = () => {
-  const { isAuthenticated } = useAuth();
-  
-  useEffect(() => {
-    console.log("Routes - Auth Status:", { isAuthenticated });
-  }, [isAuthenticated]);
-  
-  return (
-    <Suspense fallback={<LoadingFallback />}>
-      <RouterRoutes>
-        {/* Redirect root to dashboard if logged in, otherwise to login */}
-        <Route path="/" element={<DiagnosticRoute />} />
-        
-        {/* Public routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        
-        {/* Protected routes */}
-        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/announcements" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
-        <Route path="/announcements/:id" element={<ProtectedRoute><AnnouncementDetail /></ProtectedRoute>} />
-        <Route path="/create" element={<ProtectedRoute><CreateAnnouncement /></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
-        <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
-        <Route path="/google-business" element={<ProtectedRoute><GoogleBusinessPage /></ProtectedRoute>} />
-        
-        {/* Admin/Client only routes */}
-        <Route path="/users" element={<AdminRoute><UserManagement /></AdminRoute>} />
-        <Route path="/wordpress" element={<AdminRoute><WordPressManagement /></AdminRoute>} />
-        
-        {/* Fallback route */}
-        <Route path="*" element={<NotFound />} />
-      </RouterRoutes>
-    </Suspense>
-  );
-};
+export const Routes = () => (
+  <Suspense fallback={<LoadingFallback />}>
+    <RouterRoutes>
+      {/* Redirect root to dashboard if logged in, otherwise to login */}
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      
+      {/* Public routes */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      
+      {/* Protected routes */}
+      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/announcements" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
+      <Route path="/announcements/:id" element={<ProtectedRoute><AnnouncementDetail /></ProtectedRoute>} />
+      <Route path="/create" element={<ProtectedRoute><CreateAnnouncement /></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
+      <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
+      <Route path="/google-business" element={<ProtectedRoute><GoogleBusinessPage /></ProtectedRoute>} />
+      
+      {/* Admin/Client only routes */}
+      <Route path="/users" element={<AdminRoute><UserManagement /></AdminRoute>} />
+      <Route path="/wordpress" element={<AdminRoute><WordPressManagement /></AdminRoute>} />
+      
+      {/* Fallback route */}
+      <Route path="*" element={<NotFound />} />
+    </RouterRoutes>
+  </Suspense>
+);
