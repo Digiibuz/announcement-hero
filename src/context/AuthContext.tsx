@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
@@ -200,33 +201,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Continuer même si cela échoue
       }
 
-      // Étape 1: Vérification des identifiants avec le mot de passe original via la fonction edge
-      console.log("Étape 1: Vérification des identifiants avec la fonction edge");
-      const authResult = await authenticateAndSecurePassword(email, password);
+      // Pour les nouveaux utilisateurs, contourner la vérification edge et essayer directement
+      console.log("Tentative de connexion directe avec le mot de passe original");
       
-      if (!authResult || !authResult.success || !authResult.user) {
-        throw new Error("Échec de l'authentification");
-      }
-      
-      console.log("Étape 2: Connexion avec le mot de passe original");
-      
-      // Si la vérification est réussie, se connecter avec le mot de passe original
+      // Connexion directe avec le client Supabase
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password // Utiliser le mot de passe original
+        password
       });
       
       if (error) {
-        console.error("Erreur lors de la connexion finale:", error);
-        throw error;
+        console.error("Erreur lors de la connexion directe:", error);
+        
+        // Si l'erreur n'est pas "Invalid login credentials", la propager
+        if (!error.message.includes("Invalid login credentials")) {
+          throw error;
+        }
+        
+        // Sinon, essayer la méthode secure-password comme fallback
+        console.log("Tentative avec secure-password comme fallback");
+        const authResult = await authenticateAndSecurePassword(email, password);
+        
+        if (!authResult || !authResult.success || !authResult.user) {
+          throw new Error("Échec de l'authentification");
+        }
+        
+        // Se connecter avec le mot de passe original
+        const { data: secureData, error: secureError } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+        
+        if (secureError) {
+          console.error("Erreur lors de la connexion sécurisée:", secureError);
+          throw secureError;
+        }
+        
+        console.log("Connexion réussie via le fallback secure-password");
+        toast.success("Connexion réussie");
+        
+        return secureData;
       }
       
-      console.log("Étape 3: Connexion réussie:", data.user?.email);
+      // Connexion directe réussie
+      console.log("Connexion directe réussie:", data.user?.email);
       toast.success("Connexion réussie");
-      
-      if (!data?.user) {
-        throw new Error("L'utilisateur n'a pas été trouvé après connexion");
-      }
       
       return data;
     } catch (error: any) {

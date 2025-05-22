@@ -36,6 +36,28 @@ export function securePassword(password: string): string {
   return `${password}${suffix}`;
 }
 
+// Fonction pour vérifier si un utilisateur existe par email
+async function checkUserExists(email: string): Promise<boolean> {
+  try {
+    console.log(`Vérification si l'utilisateur existe: ${email}`);
+    const { data: users, error } = await supabase.auth.admin.listUsers();
+    
+    if (error) {
+      console.error(`Erreur lors de la recherche d'utilisateurs: ${error.message}`);
+      return false;
+    }
+    
+    const existingUser = users?.users.find(u => u.email === email);
+    const exists = !!existingUser;
+    
+    console.log(`L'utilisateur ${email} existe: ${exists ? "Oui" : "Non"}`);
+    return exists;
+  } catch (error) {
+    console.error(`Exception lors de la vérification d'utilisateur: ${error}`);
+    return false;
+  }
+}
+
 serve(async (req) => {
   // Gérer les requêtes CORS preflight
   if (req.method === "OPTIONS") {
@@ -62,6 +84,24 @@ serve(async (req) => {
 
     console.log(`Authentification pour: ${email} avec mot de passe: ${password.substr(0, 3)}***`);
     console.log(`Type de mot de passe reçu: ${typeof password}, longueur: ${password.length}`);
+    
+    // Vérifier d'abord si l'utilisateur existe
+    const userExists = await checkUserExists(email);
+    
+    if (!userExists) {
+      console.error(`Utilisateur non trouvé: ${email}`);
+      return new Response(
+        JSON.stringify({ 
+          error: "Identifiants invalides", 
+          details: "Utilisateur non trouvé",
+          code: 401
+        }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
     
     // Vérification DIRECTE avec le client Supabase
     try {
