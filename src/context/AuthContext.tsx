@@ -115,7 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [userProfile?.role, userProfile?.id]);
 
-  // Fonction pour authentifier via la fonction Edge et se connecter avec le mot de passe sécurisé
+  // Fonction pour authentifier via la fonction Edge et se connecter avec le mot de passe original
   const authenticateAndSecurePassword = async (email: string, password: string) => {
     try {
       console.log("Envoi de la demande d'authentification sécurisée");
@@ -143,12 +143,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(data.error || "Identifiants invalides");
       }
       
-      if (!data.securedPassword) {
-        console.error("La réponse ne contient pas de mot de passe sécurisé");
-        throw new Error("Erreur de sécurisation du mot de passe");
+      if (!data.success || !data.user) {
+        console.error("La réponse ne contient pas d'informations d'utilisateur valides");
+        throw new Error("Erreur lors de l'authentification");
       }
       
-      console.log("Authentification réussie et mot de passe renforcé");
+      console.log("Authentification réussie");
       return data;
     } catch (error: any) {
       console.error("Erreur lors de l'authentification sécurisée:", error);
@@ -202,11 +202,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log("Étape 1: Authentification et récupération du mot de passe sécurisé");
       const authResult = await authenticateAndSecurePassword(email, password);
       
-      if (!authResult || !authResult.success || !authResult.securedPassword) {
+      if (!authResult || !authResult.success || !authResult.user) {
         throw new Error("Échec de l'authentification");
       }
       
-      console.log("Étape 2: Authentification réussie, connexion avec mot de passe sécurisé");
+      console.log("Étape 2: Authentification réussie, connexion avec mot de passe original");
       
       // Si l'authentification est réussie, connecter directement avec le mot de passe original
       // car la fonction edge a déjà vérifié que ce mot de passe est correct

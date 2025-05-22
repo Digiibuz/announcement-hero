@@ -27,7 +27,7 @@ function generateRandomSuffix(minLength = 5, maxLength = 10) {
   return result;
 }
 
-// Fonction pour vérifier le mot de passe original et retourner un token valid
+// Fonction pour vérifier le mot de passe original et retourner un token valide
 async function verifyOriginalPasswordAndGetSession(email: string, password: string) {
   try {
     console.log(`Vérification du mot de passe pour: ${email}`);
