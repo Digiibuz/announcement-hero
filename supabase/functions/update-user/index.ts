@@ -62,8 +62,9 @@ serve(async (req) => {
       );
     }
 
-    // Sécuriser le mot de passe si fourni
-    const securedPassword = password ? securePassword(password) : undefined;
+    // Important: Pour les mises à jour, utilisez le mot de passe original tel quel
+    // Nous ne sécurisons PAS le mot de passe ici, car ce sera fait lors de la connexion
+    const updatedPassword = password ? password : undefined;
     
     // Déterminer si wordpressConfigId doit être utilisé
     const needsWordPressConfig = role === "client";
@@ -83,9 +84,9 @@ serve(async (req) => {
       updateData.email_confirm = true;
     }
 
-    if (securedPassword) {
-      updateData.password = securedPassword;
-      console.log("Mot de passe sécurisé ajouté à la mise à jour");
+    if (updatedPassword) {
+      updateData.password = updatedPassword;
+      console.log("Mot de passe mis à jour (sans sécurisation)");
     }
 
     const { data: updateAuthData, error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(

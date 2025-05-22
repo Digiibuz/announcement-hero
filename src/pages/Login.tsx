@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Lock, LogIn, Loader2, RefreshCw } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
 
 const Login = () => {
@@ -17,6 +17,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [clearingCache, setClearingCache] = useState(false);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -73,8 +74,10 @@ const Login = () => {
     setShowPassword(!showPassword);
   };
 
-  const clearBrowserCache = () => {
+  const clearBrowserCache = async () => {
     try {
+      setClearingCache(true);
+      
       // Nettoyer le localStorage
       Object.keys(localStorage).forEach(key => {
         if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
@@ -89,6 +92,13 @@ const Login = () => {
         }
       });
       
+      // Tenter une déconnexion globale
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (err) {
+        // Ignorer les erreurs de déconnexion
+      }
+      
       toast.success("Cache de l'authentification nettoyé");
       
       // Recharger la page après nettoyage
@@ -98,6 +108,8 @@ const Login = () => {
     } catch (err) {
       console.error("Erreur lors du nettoyage du cache:", err);
       toast.error("Erreur lors du nettoyage du cache");
+    } finally {
+      setClearingCache(false);
     }
   };
 
@@ -202,16 +214,25 @@ const Login = () => {
                 )}
               </Button>
               
-              <div className="text-center">
-                <Button 
-                  type="button" 
-                  variant="link" 
-                  onClick={clearBrowserCache} 
-                  className="text-xs text-muted-foreground"
-                >
-                  Problèmes de connexion ? Cliquez ici pour nettoyer le cache
-                </Button>
-              </div>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={clearBrowserCache} 
+                className="w-full"
+                disabled={clearingCache}
+              >
+                {clearingCache ? (
+                  <div className="flex items-center">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Nettoyage en cours...
+                  </div>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Nettoyer le cache d'authentification
+                  </>
+                )}
+              </Button>
             </form>
           </CardContent>
           <CardFooter>

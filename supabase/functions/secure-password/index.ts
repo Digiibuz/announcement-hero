@@ -27,41 +27,6 @@ function generateRandomSuffix(minLength = 5, maxLength = 10) {
   return result;
 }
 
-// Fonction pour vérifier les identifiants avec signInWithPassword
-async function verifyCredentials(email: string, password: string) {
-  try {
-    // Essayer de se connecter avec les identifiants fournis
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      console.error(`Échec de connexion: ${error.message}`);
-      return { success: false, error: error.message };
-    }
-
-    if (!data || !data.user) {
-      console.error("Aucun utilisateur trouvé après connexion");
-      return { success: false, error: "Aucun utilisateur trouvé" };
-    }
-
-    console.log(`Vérification des identifiants réussie pour: ${email}`);
-    
-    // Délogger immédiatement l'utilisateur après vérification
-    await supabase.auth.admin.signOut(data.user.id);
-    
-    return { 
-      success: true, 
-      user: data.user, 
-      session: data.session 
-    };
-  } catch (error: any) {
-    console.error(`Erreur lors de la vérification: ${error.message}`);
-    return { success: false, error: error.message };
-  }
-}
-
 // Fonction pour renforcer un mot de passe avec un suffixe
 export function securePassword(password: string): string {
   if (!password) return password;
@@ -69,6 +34,31 @@ export function securePassword(password: string): string {
   const suffix = generateRandomSuffix();
   console.log(`Renforcement du mot de passe avec suffixe de ${suffix.length} caractères`);
   return `${password}${suffix}`;
+}
+
+// NOUVELLE FONCTION: Obtenir session utilisateur directement sans suffixe
+async function signInWithPassword(email: string, password: string) {
+  try {
+    // Utiliser directement signInWithPassword pour valider
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      console.error(`Échec de l'authentification: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+
+    return { 
+      success: true, 
+      user: data.user,
+      session: data.session
+    };
+  } catch (error: any) {
+    console.error(`Erreur lors de l'authentification: ${error.message}`);
+    return { success: false, error: error.message };
+  }
 }
 
 serve(async (req) => {
@@ -92,17 +82,17 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Vérification des identifiants pour: ${email}`);
+    console.log(`Authentification pour: ${email}`);
     
-    // Vérifier les identifiants
-    const verification = await verifyCredentials(email, password);
+    // Authentifier avec le mot de passe original
+    const authResult = await signInWithPassword(email, password);
     
-    if (!verification.success) {
-      console.error(`Échec de vérification pour ${email}: ${verification.error}`);
+    if (!authResult.success) {
+      console.error(`Échec d'authentification pour ${email}: ${authResult.error}`);
       return new Response(
         JSON.stringify({ 
           error: "Identifiants invalides", 
-          details: verification.error 
+          details: authResult.error 
         }),
         {
           status: 401,
@@ -111,16 +101,22 @@ serve(async (req) => {
       );
     }
     
-    // Les identifiants sont corrects, renforcer le mot de passe avec un suffixe pour la session
+    // Les identifiants sont corrects, générer un suffixe pour la session
     console.log(`Identifiants vérifiés avec succès pour ${email}, génération du suffixe`);
     const securedPassword = securePassword(password);
+    
+    // Délogger l'utilisateur créé pendant la vérification
+    if (authResult.user?.id) {
+      await supabase.auth.admin.signOut(authResult.user.id);
+      console.log(`Déconnexion de la session temporaire pour: ${email}`);
+    }
     
     return new Response(
       JSON.stringify({ 
         success: true, 
         securedPassword,
-        user: verification.user,
-        originalPassword: password // Inclure le mot de passe original pour faciliter l'authentification
+        user: authResult.user,
+        originalPassword: password
       }),
       {
         status: 200,

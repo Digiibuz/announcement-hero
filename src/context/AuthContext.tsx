@@ -116,12 +116,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [userProfile?.role, userProfile?.id]);
 
   // Fonction pour authentifier via la fonction Edge
-  const authenticateWithSecurePassword = async (email: string, password: string) => {
+  const authenticateAndSecurePassword = async (email: string, password: string) => {
     try {
-      console.log("Envoi de la demande d'authentification sécurisée");
+      console.log("Vérification des identifiants via la fonction edge sécurisée");
       const supabaseUrl = "https://rdwqedmvzicerwotjseg.supabase.co";
       
-      // Afficher les détails de la requête pour le débogage
+      // Appel à la fonction edge pour vérifier les identifiants originaux et obtenir un mot de passe sécurisé
       console.log(`Appel à ${supabaseUrl}/functions/v1/secure-password avec email: ${email}`);
       
       const response = await fetch(`${supabaseUrl}/functions/v1/secure-password`, {
@@ -132,7 +132,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: JSON.stringify({ email, password }),
       });
       
-      // Log pour vérifier la réponse brute
       console.log("Statut de la réponse:", response.status);
       
       if (!response.ok) {
@@ -142,18 +141,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       const data = await response.json();
-      console.log("Réponse de l'authentification:", data);
+      console.log("Réponse de l'authentification sécurisée:", { 
+        success: data.success, 
+        userExists: !!data.user 
+      });
       
       if (!data.success || !data.user) {
         console.error("La réponse ne contient pas d'informations d'utilisateur valides");
         throw new Error("Erreur lors de l'authentification");
       }
       
-      console.log("Authentification réussie");
+      console.log("Authentification sécurisée réussie");
       return data;
     } catch (error: any) {
       console.error("Erreur lors de l'authentification sécurisée:", error);
       throw error;
+    }
+  };
+
+  // Nettoyage des états d'authentification précédents
+  const cleanupAuthState = () => {
+    try {
+      // Supprimer tous les tokens Supabase du localStorage
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          console.log("Suppression de la clé de stockage:", key);
+          localStorage.removeItem(key);
+        }
+      });
+      
+      // Supprimer également du sessionStorage si utilisé
+      Object.keys(sessionStorage || {}).forEach((key) => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+      
+      console.log("Nettoyage d'état d'authentification terminé");
+    } catch (err) {
+      console.warn("Erreur lors du nettoyage des tokens:", err);
     }
   };
 
@@ -162,30 +188,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     try {
       console.log("Tentative de connexion avec:", email);
-      
-      // Nettoyage des états d'authentification précédents
-      const cleanupAuthState = () => {
-        try {
-          // Supprimer tous les tokens Supabase du localStorage
-          Object.keys(localStorage).forEach((key) => {
-            if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-              console.log("Suppression de la clé de stockage:", key);
-              localStorage.removeItem(key);
-            }
-          });
-          
-          // Supprimer également du sessionStorage si utilisé
-          Object.keys(sessionStorage || {}).forEach((key) => {
-            if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-              sessionStorage.removeItem(key);
-            }
-          });
-          
-          console.log("Nettoyage d'état d'authentification terminé");
-        } catch (err) {
-          console.warn("Erreur lors du nettoyage des tokens:", err);
-        }
-      };
       
       // Nettoyer les états d'authentification précédents
       cleanupAuthState();
@@ -199,20 +201,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Continuer même si cela échoue
       }
 
-      // Étape 1: Vérification des identifiants via la fonction edge
-      console.log("Étape 1: Vérification des identifiants");
-      const authResult = await authenticateWithSecurePassword(email, password);
+      // Étape 1: Vérification des identifiants avec le mot de passe original via la fonction edge
+      console.log("Étape 1: Vérification des identifiants avec la fonction edge");
+      const authResult = await authenticateAndSecurePassword(email, password);
       
       if (!authResult || !authResult.success || !authResult.user) {
         throw new Error("Échec de l'authentification");
       }
       
-      console.log("Étape 2: Vérification réussie, connexion avec le mot de passe original");
+      console.log("Étape 2: Connexion avec le mot de passe original");
       
-      // Si la vérification est réussie, connecter avec le mot de passe original
+      // Si la vérification est réussie, se connecter avec le mot de passe original
+      // Remarque importante: nous utilisons le mot de passe original ici, pas le mot de passe sécurisé
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password
+        password: authResult.originalPassword
       });
       
       if (error) {
