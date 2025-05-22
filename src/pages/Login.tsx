@@ -54,16 +54,16 @@ const Login = () => {
       console.error("Erreur de connexion:", error);
       
       // Message d'erreur plus spécifique pour aider l'utilisateur
-      let errorMessage = "Échec de la connexion";
+      let errorMsg = "Échec de la connexion";
       
       if (error.message && error.message.includes("Invalid login credentials")) {
-        errorMessage = "Email ou mot de passe incorrect. Vérifiez vos identifiants et assurez-vous que cet utilisateur existe dans l'authentification Supabase.";
+        errorMsg = "Email ou mot de passe incorrect. Vérifiez que l'utilisateur existe bien dans l'authentification Supabase (et pas seulement dans la table profiles).";
       } else if (error.message) {
-        errorMessage = error.message;
+        errorMsg = error.message;
       }
       
-      setErrorMessage(errorMessage);
-      toast.error(errorMessage);
+      setErrorMessage(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }

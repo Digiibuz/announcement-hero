@@ -56,20 +56,18 @@ serve(async (req) => {
     let existingUser = null;
     try {
       console.log("Vérification si l'utilisateur existe dans auth.users:", email);
-      const { data: existingUsers, error: searchError } = await supabaseAdmin.auth.admin.listUsers({
-        filter: {
-          email: email,
-        },
-      });
+      const { data: users, error: searchError } = await supabaseAdmin.auth.admin.listUsers();
 
       if (searchError) {
-        console.log("Erreur lors de la recherche d'utilisateurs existants:", searchError.message);
+        console.error("Erreur lors de la recherche d'utilisateurs existants:", searchError.message);
         throw searchError;
       }
 
-      if (existingUsers && existingUsers.users.length > 0) {
-        existingUser = existingUsers.users[0];
-        console.log("L'utilisateur existe déjà dans auth.users:", existingUser.id);
+      if (users && users.users) {
+        existingUser = users.users.find(u => u.email === email);
+        if (existingUser) {
+          console.log("L'utilisateur existe déjà dans auth.users:", existingUser.id);
+        }
       }
     } catch (error) {
       console.error("Erreur lors de la vérification d'utilisateur existant:", error);
@@ -87,7 +85,7 @@ serve(async (req) => {
     if (!existingUser) {
       // Create the user in auth.users
       try {
-        console.log("Création de l'utilisateur dans auth:", email);
+        console.log("Création de l'utilisateur dans auth avec email:", email);
         const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
           email,
           password,
@@ -102,6 +100,10 @@ serve(async (req) => {
         if (createError) {
           console.error("Erreur lors de la création de l'utilisateur:", createError);
           throw createError;
+        }
+        
+        if (!newUser || !newUser.user) {
+          throw new Error("Erreur: L'utilisateur n'a pas été créé correctement");
         }
         
         user = newUser;
@@ -129,7 +131,8 @@ serve(async (req) => {
               name,
               role,
               wordpressConfigId: role === "client" ? wordpressConfigId : null,
-            }
+            },
+            password: password,  // Mise à jour du mot de passe
           }
         );
         
@@ -205,17 +208,6 @@ serve(async (req) => {
 
           if (profileError) {
             console.error("Erreur lors de la création du profil:", profileError);
-            
-            // If profile creation fails and this is a new user, delete the user to avoid inconsistencies
-            if (!existingUser) {
-              try {
-                console.log("Suppression de l'utilisateur après échec de création de profil:", user.user.id);
-                await supabaseAdmin.auth.admin.deleteUser(user.user.id);
-              } catch (deleteError) {
-                console.error("Erreur lors de la suppression de l'utilisateur:", deleteError);
-              }
-            }
-            
             throw profileError;
           }
           
