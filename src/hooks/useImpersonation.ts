@@ -21,7 +21,7 @@ export const useImpersonation = (currentUser: UserProfile | null) => {
     }
   }, []);
 
-  const startImpersonation = (userToImpersonate: UserProfile): UserProfile | null => {
+  const impersonateUser = (userToImpersonate: UserProfile): UserProfile | null => {
     if (!currentUser) return null;
     
     // Store the current user as the original user
@@ -32,7 +32,7 @@ export const useImpersonation = (currentUser: UserProfile | null) => {
     return userToImpersonate;
   };
 
-  const endImpersonation = (): UserProfile | null => {
+  const stopImpersonating = (): UserProfile | null => {
     if (!originalUser) return null;
     
     localStorage.removeItem("originalUser");
@@ -46,7 +46,7 @@ export const useImpersonation = (currentUser: UserProfile | null) => {
   return {
     originalUser,
     isImpersonating,
-    impersonateUser: startImpersonation,
-    stopImpersonating: endImpersonation
+    impersonateUser,
+    stopImpersonating
   };
 };
