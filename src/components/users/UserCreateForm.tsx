@@ -112,9 +112,13 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       
       // Check if this was a profile creation for an existing user
       const userMessage = (data as any).message || "";
-      const successMessage = userMessage.includes("Profil créé") 
-        ? "Profil créé pour un utilisateur existant"
-        : "Utilisateur créé avec succès";
+      let successMessage = "Utilisateur créé avec succès";
+      
+      if (userMessage.includes("Profil créé")) {
+        successMessage = "Profil créé pour un utilisateur existant";
+      } else if (userMessage.includes("Profil mis à jour")) {
+        successMessage = "Profil mis à jour pour l'utilisateur existant";
+      }
       
       toast.dismiss(toastId);
       toast.success(successMessage);
