@@ -9,7 +9,7 @@ export interface UserProfile {
   name: string;
   role: Role;
   clientId?: string;
-  wordpressConfigId?: string;
+  wordpressConfigId?: string | null;
   wordpressConfig?: {
     name: string;
     site_url: string;
