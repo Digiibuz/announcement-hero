@@ -36,31 +36,6 @@ export function securePassword(password: string): string {
   return `${password}${suffix}`;
 }
 
-// NOUVELLE FONCTION: Obtenir session utilisateur directement sans suffixe
-async function signInWithPassword(email: string, password: string) {
-  try {
-    // Utiliser directement signInWithPassword pour valider
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      console.error(`Échec de l'authentification: ${error.message}`);
-      return { success: false, error: error.message };
-    }
-
-    return { 
-      success: true, 
-      user: data.user,
-      session: data.session
-    };
-  } catch (error: any) {
-    console.error(`Erreur lors de l'authentification: ${error.message}`);
-    return { success: false, error: error.message };
-  }
-}
-
 serve(async (req) => {
   // Gérer les requêtes CORS preflight
   if (req.method === "OPTIONS") {
@@ -84,45 +59,81 @@ serve(async (req) => {
 
     console.log(`Authentification pour: ${email}`);
     
-    // Authentifier avec le mot de passe original
-    const authResult = await signInWithPassword(email, password);
-    
-    if (!authResult.success) {
-      console.error(`Échec d'authentification pour ${email}: ${authResult.error}`);
+    // Vérification DIRECTE avec le client Supabase
+    try {
+      console.log(`Tentative de vérification directe pour ${email}`);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+      
+      if (error) {
+        console.error(`Échec de la vérification directe: ${error.message}`);
+        return new Response(
+          JSON.stringify({ 
+            error: "Identifiants invalides", 
+            details: error.message 
+          }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      if (!data.user) {
+        console.error("Aucun utilisateur retourné après vérification");
+        return new Response(
+          JSON.stringify({ error: "Erreur d'authentification" }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      // Si on arrive ici, le mot de passe est correct
+      // Déconnecter la session temporaire
+      try {
+        await supabase.auth.admin.signOut(data.user.id);
+        console.log("Session temporaire déconnectée");
+      } catch (signOutError) {
+        console.warn("Erreur lors de la déconnexion de la session temporaire:", signOutError);
+        // Continuer même si la déconnexion échoue
+      }
+      
+      // Les identifiants sont corrects, générer un suffixe pour la session
+      console.log(`Identifiants vérifiés avec succès pour ${email}, génération du suffixe`);
+      const securedPassword = securePassword(password);
+      
+      console.log(`Mot de passe renforcé créé avec succès pour ${email}`);
+      
       return new Response(
         JSON.stringify({ 
-          error: "Identifiants invalides", 
-          details: authResult.error 
+          success: true, 
+          securedPassword,
+          user: data.user,
+          originalPassword: password
         }),
         {
-          status: 401,
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+      
+    } catch (authError: any) {
+      console.error(`Erreur lors de l'authentification: ${authError.message}`);
+      return new Response(
+        JSON.stringify({ 
+          error: "Erreur lors de la vérification des identifiants", 
+          details: authError.message 
+        }),
+        {
+          status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
-    
-    // Les identifiants sont corrects, générer un suffixe pour la session
-    console.log(`Identifiants vérifiés avec succès pour ${email}, génération du suffixe`);
-    const securedPassword = securePassword(password);
-    
-    // Délogger l'utilisateur créé pendant la vérification
-    if (authResult.user?.id) {
-      await supabase.auth.admin.signOut(authResult.user.id);
-      console.log(`Déconnexion de la session temporaire pour: ${email}`);
-    }
-    
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        securedPassword,
-        user: authResult.user,
-        originalPassword: password
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
   } catch (error: any) {
     console.error(`Erreur serveur: ${error.message}`);
     
