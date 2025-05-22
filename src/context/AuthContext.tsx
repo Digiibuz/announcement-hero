@@ -200,57 +200,65 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn("Erreur lors de la déconnexion globale:", err);
         // Continuer même si cela échoue
       }
-
-      // Pour les nouveaux utilisateurs, contourner la vérification edge et essayer directement
-      console.log("Tentative de connexion directe avec le mot de passe original");
       
-      // Connexion directe avec le client Supabase
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+      // Stratégie 1: Essayer de se connecter directement avec email/password
+      console.log("Stratégie 1: Connexion directe avec les identifiants");
       
-      if (error) {
-        console.error("Erreur lors de la connexion directe:", error);
-        
-        // Si l'erreur n'est pas "Invalid login credentials", la propager
-        if (!error.message.includes("Invalid login credentials")) {
-          throw error;
-        }
-        
-        // Sinon, essayer la méthode secure-password comme fallback
-        console.log("Tentative avec secure-password comme fallback");
-        const authResult = await authenticateAndSecurePassword(email, password);
-        
-        if (!authResult || !authResult.success || !authResult.user) {
-          throw new Error("Échec de l'authentification");
-        }
-        
-        // Se connecter avec le mot de passe original
-        const { data: secureData, error: secureError } = await supabase.auth.signInWithPassword({
+      let loginResult;
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password
         });
         
-        if (secureError) {
-          console.error("Erreur lors de la connexion sécurisée:", secureError);
-          throw secureError;
+        if (error) {
+          console.warn("Échec de la connexion directe:", error.message);
+          throw error;
         }
         
-        console.log("Connexion réussie via le fallback secure-password");
+        console.log("Connexion directe réussie:", data.user?.email);
         toast.success("Connexion réussie");
+        loginResult = data;
+      } catch (directLoginError: any) {
+        console.log("Échec de la connexion directe, essai de la stratégie 2");
         
-        return secureData;
+        // Stratégie 2: Utiliser la fonction secure-password pour vérifier les identifiants
+        console.log("Stratégie 2: Utilisation de secure-password");
+        
+        try {
+          const authResult = await authenticateAndSecurePassword(email, password);
+          
+          if (!authResult || !authResult.success) {
+            throw new Error("Échec de l'authentification via secure-password");
+          }
+          
+          // Maintenant que les identifiants sont validés par secure-password, on réessaie la connexion directe
+          console.log("Identifiants validés par secure-password, tentative de connexion directe");
+          
+          const { data: secureData, error: secureError } = await supabase.auth.signInWithPassword({
+            email,
+            password
+          });
+          
+          if (secureError) {
+            console.error("Erreur lors de la connexion après validation secure-password:", secureError);
+            throw secureError;
+          }
+          
+          console.log("Connexion réussie après validation secure-password");
+          toast.success("Connexion réussie");
+          loginResult = secureData;
+          
+        } catch (securePasswordError: any) {
+          console.error("Échec des deux stratégies d'authentification:", securePasswordError);
+          throw securePasswordError;
+        }
       }
       
-      // Connexion directe réussie
-      console.log("Connexion directe réussie:", data.user?.email);
-      toast.success("Connexion réussie");
-      
-      return data;
+      return loginResult;
     } catch (error: any) {
       setIsLoading(false);
-      console.error("Erreur de connexion:", error);
+      console.error("Erreur finale de connexion:", error);
       throw new Error(error.message || "Erreur de connexion");
     }
   };

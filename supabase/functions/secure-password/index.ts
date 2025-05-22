@@ -36,24 +36,34 @@ export function securePassword(password: string): string {
   return `${password}${suffix}`;
 }
 
-// Fonction pour vérifier si un utilisateur existe par email
-async function checkUserExists(email: string): Promise<boolean> {
+// Fonction pour vérifier les identifiants directement sans renforcer le mot de passe
+// Cette fonction vérifie uniquement si les identifiants sont valides
+async function verifyCredentials(email: string, password: string): Promise<boolean> {
   try {
-    console.log(`Vérification si l'utilisateur existe: ${email}`);
-    const { data: users, error } = await supabase.auth.admin.listUsers();
+    console.log(`Vérification directe des identifiants pour: ${email}`);
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password
+    });
     
     if (error) {
-      console.error(`Erreur lors de la recherche d'utilisateurs: ${error.message}`);
+      console.error(`Échec de la vérification des identifiants: ${error.message}`);
       return false;
     }
     
-    const existingUser = users?.users.find(u => u.email === email);
-    const exists = !!existingUser;
+    console.log(`Identifiants vérifiés avec succès pour: ${email}`);
     
-    console.log(`L'utilisateur ${email} existe: ${exists ? "Oui" : "Non"}`);
-    return exists;
+    // N'oubliez pas de déconnecter cette session temporaire
+    try {
+      await supabase.auth.admin.signOut(data.session.access_token);
+    } catch (err) {
+      console.warn("Erreur lors de la déconnexion temporaire:", err);
+    }
+    
+    return true;
   } catch (error) {
-    console.error(`Exception lors de la vérification d'utilisateur: ${error}`);
+    console.error(`Erreur lors de la vérification des identifiants: ${error}`);
     return false;
   }
 }
@@ -83,17 +93,16 @@ serve(async (req) => {
     }
 
     console.log(`Authentification pour: ${email} avec mot de passe: ${password.substr(0, 3)}***`);
-    console.log(`Type de mot de passe reçu: ${typeof password}, longueur: ${password.length}`);
     
-    // Vérifier d'abord si l'utilisateur existe
-    const userExists = await checkUserExists(email);
+    // Vérifier directement les identifiants
+    const credentialsValid = await verifyCredentials(email, password);
     
-    if (!userExists) {
-      console.error(`Utilisateur non trouvé: ${email}`);
+    if (!credentialsValid) {
+      console.error(`Identifiants invalides pour: ${email}`);
       return new Response(
         JSON.stringify({ 
           error: "Identifiants invalides", 
-          details: "Utilisateur non trouvé",
+          details: "Email ou mot de passe incorrect",
           code: 401
         }),
         {
@@ -103,89 +112,51 @@ serve(async (req) => {
       );
     }
     
-    // Vérification DIRECTE avec le client Supabase
-    try {
-      console.log(`Tentative de vérification directe pour ${email}`);
-      
-      // Utiliser signInWithPassword pour vérifier les identifiants
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password
-      });
-      
-      if (error) {
-        console.error(`Échec de la vérification directe: ${error.message}`);
-        console.error(`Détails de l'erreur: ${JSON.stringify(error)}`);
-        return new Response(
-          JSON.stringify({ 
-            error: "Identifiants invalides", 
-            details: error.message,
-            code: error.status || 401
-          }),
-          {
-            status: 401,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
-      
-      if (!data.user) {
-        console.error("Aucun utilisateur retourné après vérification");
-        return new Response(
-          JSON.stringify({ error: "Erreur d'authentification" }),
-          {
-            status: 401,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
-      
-      console.log(`Vérification réussie pour ${email}. ID utilisateur: ${data.user.id}`);
-      
-      // Si on arrive ici, le mot de passe est correct
-      // Déconnecter la session temporaire
-      try {
-        await supabase.auth.admin.signOut(data.session.access_token);
-        console.log("Session temporaire déconnectée");
-      } catch (signOutError) {
-        console.warn("Erreur lors de la déconnexion de la session temporaire:", signOutError);
-        // Continuer même si la déconnexion échoue
-      }
-      
-      // Les identifiants sont corrects, générer un suffixe pour la session
-      console.log(`Identifiants vérifiés avec succès pour ${email}, génération du suffixe`);
-      const securedPassword = securePassword(password);
-      
-      console.log(`Mot de passe renforcé créé avec succès pour ${email}: ${securedPassword.substr(0, 3)}***`);
-      
+    // Si on arrive ici, les identifiants sont corrects
+    // Récupérer l'utilisateur
+    const { data: userData, error: userError } = await supabase.auth.admin.listUsers();
+    
+    if (userError) {
+      console.error(`Erreur lors de la récupération de l'utilisateur: ${userError.message}`);
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          securedPassword,
-          user: data.user,
-          originalPassword: password
-        }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-      
-    } catch (authError: any) {
-      console.error(`Erreur lors de l'authentification: ${authError.message}`);
-      console.error(`Détails de l'erreur: ${JSON.stringify(authError)}`);
-      return new Response(
-        JSON.stringify({ 
-          error: "Erreur lors de la vérification des identifiants", 
-          details: authError.message,
-          stack: authError.stack
-        }),
+        JSON.stringify({ error: "Erreur serveur" }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
+    
+    const user = userData?.users.find(u => u.email === email);
+    
+    if (!user) {
+      console.error(`Utilisateur non trouvé après vérification: ${email}`);
+      return new Response(
+        JSON.stringify({ error: "Utilisateur non trouvé" }),
+        {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+    
+    // Génération d'un mot de passe sécurisé pour la session
+    const securedPassword = securePassword(password);
+    
+    console.log(`Mot de passe renforcé créé avec succès pour ${email}: ${securedPassword.substr(0, 3)}***`);
+    
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        securedPassword,
+        user,
+        originalPassword: password
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   } catch (error: any) {
     console.error(`Erreur serveur: ${error.message}`);
     console.error(`Stack trace: ${error.stack}`);
