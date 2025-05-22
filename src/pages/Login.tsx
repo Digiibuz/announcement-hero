@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -15,11 +16,12 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already authenticated
-  React.useEffect(() => {
+  useEffect(() => {
     if (isAuthenticated) {
       navigate("/dashboard");
     }
@@ -28,9 +30,13 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage("");
     
     try {
-      await login(email, password);
+      console.log("Tentative de connexion avec:", email);
+      const result = await login(email, password);
+      console.log("Résultat de connexion:", result);
+      
       toast.success("Connexion réussie");
       
       // Redirect after successful login
@@ -49,6 +55,7 @@ const Login = () => {
         errorMessage = error.message;
       }
       
+      setErrorMessage(errorMessage);
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -136,6 +143,15 @@ const Login = () => {
                   </Button>
                 </div>
               </div>
+              
+              {errorMessage && (
+                <div className="p-3 rounded-md bg-destructive/15 text-destructive text-sm">
+                  <p className="flex items-center">
+                    <span className="mr-2">●</span>
+                    {errorMessage}
+                  </p>
+                </div>
+              )}
               
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
