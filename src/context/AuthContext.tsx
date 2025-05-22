@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
@@ -212,10 +211,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log("Étape 2: Connexion avec le mot de passe original");
       
       // Si la vérification est réussie, se connecter avec le mot de passe original
-      // Remarque importante: nous utilisons le mot de passe original ici, pas le mot de passe sécurisé
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password: authResult.originalPassword
+        password // Utiliser le mot de passe original
       });
       
       if (error) {

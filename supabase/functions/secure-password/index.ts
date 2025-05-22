@@ -43,8 +43,11 @@ serve(async (req) => {
   }
   
   try {
+    console.log("=== Début de la fonction secure-password ===");
+    
     // Récupérer les données de la requête
-    const { email, password } = await req.json();
+    const requestBody = await req.json();
+    const { email, password } = requestBody;
     
     if (!email || !password) {
       console.error("Email ou mot de passe manquant");
@@ -58,10 +61,13 @@ serve(async (req) => {
     }
 
     console.log(`Authentification pour: ${email} avec mot de passe: ${password.substr(0, 3)}***`);
+    console.log(`Type de mot de passe reçu: ${typeof password}, longueur: ${password.length}`);
     
     // Vérification DIRECTE avec le client Supabase
     try {
       console.log(`Tentative de vérification directe pour ${email}`);
+      
+      // Utiliser signInWithPassword pour vérifier les identifiants
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email,
         password: password
@@ -69,10 +75,12 @@ serve(async (req) => {
       
       if (error) {
         console.error(`Échec de la vérification directe: ${error.message}`);
+        console.error(`Détails de l'erreur: ${JSON.stringify(error)}`);
         return new Response(
           JSON.stringify({ 
             error: "Identifiants invalides", 
-            details: error.message 
+            details: error.message,
+            code: error.status || 401
           }),
           {
             status: 401,
@@ -97,7 +105,7 @@ serve(async (req) => {
       // Si on arrive ici, le mot de passe est correct
       // Déconnecter la session temporaire
       try {
-        await supabase.auth.admin.signOut(data.user.id);
+        await supabase.auth.admin.signOut(data.session.access_token);
         console.log("Session temporaire déconnectée");
       } catch (signOutError) {
         console.warn("Erreur lors de la déconnexion de la session temporaire:", signOutError);
@@ -125,10 +133,12 @@ serve(async (req) => {
       
     } catch (authError: any) {
       console.error(`Erreur lors de l'authentification: ${authError.message}`);
+      console.error(`Détails de l'erreur: ${JSON.stringify(authError)}`);
       return new Response(
         JSON.stringify({ 
           error: "Erreur lors de la vérification des identifiants", 
-          details: authError.message 
+          details: authError.message,
+          stack: authError.stack
         }),
         {
           status: 500,
@@ -138,6 +148,7 @@ serve(async (req) => {
     }
   } catch (error: any) {
     console.error(`Erreur serveur: ${error.message}`);
+    console.error(`Stack trace: ${error.stack}`);
     
     return new Response(
       JSON.stringify({ error: "Erreur lors du traitement de la demande", details: error.message }),
@@ -146,5 +157,7 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
+  } finally {
+    console.log("=== Fin de la fonction secure-password ===");
   }
 });
