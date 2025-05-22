@@ -36,8 +36,53 @@ export function securePassword(password: string): string {
   return `${password}${suffix}`;
 }
 
+// Vérifier si un utilisateur existe dans la base de données
+async function userExists(email: string): Promise<boolean> {
+  try {
+    console.log(`Vérification de l'existence de l'utilisateur: ${email}`);
+    
+    const { data, error } = await supabase.auth.admin.listUsers();
+    
+    if (error) {
+      console.error(`Erreur lors de la vérification de l'utilisateur: ${error.message}`);
+      return false;
+    }
+    
+    const userFound = data?.users.some(user => user.email === email);
+    console.log(`Utilisateur ${email} trouvé: ${userFound}`);
+    
+    return userFound;
+  } catch (error) {
+    console.error(`Exception lors de la vérification de l'utilisateur: ${error}`);
+    return false;
+  }
+}
+
+// Fonction pour créer un nouvel utilisateur
+async function createNewUser(email: string, password: string): Promise<boolean> {
+  try {
+    console.log(`Tentative de création de l'utilisateur: ${email}`);
+    
+    const { data, error } = await supabase.auth.admin.createUser({
+      email: email,
+      password: password,
+      email_confirm: true
+    });
+    
+    if (error) {
+      console.error(`Échec de la création de l'utilisateur: ${error.message}`);
+      return false;
+    }
+    
+    console.log(`Utilisateur créé avec succès: ${email}`);
+    return true;
+  } catch (error) {
+    console.error(`Exception lors de la création de l'utilisateur: ${error}`);
+    return false;
+  }
+}
+
 // Fonction pour vérifier les identifiants directement sans renforcer le mot de passe
-// Cette fonction vérifie uniquement si les identifiants sont valides
 async function verifyCredentials(email: string, password: string): Promise<boolean> {
   try {
     console.log(`Vérification directe des identifiants pour: ${email}`);
@@ -94,7 +139,52 @@ serve(async (req) => {
 
     console.log(`Authentification pour: ${email} avec mot de passe: ${password.substr(0, 3)}***`);
     
-    // Vérifier directement les identifiants
+    // Vérifier si l'utilisateur existe
+    const exists = await userExists(email);
+    
+    if (!exists) {
+      console.log(`L'utilisateur ${email} n'existe pas. Tentative de connexion directe pour nouveaux utilisateurs.`);
+      
+      // Pour les nouveaux utilisateurs, essayer une connexion directe
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+      
+      if (error) {
+        console.error(`Connexion directe échouée pour nouvel utilisateur: ${error.message}`);
+        return new Response(
+          JSON.stringify({ 
+            error: "Identifiants invalides", 
+            details: "Email ou mot de passe incorrect",
+            code: 401
+          }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      // Si la connexion réussit pour un nouvel utilisateur
+      console.log(`Connexion directe réussie pour nouvel utilisateur: ${email}`);
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          securedPassword: password, // Pas besoin de sécuriser pour les nouveaux utilisateurs
+          user: data.user,
+          originalPassword: password,
+          newUser: true
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+    
+    // Pour les utilisateurs existants, vérifier les identifiants
     const credentialsValid = await verifyCredentials(email, password);
     
     if (!credentialsValid) {

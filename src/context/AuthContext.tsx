@@ -143,7 +143,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await response.json();
       console.log("Réponse de l'authentification sécurisée:", { 
         success: data.success, 
-        userExists: !!data.user 
+        userExists: !!data.user,
+        newUser: data.newUser
       });
       
       if (!data.success || !data.user) {
@@ -201,61 +202,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Continuer même si cela échoue
       }
       
-      // Stratégie 1: Essayer de se connecter directement avec email/password
-      console.log("Stratégie 1: Connexion directe avec les identifiants");
+      // Stratégie unifiée: Utiliser la fonction secure-password qui gère à la fois les utilisateurs existants et nouveaux
+      console.log("Utilisation de la fonction secure-password unifiée");
       
-      let loginResult;
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const authResult = await authenticateAndSecurePassword(email, password);
+        
+        if (!authResult || !authResult.success) {
+          throw new Error("Échec de l'authentification via secure-password");
+        }
+        
+        // Si l'authentification via secure-password est réussie, on procède à la connexion
+        console.log("Identifiants validés, tentative de connexion directe");
+        
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password
         });
         
-        if (error) {
-          console.warn("Échec de la connexion directe:", error.message);
-          throw error;
+        if (signInError) {
+          console.error("Erreur lors de la connexion après validation:", signInError);
+          throw signInError;
         }
         
-        console.log("Connexion directe réussie:", data.user?.email);
+        console.log("Connexion réussie!");
         toast.success("Connexion réussie");
-        loginResult = data;
-      } catch (directLoginError: any) {
-        console.log("Échec de la connexion directe, essai de la stratégie 2");
         
-        // Stratégie 2: Utiliser la fonction secure-password pour vérifier les identifiants
-        console.log("Stratégie 2: Utilisation de secure-password");
-        
-        try {
-          const authResult = await authenticateAndSecurePassword(email, password);
-          
-          if (!authResult || !authResult.success) {
-            throw new Error("Échec de l'authentification via secure-password");
-          }
-          
-          // Maintenant que les identifiants sont validés par secure-password, on réessaie la connexion directe
-          console.log("Identifiants validés par secure-password, tentative de connexion directe");
-          
-          const { data: secureData, error: secureError } = await supabase.auth.signInWithPassword({
-            email,
-            password
-          });
-          
-          if (secureError) {
-            console.error("Erreur lors de la connexion après validation secure-password:", secureError);
-            throw secureError;
-          }
-          
-          console.log("Connexion réussie après validation secure-password");
-          toast.success("Connexion réussie");
-          loginResult = secureData;
-          
-        } catch (securePasswordError: any) {
-          console.error("Échec des deux stratégies d'authentification:", securePasswordError);
-          throw securePasswordError;
-        }
+        return signInData;
+      } catch (authError: any) {
+        console.error("Échec de l'authentification:", authError);
+        throw authError;
       }
-      
-      return loginResult;
     } catch (error: any) {
       setIsLoading(false);
       console.error("Erreur finale de connexion:", error);
