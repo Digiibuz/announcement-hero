@@ -56,7 +56,7 @@ const Login = () => {
       // Message d'erreur plus spécifique pour aider l'utilisateur
       let errorMsg = "Échec de la connexion";
       
-      if (error.message && error.message.includes("Invalid login credentials")) {
+      if (error.message && error.message.includes("Identifiants invalides")) {
         errorMsg = "Email ou mot de passe incorrect. Veuillez vérifier vos identifiants.";
       } else if (error.message) {
         errorMsg = error.message;

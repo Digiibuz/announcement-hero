@@ -115,34 +115,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [userProfile?.role, userProfile?.id]);
 
-  // Fonction pour renforcer le mot de passe avec un suffixe via la fonction Edge
-  const securePassword = async (password: string) => {
+  // Fonction pour authentifier et renforcer le mot de passe via la fonction Edge
+  const authenticateAndSecurePassword = async (email: string, password: string) => {
     try {
-      console.log("Début de la sécurisation du mot de passe");
+      console.log("Envoi de la demande d'authentification sécurisée");
       const supabaseUrl = "https://rdwqedmvzicerwotjseg.supabase.co";
       const response = await fetch(`${supabaseUrl}/functions/v1/secure-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ email, password }),
       });
       
+      const data = await response.json();
+      
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Erreur lors du renforcement du mot de passe:", errorText);
-        console.error("Status:", response.status);
-        // En cas d'échec, utilisez le mot de passe original
-        return password;
+        console.error("Échec de l'authentification:", data.error, data.details);
+        throw new Error(data.error || "Identifiants invalides");
       }
       
-      const data = await response.json();
-      console.log("Mot de passe renforcé avec succès");
-      return data.securedPassword;
-    } catch (error) {
-      console.error("Erreur lors de l'appel à la fonction de sécurisation:", error);
-      // En cas d'erreur, utilisez le mot de passe original
-      return password;
+      console.log("Authentification réussie et mot de passe renforcé");
+      return data;
+    } catch (error: any) {
+      console.error("Erreur lors de l'authentification sécurisée:", error);
+      throw error;
     }
   };
 
@@ -188,27 +185,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Continuer même si cela échoue
       }
 
-      // Renforcer le mot de passe avant l'authentification
-      const securedPassword = await securePassword(password);
-      console.log("Mot de passe renforcé pour l'authentification");
+      // Authentifier et sécuriser le mot de passe en une seule étape
+      const authResult = await authenticateAndSecurePassword(email, password);
+      console.log("Authentification réussie, connexion avec mot de passe sécurisé");
       
+      // Si l'authentification est réussie, connecter avec le mot de passe sécurisé
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password: securedPassword
+        password: authResult.securedPassword
       });
       
-      console.log("Résultat de la connexion:", data ? "Succès" : "Échec", error || "");
-      
       if (error) {
-        console.error("Erreur de connexion Supabase:", error);
+        console.error("Erreur lors de la connexion finale:", error);
         throw error;
       }
+      
+      console.log("Connexion réussie:", data.user?.email);
       
       if (!data?.user) {
         throw new Error("L'utilisateur n'a pas été trouvé après connexion");
       }
       
-      // User will be set by the auth state change listener
       return data;
     } catch (error: any) {
       setIsLoading(false);
