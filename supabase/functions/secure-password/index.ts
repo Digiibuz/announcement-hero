@@ -57,7 +57,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Authentification pour: ${email}`);
+    console.log(`Authentification pour: ${email} avec mot de passe: ${password.substr(0, 3)}***`);
     
     // Vérification DIRECTE avec le client Supabase
     try {
@@ -92,6 +92,8 @@ serve(async (req) => {
         );
       }
       
+      console.log(`Vérification réussie pour ${email}. ID utilisateur: ${data.user.id}`);
+      
       // Si on arrive ici, le mot de passe est correct
       // Déconnecter la session temporaire
       try {
@@ -106,7 +108,7 @@ serve(async (req) => {
       console.log(`Identifiants vérifiés avec succès pour ${email}, génération du suffixe`);
       const securedPassword = securePassword(password);
       
-      console.log(`Mot de passe renforcé créé avec succès pour ${email}`);
+      console.log(`Mot de passe renforcé créé avec succès pour ${email}: ${securedPassword.substr(0, 3)}***`);
       
       return new Response(
         JSON.stringify({ 
