@@ -115,7 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [userProfile?.role, userProfile?.id]);
 
-  // Fonction pour authentifier et renforcer le mot de passe via la fonction Edge
+  // Fonction pour authentifier via la fonction Edge et se connecter avec le mot de passe sécurisé
   const authenticateAndSecurePassword = async (email: string, password: string) => {
     try {
       console.log("Envoi de la demande d'authentification sécurisée");
@@ -208,10 +208,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log("Étape 2: Authentification réussie, connexion avec mot de passe sécurisé");
       
-      // Si l'authentification est réussie, connecter avec le mot de passe sécurisé
+      // Si l'authentification est réussie, connecter directement avec le mot de passe original
+      // car la fonction edge a déjà vérifié que ce mot de passe est correct
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password: authResult.securedPassword
+        password // Utiliser le mot de passe original qui a été vérifié par la fonction edge
       });
       
       if (error) {

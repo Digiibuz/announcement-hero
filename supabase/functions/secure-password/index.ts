@@ -27,15 +27,12 @@ function generateRandomSuffix(minLength = 5, maxLength = 10) {
   return result;
 }
 
-// Fonction pour vérifier le mot de passe original avec Supabase
-async function verifyOriginalPassword(email: string, password: string) {
+// Fonction pour vérifier le mot de passe original et retourner un token valid
+async function verifyOriginalPasswordAndGetSession(email: string, password: string) {
   try {
     console.log(`Vérification du mot de passe pour: ${email}`);
     
-    // Créer un client temporaire pour la vérification avec le service role
-    const authAdmin = createClient(supabaseUrl, supabaseKey).auth.admin;
-    
-    // Tentative de connexion avec l'API d'administration pour vérifier les identifiants
+    // Utiliser signInWithPassword pour vérifier les identifiants
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -52,7 +49,11 @@ async function verifyOriginalPassword(email: string, password: string) {
     }
     
     console.log(`Vérification réussie pour: ${email}`);
-    return { success: true, user: signInData.user };
+    
+    // Déconnecter l'utilisateur immédiatement après vérification
+    await supabase.auth.admin.signOut(signInData.user.id);
+    
+    return { success: true, user: signInData.user, session: signInData.session };
   } catch (error: any) {
     console.error(`Erreur lors de la vérification: ${error.message}`);
     return { success: false, error: error.message };
@@ -89,8 +90,9 @@ serve(async (req) => {
     }
 
     console.log(`Étape 1: Vérification du mot de passe original pour: ${email}`);
+    
     // D'abord, vérifier si le mot de passe original est correct
-    const verification = await verifyOriginalPassword(email, password);
+    const verification = await verifyOriginalPasswordAndGetSession(email, password);
     
     if (!verification.success) {
       console.error(`Étape 2: Échec de vérification pour ${email}: ${verification.error}`);
@@ -109,13 +111,14 @@ serve(async (req) => {
     // Mot de passe vérifié avec succès, maintenant renforcer avec un suffixe pour la session
     console.log(`Étape 3: Mot de passe vérifié avec succès pour ${email}, génération du suffixe`);
     const securedPassword = securePassword(password);
-    console.log(`Étape 4: Mot de passe renforcé généré: ${password} -> ${securedPassword}`);
+    console.log(`Étape 4: Mot de passe renforcé généré pour ${email}: ${password} -> ${securedPassword}`);
     
     return new Response(
       JSON.stringify({ 
         success: true, 
         securedPassword,
-        user: verification.user 
+        user: verification.user,
+        originalPassword: password // Inclure le mot de passe original pour aider au débogage
       }),
       {
         status: 200,
