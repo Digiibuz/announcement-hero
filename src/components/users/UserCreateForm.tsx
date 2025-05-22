@@ -197,6 +197,9 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
                     <Input type="password" placeholder="••••••••" {...field} />
                   </FormControl>
                   <FormMessage />
+                  <FormDescription>
+                    Notez bien ce mot de passe, il sera utilisé pour la connexion.
+                  </FormDescription>
                 </FormItem>
               )}
             />

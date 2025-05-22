@@ -125,10 +125,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       if (error) {
+        console.error("Erreur de connexion Supabase:", error);
         throw error;
       }
       
+      if (!data?.user) {
+        throw new Error("L'utilisateur n'a pas été trouvé après connexion");
+      }
+      
       // User will be set by the auth state change listener
+      return data;
     } catch (error: any) {
       setIsLoading(false);
       throw new Error(error.message || "Login error");

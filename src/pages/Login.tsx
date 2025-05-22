@@ -40,7 +40,17 @@ const Login = () => {
       }, 300);
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
-      toast.error(error.message || "Échec de la connexion");
+      
+      // Message d'erreur plus spécifique pour aider l'utilisateur
+      let errorMessage = "Échec de la connexion";
+      
+      if (error.message && error.message.includes("Invalid login credentials")) {
+        errorMessage = "Email ou mot de passe incorrect. Vérifiez vos identifiants.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
