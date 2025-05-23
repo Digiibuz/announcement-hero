@@ -20,12 +20,15 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  // Ensure environment variables are properly loaded but not embedded in the build
+  // Don't replace runtime environment variables
   define: {
-    // Use empty strings as fallbacks for build time to prevent embedding sensitive data
-    "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(process.env.VITE_SUPABASE_URL || ""),
-    "import.meta.env.VITE_SUPABASE_ANON_KEY": JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY || ""),
     // Add this to handle the Deno global in browser builds
     "Deno": "undefined"
   },
+  // Exclude env-config.js from processing
+  build: {
+    rollupOptions: {
+      external: ['/env-config.js']
+    }
+  }
 }));
