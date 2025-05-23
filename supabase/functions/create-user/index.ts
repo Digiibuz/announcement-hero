@@ -52,9 +52,9 @@ serve(async (req) => {
       );
     }
 
-    // Check if the user already exists in Auth
+    // ***** PREMIÈRE VÉRIFICATION: Check if the user already exists in Auth *****
+    console.log("Vérification si l'utilisateur existe dans auth.users:", email);
     try {
-      console.log("Vérification si l'utilisateur existe dans auth.users:", email);
       const { data: existingUsers, error: searchError } = await supabaseAdmin.auth.admin.listUsers({
         filter: {
           email: email,
@@ -62,14 +62,14 @@ serve(async (req) => {
       });
 
       if (searchError) {
-        console.log("Erreur lors de la recherche d'utilisateurs existants:", searchError.message);
+        console.error("Erreur lors de la recherche d'utilisateurs existants:", searchError.message);
         throw searchError;
       }
 
       if (existingUsers && existingUsers.users.length > 0) {
         console.log("L'utilisateur existe déjà dans auth.users:", email);
         
-        // Check if the user exists in the profiles table
+        // ***** DEUXIÈME VÉRIFICATION: Check if the user exists in the profiles table *****
         const { data: existingProfiles, error: profilesError } = await supabaseAdmin
           .from('profiles')
           .select('*')
@@ -102,7 +102,7 @@ serve(async (req) => {
                 email: email,
                 name: name,
                 role: role,
-                wordpress_config_id: role === "client" && wordpressConfigId ? wordpressConfigId : null,
+                wordpress_config_id: role === "client" && wordpressConfigId && wordpressConfigId !== "none" ? wordpressConfigId : null,
               });
 
             if (profileCreateError) {
@@ -181,11 +181,11 @@ serve(async (req) => {
       );
     }
 
-    // Create the user - VÉRIFICATION ET CORRECTION PRIORITAIRE
-    console.log("Création de l'utilisateur:", email);
+    // ***** CRÉATION DE L'UTILISATEUR DANS AUTH *****
+    console.log("Création de l'utilisateur dans auth:", email);
     let newUserData;
     try {
-      // Assurer que l'utilisateur est créé dans le système d'authentification
+      // Créer l'utilisateur dans le système d'authentification
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
@@ -193,21 +193,31 @@ serve(async (req) => {
         user_metadata: {
           name,
           role,
-          wordpressConfigId: role === "client" && wordpressConfigId ? wordpressConfigId : null,
+          wordpressConfigId: role === "client" && wordpressConfigId && wordpressConfigId !== "none" ? wordpressConfigId : null,
         },
       });
 
       if (error) {
-        console.log("Erreur lors de la création de l'utilisateur dans auth:", error.message);
+        console.error("Erreur lors de la création de l'utilisateur dans auth:", error.message);
         throw error;
       }
       
       if (!data || !data.user || !data.user.id) {
+        console.error("Pas d'ID utilisateur reçu après création dans auth");
         throw new Error("La création de l'utilisateur n'a pas retourné d'ID utilisateur valide");
       }
       
       newUserData = data;
       console.log("Utilisateur créé avec succès dans auth:", newUserData.user.id);
+      
+      // ***** VÉRIFIER QUE L'UTILISATEUR A BIEN ÉTÉ CRÉÉ DANS AUTH *****
+      const { data: verifyUser } = await supabaseAdmin.auth.admin.getUserById(newUserData.user.id);
+      if (!verifyUser || !verifyUser.user) {
+        console.error("L'utilisateur n'a pas été trouvé après sa création");
+        throw new Error("Échec de vérification de la création de l'utilisateur dans auth");
+      }
+      console.log("Utilisateur vérifié dans auth:", verifyUser.user.id);
+      
     } catch (error) {
       console.error("Erreur critique lors de la création de l'utilisateur dans auth:", error);
       return new Response(
@@ -222,7 +232,7 @@ serve(async (req) => {
       );
     }
 
-    // After creating the user in Auth, create their profile
+    // ***** CRÉATION DU PROFIL POUR L'UTILISATEUR *****
     try {
       console.log("Création du profil pour l'utilisateur:", newUserData.user.id);
       const { error: profileError } = await supabaseAdmin
@@ -232,11 +242,11 @@ serve(async (req) => {
           email: email,
           name: name,
           role: role,
-          wordpress_config_id: role === "client" && wordpressConfigId ? wordpressConfigId : null,
+          wordpress_config_id: role === "client" && wordpressConfigId && wordpressConfigId !== "none" ? wordpressConfigId : null,
         });
 
       if (profileError) {
-        console.log("Erreur lors de la création du profil:", profileError.message);
+        console.error("Erreur lors de la création du profil:", profileError.message);
         
         // If profile creation fails, delete the user to avoid inconsistencies
         try {
@@ -260,6 +270,19 @@ serve(async (req) => {
     }
 
     console.log("Utilisateur et profil créés avec succès:", newUserData.user.id);
+
+    // ***** VÉRIFICATION FINALE QUE TOUT EST CRÉÉ CORRECTEMENT *****
+    try {
+      const { data: finalCheck } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .eq('id', newUserData.user.id)
+        .single();
+        
+      console.log("Vérification finale du profil créé:", finalCheck ? "OK" : "NON TROUVÉ");
+    } catch (error) {
+      console.log("Erreur lors de la vérification finale (non bloquante):", error);
+    }
 
     return new Response(
       JSON.stringify({ 
