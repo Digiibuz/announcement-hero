@@ -10,7 +10,7 @@ interface AppLifecycleOptions {
 }
 
 /**
- * Hook pour gérer le cycle de vie de l'application et prévenir les rechargements indésirables
+ * Hook pour gérer le cycle de vie de l'application SANS provoquer de rechargements
  */
 export function useAppLifecycle(options: AppLifecycleOptions = {}) {
   const { onResume, onHide, savePageState = true } = options;
@@ -94,12 +94,15 @@ export function useAppLifecycle(options: AppLifecycleOptions = {}) {
           onHide();
         }
       } else if (currentVisibility === 'visible') {
-        // L'utilisateur est revenu sur la page - mais ne rechargez PAS la page
-        console.log('Application reprise, navigation fluide préservée');
+        // L'utilisateur est revenu sur la page - MAINTENIR LA NAVIGATION FLUIDE
+        console.log('Application reprise - navigation fluide préservée');
         
-        // Callback personnalisé
+        // Callback personnalisé SANS déclencher de rechargement
         if (onResume) {
-          onResume();
+          // Utiliser setTimeout pour éviter les conflits avec React
+          setTimeout(() => {
+            onResume();
+          }, 100);
         }
       }
     };

@@ -13,31 +13,34 @@ import { useAppLifecycle } from "./hooks/useAppLifecycle";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: false,  // Désactiver le rechargement lors du focus de la fenêtre
-      staleTime: 1000 * 60 * 5,     // 5 minutes
+      refetchOnWindowFocus: false,  // Désactiver complètement le rechargement lors du focus
+      refetchOnReconnect: false,    // Désactiver le rechargement lors de la reconnexion
+      staleTime: 1000 * 60 * 10,    // 10 minutes au lieu de 5
       retry: 1,                     // Limiter les nouvelles tentatives
       networkMode: 'always',        // Continuer à fonctionner hors ligne
     },
   },
 });
 
-// Composant qui gère les événements du cycle de vie de l'application
+// Composant qui gère les événements du cycle de vie de l'application SANS rechargements
 const AppLifecycleManager = () => {
   useAppLifecycle({
     onResume: () => {
-      // Rafraîchir les données si nécessaire sans recharger la page
-      console.log('Application reprise, rafraîchissement des données en arrière-plan...');
-      // Utiliser un invalidateQueries filtré pour éviter les rechargements massifs
+      // Mise à jour des données en arrière-plan SANS invalider les requêtes
+      console.log('Application reprise, navigation fluide préservée');
+      
+      // Optionnel : invalider seulement les requêtes très anciennes et de manière très sélective
       setTimeout(() => {
         queryClient.invalidateQueries({
           predicate: (query) => {
-            // N'invalider que les requêtes qui ont plus de 5 minutes
+            // N'invalider que les requêtes qui ont plus de 30 minutes et sont critiques
             const queryTime = query.state.dataUpdatedAt;
-            const fiveMinutesAgo = Date.now() - 1000 * 60 * 5;
-            return queryTime < fiveMinutesAgo;
+            const thirtyMinutesAgo = Date.now() - 1000 * 60 * 30;
+            const isCriticalQuery = query.queryKey.includes('user') || query.queryKey.includes('auth');
+            return queryTime < thirtyMinutesAgo && isCriticalQuery;
           }
         });
-      }, 1000);
+      }, 5000); // Délai de 5 secondes pour éviter les conflits
     },
     onHide: () => {
       console.log('Application masquée, sauvegarde de l\'état...');

@@ -46,9 +46,6 @@ const registerServiceWorker = async () => {
       console.log('SW enregistré:', registration);
       serviceWorkerRegistration = registration;
       
-      // Vérifier et mettre à jour le service worker
-      registration.update();
-      
       // Gérer les mises à jour du service worker
       registration.addEventListener('updatefound', () => {
         const newWorker = registration.installing;
@@ -85,11 +82,12 @@ const registerServiceWorker = async () => {
   }
 };
 
-// Fonction pour déclencher la mise à jour du service worker
-const updateServiceWorker = async () => {
+// Fonction pour déclencher la mise à jour du service worker SANS recharger
+const updateServiceWorkerSilently = async () => {
   if ('serviceWorker' in navigator) {
     const registration = await navigator.serviceWorker.getRegistration();
     if (registration) {
+      // Mise à jour silencieuse en arrière-plan
       registration.update();
     }
   }
@@ -138,33 +136,33 @@ window.addEventListener('load', () => {
   }
 });
 
-// Amélioration du gestionnaire d'événements focus pour éviter complètement les rechargements
+// Optimisation du gestionnaire focus pour éviter les rechargements
 window.addEventListener('focus', () => {
   const now = Date.now();
   const timeSinceLastFocus = now - (window.lastFocusTime || 0);
   window.lastFocusTime = now;
   
-  // Ne jamais déclencher de rechargement lors d'un focus, quelle que soit la durée
+  // Navigation fluide préservée - pas de rechargement
   console.log("Focus détecté, navigation fluide préservée");
   
-  // Mettre à jour le service worker en arrière-plan sans recharger la page
-  if (timeSinceLastFocus > 60000) { // 1 minute
-    updateServiceWorker();
+  // Mettre à jour le service worker SEULEMENT si nécessaire et de manière silencieuse
+  if (timeSinceLastFocus > 300000) { // 5 minutes au lieu de 1 minute
+    setTimeout(() => {
+      updateServiceWorkerSilently();
+    }, 2000); // Délai plus long pour éviter les conflits
   }
 });
 
-// Intercepter le comportement par défaut lors des changements de visibilité
+// Gestionnaire de visibilité optimisé pour éviter les rechargements
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
-    // L'utilisateur est revenu à l'application
-    // Désactiver complètement le rechargement automatique
-    const currentPath = window.location.pathname + window.location.search + window.location.hash;
+    // L'utilisateur est revenu à l'application - AUCUN rechargement
     console.log('Reprise de l\'application sans rechargement');
     
-    // Mettre à jour le service worker en arrière-plan uniquement
+    // Mise à jour silencieuse du service worker avec un délai
     setTimeout(() => {
-      updateServiceWorker();
-    }, 1000);
+      updateServiceWorkerSilently();
+    }, 3000); // Délai plus long pour stabilité
   } else {
     // L'utilisateur quitte l'application
     // Sauvegarde de l'état actuel

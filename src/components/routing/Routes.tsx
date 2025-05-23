@@ -24,12 +24,14 @@ const GoogleBusinessPage = lazy(() => import('@/pages/GoogleBusinessPage'));
 const AppRoutes = () => {
   const { isAuthenticated, isOnResetPasswordPage } = useAuth();
   const { pathname } = useLocation();
-  const navigationType = useNavigationType(); // Capture le type de navigation (PUSH, POP, REPLACE)
+  const navigationType = useNavigationType();
   useScrollRestoration();
+  
+  // Hook de cycle de vie optimisé pour éviter les rechargements
   useAppLifecycle({
     onResume: () => {
-      console.log("Application reprise, mise à jour des données en arrière-plan");
-      // On peut invalider les requêtes ici si nécessaire sans recharger la page
+      console.log("Application reprise - navigation fluide maintenue");
+      // Aucune invalidation de requêtes ici pour éviter les rechargements
     }
   });
   
