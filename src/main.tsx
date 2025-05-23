@@ -24,11 +24,13 @@ declare global {
   interface Window {
     clearCacheAndReload: () => void;
     preventReload: boolean;
+    lastFocusTime: number;
   }
 }
 
-// Initialiser la préférence de rechargement
+// Initialiser la préférence de rechargement et le temps du dernier focus
 window.preventReload = true;
+window.lastFocusTime = Date.now();
 
 // Fonction pour enregistrer le service worker de manière plus robuste
 const registerServiceWorker = async () => {
@@ -134,22 +136,35 @@ window.addEventListener('load', () => {
   }
 });
 
+// Nouveau gestionnaire d'événements focus qui évite les rechargements
+window.addEventListener('focus', () => {
+  const now = Date.now();
+  const timeSinceLastFocus = now - (window.lastFocusTime || 0);
+  window.lastFocusTime = now;
+  
+  // Si l'onglet vient juste d'être activé (moins de 1s depuis le dernier focus)
+  // ou si l'utilisateur revient après une courte période (moins de 30s),
+  // ne pas déclencher de rechargement ou de rafraîchissement
+  if (timeSinceLastFocus < 30000) {
+    console.log("Focus récent, évitement du rechargement");
+    return;
+  }
+  
+  // Pour les périodes plus longues, mettre à jour le service worker
+  // mais ne pas recharger la page
+  updateServiceWorker();
+});
+
 // Intercepter le comportement par défaut lors des changements de visibilité
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     // L'utilisateur est revenu à l'application
     updateServiceWorker();
     
-    // Ne plus recharger automatiquement, cela sera géré par useAppLifecycle
+    // IMPORTANT: Désactiver complètement le rechargement automatique
     if (window.preventReload) {
-      // Empêcher le rechargement automatique que certains navigateurs effectuent
       const currentPath = window.location.pathname + window.location.search + window.location.hash;
-      
-      // Vérifier si nous sommes toujours sur le même chemin
-      if (lastAppState.path && lastAppState.path === currentPath) {
-        // Nous sommes sur le même chemin, aucune action de navigation n'est nécessaire
-        console.log('Reprise de l\'application sur le même chemin, pas de navigation.');
-      }
+      console.log('Reprise de l\'application sans rechargement');
     }
   } else {
     // L'utilisateur quitte l'application

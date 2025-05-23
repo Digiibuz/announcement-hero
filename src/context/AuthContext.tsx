@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
@@ -16,6 +16,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { originalUser, isImpersonating, impersonateUser: startImpersonation, stopImpersonating: endImpersonation } = useImpersonation(userProfile);
   // État pour suivre si nous sommes sur une page de réinitialisation de mot de passe
   const [isOnResetPasswordPage, setIsOnResetPasswordPage] = useState(false);
+  const authStateChangeInProgress = useRef(false);
 
   // Vérifier si nous sommes sur la page de réinitialisation de mot de passe
   useEffect(() => {
@@ -30,10 +31,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Initialize auth state and set up listeners with improved persistence
   useEffect(() => {
     console.log("Setting up auth state listener");
-    // Set up the auth state change listener
+    
+    // Set up the auth state change listener avec protection contre les rechargements multiples
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log("Auth state changed:", event);
+        
+        // Éviter les traitements multiples du même événement
+        if (authStateChangeInProgress.current) {
+          console.log("Auth state change already in progress, skipping");
+          return;
+        }
+        
+        authStateChangeInProgress.current = true;
         setIsLoading(true);
         
         if (session?.user) {
@@ -49,11 +59,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 console.warn("Failed to fetch complete profile, using metadata only");
               }
               setIsLoading(false);
+              authStateChangeInProgress.current = false;
             });
           }, 100);
         } else {
           setUserProfile(null);
           setIsLoading(false);
+          authStateChangeInProgress.current = false;
         }
       }
     );
@@ -143,7 +155,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sessionStorage.removeItem('lastAdminPath');
       sessionStorage.removeItem('lastAuthenticatedPath');
       
-      await supabase.auth.signOut();
+      // Éviter le rechargement complet lors de la déconnexion
+      const wasHandled = await supabase.auth.signOut({ scope: 'local' });
       setUserProfile(null);
       localStorage.removeItem("originalUser");
     } catch (error) {

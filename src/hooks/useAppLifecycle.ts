@@ -17,6 +17,7 @@ export function useAppLifecycle(options: AppLifecycleOptions = {}) {
   const location = useLocation();
   const [isVisible, setIsVisible] = useState<boolean>(document.visibilityState === 'visible');
   const formStateRef = useRef<Record<string, any>>({});
+  const lastVisibilityState = useRef<string>(document.visibilityState);
 
   // Fonction optimisée pour sauvegarder l'état du formulaire
   const saveFormState = useCallback(
@@ -55,10 +56,18 @@ export function useAppLifecycle(options: AppLifecycleOptions = {}) {
   // Sauvegarder l'état de la page actuelle lorsque l'utilisateur quitte ou change d'onglet
   useEffect(() => {
     const handleVisibilityChange = () => {
-      const currentlyVisible = document.visibilityState === 'visible';
+      const currentVisibility = document.visibilityState;
+      
+      // Éviter les traitements multiples pour le même état
+      if (currentVisibility === lastVisibilityState.current) {
+        return;
+      }
+      
+      lastVisibilityState.current = currentVisibility;
+      const currentlyVisible = currentVisibility === 'visible';
       setIsVisible(currentlyVisible);
       
-      if (document.visibilityState === 'hidden') {
+      if (currentVisibility === 'hidden') {
         // L'utilisateur a quitté la page
         if (savePageState) {
           try {
@@ -81,8 +90,8 @@ export function useAppLifecycle(options: AppLifecycleOptions = {}) {
         if (onHide) {
           onHide();
         }
-      } else if (document.visibilityState === 'visible') {
-        // L'utilisateur est revenu sur la page
+      } else if (currentVisibility === 'visible') {
+        // L'utilisateur est revenu sur la page - mais ne rechargez PAS la page
         
         // Callback personnalisé
         if (onResume) {
@@ -94,26 +103,29 @@ export function useAppLifecycle(options: AppLifecycleOptions = {}) {
     // Écouter les changements de visibilité
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
-    // Désactiver le rechargement complet lors du focus
+    // Désactiver complètement le rechargement lors du changement d'onglet
     if ('scrollRestoration' in history) {
       history.scrollRestoration = 'manual';
     }
     
-    // Prévenir le rechargement lors du changement d'onglet
+    // Permettre les navigations réelles mais empêcher les rechargements automatiques
+    window.preventReload = true;
+    
+    // Ne plus interrompre la navigation si l'utilisateur quitte réellement
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      // Ne pas interrompre la navigation réelle
+      // Si ce n'est pas un changement d'onglet, laisser le comportement normal
       if (!document.hidden) return;
       
-      // Empêcher le rechargement lors du changement d'onglet
+      // Pour les changements d'onglet, empêcher le rechargement
       event.preventDefault();
       return (event.returnValue = '');
     };
     
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('beforeunload', handleBeforeUnload, { capture: true });
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('beforeunload', handleBeforeUnload, { capture: true });
       saveFormState.cancel();
     };
   }, [location, onResume, onHide, savePageState, saveFormState]);

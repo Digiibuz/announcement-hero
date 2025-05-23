@@ -17,13 +17,13 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, login } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already authenticated
   React.useEffect(() => {
     if (isAuthenticated) {
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -34,38 +34,15 @@ const Login = () => {
     try {
       console.log("Attempting login with email:", email);
       
-      // Cleanup auth state before logging in to prevent conflicts
-      cleanupAuthState();
+      // Utiliser la méthode login du contexte auth plutôt que d'appeler Supabase directement
+      await login(email, password);
       
-      // Try to sign out first to clear any existing sessions
-      try {
-        await supabase.auth.signOut({ scope: 'global' });
-      } catch (err) {
-        console.log("Sign out before login failed, continuing anyway:", err);
-      }
-      
-      // Direct Supabase login to bypass any potential AuthContext issues
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-      
-      if (error) {
-        console.error("Login error from Supabase:", error);
-        throw error;
-      }
-      
-      console.log("Login successful, user data:", data.user);
       toast.success("Connexion réussie");
       
-      // Delay navigation slightly to allow session to be properly stored
-      setTimeout(() => {
-        navigate("/dashboard");
-      }, 500);
+      // La navigation sera prise en charge par l'effet de redirection ci-dessus
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
       toast.error(error.message || "Échec de la connexion");
-    } finally {
       setIsLoading(false);
     }
   };
