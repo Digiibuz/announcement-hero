@@ -11,6 +11,10 @@ export interface UserProfile {
   clientId?: string | null;
   wordpressConfigId?: string | null;
   lastLogin?: string | null;
+  wordpressConfig?: {
+    name: string;
+    site_url: string;
+  } | null;
 }
 
 export interface GoogleBusinessProfile {
@@ -22,6 +26,9 @@ export interface GoogleBusinessProfile {
   status: 'active' | 'pending' | 'error';
   createdAt: string;
   updatedAt: string;
+  googleEmail?: string;
+  gmb_account_id?: string;
+  gmb_location_id?: string;
 }
 
 export interface AuthContextType {

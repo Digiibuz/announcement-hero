@@ -15,12 +15,13 @@ export const useUserEditForm = (
   const [isLoadingConfigs, setIsLoadingConfigs] = useState(false);
   const [selectedConfigIds, setSelectedConfigIds] = useState<string[]>([]);
 
+  // Fix: We need to use a formSchema that correctly handles "editor" as a valid role
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: user.email || "",
       name: user.name || "",
-      role: user.role || "client",
+      role: user.role,
       clientId: user.clientId || "",
       wordpressConfigId: user.wordpressConfigId || "",
       wpConfigIds: [],
@@ -31,7 +32,7 @@ export const useUserEditForm = (
     form.reset({
       email: user.email || "",
       name: user.name || "",
-      role: user.role || "client",
+      role: user.role,
       clientId: user.clientId || "",
       wordpressConfigId: user.wordpressConfigId || "",
       wpConfigIds: selectedConfigIds,
