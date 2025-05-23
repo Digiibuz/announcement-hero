@@ -56,18 +56,20 @@ serve(async (req) => {
     let existingUser = null;
     try {
       console.log("Vérification si l'utilisateur existe dans auth.users:", email);
-      const { data: users, error: searchError } = await supabaseAdmin.auth.admin.listUsers();
+      const { data: existingUsers, error: searchError } = await supabaseAdmin.auth.admin.listUsers({
+        filter: {
+          email: email,
+        },
+      });
 
       if (searchError) {
-        console.error("Erreur lors de la recherche d'utilisateurs existants:", searchError.message);
+        console.log("Erreur lors de la recherche d'utilisateurs existants:", searchError.message);
         throw searchError;
       }
 
-      if (users && users.users) {
-        existingUser = users.users.find(u => u.email === email);
-        if (existingUser) {
-          console.log("L'utilisateur existe déjà dans auth.users:", existingUser.id);
-        }
+      if (existingUsers && existingUsers.users.length > 0) {
+        existingUser = existingUsers.users[0];
+        console.log("L'utilisateur existe déjà dans auth.users:", existingUser.id);
       }
     } catch (error) {
       console.error("Erreur lors de la vérification d'utilisateur existant:", error);
@@ -80,12 +82,12 @@ serve(async (req) => {
       );
     }
 
-    let user = null;
+    let userData = null;
 
     if (!existingUser) {
       // Create the user in auth.users
       try {
-        console.log("Création de l'utilisateur dans auth avec email:", email);
+        console.log("Création de l'utilisateur dans auth:", email);
         const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
           email,
           password,
@@ -102,12 +104,8 @@ serve(async (req) => {
           throw createError;
         }
         
-        if (!newUser || !newUser.user) {
-          throw new Error("Erreur: L'utilisateur n'a pas été créé correctement");
-        }
-        
-        user = newUser;
-        console.log("Utilisateur créé avec succès dans auth:", user.user.id);
+        userData = newUser;
+        console.log("Utilisateur créé avec succès dans auth:", userData.user.id);
       } catch (error) {
         console.error("Erreur lors de la création de l'utilisateur:", error);
         return new Response(
@@ -119,7 +117,7 @@ serve(async (req) => {
         );
       }
     } else {
-      user = { user: existingUser };
+      userData = existingUser;
       console.log("Utilisation de l'utilisateur existant:", existingUser.id);
       
       // Update user metadata if needed
@@ -131,16 +129,13 @@ serve(async (req) => {
               name,
               role,
               wordpressConfigId: role === "client" ? wordpressConfigId : null,
-            },
-            password: password,  // Mise à jour du mot de passe
+            }
           }
         );
         
         if (updateError) {
           console.log("Erreur lors de la mise à jour des métadonnées:", updateError.message);
           // Non-critical, continue anyway
-        } else {
-          console.log("Métadonnées utilisateur mises à jour avec succès");
         }
       } catch (error) {
         console.warn("Erreur lors de la mise à jour des métadonnées:", error);
@@ -151,40 +146,34 @@ serve(async (req) => {
     // Check if the profile already exists
     let profileExists = false;
     try {
-      if (user && user.user && user.user.id) {
-        console.log("Vérification si le profil existe pour l'utilisateur:", user.user.id);
-        const { data: existingProfile, error: profileError } = await supabaseAdmin
+      const { data: existingProfile, error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .eq('id', userData.user.id)
+        .maybeSingle();
+        
+      if (profileError) {
+        console.error("Erreur lors de la vérification du profil:", profileError);
+      } else if (existingProfile) {
+        profileExists = true;
+        console.log("Le profil existe déjà:", existingProfile.id);
+        
+        // Update the existing profile
+        const { error: updateError } = await supabaseAdmin
           .from('profiles')
-          .select('*')
-          .eq('id', user.user.id)
-          .maybeSingle();
+          .update({
+            email: email,
+            name: name,
+            role: role,
+            wordpress_config_id: role === "client" ? wordpressConfigId : null,
+          })
+          .eq('id', userData.user.id);
           
-        if (profileError) {
-          console.error("Erreur lors de la vérification du profil:", profileError);
-        } else if (existingProfile) {
-          profileExists = true;
-          console.log("Le profil existe déjà:", existingProfile.id);
-          
-          // Update the existing profile
-          const { error: updateError } = await supabaseAdmin
-            .from('profiles')
-            .update({
-              email: email,
-              name: name,
-              role: role,
-              wordpress_config_id: role === "client" ? wordpressConfigId : null,
-            })
-            .eq('id', user.user.id);
-            
-          if (updateError) {
-            console.error("Erreur lors de la mise à jour du profil:", updateError);
-          } else {
-            console.log("Profil mis à jour avec succès");
-          }
+        if (updateError) {
+          console.error("Erreur lors de la mise à jour du profil:", updateError);
+        } else {
+          console.log("Profil mis à jour avec succès");
         }
-      } else {
-        console.error("Données utilisateur manquantes pour vérifier le profil");
-        throw new Error("Données utilisateur manquantes");
       }
     } catch (error) {
       console.error("Erreur lors de la vérification du profil:", error);
@@ -194,28 +183,34 @@ serve(async (req) => {
     // Create profile if it doesn't exist
     if (!profileExists) {
       try {
-        if (user && user.user && user.user.id) {
-          console.log("Création du profil pour l'utilisateur:", user.user.id);
-          const { error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .insert({
-              id: user.user.id,
-              email: email,
-              name: name,
-              role: role,
-              wordpress_config_id: role === "client" ? wordpressConfigId : null,
-            });
+        console.log("Création du profil pour l'utilisateur:", userData.user.id);
+        const { error: profileError } = await supabaseAdmin
+          .from('profiles')
+          .insert({
+            id: userData.user.id,
+            email: email,
+            name: name,
+            role: role,
+            wordpress_config_id: role === "client" ? wordpressConfigId : null,
+          });
 
-          if (profileError) {
-            console.error("Erreur lors de la création du profil:", profileError);
-            throw profileError;
+        if (profileError) {
+          console.error("Erreur lors de la création du profil:", profileError);
+          
+          // If profile creation fails and this is a new user, delete the user to avoid inconsistencies
+          if (!existingUser) {
+            try {
+              console.log("Suppression de l'utilisateur après échec de création de profil:", userData.user.id);
+              await supabaseAdmin.auth.admin.deleteUser(userData.user.id);
+            } catch (deleteError) {
+              console.error("Erreur lors de la suppression de l'utilisateur:", deleteError);
+            }
           }
           
-          console.log("Profil créé avec succès");
-        } else {
-          console.error("Données utilisateur manquantes pour créer le profil");
-          throw new Error("Données utilisateur manquantes");
+          throw profileError;
         }
+        
+        console.log("Profil créé avec succès");
       } catch (error) {
         console.error("Erreur lors de la création du profil:", error);
         return new Response(
@@ -231,7 +226,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        user: user.user,
+        user: userData.user,
         isNewUser: !existingUser,
         message: existingUser 
           ? "Utilisateur existant mis à jour" 

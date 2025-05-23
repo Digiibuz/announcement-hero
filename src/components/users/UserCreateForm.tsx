@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -113,8 +114,10 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       const userMessage = (data as any).message || "";
       let successMessage = "Utilisateur créé avec succès";
       
-      if (userMessage.includes("existant")) {
-        successMessage = "Utilisateur existant mis à jour avec succès";
+      if (userMessage.includes("Profil créé")) {
+        successMessage = "Profil créé pour un utilisateur existant";
+      } else if (userMessage.includes("Profil mis à jour")) {
+        successMessage = "Profil mis à jour pour l'utilisateur existant";
       }
       
       toast.dismiss(toastId);
