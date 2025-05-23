@@ -169,18 +169,6 @@ export const deleteAnnouncement = async (id: string, userId: string): Promise<vo
  * Publish an announcement
  */
 export const publishAnnouncement = async (id: string): Promise<void> => {
-  // Récupérer les informations de l'annonce
-  const { data: announcement, error: fetchError } = await supabase
-    .from("announcements")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (fetchError) {
-    console.error("Error fetching announcement for publishing:", fetchError);
-    throw new Error('Failed to fetch announcement details');
-  }
-
   const response = await fetch(`/api/announcements/${id}/publish`, {
     method: 'POST',
     headers: {
@@ -188,166 +176,11 @@ export const publishAnnouncement = async (id: string): Promise<void> => {
     },
     body: JSON.stringify({ 
       status: 'published',  // Directement publié sans étapes intermédiaires
-      skip_draft: true,     // Flag pour indiquer de sauter l'étape brouillon
-      announcement: announcement // Envoyer les données complètes de l'annonce pour traitement
+      skip_draft: true      // Flag pour indiquer de sauter l'étape brouillon
     })
   });
   
-  // Vérification détaillée de la réponse
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Error publishing announcement:", response.status, errorText);
-    throw new Error(`Failed to publish announcement: ${response.status} ${errorText}`);
-  }
-
-  // Mettre à jour le status dans la base de données locale si l'API a réussi
-  const { error: updateError } = await supabase
-    .from("announcements")
-    .update({ status: "published" })
-    .eq("id", id);
-
-  if (updateError) {
-    console.error("Error updating local announcement status:", updateError);
-    toast.warning("L'annonce a été publiée sur WordPress mais son statut n'a pas été mis à jour localement");
-  }
-};
-
-/**
- * Publish announcement directly through WordPress
- * Cette fonction est une alternative si l'API ne fonctionne pas
- */
-export const publishAnnouncementDirect = async (id: string, userId: string): Promise<void> => {
-  try {
-    console.log("Attempting direct WordPress publication for announcement:", id);
-    
-    // Récupérer l'annonce
-    const { data: announcement, error: fetchError } = await supabase
-      .from("announcements")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (fetchError || !announcement) {
-      console.error("Error fetching announcement:", fetchError);
-      throw new Error('Failed to fetch announcement');
-    }
-
-    // Récupérer la configuration WordPress
-    const { data: userProfile, error: profileError } = await supabase
-      .from('profiles')
-      .select('wordpress_config_id')
-      .eq('id', userId)
-      .single();
-
-    if (profileError || !userProfile?.wordpress_config_id) {
-      throw new Error("Configuration WordPress introuvable");
-    }
-    
-    // Récupérer les détails de la configuration
-    const { data: wpConfig, error: wpConfigError } = await supabase
-      .from('wordpress_configs')
-      .select('site_url, app_username, app_password')
-      .eq('id', userProfile.wordpress_config_id)
-      .single();
-
-    if (wpConfigError || !wpConfig) {
-      throw new Error("Détails de configuration WordPress introuvables");
-    }
-
-    // Normaliser l'URL
-    const siteUrl = wpConfig.site_url.endsWith('/')
-      ? wpConfig.site_url.slice(0, -1)
-      : wpConfig.site_url;
-    
-    // Déterminer le point d'accès
-    let apiEndpoint = 'dipi_cpt';
-    try {
-      const response = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt`, {
-        method: 'HEAD',
-      });
-      
-      if (response.status === 404) {
-        apiEndpoint = 'pages';
-      }
-    } catch (error) {
-      apiEndpoint = 'pages';
-    }
-    
-    console.log("Using WordPress API endpoint:", apiEndpoint);
-    
-    // Préparer les en-têtes
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    
-    if (wpConfig.app_username && wpConfig.app_password) {
-      const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
-      headers['Authorization'] = `Basic ${basicAuth}`;
-    } else {
-      throw new Error("Identifiants WordPress manquants");
-    }
-    
-    // Préparer les données pour WordPress
-    const wpPostData: any = {
-      title: announcement.title,
-      content: announcement.description || "",
-      status: "publish",
-    };
-    
-    // Ajouter la catégorie si disponible
-    if (announcement.wordpress_category_id) {
-      wpPostData.dipi_cpt_category = [parseInt(announcement.wordpress_category_id)];
-    }
-    
-    // Ajouter les métadonnées SEO si disponibles
-    if (announcement.seo_title || announcement.seo_description || announcement.seo_slug) {
-      wpPostData.meta = {
-        _yoast_wpseo_title: announcement.seo_title || "",
-        _yoast_wpseo_metadesc: announcement.seo_description || "",
-      };
-      
-      if (announcement.seo_slug) {
-        wpPostData.slug = announcement.seo_slug;
-      }
-    }
-    
-    // Envoyer la requête à WordPress
-    const apiUrl = `${siteUrl}/wp-json/wp/v2/${apiEndpoint}`;
-    console.log("Sending POST request to WordPress:", apiUrl);
-    
-    const postResponse = await fetch(apiUrl, {
-      method: 'POST',
-      headers: headers,
-      body: JSON.stringify(wpPostData)
-    });
-    
-    if (!postResponse.ok) {
-      const errorText = await postResponse.text();
-      throw new Error(`WordPress API error (${postResponse.status}): ${errorText}`);
-    }
-    
-    const wpResponseData = await postResponse.json();
-    console.log("WordPress response:", wpResponseData);
-    
-    // Mettre à jour l'annonce avec l'ID du post WordPress
-    if (wpResponseData && wpResponseData.id) {
-      const { error: updateError } = await supabase
-        .from("announcements")
-        .update({ 
-          wordpress_post_id: wpResponseData.id,
-          status: "published"
-        })
-        .eq("id", announcement.id);
-        
-      if (updateError) {
-        console.error("Error updating announcement with WordPress ID:", updateError);
-        toast.warning("L'annonce a été publiée sur WordPress mais l'ID n'a pas pu être enregistré");
-      }
-    }
-    
-    toast.success("Annonce publiée avec succès sur WordPress");
-  } catch (error: any) {
-    console.error("Error in direct WordPress publication:", error);
-    throw error;
+    throw new Error('Failed to publish announcement');
   }
 };

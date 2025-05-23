@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -10,18 +10,17 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
-import { supabase, cleanupAuthState } from "@/integrations/supabase/client";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { isAuthenticated } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already authenticated
-  useEffect(() => {
+  React.useEffect(() => {
     if (isAuthenticated) {
       navigate("/dashboard");
     }
@@ -32,41 +31,13 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      // Nettoyage de l'état d'authentification existant
-      cleanupAuthState();
+      await login(email, password);
+      toast.success("Connexion réussie");
       
-      console.log("Tentative de connexion pour:", email);
-      
-      // Déconnexion globale d'abord pour effacer les sessions existantes
-      try {
-        await supabase.auth.signOut({ scope: 'global' });
-        console.log("Déconnexion globale réussie");
-      } catch (err) {
-        console.log("Erreur lors de la déconnexion globale (ignorée):", err);
-        // On continue même si cette étape échoue
-      }
-      
-      // Utiliser directement l'authentification Supabase
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-      
-      if (error) {
-        throw error;
-      }
-      
-      if (data.user) {
-        console.log("Connexion réussie pour:", data.user.email);
-        toast.success("Connexion réussie");
-        
-        // Redirection après connexion réussie
-        setTimeout(() => {
-          navigate("/dashboard");
-        }, 300);
-      } else {
-        throw new Error("Échec de la connexion: Aucun utilisateur retourné");
-      }
+      // Redirect after successful login
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 300);
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
       toast.error(error.message || "Échec de la connexion");

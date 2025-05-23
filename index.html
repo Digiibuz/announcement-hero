@@ -8,53 +8,30 @@
     <meta name="description" content="DigiiBuz - Gestion d'annonces WordPress avec Divi Builder et DiviPixel" />
     <meta name="author" content="DigiiBuz" />
     <link rel="icon" href="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" type="image/png" />
-    
-    <!-- Optimisations de performance -->
-    <meta http-equiv="x-dns-prefetch-control" content="on">
-    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
-    <link rel="dns-prefetch" href="https://fonts.gstatic.com">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    
-    <!-- Chargement optimisé des polices -->
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800&display=swap"></noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- Méta balises OpenGraph -->
     <meta property="og:title" content="DigiiBuz - Gestion d'annonces WordPress" />
     <meta property="og:description" content="DigiiBuz - Gestion d'annonces WordPress avec Divi Builder et DiviPixel" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" />
 
-    <!-- Optimisation PWA -->
+    <!-- PWA Support -->
     <meta name="theme-color" content="#0C1646">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="DigiiBuz">
     <link rel="apple-touch-icon" href="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png">
     <link rel="manifest" href="/manifest.json">
-    
-    <!-- Twitter Card -->
+
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" />
-    
-    <!-- Preload des ressources critiques -->
-    <link rel="preload" href="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" as="image" type="image/png" />
   </head>
 
   <body>
     <div id="root"></div>
-    <!-- Script pour détecter et signaler les problèmes de chargement -->
-    <script>
-      // Détecter et notifier les temps de chargement lents
-      window.perfMetrics = {
-        onFirstInputDelay: function(delay) {
-          if (delay > 500) {
-            console.warn("Délai d'interaction initial élevé:", delay + "ms");
-          }
-        }
-      };
-    </script>
+    <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
     <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>

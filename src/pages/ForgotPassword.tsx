@@ -29,13 +29,13 @@ const ForgotPassword = () => {
     
     try {
       // L'URL de redirection doit être une URL absolue
-      // Mise à jour de l'URL de production
-      const productionUrl = "https://digii.app.digiibuz.fr/reset-password";
+      const origin = window.location.origin;
+      const redirectTo = `${origin}/reset-password`;
       
-      console.log("URL de redirection pour la réinitialisation:", productionUrl);
+      console.log("URL de redirection pour la réinitialisation:", redirectTo);
       
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: productionUrl,
+        redirectTo,
       });
       
       if (error) {

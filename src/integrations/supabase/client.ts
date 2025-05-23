@@ -3,47 +3,15 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://rdwqedmvzicerwotjseg.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkd3FlZG12emljZXJ3b3Rqc2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwNzg4MzEsImV4cCI6MjA1ODY1NDgzMX0.Ohle_vVvdoCvsObP9A_AdyM52XdzisIvHvH1D1a88zk";
+// Hardcode the actual Supabase URL and anon key for this project
+const supabaseUrl = "https://rdwqedmvzicerwotjseg.supabase.co";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkd3FlZG12emljZXJ3b3Rqc2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwNzg4MzEsImV4cCI6MjA1ODY1NDgzMX0.Ohle_vVvdoCvsObP9A_AdyM52XdzisIvHvH1D1a88zk";
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
-
+// Create a Supabase client for client-side operations only
 export const supabase = createClient<Database>(
-  SUPABASE_URL, 
-  SUPABASE_PUBLISHABLE_KEY,
-  {
-    auth: {
-      storage: localStorage,
-      persistSession: true,
-      autoRefreshToken: true,
-    }
-  }
+  supabaseUrl, 
+  supabaseAnonKey
 );
 
-// Function to clean up auth state and prevent auth limbo
-export const cleanupAuthState = () => {
-  console.log("Nettoyage de l'état d'authentification");
-  // Remove standard auth tokens
-  localStorage.removeItem('supabase.auth.token');
-  localStorage.removeItem('userRole');
-  localStorage.removeItem('userId');
-  sessionStorage.removeItem('lastAdminPath');
-  sessionStorage.removeItem('lastAuthenticatedPath');
-  
-  // Remove all Supabase auth keys from localStorage
-  Object.keys(localStorage).forEach((key) => {
-    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-      console.log(`Suppression de la clé: ${key}`);
-      localStorage.removeItem(key);
-    }
-  });
-  
-  // Remove from sessionStorage if in use
-  Object.keys(sessionStorage || {}).forEach((key) => {
-    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-      console.log(`Suppression de la clé de session: ${key}`);
-      sessionStorage.removeItem(key);
-    }
-  });
-};
+// Note: This client only has anon permissions
+// For any sensitive operations, use edge functions that can access service role keys securely

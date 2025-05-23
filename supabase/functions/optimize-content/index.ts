@@ -20,7 +20,7 @@ serve(async (req) => {
     
     const { type, title, description } = await req.json();
     
-    console.log(`Paramètres reçus - Type: ${type}, Titre: "${title?.substring(0, 20) || ''}..."`);
+    console.log(`Paramètres reçus - Type: ${type}, Titre: "${title.substring(0, 20)}..."`);
     if (description) {
       console.log(`Description: "${description.substring(0, 30)}..."`);
     }
