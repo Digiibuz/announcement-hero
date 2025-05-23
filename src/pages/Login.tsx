@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -10,6 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
+import { supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -31,8 +31,31 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      await login(email, password);
-      toast.success("Connexion réussie");
+      // Appeler notre fonction edge sécurisée plutôt que le login standard
+      const { data, error } = await supabase.functions.invoke("secure-login", {
+        body: {
+          email,
+          password
+        }
+      });
+      
+      if (error) {
+        throw new Error(error.message || "Échec de la connexion");
+      }
+      
+      if (!data.session) {
+        throw new Error("Aucune session n'a été créée");
+      }
+      
+      // Définir la session manuellement avec les données retournées
+      await supabase.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token
+      });
+      
+      toast.success(data.passwordUpdated 
+        ? "Connexion réussie avec sécurité renforcée" 
+        : "Connexion réussie");
       
       // Redirect after successful login
       setTimeout(() => {

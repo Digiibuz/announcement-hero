@@ -1,6 +1,5 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, cleanupAuthState } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { useUserProfile, createProfileFromMetadata } from "@/hooks/useUserProfile";
@@ -119,16 +118,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
+      // Nettoyer l'état d'authentification avant de se connecter
+      cleanupAuthState();
+      
+      // Essayer de se déconnecter globalement d'abord
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (err) {
+        // Continuer même si cela échoue
+        console.warn("Échec de la déconnexion globale:", err);
+      }
+      
+      // Appeler la fonction edge sécurisée
+      const { data, error } = await supabase.functions.invoke("secure-login", {
+        body: {
+          email,
+          password
+        }
       });
       
       if (error) {
-        throw error;
+        throw new Error(error.message || "Échec de la connexion");
       }
       
-      // User will be set by the auth state change listener
+      if (!data.session) {
+        throw new Error("Aucune session n'a été créée");
+      }
+      
+      // Définir la session manuellement avec les données retournées
+      await supabase.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token
+      });
+      
+      // L'événement onAuthStateChange sera déclenché et mettra à jour l'état utilisateur
     } catch (error: any) {
       setIsLoading(false);
       throw new Error(error.message || "Login error");
@@ -137,14 +160,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
+      // Nettoyer tous les états d'authentification
+      cleanupAuthState();
       localStorage.removeItem('userRole');
       localStorage.removeItem('userId');
       sessionStorage.removeItem('lastAdminPath');
       sessionStorage.removeItem('lastAuthenticatedPath');
       
-      await supabase.auth.signOut();
+      // Se déconnecter avec Supabase
+      await supabase.auth.signOut({ scope: 'global' });
       setUserProfile(null);
       localStorage.removeItem("originalUser");
+      
+      // Forcer le rechargement pour un état propre
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
     } catch (error) {
       console.error("Error during logout:", error);
     }
