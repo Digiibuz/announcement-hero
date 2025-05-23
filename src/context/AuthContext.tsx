@@ -1,7 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
+import { supabase, cleanupAuthState } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useUserProfile, createProfileFromMetadata } from "@/hooks/useUserProfile";
 import { useImpersonation } from "@/hooks/useImpersonation";
@@ -29,6 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Initialize auth state and set up listeners with improved persistence
   useEffect(() => {
     console.log("Setting up auth state listener");
+    
     // Set up the auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -36,10 +36,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsLoading(true);
         
         if (session?.user) {
+          console.log("Session found in auth state change:", session.user.email);
           // First set user from metadata for immediate UI feedback
           const initialProfile = createProfileFromMetadata(session.user);
           setUserProfile(initialProfile);
-          console.log("Initial profile from metadata:", initialProfile);
           
           // Then asynchronously fetch the complete profile
           setTimeout(() => {
@@ -51,6 +51,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
           }, 100);
         } else {
+          console.log("No session in auth state change");
           setUserProfile(null);
           setIsLoading(false);
         }
@@ -59,6 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Get initial session with improved caching
     const initializeAuth = async () => {
+      console.log("Initializing auth state");
       // First check if we have a locally cached user role
       const cachedUserRole = localStorage.getItem('userRole');
       const cachedUserId = localStorage.getItem('userId');
@@ -66,7 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
-        console.log("Session found during initialization");
+        console.log("Session found during initialization:", session.user.email);
         // First set user from metadata
         const initialProfile = createProfileFromMetadata(session.user);
         
@@ -119,6 +121,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
+      // Clean up auth state first
+      cleanupAuthState();
+      
+      console.log("Tentative de connexion (via context):", email);
+      
+      // Try global sign out first
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (error) {
+        console.log("Erreur lors de la déconnexion globale (ignorée)");
+      }
+      
+      // Use direct Supabase auth
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -129,6 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       // User will be set by the auth state change listener
+      console.log("Login successful for:", data.user?.email);
     } catch (error: any) {
       setIsLoading(false);
       throw new Error(error.message || "Login error");
@@ -137,14 +153,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      localStorage.removeItem('userRole');
-      localStorage.removeItem('userId');
-      sessionStorage.removeItem('lastAdminPath');
-      sessionStorage.removeItem('lastAuthenticatedPath');
+      console.log("Déconnexion...");
+      // Clean up auth state
+      cleanupAuthState();
       
-      await supabase.auth.signOut();
+      // Attempt global sign out
+      await supabase.auth.signOut({ scope: 'global' });
       setUserProfile(null);
-      localStorage.removeItem("originalUser");
     } catch (error) {
       console.error("Error during logout:", error);
     }
