@@ -1,6 +1,6 @@
 
 import React, { lazy, Suspense, useEffect } from 'react';
-import { Navigate, Route, Routes as RouterRoutes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes as RouterRoutes, useLocation, useNavigationType } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useAppLifecycle } from '@/hooks/useAppLifecycle';
@@ -24,8 +24,22 @@ const GoogleBusinessPage = lazy(() => import('@/pages/GoogleBusinessPage'));
 const AppRoutes = () => {
   const { isAuthenticated, isOnResetPasswordPage } = useAuth();
   const { pathname } = useLocation();
+  const navigationType = useNavigationType(); // Capture le type de navigation (PUSH, POP, REPLACE)
   useScrollRestoration();
-  useAppLifecycle();
+  useAppLifecycle({
+    onResume: () => {
+      console.log("Application reprise, mise à jour des données en arrière-plan");
+      // On peut invalider les requêtes ici si nécessaire sans recharger la page
+    }
+  });
+  
+  // Stocker le type de navigation pour utilisation dans les gestionnaires d'événements
+  useEffect(() => {
+    if (window.navigationType !== navigationType) {
+      window.navigationType = navigationType;
+      console.log(`Navigation de type: ${navigationType}`);
+    }
+  }, [navigationType]);
 
   // Si nous sommes sur une page de réinitialisation, autoriser l'accès
   if (isOnResetPasswordPage) {

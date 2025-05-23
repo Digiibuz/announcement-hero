@@ -20,9 +20,10 @@ const Login = () => {
   const { isAuthenticated, login } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated - without full page reload
   React.useEffect(() => {
     if (isAuthenticated) {
+      // Utiliser navigate au lieu de window.location pour éviter un rechargement complet
       navigate("/dashboard", { replace: true });
     }
   }, [isAuthenticated, navigate]);
@@ -40,6 +41,7 @@ const Login = () => {
       toast.success("Connexion réussie");
       
       // La navigation sera prise en charge par l'effet de redirection ci-dessus
+      // qui utilisera React Router au lieu d'un rechargement complet
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
       toast.error(error.message || "Échec de la connexion");

@@ -25,12 +25,14 @@ declare global {
     clearCacheAndReload: () => void;
     preventReload: boolean;
     lastFocusTime: number;
+    navigationType: 'PUSH' | 'POP' | 'REPLACE' | null;
   }
 }
 
 // Initialiser la préférence de rechargement et le temps du dernier focus
 window.preventReload = true;
 window.lastFocusTime = Date.now();
+window.navigationType = null;
 
 // Fonction pour enregistrer le service worker de manière plus robuste
 const registerServiceWorker = async () => {
@@ -136,36 +138,33 @@ window.addEventListener('load', () => {
   }
 });
 
-// Nouveau gestionnaire d'événements focus qui évite les rechargements
+// Amélioration du gestionnaire d'événements focus pour éviter complètement les rechargements
 window.addEventListener('focus', () => {
   const now = Date.now();
   const timeSinceLastFocus = now - (window.lastFocusTime || 0);
   window.lastFocusTime = now;
   
-  // Si l'onglet vient juste d'être activé (moins de 1s depuis le dernier focus)
-  // ou si l'utilisateur revient après une courte période (moins de 30s),
-  // ne pas déclencher de rechargement ou de rafraîchissement
-  if (timeSinceLastFocus < 30000) {
-    console.log("Focus récent, évitement du rechargement");
-    return;
-  }
+  // Ne jamais déclencher de rechargement lors d'un focus, quelle que soit la durée
+  console.log("Focus détecté, navigation fluide préservée");
   
-  // Pour les périodes plus longues, mettre à jour le service worker
-  // mais ne pas recharger la page
-  updateServiceWorker();
+  // Mettre à jour le service worker en arrière-plan sans recharger la page
+  if (timeSinceLastFocus > 60000) { // 1 minute
+    updateServiceWorker();
+  }
 });
 
 // Intercepter le comportement par défaut lors des changements de visibilité
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     // L'utilisateur est revenu à l'application
-    updateServiceWorker();
+    // Désactiver complètement le rechargement automatique
+    const currentPath = window.location.pathname + window.location.search + window.location.hash;
+    console.log('Reprise de l\'application sans rechargement');
     
-    // IMPORTANT: Désactiver complètement le rechargement automatique
-    if (window.preventReload) {
-      const currentPath = window.location.pathname + window.location.search + window.location.hash;
-      console.log('Reprise de l\'application sans rechargement');
-    }
+    // Mettre à jour le service worker en arrière-plan uniquement
+    setTimeout(() => {
+      updateServiceWorker();
+    }, 1000);
   } else {
     // L'utilisateur quitte l'application
     // Sauvegarde de l'état actuel
@@ -174,6 +173,10 @@ document.addEventListener('visibilitychange', () => {
       x: window.scrollX,
       y: window.scrollY
     };
+    
+    // Sauvegarde en session storage pour récupération ultérieure si besoin
+    sessionStorage.setItem('app_last_path', lastAppState.path);
+    sessionStorage.setItem('app_last_scroll', JSON.stringify(lastAppState.scroll));
   }
 });
 

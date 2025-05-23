@@ -18,6 +18,7 @@ export function useAppLifecycle(options: AppLifecycleOptions = {}) {
   const [isVisible, setIsVisible] = useState<boolean>(document.visibilityState === 'visible');
   const formStateRef = useRef<Record<string, any>>({});
   const lastVisibilityState = useRef<string>(document.visibilityState);
+  const navigationTypeRef = useRef<string | null>(window.navigationType || null);
 
   // Fonction optimisée pour sauvegarder l'état du formulaire
   const saveFormState = useCallback(
@@ -72,7 +73,8 @@ export function useAppLifecycle(options: AppLifecycleOptions = {}) {
         if (savePageState) {
           try {
             // Sauvegarder le chemin et la position de défilement
-            sessionStorage.setItem('app_last_path', location.pathname + location.search + location.hash);
+            const currentPath = location.pathname + location.search + location.hash;
+            sessionStorage.setItem('app_last_path', currentPath);
             sessionStorage.setItem('app_last_scroll', JSON.stringify({
               x: window.scrollX,
               y: window.scrollY
@@ -81,6 +83,7 @@ export function useAppLifecycle(options: AppLifecycleOptions = {}) {
             // Sauvegarder l'état du formulaire
             saveFormState();
             
+            console.log('État sauvegardé pour:', currentPath);
           } catch (error) {
             console.warn('Erreur lors de la sauvegarde de l\'état de la page:', error);
           }
@@ -92,6 +95,7 @@ export function useAppLifecycle(options: AppLifecycleOptions = {}) {
         }
       } else if (currentVisibility === 'visible') {
         // L'utilisateur est revenu sur la page - mais ne rechargez PAS la page
+        console.log('Application reprise, navigation fluide préservée');
         
         // Callback personnalisé
         if (onResume) {
@@ -111,21 +115,8 @@ export function useAppLifecycle(options: AppLifecycleOptions = {}) {
     // Permettre les navigations réelles mais empêcher les rechargements automatiques
     window.preventReload = true;
     
-    // Ne plus interrompre la navigation si l'utilisateur quitte réellement
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      // Si ce n'est pas un changement d'onglet, laisser le comportement normal
-      if (!document.hidden) return;
-      
-      // Pour les changements d'onglet, empêcher le rechargement
-      event.preventDefault();
-      return (event.returnValue = '');
-    };
-    
-    window.addEventListener('beforeunload', handleBeforeUnload, { capture: true });
-
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('beforeunload', handleBeforeUnload, { capture: true });
       saveFormState.cancel();
     };
   }, [location, onResume, onHide, savePageState, saveFormState]);
@@ -136,45 +127,51 @@ export function useAppLifecycle(options: AppLifecycleOptions = {}) {
       try {
         // Restaurer la position de défilement
         const savedScroll = sessionStorage.getItem('app_last_scroll');
-        if (savedScroll) {
+        if (savedScroll && location.pathname === sessionStorage.getItem('app_last_path')) {
           const { x, y } = JSON.parse(savedScroll);
+          // Utiliser requestAnimationFrame pour s'assurer que la restauration se fait après le rendu
           window.requestAnimationFrame(() => {
             window.scrollTo(x, y);
           });
         }
         
-        // Restaurer l'état du formulaire si présent
+        // Restaurer l'état du formulaire si présent et si nous sommes sur la même page
         const savedFormState = sessionStorage.getItem('app_form_state');
-        if (savedFormState) {
+        const lastPath = sessionStorage.getItem('app_last_path');
+        
+        if (savedFormState && lastPath === location.pathname + location.search + location.hash) {
           const formState = JSON.parse(savedFormState);
           
-          // Restaurer les valeurs des champs de formulaire
-          Object.entries(formState).forEach(([id, value]) => {
-            if (id.endsWith('_state')) {
-              // Pour les attributs de données d'état
-              const baseId = id.replace('_state', '');
-              const element = document.getElementById(baseId);
-              if (element) {
-                element.setAttribute('data-state', value as string);
+          // Attendre que les composants soient montés
+          setTimeout(() => {
+            // Restaurer les valeurs des champs de formulaire
+            Object.entries(formState).forEach(([id, value]) => {
+              if (id.endsWith('_state')) {
+                // Pour les attributs de données d'état
+                const baseId = id.replace('_state', '');
+                const element = document.getElementById(baseId);
+                if (element) {
+                  element.setAttribute('data-state', value as string);
+                }
+              } else {
+                // Pour les champs de formulaire normaux
+                const element = document.getElementById(id) || document.getElementsByName(id)[0] as HTMLElement | null;
+                if (element && 'value' in element) {
+                  (element as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).value = value as string;
+                  
+                  // Déclencher un événement de changement pour les composants React
+                  const event = new Event('change', { bubbles: true });
+                  element.dispatchEvent(event);
+                }
               }
-            } else {
-              // Pour les champs de formulaire normaux
-              const element = document.getElementById(id) || document.getElementsByName(id)[0] as HTMLElement | null;
-              if (element && 'value' in element) {
-                (element as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).value = value as string;
-                
-                // Déclencher un événement de changement pour les composants React
-                const event = new Event('change', { bubbles: true });
-                element.dispatchEvent(event);
-              }
-            }
-          });
+            });
+          }, 100);
         }
       } catch (error) {
         console.warn('Erreur lors de la restauration de l\'état:', error);
       }
     }
-  }, [isVisible, savePageState]);
+  }, [isVisible, savePageState, location.pathname, location.search, location.hash]);
 
   return {
     isVisible,
