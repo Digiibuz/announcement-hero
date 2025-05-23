@@ -1,8 +1,8 @@
 
 import React from "react";
-import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Loader2 } from "lucide-react";
+import { Role } from "@/types/auth";
+import { useForm } from "react-hook-form";
 import { 
   Form, 
   FormControl, 
@@ -20,17 +20,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { UserProfile } from "@/types/auth";
+import { Loader2 } from "lucide-react";
 import { WordPressConfig } from "@/types/wordpress";
 
+// Make sure FormSchema aligns with our Role type
 export const formSchema = z.object({
-  email: z.string().email({ message: "Email invalide" }),
-  name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères" }),
-  role: z.enum(["admin", "client"], {
-    required_error: "Veuillez sélectionner un rôle",
+  email: z.string().email({
+    message: "Email invalide"
   }),
+  name: z.string().min(2, {
+    message: "Le nom doit comporter au moins 2 caractères"
+  }),
+  role: z.enum(['admin', 'editor', 'client'] as const),
   clientId: z.string().optional(),
   wordpressConfigId: z.string().optional(),
   wpConfigIds: z.array(z.string()).optional(),
@@ -103,6 +105,7 @@ const FormFields: React.FC<FormFieldsProps> = ({
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="admin">Administrateur</SelectItem>
+                  <SelectItem value="editor">Éditeur</SelectItem>
                   <SelectItem value="client">Client</SelectItem>
                 </SelectContent>
               </Select>
