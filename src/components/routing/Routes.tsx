@@ -1,58 +1,71 @@
 
-import { Routes as RouterRoutes, Route, Navigate } from "react-router-dom";
+import React, { lazy, Suspense, useEffect } from 'react';
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Suspense, lazy } from 'react';
-import { LoadingIndicator } from "@/components/ui/loading-indicator";
+import { useScrollRestoration } from '@/hooks/useScrollRestoration';
+import { useAppLifecycle } from '@/hooks/useAppLifecycle';
+import ProtectedRoute from "./ProtectedRoute";
+import AdminRoute from "./AdminRoute";
 import Login from "@/pages/Login";
-import { ProtectedRoute } from "./ProtectedRoute";
-import { AdminRoute } from "./AdminRoute";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
+import NotFound from "@/pages/NotFound";
 
-// Lazy loading pages
-const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
-const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
-const Dashboard = lazy(() => import("@/pages/Dashboard"));
-const CreateAnnouncement = lazy(() => import("@/pages/CreateAnnouncement"));
-const Announcements = lazy(() => import("@/pages/Announcements"));
-const AnnouncementDetail = lazy(() => import("@/pages/AnnouncementDetail"));
-const UserManagement = lazy(() => import("@/pages/UserManagement"));
-const WordPressManagement = lazy(() => import("@/pages/WordPressManagement"));
-const UserProfile = lazy(() => import("@/pages/UserProfile"));
-const Support = lazy(() => import("@/pages/Support"));
-const GoogleBusinessPage = lazy(() => import("@/pages/GoogleBusinessPage"));
-const NotFound = lazy(() => import("@/pages/NotFound"));
+// Lazy loaded components
+const Dashboard = lazy(() => import('@/pages/Dashboard'));
+const Announcements = lazy(() => import('@/pages/Announcements'));
+const CreateAnnouncement = lazy(() => import('@/pages/CreateAnnouncement'));
+const AnnouncementDetail = lazy(() => import('@/pages/AnnouncementDetail'));
+const WordPressManagement = lazy(() => import('@/pages/WordPressManagement'));
+const UserManagement = lazy(() => import('@/pages/UserManagement'));
+const UserProfile = lazy(() => import('@/pages/UserProfile'));
+const GoogleBusinessPage = lazy(() => import('@/pages/GoogleBusinessPage'));
 
-const LoadingFallback = () => (
-  <div className="min-h-screen flex items-center justify-center">
-    <LoadingIndicator variant="dots" size={42} />
-  </div>
-);
+const AppRoutes = () => {
+  const { isAuthenticated, isOnResetPasswordPage } = useAuth();
+  const { pathname } = useLocation();
+  useScrollRestoration();
+  useAppLifecycle();
 
-export const Routes = () => (
-  <Suspense fallback={<LoadingFallback />}>
-    <RouterRoutes>
-      {/* Redirect root to dashboard if logged in, otherwise to login */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      
-      {/* Public routes */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
-      
-      {/* Protected routes */}
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/announcements" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
-      <Route path="/announcements/:id" element={<ProtectedRoute><AnnouncementDetail /></ProtectedRoute>} />
-      <Route path="/create" element={<ProtectedRoute><CreateAnnouncement /></ProtectedRoute>} />
-      <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
-      <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
-      <Route path="/google-business" element={<ProtectedRoute><GoogleBusinessPage /></ProtectedRoute>} />
-      
-      {/* Admin/Client only routes */}
-      <Route path="/users" element={<AdminRoute><UserManagement /></AdminRoute>} />
-      <Route path="/wordpress" element={<AdminRoute><WordPressManagement /></AdminRoute>} />
-      
-      {/* Fallback route */}
-      <Route path="*" element={<NotFound />} />
-    </RouterRoutes>
-  </Suspense>
-);
+  // Si nous sommes sur une page de réinitialisation, autoriser l'accès
+  if (isOnResetPasswordPage) {
+    return (
+      <Suspense fallback={<div>Chargement...</div>}>
+        <Routes>
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="*" element={<Navigate to="/reset-password" replace />} />
+        </Routes>
+      </Suspense>
+    );
+  }
+
+  return (
+    <Suspense fallback={<div>Chargement...</div>}>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" replace />} />
+        <Route path="/forgot-password" element={!isAuthenticated ? <ForgotPassword /> : <Navigate to="/dashboard" replace />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        
+        {/* Protected routes */}
+        <Route path="/" element={<ProtectedRoute><Navigate to="/dashboard" replace /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/announcements" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
+        <Route path="/announcements/:id" element={<ProtectedRoute><AnnouncementDetail /></ProtectedRoute>} />
+        <Route path="/create" element={<ProtectedRoute><CreateAnnouncement /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
+        
+        {/* Admin routes */}
+        <Route path="/wordpress" element={<AdminRoute><WordPressManagement /></AdminRoute>} />
+        <Route path="/users" element={<AdminRoute adminOnly><UserManagement /></AdminRoute>} />
+        <Route path="/google-business" element={<ProtectedRoute><GoogleBusinessPage /></ProtectedRoute>} />
+        
+        {/* Fallback routes */}
+        <Route path="/404" element={<NotFound />} />
+        <Route path="*" element={<Navigate to="/404" replace />} />
+      </Routes>
+    </Suspense>
+  );
+};
+
+export default AppRoutes;

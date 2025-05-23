@@ -1,20 +1,13 @@
 
-import { User } from "@supabase/supabase-js";
-
-export type Role = "admin" | "client";
+import { Provider } from '@supabase/supabase-js';
 
 export interface UserProfile {
   id: string;
+  name: string | null;
   email: string;
-  name: string;
-  role: Role;
-  clientId?: string;
-  wordpressConfigId?: string;
-  wordpressConfig?: {
-    name: string;
-    site_url: string;
-  } | null;
-  lastLogin?: string | null;
+  role: 'admin' | 'editor' | 'client';
+  clientId?: string | null;
+  wordpressConfigId?: string | null;
 }
 
 export interface AuthContextType {
@@ -32,16 +25,43 @@ export interface AuthContextType {
   isOnResetPasswordPage: boolean;
 }
 
-export interface GoogleBusinessProfile {
-  id: string;
-  userId: string;
-  googleEmail: string | null;
-  gmb_account_id: string | null;
-  gmb_location_id: string | null;
-  created_at: string;
-  updated_at: string;
-  // Token fields
-  refresh_token?: string;
-  access_token?: string;
-  token_expires_at?: string;
+export interface LoginFormValues {
+  email: string;
+  password: string;
 }
+
+export interface RegistrationFormValues {
+  email: string;
+  name: string;
+  password: string;
+  passwordConfirm: string;
+}
+
+export interface EmailConfirmationValues {
+  email: string;
+}
+
+export interface ResetPasswordValues {
+  password: string;
+  confirm_password: string;
+}
+
+export interface UserFormValues {
+  email: string;
+  name?: string;
+  role: 'admin' | 'editor' | 'client';
+  wordpress_config_id?: string;
+  password?: string;
+  password_confirmation?: string;
+  client_id?: string;
+}
+
+export type UserFormErrors = {
+  email?: string;
+  name?: string;
+  role?: string;
+  wordpress_config_id?: string;
+  password?: string;
+  password_confirmation?: string;
+  client_id?: string;
+};

@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useEffect } from "react";
@@ -6,7 +7,6 @@ import { useAuth } from "@/context/AuthContext";
 import { useIsMobile } from "@/hooks/use-media-query";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { 
   Loader2, 
@@ -17,10 +17,8 @@ import {
   Globe,
   FileText,
   Menu,
-  UserCircle,
-  Ticket
+  UserCircle
 } from "lucide-react";
-import { useTicketNotifications } from "@/hooks/useTicketNotifications";
 import { supabase } from "@/integrations/supabase/client";
 
 const Sidebar = () => {
@@ -28,63 +26,6 @@ const Sidebar = () => {
   const { pathname } = useLocation();
   const { user, logout, isLoading, isAuthenticated, isAdmin, isClient } = useAuth();
   const [isOpen, setIsOpen] = React.useState(false);
-  const { unreadCount, resetTicketTabView } = useTicketNotifications();
-  const [localUnreadCount, setLocalUnreadCount] = React.useState(0);
-
-  // Initialize local unread count with the value from the hook
-  useEffect(() => {
-    setLocalUnreadCount(unreadCount);
-  }, [unreadCount]);
-
-  // Set up real-time listener for ticket responses and read status changes
-  useEffect(() => {
-    if (!user?.id) return;
-
-    // Listen for new ticket responses
-    const responsesChannel = supabase
-      .channel('sidebar_ticket_responses')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'ticket_responses'
-      }, () => {
-        // Update the local unread count with a slight delay
-        setTimeout(() => setLocalUnreadCount(unreadCount), 300);
-      })
-      .subscribe();
-
-    // Listen for changes in ticket read status
-    const readStatusChannel = supabase
-      .channel('sidebar_ticket_read_status')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'ticket_read_status'
-      }, () => {
-        // Update the local unread count with a slight delay
-        setTimeout(() => setLocalUnreadCount(unreadCount), 300);
-      })
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'ticket_read_status'
-      }, () => {
-        // Update the local unread count with a slight delay
-        setTimeout(() => setLocalUnreadCount(unreadCount), 300);
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(responsesChannel);
-      supabase.removeChannel(readStatusChannel);
-    };
-  }, [user?.id, unreadCount]);
-
-  useEffect(() => {
-    if (!pathname.includes('/support')) {
-      resetTicketTabView();
-    }
-  }, [pathname, resetTicketTabView]);
 
   if (!isAuthenticated) return null;
 
@@ -132,21 +73,7 @@ const Sidebar = () => {
       href: "/profile",
       icon: <UserCircle className="h-5 w-5 dark:text-gray-200" />,
       isActive: pathname === "/profile",
-    },
-    {
-      name: "Support & Assistance",
-      href: "/support",
-      icon: <Ticket className="h-5 w-5 dark:text-gray-200" />,
-      isActive: pathname === "/support",
-      badge: localUnreadCount > 0 ? (
-        <Badge 
-          variant="destructive" 
-          className="ml-2 px-1.5 py-0.5 text-xs"
-        >
-          {localUnreadCount}
-        </Badge>
-      ) : null,
-    },
+    }
   ];
 
   const SidebarContent = () => (
@@ -215,7 +142,7 @@ const Sidebar = () => {
           </ul>
         </div>
 
-        {/* Profile, support and logout items - always at the bottom */}
+        {/* Profile and logout items - always at the bottom */}
         <div className="mt-auto border-t border-border pt-4">
           {profileItems.map((item) => (
             <Link key={item.href} to={item.href} onClick={() => isMobile && setIsOpen(false)}>
@@ -228,7 +155,6 @@ const Sidebar = () => {
               >
                 {item.icon}
                 <span className="ml-3">{item.name}</span>
-                {item.badge}
               </Button>
             </Link>
           ))}

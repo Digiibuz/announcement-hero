@@ -3,7 +3,6 @@ import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
-import { Skeleton } from "@/components/ui/skeleton";
 import AnnouncementActions from "@/components/announcements/detail/AnnouncementActions";
 import AnnouncementTabs from "@/components/announcements/detail/AnnouncementTabs";
 import { useAnnouncementDetail } from "@/components/announcements/detail/useAnnouncementDetail";
