@@ -2,19 +2,10 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { LoadingIndicator } from "@/components/ui/loading-indicator";
-import { useEffect } from "react";
 
 const AdminRoute = ({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) => {
   const { isAuthenticated, isLoading, isAdmin, isClient, isOnResetPasswordPage } = useAuth();
   const location = useLocation();
-
-  useEffect(() => {
-    if (isAuthenticated && !isLoading && !isOnResetPasswordPage) {
-      if (isAdmin || isClient) {
-        sessionStorage.setItem('lastAdminPath', location.pathname);
-      }
-    }
-  }, [location.pathname, isAuthenticated, isAdmin, isClient, isLoading, isOnResetPasswordPage]);
 
   if (isLoading) {
     return (
@@ -36,7 +27,6 @@ const AdminRoute = ({ children, adminOnly = false }: { children: React.ReactNode
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Additional check for admin-only routes
   if (adminOnly && !isAdmin) {
     return <Navigate to="/dashboard" replace />;
   }

@@ -2,17 +2,10 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { LoadingIndicator } from "@/components/ui/loading-indicator";
-import { useEffect } from "react";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading, isOnResetPasswordPage } = useAuth();
   const location = useLocation();
-
-  useEffect(() => {
-    if (isAuthenticated && !isLoading && !isOnResetPasswordPage) {
-      sessionStorage.setItem('lastAuthenticatedPath', location.pathname);
-    }
-  }, [location.pathname, isAuthenticated, isLoading, isOnResetPasswordPage]);
 
   if (isLoading) {
     return (
