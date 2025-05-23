@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -106,6 +107,15 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
         } else {
           toast.error(`${errorMessage}${errorDetails ? ` - ${errorDetails}` : ""}`);
         }
+        return;
+      }
+
+      // Gestion du cas où un profil manquant a été recréé pour un utilisateur existant
+      if (data.message && data.message.includes("Profil recréé")) {
+        toast.dismiss(toastId);
+        toast.success("Profil utilisateur recréé avec succès pour un utilisateur existant");
+        form.reset();
+        onUserCreated();
         return;
       }
       
