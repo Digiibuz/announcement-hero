@@ -181,32 +181,40 @@ serve(async (req) => {
       );
     }
 
-    // Create the user
+    // Create the user - VÉRIFICATION ET CORRECTION PRIORITAIRE
     console.log("Création de l'utilisateur:", email);
     let newUserData;
     try {
+      // Assurer que l'utilisateur est créé dans le système d'authentification
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
-        email_confirm: true,
+        email_confirm: true, // Confirmer l'email automatiquement
         user_metadata: {
           name,
           role,
-          wordpressConfigId: role === "client" ? wordpressConfigId : null,
+          wordpressConfigId: role === "client" && wordpressConfigId ? wordpressConfigId : null,
         },
       });
 
       if (error) {
-        console.log("Erreur lors de la création de l'utilisateur:", error.message);
+        console.log("Erreur lors de la création de l'utilisateur dans auth:", error.message);
         throw error;
       }
       
+      if (!data || !data.user || !data.user.id) {
+        throw new Error("La création de l'utilisateur n'a pas retourné d'ID utilisateur valide");
+      }
+      
       newUserData = data;
-      console.log("Utilisateur créé dans auth:", newUserData.user.id);
+      console.log("Utilisateur créé avec succès dans auth:", newUserData.user.id);
     } catch (error) {
-      console.error("Erreur lors de la création de l'utilisateur:", error);
+      console.error("Erreur critique lors de la création de l'utilisateur dans auth:", error);
       return new Response(
-        JSON.stringify({ error: error.message || "Erreur lors de la création de l'utilisateur" }),
+        JSON.stringify({ 
+          error: error.message || "Erreur lors de la création de l'utilisateur", 
+          details: "Impossible de créer l'utilisateur dans le système d'authentification" 
+        }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 500,
@@ -251,10 +259,14 @@ serve(async (req) => {
       );
     }
 
-    console.log("Utilisateur créé avec succès:", newUserData.user.id);
+    console.log("Utilisateur et profil créés avec succès:", newUserData.user.id);
 
     return new Response(
-      JSON.stringify({ success: true, user: newUserData.user }),
+      JSON.stringify({ 
+        success: true, 
+        user: newUserData.user,
+        message: "Utilisateur créé avec succès dans le système d'authentification et la table des profils"
+      }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,

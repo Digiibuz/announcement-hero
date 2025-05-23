@@ -111,7 +111,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       }
       
       toast.dismiss(toastId);
-      toast.success("Utilisateur créé avec succès");
+      toast.success((data as any).message || "Utilisateur créé avec succès");
       form.reset();
       onUserCreated();
     } catch (error: any) {
