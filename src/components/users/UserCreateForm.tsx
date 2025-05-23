@@ -74,45 +74,51 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       
       const toastId = toast.loading("Création de l'utilisateur en cours...");
       
-      // Préparation des données à envoyer
+      // Prepare data to send
       const userData = {
         email: values.email,
         name: values.name,
         password: values.password,
         role: values.role,
-        wordpressConfigId: values.role === "client" ? values.wordpressConfigId : "",
+        wordpressConfigId: values.role === "client" && values.wordpressConfigId ? values.wordpressConfigId : "",
       };
       
       console.log("Données envoyées pour création:", userData);
       
-      // Appel à la fonction Edge
-      const { data, error } = await supabase.functions.invoke("create-user", {
-        body: userData,
-      });
-      
-      if (error) {
-        console.error("Erreur lors de l'appel à la fonction:", error);
-        toast.dismiss(toastId);
-        toast.error(`Erreur: ${error.message || "Échec de la création de l'utilisateur"}`);
-        return;
-      }
-
-      // Vérifier la réponse de la fonction Edge
-      if (!data || data.error) {
-        console.error("Erreur retournée par la fonction:", data);
-        const errorMessage = data?.error || "Erreur inconnue";
-        const errorDetails = data?.details || "";
+      try {
+        // Call the Edge Function
+        const { data, error } = await supabase.functions.invoke("create-user", {
+          body: userData,
+        });
         
+        if (error) {
+          console.error("Erreur lors de l'appel à la fonction:", error);
+          toast.dismiss(toastId);
+          toast.error(`Erreur: ${error.message || "Échec de la création de l'utilisateur"}`);
+          return;
+        }
+
+        // Check the response from the Edge Function
+        if (!data?.success) {
+          console.error("Erreur retournée par la fonction:", data);
+          const errorMessage = data?.error || "Erreur inconnue";
+          const errorDetails = data?.details || "";
+          
+          toast.dismiss(toastId);
+          toast.error(`${errorMessage}${errorDetails ? ` - ${errorDetails}` : ""}`);
+          return;
+        }
+        
+        // Success
         toast.dismiss(toastId);
-        toast.error(`${errorMessage}${errorDetails ? ` - ${errorDetails}` : ""}`);
-        return;
+        toast.success("Utilisateur créé avec succès");
+        form.reset();
+        onUserCreated();
+      } catch (apiError: any) {
+        console.error("Erreur d'API:", apiError);
+        toast.dismiss(toastId);
+        toast.error(`Erreur API: ${apiError.message || "Échec de la connexion à l'API"}`);
       }
-      
-      // Succès
-      toast.dismiss(toastId);
-      toast.success("Utilisateur créé avec succès");
-      form.reset();
-      onUserCreated();
       
     } catch (error: any) {
       console.error("Erreur non gérée:", error);
@@ -203,7 +209,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
               )}
             />
             
-            {/* Sélection de configuration WordPress uniquement pour les clients */}
+            {/* WordPress config selection only for clients */}
             {form.watch("role") === "client" && (
               <FormField
                 control={form.control}
