@@ -32,20 +32,21 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      // Nettoyer l'état d'authentification avant de se connecter
+      // Clean up authentication state before login
       cleanupAuthState();
       
-      // Essayer de se déconnecter globalement d'abord pour éviter les conflits
+      // Try to sign out globally first to prevent conflicts
       try {
         await supabase.auth.signOut({ scope: 'global' });
+        console.log("Déconnexion globale réussie");
       } catch (err) {
-        // Continuer même si cela échoue
+        // Continue even if this fails
         console.warn("Échec de la déconnexion globale:", err);
       }
       
       console.log("Tentative de connexion pour:", email);
       
-      // Appeler la fonction edge sécurisée avec une gestion d'erreur améliorée
+      // Call secure-login edge function with improved error handling
       const response = await supabase.functions.invoke("secure-login", {
         body: {
           email,
@@ -53,19 +54,21 @@ const Login = () => {
         }
       });
       
-      // Vérifier si la fonction a retourné une erreur HTTP
+      // Check if the function returned an HTTP error
       if (response.error) {
+        console.error("Erreur de la fonction secure-login:", response.error);
         throw new Error(response.error.message || "Échec de la connexion");
       }
       
-      // Vérifier si les données sont présentes
+      // Check if data is present
       if (!response.data || !response.data.session) {
+        console.error("Réponse invalide de secure-login:", response.data);
         throw new Error("Aucune session n'a été créée");
       }
       
       console.log("Réponse de connexion réussie:", response.data);
       
-      // Définir la session manuellement avec les données retournées
+      // Manually set the session with the returned data
       await supabase.auth.setSession({
         access_token: response.data.session.access_token,
         refresh_token: response.data.session.refresh_token
@@ -75,10 +78,10 @@ const Login = () => {
         ? "Connexion réussie avec sécurité renforcée" 
         : "Connexion réussie");
       
-      // Redirect after successful login with a small delay
+      // Redirect after successful login with a delay
       setTimeout(() => {
         navigate("/dashboard");
-      }, 300);
+      }, 500);
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
       toast.error(error.message || "Échec de la connexion");

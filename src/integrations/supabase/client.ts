@@ -29,6 +29,7 @@ export const cleanupAuthState = () => {
   // Supprimer tous les clés d'authentification Supabase du localStorage
   Object.keys(localStorage).forEach((key) => {
     if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+      console.log(`Nettoyage de la clé localStorage: ${key}`);
       localStorage.removeItem(key);
     }
   });
@@ -36,6 +37,7 @@ export const cleanupAuthState = () => {
   // Supprimer du sessionStorage si utilisé
   Object.keys(sessionStorage || {}).forEach((key) => {
     if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+      console.log(`Nettoyage de la clé sessionStorage: ${key}`);
       sessionStorage.removeItem(key);
     }
   });

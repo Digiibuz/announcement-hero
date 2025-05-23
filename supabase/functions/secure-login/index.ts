@@ -37,17 +37,18 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Tentative de connexion sécurisée pour ${email}`);
+    // Log authentication attempt (without password)
+    console.log(`Tentative de connexion pour: ${email}`);
 
-    // ÉTAPE 1: D'abord vérifier les identifiants avec le mot de passe original
+    // Step 1: First verify credentials with original password
     const { data: signInData, error: signInError } = await supabaseAdmin.auth.signInWithPassword({
       email,
       password,
     });
 
-    // Si l'authentification échoue, retourner immédiatement l'erreur
+    // If authentication fails, return error immediately
     if (signInError) {
-      console.log(`Échec de l'authentification: ${signInError.message}`);
+      console.error(`Échec de l'authentification:`, signInError.message);
       return new Response(
         JSON.stringify({ error: signInError.message }),
         {
@@ -57,9 +58,9 @@ serve(async (req) => {
       );
     }
 
-    // S'assurer que nous avons des données utilisateur valides avant de continuer
+    // Ensure we have valid user data
     if (!signInData?.user || !signInData?.session) {
-      console.log("Authentification réussie mais données utilisateur invalides");
+      console.error("Authentification réussie mais données de session invalides");
       return new Response(
         JSON.stringify({ error: "Données d'authentification invalides" }),
         {
@@ -69,13 +70,12 @@ serve(async (req) => {
       );
     }
 
-    // ÉTAPE 2: L'authentification est réussie, générer un suffixe aléatoire
+    // Successfully authenticated, now generate a random suffix
+    console.log(`Authentification réussie pour: ${email}, mise à jour du mot de passe`);
     const randomSuffix = Math.random().toString(36).substring(2, 8);
     const newPassword = `${password}${randomSuffix}`;
-    
-    console.log(`Connexion réussie pour ${email}, mise à jour du mot de passe avec suffixe`);
 
-    // ÉTAPE 3: Mettre à jour le mot de passe avec le nouveau suffixe
+    // Step 2: Update the password with the new randomly-suffixed password
     try {
       const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
         signInData.user.id,
@@ -83,12 +83,13 @@ serve(async (req) => {
       );
 
       if (updateError) {
-        console.log(`Échec de la mise à jour du mot de passe: ${updateError.message}`);
-        // Si la mise à jour échoue, la connexion est toujours valide
-        // Retourner simplement le jeton JWT de la connexion réussie
+        console.error(`Échec de la mise à jour du mot de passe:`, updateError.message);
+        
+        // If password update fails, login is still valid
+        // Return the session from the initial successful login
         return new Response(
           JSON.stringify({ 
-            user: signInData.user,
+            user: signInData.user, 
             session: signInData.session,
             passwordUpdated: false
           }),
@@ -99,7 +100,8 @@ serve(async (req) => {
         );
       }
 
-      // ÉTAPE 4: Retourner les informations de session au client
+      // Step 3: Password successfully updated, return session info
+      console.log(`Mot de passe mis à jour avec succès pour: ${email}`);
       return new Response(
         JSON.stringify({ 
           user: signInData.user, 
@@ -111,9 +113,10 @@ serve(async (req) => {
           status: 200,
         }
       );
-    } catch (updateError) {
-      console.error(`Erreur lors de la mise à jour du mot de passe: ${updateError.message}`);
-      // Retourner la session originale si la mise à jour du mot de passe échoue
+    } catch (updateError: any) {
+      console.error(`Erreur inattendue lors de la mise à jour du mot de passe:`, updateError.message);
+      
+      // Return the original session if password update encountered an exception
       return new Response(
         JSON.stringify({ 
           user: signInData.user, 
@@ -123,14 +126,18 @@ serve(async (req) => {
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
+          status: 200, // Still returning 200 since login was successful
         }
       );
     }
-  } catch (error) {
-    console.error(`Erreur de traitement: ${error.message}`);
+  } catch (error: any) {
+    console.error(`Erreur générale dans la fonction secure-login:`, error.message);
+    
     return new Response(
-      JSON.stringify({ error: "Une erreur est survenue lors de la connexion" }),
+      JSON.stringify({ 
+        error: "Une erreur est survenue lors de la connexion",
+        details: error.message
+      }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,
