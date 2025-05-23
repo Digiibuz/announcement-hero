@@ -92,24 +92,66 @@ const ResetPassword = () => {
           if (error) {
             console.error("Erreur lors de la configuration de la session:", error);
             setIsTokenValid(false);
+            toast.error("Le lien de réinitialisation est invalide ou a expiré");
           } else {
             console.log("Session configurée avec succès:", data);
             setIsTokenValid(true);
+            toast.success("Vous pouvez maintenant réinitialiser votre mot de passe");
           }
         } else {
-          // Sinon, nous vérifions si l'utilisateur a une session valide
-          console.log("Pas de token dans le hash, vérification d'une session existante...");
-          const { data, error } = await supabase.auth.getSession();
-          
-          if (error) {
-            console.error("Erreur lors de la vérification de la session:", error);
-            setIsTokenValid(false);
-          } else if (data?.session?.user) {
-            console.log("Session utilisateur trouvée:", data.session.user);
-            setIsTokenValid(true);
+          // Vérifier si nous avons une URL comme digii.app.digiibuz.fr/reset-password#access_token=...
+          // Certains navigateurs peuvent ne pas capturer correctement le hash via URLSearchParams
+          if (location.hash && location.hash.includes('access_token')) {
+            console.log("Token détecté dans le hash mais non extrait par URLSearchParams, tentative alternative");
+            
+            // Extraction manuelle
+            const hashString = location.hash.substring(1);
+            const tokenMatch = hashString.match(/access_token=([^&]*)/);
+            const refreshMatch = hashString.match(/refresh_token=([^&]*)/);
+            const typeMatch = hashString.match(/type=([^&]*)/);
+            
+            if (tokenMatch && tokenMatch[1] && typeMatch && typeMatch[1] === 'recovery') {
+              const extractedToken = tokenMatch[1];
+              const extractedRefresh = refreshMatch && refreshMatch[1] ? refreshMatch[1] : '';
+              
+              console.log("Token extrait manuellement:", !!extractedToken);
+              setAccessToken(extractedToken);
+              if (extractedRefresh) setRefreshToken(extractedRefresh);
+              
+              // Configurer la session avec le token extrait
+              const { data, error } = await supabase.auth.setSession({
+                access_token: extractedToken,
+                refresh_token: extractedRefresh,
+              });
+              
+              if (error) {
+                console.error("Erreur lors de la configuration de la session (méthode alternative):", error);
+                setIsTokenValid(false);
+                toast.error("Le lien de réinitialisation est invalide ou a expiré");
+              } else {
+                console.log("Session configurée avec succès (méthode alternative):", data);
+                setIsTokenValid(true);
+                toast.success("Vous pouvez maintenant réinitialiser votre mot de passe");
+              }
+            } else {
+              console.log("Pas de token de récupération valide trouvé dans le hash");
+              setIsTokenValid(false);
+            }
           } else {
-            console.log("Aucune session trouvée et pas de token dans l'URL");
-            setIsTokenValid(false);
+            // Sinon, nous vérifions si l'utilisateur a une session valide
+            console.log("Pas de token dans le hash, vérification d'une session existante...");
+            const { data, error } = await supabase.auth.getSession();
+            
+            if (error) {
+              console.error("Erreur lors de la vérification de la session:", error);
+              setIsTokenValid(false);
+            } else if (data?.session?.user) {
+              console.log("Session utilisateur trouvée:", data.session.user);
+              setIsTokenValid(true);
+            } else {
+              console.log("Aucune session trouvée et pas de token dans l'URL");
+              setIsTokenValid(false);
+            }
           }
         }
       } catch (error) {
