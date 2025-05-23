@@ -89,7 +89,12 @@ serve(async (req) => {
         console.error("Erreur OpenAI:", error);
         
         // Gestion spécifique des erreurs de quotas
-        if (error.error && error.error.message && error.error.message.includes("quota")) {
+        if (error.error && error.error.message && (
+            error.error.message.includes("quota") || 
+            error.error.message.includes("rate") || 
+            error.error.message.includes("limit") ||
+            error.error.code === "insufficient_quota"
+        )) {
           return new Response(JSON.stringify({ 
             success: false, 
             error: "Limite d'utilisation de l'API OpenAI atteinte. Veuillez vérifier votre abonnement ou réessayer plus tard.",
@@ -138,7 +143,11 @@ serve(async (req) => {
       console.error("Erreur lors de l'appel à OpenAI:", openAIError);
       
       // Vérifiez si c'est une erreur de dépassement de quota
-      if (openAIError.message && openAIError.message.includes("quota")) {
+      if (openAIError.message && (
+          openAIError.message.includes("quota") || 
+          openAIError.message.includes("rate") || 
+          openAIError.message.includes("limit")
+      )) {
         return new Response(JSON.stringify({ 
           success: false, 
           error: "Limite d'utilisation de l'API OpenAI atteinte. Veuillez vérifier votre abonnement ou réessayer plus tard.",

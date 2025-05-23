@@ -43,9 +43,9 @@ export const useContentOptimization = () => {
       if (error) {
         console.error("Erreur Supabase Functions:", error);
         
-        // Vérifier si c'est une erreur de quota
-        if (error.message && error.message.includes("429")) {
-          throw new Error("Limite d'utilisation de l'API OpenAI atteinte. Veuillez réessayer plus tard.");
+        // Vérifier si c'est une erreur de quota (429)
+        if (error.message && error.message.includes("non-2xx status code") && error.status === 429) {
+          throw new Error("Limite d'utilisation de l'API OpenAI atteinte. Veuillez réessayer plus tard ou vérifier votre abonnement.");
         }
         
         throw new Error(`Erreur lors de l'appel à la fonction: ${error.message}`);
@@ -53,8 +53,12 @@ export const useContentOptimization = () => {
       
       if (!data || !data.success) {
         // Traitement spécifique pour les erreurs de quota OpenAI
-        if (data?.error && (data.error.includes("quota") || data.error.includes("limite"))) {
-          throw new Error("Limite d'utilisation de l'API OpenAI atteinte. Veuillez réessayer plus tard.");
+        if (data?.error && (
+          data.error.includes("quota") || 
+          data.error.includes("limite") || 
+          data.error.includes("OpenAI")
+        )) {
+          throw new Error("Limite d'utilisation de l'API OpenAI atteinte. Veuillez réessayer plus tard ou vérifier votre abonnement.");
         }
         
         throw new Error(data?.error || "L'optimisation a échoué pour une raison inconnue");
@@ -75,9 +79,10 @@ export const useContentOptimization = () => {
       if (error.message && (
           error.message.includes("quota") || 
           error.message.includes("limite") || 
-          error.message.includes("OpenAI")
+          error.message.includes("OpenAI") ||
+          error.message.includes("rate")
       )) {
-        toast.error("Limite d'utilisation de l'IA atteinte. Veuillez réessayer plus tard ou contacter le support.");
+        toast.error("Limite d'utilisation de l'IA atteinte. Veuillez réessayer plus tard ou contacter le support pour augmenter votre quota.");
       } else {
         toast.error(`Erreur lors de l'optimisation: ${error.message || error}`);
       }
