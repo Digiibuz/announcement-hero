@@ -59,7 +59,45 @@ serve(async (req) => {
 
     console.log(`WordpressConfigId sanitisé: "${sanitizedWordpressConfigId}"`);
 
-    // First check if the email exists in the profiles table
+    // Check if the email already exists in the auth.users table
+    try {
+      console.log("Vérification si l'utilisateur existe dans auth.users:", email);
+      const { data: existingUsers, error: searchError } = await supabaseAdmin.auth.admin.listUsers({
+        filter: {
+          email: email,
+        },
+      });
+
+      if (searchError) {
+        console.log("Erreur lors de la recherche d'utilisateurs existants:", searchError.message);
+        throw searchError;
+      }
+
+      if (existingUsers && existingUsers.users.length > 0) {
+        console.log("L'utilisateur existe déjà dans auth.users:", email);
+        return new Response(
+          JSON.stringify({ 
+            error: "L'utilisateur existe déjà", 
+            details: "Cet email est déjà utilisé par un compte existant."
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400,
+          }
+        );
+      }
+    } catch (error) {
+      console.error("Erreur lors de la vérification d'utilisateur existant:", error);
+      return new Response(
+        JSON.stringify({ error: error.message || "Erreur lors de la vérification d'utilisateur existant" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
+    }
+
+    // Check if the email already exists in profiles table
     try {
       console.log("Vérification si l'email existe dans la table profiles:", email);
       const { data: existingProfiles, error: profilesError } = await supabaseAdmin
@@ -89,120 +127,6 @@ serve(async (req) => {
       console.error("Erreur lors de la vérification du profil existant:", error);
       return new Response(
         JSON.stringify({ error: error.message || "Erreur lors de la vérification du profil existant" }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500,
-        }
-      );
-    }
-
-    // Check if the user already exists in Auth
-    let existingUser = null;
-    try {
-      console.log("Vérification si l'utilisateur existe dans auth.users:", email);
-      const { data: existingUsers, error: searchError } = await supabaseAdmin.auth.admin.listUsers({
-        filter: {
-          email: email,
-        },
-      });
-
-      if (searchError) {
-        console.log("Erreur lors de la recherche d'utilisateurs existants:", searchError.message);
-        throw searchError;
-      }
-
-      if (existingUsers && existingUsers.users.length > 0) {
-        console.log("L'utilisateur existe déjà dans auth.users:", email);
-        existingUser = existingUsers.users[0];
-        
-        // Si l'utilisateur existe dans auth.users mais pas dans profiles (vérification déjà faite),
-        // nous pouvons créer son profil manquant
-        console.log("Création du profil manquant pour cet utilisateur existant");
-        
-        try {
-          // Create profile for existing auth user
-          const { error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .insert({
-              id: existingUser.id,
-              email: email,
-              name: name,
-              role: role,
-              wordpress_config_id: role === "client" && sanitizedWordpressConfigId ? sanitizedWordpressConfigId : null,
-            });
-
-          if (profileError) {
-            console.log("Erreur lors de la création du profil pour l'utilisateur existant:", profileError.message);
-            
-            // Si l'erreur est due à une violation de la contrainte de clé primaire,
-            // essayons de mettre à jour le profil existant au lieu de l'insérer
-            if (profileError.code === '23505') { // Code d'erreur PostgreSQL pour violation de contrainte unique
-              const { error: updateProfileError } = await supabaseAdmin
-                .from('profiles')
-                .update({
-                  email: email,
-                  name: name,
-                  role: role,
-                  wordpress_config_id: role === "client" && sanitizedWordpressConfigId ? sanitizedWordpressConfigId : null,
-                })
-                .eq('id', existingUser.id);
-                
-              if (updateProfileError) {
-                console.error("Erreur lors de la mise à jour du profil existant:", updateProfileError);
-                throw updateProfileError;
-              }
-              
-              console.log("Profil existant mis à jour pour l'utilisateur:", existingUser.id);
-            } else {
-              throw profileError;
-            }
-          } else {
-            console.log("Profil créé pour l'utilisateur existant:", existingUser.id);
-          }
-          
-          // Update user metadata in auth
-          const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-            existingUser.id,
-            {
-              user_metadata: {
-                name,
-                role,
-                wordpressConfigId: role === "client" && sanitizedWordpressConfigId ? sanitizedWordpressConfigId : null,
-              },
-            }
-          );
-          
-          if (updateError) {
-            console.log("Erreur lors de la mise à jour des métadonnées de l'utilisateur:", updateError.message);
-            throw updateError;
-          }
-          
-          return new Response(
-            JSON.stringify({ 
-              success: true, 
-              user: existingUser, 
-              message: "Profil recréé ou mis à jour pour l'utilisateur existant" 
-            }),
-            {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 200,
-            }
-          );
-        } catch (error) {
-          console.error("Erreur lors de la gestion du profil pour l'utilisateur existant:", error);
-          return new Response(
-            JSON.stringify({ error: error.message || "Erreur lors de la gestion du profil pour l'utilisateur existant" }),
-            {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 500,
-            }
-          );
-        }
-      }
-    } catch (error) {
-      console.error("Erreur lors de la vérification d'utilisateur existant:", error);
-      return new Response(
-        JSON.stringify({ error: error.message || "Erreur lors de la vérification d'utilisateur existant" }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 500,
