@@ -52,9 +52,9 @@ serve(async (req) => {
       );
     }
 
-    // ***** PREMIÈRE VÉRIFICATION: Check if the user already exists in Auth *****
-    console.log("Vérification si l'utilisateur existe dans auth.users:", email);
+    // Check if the user already exists in Auth
     try {
+      console.log("Vérification si l'utilisateur existe dans auth.users:", email);
       const { data: existingUsers, error: searchError } = await supabaseAdmin.auth.admin.listUsers({
         filter: {
           email: email,
@@ -62,14 +62,14 @@ serve(async (req) => {
       });
 
       if (searchError) {
-        console.error("Erreur lors de la recherche d'utilisateurs existants:", searchError.message);
+        console.log("Erreur lors de la recherche d'utilisateurs existants:", searchError.message);
         throw searchError;
       }
 
       if (existingUsers && existingUsers.users.length > 0) {
         console.log("L'utilisateur existe déjà dans auth.users:", email);
         
-        // ***** DEUXIÈME VÉRIFICATION: Check if the user exists in the profiles table *****
+        // Check if the user exists in the profiles table
         const { data: existingProfiles, error: profilesError } = await supabaseAdmin
           .from('profiles')
           .select('*')
@@ -81,57 +81,20 @@ serve(async (req) => {
         
         if (existingProfiles && existingProfiles.length > 0) {
           console.log("L'utilisateur existe également dans la table profiles:", existingProfiles);
-          return new Response(
-            JSON.stringify({ 
-              error: "L'utilisateur existe déjà", 
-              details: "L'email est déjà utilisé dans le système d'authentification"
-            }),
-            {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 400,
-            }
-          );
         } else {
-          console.log("L'utilisateur existe dans auth.users mais PAS dans la table profiles. Création du profil manquant.");
-          try {
-            // Create profile for existing auth user
-            const { error: profileCreateError } = await supabaseAdmin
-              .from('profiles')
-              .insert({
-                id: existingUsers.users[0].id,
-                email: email,
-                name: name,
-                role: role,
-                wordpress_config_id: role === "client" && wordpressConfigId && wordpressConfigId !== "none" ? wordpressConfigId : null,
-              });
-
-            if (profileCreateError) {
-              console.error("Erreur lors de la création du profil pour utilisateur existant:", profileCreateError);
-              throw profileCreateError;
-            }
-
-            return new Response(
-              JSON.stringify({ 
-                success: true, 
-                user: existingUsers.users[0],
-                message: "Profil créé pour l'utilisateur existant"
-              }),
-              {
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-                status: 200,
-              }
-            );
-          } catch (error) {
-            console.error("Erreur lors de la création du profil pour utilisateur existant:", error);
-            return new Response(
-              JSON.stringify({ error: error.message || "Erreur lors de la création du profil" }),
-              {
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-                status: 500,
-              }
-            );
-          }
+          console.log("L'utilisateur existe dans auth.users mais PAS dans la table profiles");
         }
+        
+        return new Response(
+          JSON.stringify({ 
+            error: "L'utilisateur existe déjà", 
+            details: "L'email est déjà utilisé dans le système d'authentification"
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400,
+          }
+        );
       }
     } catch (error) {
       console.error("Erreur lors de la vérification d'utilisateur existant:", error);
@@ -181,78 +144,32 @@ serve(async (req) => {
       );
     }
 
-    // ***** CRÉATION DE L'UTILISATEUR DANS AUTH *****
-    console.log("Création de l'utilisateur dans auth:", email);
+    // Create the user
+    console.log("Création de l'utilisateur:", email);
     let newUserData;
     try {
-      // Utiliser la méthode spécifique pour créer un utilisateur: signUp au lieu de admin.createUser
-      const { data, error } = await supabaseAdmin.auth.signUp({
+      const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
-        options: {
-          data: {
-            name,
-            role,
-            wordpressConfigId: role === "client" && wordpressConfigId && wordpressConfigId !== "none" ? wordpressConfigId : null,
-          },
-          emailRedirectTo: `${Deno.env.get("SITE_URL") || "https://app.digiibuz.fr"}/login`,
-        }
+        email_confirm: true,
+        user_metadata: {
+          name,
+          role,
+          wordpressConfigId: role === "client" ? wordpressConfigId : null,
+        },
       });
 
       if (error) {
-        console.error("Erreur lors de la création de l'utilisateur dans auth avec signUp:", error.message);
-        
-        // Essayer une autre méthode si signUp échoue
-        console.log("Tentative avec admin.createUser comme méthode alternative");
-        const adminResult = await supabaseAdmin.auth.admin.createUser({
-          email,
-          password,
-          email_confirm: true,
-          user_metadata: {
-            name,
-            role,
-            wordpressConfigId: role === "client" && wordpressConfigId && wordpressConfigId !== "none" ? wordpressConfigId : null,
-          },
-        });
-        
-        if (adminResult.error) {
-          console.error("Erreur avec la méthode alternative admin.createUser:", adminResult.error.message);
-          throw adminResult.error;
-        }
-        
-        data = adminResult.data;
-      }
-      
-      if (!data || !data.user || !data.user.id) {
-        console.error("Pas d'ID utilisateur reçu après création dans auth");
-        throw new Error("La création de l'utilisateur n'a pas retourné d'ID utilisateur valide");
+        console.log("Erreur lors de la création de l'utilisateur:", error.message);
+        throw error;
       }
       
       newUserData = data;
-      console.log("Utilisateur créé avec succès dans auth:", newUserData.user.id);
-      
-      // ***** VÉRIFIER QUE L'UTILISATEUR A BIEN ÉTÉ CRÉÉ DANS AUTH *****
-      const { data: verifyUser, error: verifyError } = await supabaseAdmin.auth.admin.getUserById(newUserData.user.id);
-      
-      if (verifyError) {
-        console.error("Erreur lors de la vérification de l'utilisateur:", verifyError.message);
-        throw verifyError;
-      }
-      
-      if (!verifyUser || !verifyUser.user) {
-        console.error("L'utilisateur n'a pas été trouvé après sa création");
-        throw new Error("Échec de vérification de la création de l'utilisateur dans auth");
-      }
-      
-      console.log("Utilisateur vérifié dans auth:", verifyUser.user.id);
-      
+      console.log("Utilisateur créé dans auth:", newUserData.user.id);
     } catch (error) {
-      console.error("Erreur critique lors de la création de l'utilisateur dans auth:", error);
+      console.error("Erreur lors de la création de l'utilisateur:", error);
       return new Response(
-        JSON.stringify({ 
-          error: error.message || "Erreur lors de la création de l'utilisateur", 
-          details: "Impossible de créer l'utilisateur dans le système d'authentification" 
-        }),
+        JSON.stringify({ error: error.message || "Erreur lors de la création de l'utilisateur" }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 500,
@@ -260,7 +177,7 @@ serve(async (req) => {
       );
     }
 
-    // ***** CRÉATION DU PROFIL POUR L'UTILISATEUR *****
+    // After creating the user in Auth, create their profile
     try {
       console.log("Création du profil pour l'utilisateur:", newUserData.user.id);
       const { error: profileError } = await supabaseAdmin
@@ -270,11 +187,11 @@ serve(async (req) => {
           email: email,
           name: name,
           role: role,
-          wordpress_config_id: role === "client" && wordpressConfigId && wordpressConfigId !== "none" ? wordpressConfigId : null,
+          wordpress_config_id: role === "client" ? wordpressConfigId : null,
         });
 
       if (profileError) {
-        console.error("Erreur lors de la création du profil:", profileError.message);
+        console.log("Erreur lors de la création du profil:", profileError.message);
         
         // If profile creation fails, delete the user to avoid inconsistencies
         try {
@@ -297,30 +214,10 @@ serve(async (req) => {
       );
     }
 
-    console.log("Utilisateur et profil créés avec succès:", newUserData.user.id);
-
-    // ***** VÉRIFICATION FINALE QUE TOUT EST CRÉÉ CORRECTEMENT *****
-    try {
-      const { data: finalAuth } = await supabaseAdmin.auth.admin.getUserById(newUserData.user.id);
-      console.log("Vérification finale utilisateur auth:", finalAuth ? "OK" : "NON TROUVÉ");
-      
-      const { data: finalProfile } = await supabaseAdmin
-        .from('profiles')
-        .select('*')
-        .eq('id', newUserData.user.id)
-        .single();
-        
-      console.log("Vérification finale du profil créé:", finalProfile ? "OK" : "NON TROUVÉ");
-    } catch (error) {
-      console.log("Erreur lors de la vérification finale (non bloquante):", error);
-    }
+    console.log("Utilisateur créé avec succès:", newUserData.user.id);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        user: newUserData.user,
-        message: "Utilisateur créé avec succès dans le système d'authentification et la table des profils"
-      }),
+      JSON.stringify({ success: true, user: newUserData.user }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
