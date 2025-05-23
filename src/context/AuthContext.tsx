@@ -8,6 +8,26 @@ import { UserProfile, AuthContextType } from "@/types/auth";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Fonction utilitaire pour nettoyer le stockage local des jetons d'authentification
+const cleanupAuthState = () => {
+  // Supprimer les jetons standard
+  localStorage.removeItem('supabase.auth.token');
+  
+  // Supprimer toutes les clés d'authentification Supabase de localStorage
+  Object.keys(localStorage).forEach((key) => {
+    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+      localStorage.removeItem(key);
+    }
+  });
+  
+  // Supprimer de sessionStorage si utilisé
+  Object.keys(sessionStorage || {}).forEach((key) => {
+    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+      sessionStorage.removeItem(key);
+    }
+  });
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const { userProfile, setUserProfile, fetchFullProfile } = useUserProfile();
@@ -114,128 +134,99 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [userProfile?.role, userProfile?.id]);
 
-  // Nettoyage des états d'authentification précédents
-  const cleanupAuthState = () => {
-    try {
-      // Supprimer tous les tokens Supabase du localStorage
-      Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-          console.log("Suppression de la clé de stockage:", key);
-          localStorage.removeItem(key);
-        }
-      });
-      
-      // Supprimer également du sessionStorage si utilisé
-      Object.keys(sessionStorage || {}).forEach((key) => {
-        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-          sessionStorage.removeItem(key);
-        }
-      });
-      
-      console.log("Nettoyage d'état d'authentification terminé");
-    } catch (err) {
-      console.warn("Erreur lors du nettoyage des tokens:", err);
-    }
-  };
-
-  // Fonction pour authentifier via la fonction Edge
-  const authenticateWithSecurePassword = async (email: string, password: string) => {
-    try {
-      console.log("Authentification via la fonction secure-password");
-      
-      const supabaseUrl = "https://rdwqedmvzicerwotjseg.supabase.co";
-      
-      const response = await fetch(`${supabaseUrl}/functions/v1/secure-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
-      
-      console.log("Status de secure-password:", response.status);
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Échec de secure-password:", errorData);
-        throw new Error(errorData.error || "Échec de l'authentification");
-      }
-      
-      const data = await response.json();
-      console.log("Succès de secure-password, mot de passe renforcé obtenu");
-      
-      return data;
-    } catch (error: any) {
-      console.error("Erreur lors de l'appel à secure-password:", error);
-      throw error;
-    }
-  };
-
+  // Nouvelle implémentation de login utilisant l'edge function
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     
     try {
-      console.log("Tentative de connexion avec:", email);
-      
-      // Nettoyer les états d'authentification précédents
+      // Nettoyer d'abord l'état d'authentification pour éviter les problèmes
       cleanupAuthState();
       
-      // Tenter une déconnexion globale pour éviter tout état incohérent
+      // Tentons de nous déconnecter globalement avant de nous connecter
       try {
         await supabase.auth.signOut({ scope: 'global' });
-        console.log("Déconnexion globale effectuée avec succès");
       } catch (err) {
-        console.warn("Erreur lors de la déconnexion globale:", err);
+        // Continuer même en cas d'échec
+        console.warn("Échec de la déconnexion globale:", err);
       }
       
-      // 1. D'abord, essayer une connexion directe
-      console.log("Tentative de connexion directe avec le mot de passe original");
-      
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password
+      // Utiliser l'edge function pour l'authentification
+      const response = await fetch(`${window.location.origin}/api/auth`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'login',
+          email,
+          password
+        })
       });
       
-      if (!signInError) {
-        console.log("Connexion directe réussie!");
-        toast.success("Connexion réussie");
-        setIsLoading(false);
-        return signInData;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Échec de la connexion");
       }
       
-      console.log("Connexion directe échouée, erreur:", signInError.message);
+      const { session, user } = await response.json();
       
-      // 2. Si la connexion directe échoue, essayer via secure-password
-      console.log("Tentative via secure-password");
-      
-      const secureAuthResult = await authenticateWithSecurePassword(email, password);
-      
-      if (!secureAuthResult || !secureAuthResult.success) {
-        console.error("Échec de l'authentification via secure-password");
-        throw new Error("Identifiants invalides");
+      if (!session || !user) {
+        throw new Error("Données d'authentification invalides");
       }
       
-      // Si secure-password réussit, connexion avec le mot de passe renforcé
-      const { data: secureSignInData, error: secureSignInError } = await supabase.auth.signInWithPassword({
-        email,
-        password: secureAuthResult.securedPassword
+      // Mettre à jour la session dans Supabase côté client
+      await supabase.auth.setSession({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token
       });
       
-      if (secureSignInError) {
-        console.error("Erreur lors de la connexion avec mot de passe renforcé:", secureSignInError);
-        throw secureSignInError;
-      }
-      
-      console.log("Connexion réussie avec mot de passe renforcé!");
-      toast.success("Connexion réussie");
-      
-      setIsLoading(false);
-      return secureSignInData;
+      // Le reste sera géré par le listener onAuthStateChange
       
     } catch (error: any) {
       setIsLoading(false);
-      console.error("Erreur finale de connexion:", error);
-      throw new Error(error.message || "Erreur de connexion");
+      throw new Error(error.message || "Login error");
+    }
+  };
+
+  // Nouvelle implémentation de logout utilisant l'edge function
+  const logout = async () => {
+    try {
+      // Nettoyer d'abord le stockage local
+      cleanupAuthState();
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userId');
+      sessionStorage.removeItem('lastAdminPath');
+      sessionStorage.removeItem('lastAuthenticatedPath');
+      localStorage.removeItem("originalUser");
+      
+      try {
+        // Récupérer le token actuel si disponible
+        const sessionResult = await supabase.auth.getSession();
+        const accessToken = sessionResult.data.session?.access_token || '';
+        
+        // Appeler l'edge function pour la déconnexion uniquement si nous avons un token
+        if (accessToken) {
+          await fetch(`${window.location.origin}/api/auth`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${accessToken}`
+            },
+            body: JSON.stringify({
+              action: 'logout'
+            })
+          });
+        }
+      } catch (apiError) {
+        console.warn("Échec de l'appel à l'API de déconnexion:", apiError);
+        // Continuer malgré l'erreur
+      }
+      
+      // Nettoyage supplémentaire côté client
+      await supabase.auth.signOut();
+      setUserProfile(null);
+    } catch (error) {
+      console.error("Error during logout:", error);
     }
   };
 
@@ -262,20 +253,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user: userProfile,
     isLoading,
     login,
-    logout: async () => {
-      try {
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('userId');
-        sessionStorage.removeItem('lastAdminPath');
-        sessionStorage.removeItem('lastAuthenticatedPath');
-        
-        await supabase.auth.signOut();
-        setUserProfile(null);
-        localStorage.removeItem("originalUser");
-      } catch (error) {
-        console.error("Error during logout:", error);
-      }
-    },
+    logout,
     isAuthenticated: !!userProfile,
     isAdmin: userProfile?.role === "admin",
     isClient: userProfile?.role === "client",

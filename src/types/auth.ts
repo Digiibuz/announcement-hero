@@ -9,7 +9,7 @@ export interface UserProfile {
   name: string;
   role: Role;
   clientId?: string;
-  wordpressConfigId?: string | null;
+  wordpressConfigId?: string;
   wordpressConfig?: {
     name: string;
     site_url: string;
@@ -20,7 +20,7 @@ export interface UserProfile {
 export interface AuthContextType {
   user: UserProfile | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<any>; // Updated return type
+  login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   isAdmin: boolean;

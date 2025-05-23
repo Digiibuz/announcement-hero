@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -8,81 +8,39 @@ import { Label } from "@/components/ui/label";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Eye, EyeOff, Lock, LogIn, Loader2, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
-import { supabase } from "@/integrations/supabase/client";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
-
-// Schéma de validation pour le formulaire de connexion
-const loginSchema = z.object({
-  email: z.string().email("Veuillez saisir une adresse email valide"),
-  password: z.string().min(1, "Le mot de passe est requis"),
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
 
 const Login = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [clearingCache, setClearingCache] = useState(false);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  });
-
   // Redirect if already authenticated
-  useEffect(() => {
+  React.useEffect(() => {
     if (isAuthenticated) {
       navigate("/dashboard");
     }
   }, [isAuthenticated, navigate]);
 
-  const handleSubmit = async (values: LoginFormValues) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsLoading(true);
-    setErrorMessage("");
     
     try {
-      console.log("Tentative de connexion avec:", values.email);
+      await login(email, password);
+      toast.success("Connexion réussie");
       
-      // Tentative de connexion
-      const result = await login(values.email, values.password);
-      console.log("Résultat de connexion:", result);
-      
-      if (result && result.user) {
-        toast.success("Connexion réussie");
-        console.log("Connexion réussie pour:", result.user.email);
-        
-        // Redirect after successful login
-        setTimeout(() => {
-          navigate("/dashboard");
-        }, 300);
-      } else {
-        throw new Error("Aucun utilisateur retourné après connexion");
-      }
+      // Redirect after successful login
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 300);
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
-      
-      // Message d'erreur plus spécifique pour aider l'utilisateur
-      let errorMsg = "Échec de la connexion";
-      
-      if (error.message && error.message.includes("Identifiants invalides")) {
-        errorMsg = "Email ou mot de passe incorrect. Veuillez vérifier vos identifiants.";
-      } else if (error.message) {
-        errorMsg = error.message;
-      }
-      
-      setErrorMessage(errorMsg);
-      toast.error(errorMsg);
+      toast.error(error.message || "Échec de la connexion");
     } finally {
       setIsLoading(false);
     }
@@ -90,45 +48,6 @@ const Login = () => {
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
-  };
-
-  const clearBrowserCache = async () => {
-    try {
-      setClearingCache(true);
-      
-      // Nettoyer le localStorage
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-          localStorage.removeItem(key);
-        }
-      });
-      
-      // Nettoyer le sessionStorage
-      Object.keys(sessionStorage || {}).forEach(key => {
-        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-          sessionStorage.removeItem(key);
-        }
-      });
-      
-      // Tenter une déconnexion globale
-      try {
-        await supabase.auth.signOut({ scope: 'global' });
-      } catch (err) {
-        // Ignorer les erreurs de déconnexion
-      }
-      
-      toast.success("Cache de l'authentification nettoyé");
-      
-      // Recharger la page après nettoyage
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
-    } catch (err) {
-      console.error("Erreur lors du nettoyage du cache:", err);
-      toast.error("Erreur lors du nettoyage du cache");
-    } finally {
-      setClearingCache(false);
-    }
   };
 
   return (
@@ -158,115 +77,71 @@ const Login = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="email"
-                          placeholder="email@example.com"
-                          autoComplete="email"
-                          disabled={isLoading}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+            <form onSubmit={handleSubmit} className="space-y-4">              
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="email@example.com"
+                  required
+                  autoComplete="email"
+                  disabled={isLoading}
                 />
-                
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <div className="flex items-center justify-between">
-                        <FormLabel>Mot de passe</FormLabel>
-                        <Button 
-                          variant="link" 
-                          className="p-0 h-auto text-xs" 
-                          type="button" 
-                          disabled={isLoading}
-                          asChild
-                        >
-                          <Link to="/forgot-password">Mot de passe oublié ?</Link>
-                        </Button>
-                      </div>
-                      <FormControl>
-                        <div className="relative">
-                          <Input
-                            {...field}
-                            type={showPassword ? "text" : "password"}
-                            placeholder="••••••••"
-                            autoComplete="current-password"
-                            disabled={isLoading}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="absolute right-0 top-0 h-full px-3"
-                            onClick={togglePasswordVisibility}
-                            disabled={isLoading}
-                          >
-                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </Button>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                {errorMessage && (
-                  <div className="p-3 rounded-md bg-destructive/15 text-destructive text-sm">
-                    <p className="flex items-center">
-                      <span className="mr-2">●</span>
-                      {errorMessage}
-                    </p>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Mot de passe</Label>
+                  <Button 
+                    variant="link" 
+                    className="p-0 h-auto text-xs" 
+                    type="button" 
+                    disabled={isLoading}
+                    asChild
+                  >
+                    <Link to="/forgot-password">Mot de passe oublié ?</Link>
+                  </Button>
+                </div>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    autoComplete="current-password"
+                    disabled={isLoading}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={togglePasswordVisibility}
+                    disabled={isLoading}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+              
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <div className="flex items-center">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Connexion en cours...
                   </div>
+                ) : (
+                  <>
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Se connecter
+                  </>
                 )}
-                
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? (
-                    <div className="flex items-center">
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Connexion en cours...
-                    </div>
-                  ) : (
-                    <>
-                      <LogIn className="mr-2 h-4 w-4" />
-                      Se connecter
-                    </>
-                  )}
-                </Button>
-                
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={clearBrowserCache} 
-                  className="w-full"
-                  disabled={clearingCache}
-                >
-                  {clearingCache ? (
-                    <div className="flex items-center">
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Nettoyage en cours...
-                    </div>
-                  ) : (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Nettoyer le cache d'authentification
-                    </>
-                  )}
-                </Button>
-              </form>
-            </Form>
+              </Button>
+            </form>
           </CardContent>
           <CardFooter>
             <p className="text-xs text-center text-muted-foreground w-full">

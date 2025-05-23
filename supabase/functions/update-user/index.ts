@@ -7,28 +7,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Fonction pour générer un suffixe aléatoire
-function generateRandomSuffix(minLength = 5, maxLength = 10) {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  const length = Math.floor(Math.random() * (maxLength - minLength + 1)) + minLength;
-  let result = "";
-  
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  
-  return result;
-}
-
-// Fonction pour renforcer un mot de passe avec un suffixe
-function securePassword(password: string): string {
-  if (!password) return password;
-  
-  const suffix = generateRandomSuffix();
-  console.log(`Renforcement du mot de passe avec suffixe de ${suffix.length} caractères`);
-  return `${password}${suffix}`;
-}
-
 serve(async (req) => {
   // Gérer les requêtes CORS preflight
   if (req.method === "OPTIONS") {
@@ -48,7 +26,7 @@ serve(async (req) => {
     const requestData = await req.json();
     console.log("Données reçues:", JSON.stringify(requestData));
     
-    const { userId, email, name, role, wordpressConfigId, password } = requestData;
+    const { userId, email, name, role, wordpressConfigId } = requestData;
 
     // Vérifier les données requises
     if (!userId) {
@@ -62,44 +40,51 @@ serve(async (req) => {
       );
     }
 
-    // Important: Pour les mises à jour, utilisez le mot de passe original tel quel
-    // Nous ne sécurisons PAS le mot de passe ici, car ce sera fait lors de la connexion
-    const updatedPassword = password ? password : undefined;
-    
     // Déterminer si wordpressConfigId doit être utilisé
     const needsWordPressConfig = role === "client";
 
-    // Mettre à jour l'utilisateur dans auth
-    const updateData: any = {
-      user_metadata: {
-        name,
-        role,
-        wordpressConfigId: needsWordPressConfig ? wordpressConfigId : null,
-      }
-    };
-
-    // Ajouter l'email et/ou le mot de passe s'ils sont fournis
+    // Mettre à jour l'utilisateur dans auth si email est fourni
     if (email) {
-      updateData.email = email;
-      updateData.email_confirm = true;
+      console.log("Mise à jour de l'email:", email);
+      const { data: updateAuthData, error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(
+        userId,
+        {
+          email,
+          email_confirm: true,
+          user_metadata: {
+            name,
+            role,
+            wordpressConfigId: needsWordPressConfig ? wordpressConfigId : null,
+          }
+        }
+      );
+
+      if (updateAuthError) {
+        console.log("Erreur lors de la mise à jour de l'utilisateur:", updateAuthError.message);
+        throw updateAuthError;
+      }
+
+      console.log("Utilisateur mis à jour avec succès dans auth");
+    } else {
+      // Mettre à jour uniquement les métadonnées utilisateur
+      const { data: updateMetaData, error: updateMetaError } = await supabaseAdmin.auth.admin.updateUserById(
+        userId,
+        {
+          user_metadata: {
+            name,
+            role,
+            wordpressConfigId: needsWordPressConfig ? wordpressConfigId : null,
+          }
+        }
+      );
+
+      if (updateMetaError) {
+        console.log("Erreur lors de la mise à jour des métadonnées:", updateMetaError.message);
+        throw updateMetaError;
+      }
+
+      console.log("Métadonnées utilisateur mises à jour avec succès");
     }
-
-    if (updatedPassword) {
-      updateData.password = updatedPassword;
-      console.log("Mot de passe mis à jour (sans sécurisation)");
-    }
-
-    const { data: updateAuthData, error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(
-      userId,
-      updateData
-    );
-
-    if (updateAuthError) {
-      console.log("Erreur lors de la mise à jour de l'utilisateur:", updateAuthError.message);
-      throw updateAuthError;
-    }
-
-    console.log("Utilisateur mis à jour avec succès dans auth");
 
     return new Response(
       JSON.stringify({ success: true }),
