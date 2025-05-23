@@ -1,10 +1,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { useUserProfile, createProfileFromMetadata } from "@/hooks/useUserProfile";
-import { useImpersonation } from "@/hooks/useImpersonation";
 import { UserProfile, AuthContextType } from "@/types/auth";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -12,48 +10,30 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const { userProfile, setUserProfile, fetchFullProfile } = useUserProfile();
-  const { originalUser, isImpersonating, impersonateUser: startImpersonation, stopImpersonating: endImpersonation } = useImpersonation(userProfile);
-  const [isOnResetPasswordPage, setIsOnResetPasswordPage] = useState(false);
 
-  // Simple check for reset password page
-  useEffect(() => {
-    const isResetPasswordPage = window.location.pathname === '/reset-password';
-    const hasRecoveryToken = window.location.hash.includes('type=recovery');
-    setIsOnResetPasswordPage(isResetPasswordPage && (hasRecoveryToken || isResetPasswordPage));
-  }, []);
-
-  // Simplified auth initialization
+  // Très simple gestion d'auth - pas de détection de changement de fenêtre
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setIsLoading(true);
-        
         if (session?.user) {
           const initialProfile = createProfileFromMetadata(session.user);
           setUserProfile(initialProfile);
-          
-          fetchFullProfile(session.user.id).then(() => {
-            setIsLoading(false);
-          });
+          fetchFullProfile(session.user.id);
         } else {
           setUserProfile(null);
-          setIsLoading(false);
         }
+        setIsLoading(false);
       }
     );
 
-    // Get initial session
+    // Get initial session - une seule fois
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         const initialProfile = createProfileFromMetadata(session.user);
         setUserProfile(initialProfile);
-        
-        fetchFullProfile(session.user.id).then(() => {
-          setIsLoading(false);
-        });
-      } else {
-        setIsLoading(false);
+        fetchFullProfile(session.user.id);
       }
+      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -86,20 +66,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const impersonateUser = (userToImpersonate: UserProfile) => {
-    const impersonatedUser = startImpersonation(userToImpersonate);
-    if (impersonatedUser) {
-      setUserProfile(impersonatedUser);
-    }
-  };
-
-  const stopImpersonating = () => {
-    const originalUserProfile = endImpersonation();
-    if (originalUserProfile) {
-      setUserProfile(originalUserProfile);
-    }
-  };
-
   const value: AuthContextType = {
     user: userProfile,
     isLoading,
@@ -108,11 +74,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isAuthenticated: !!userProfile,
     isAdmin: userProfile?.role === "admin",
     isClient: userProfile?.role === "client",
-    impersonateUser,
-    stopImpersonating,
-    originalUser,
-    isImpersonating,
-    isOnResetPasswordPage,
+    impersonateUser: () => {}, // Désactivé pour simplifier
+    stopImpersonating: () => {}, // Désactivé pour simplifier
+    originalUser: null,
+    isImpersonating: false,
+    isOnResetPasswordPage: false, // Supprimé la détection complexe
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

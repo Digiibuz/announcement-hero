@@ -28,20 +28,18 @@ const Announcements = () => {
     search: "",
     status: "all",
   });
-  // Grid view is now the only view mode, so no need for state
   const viewMode = "grid";
   
-  // Get WordPress categories
+  // Get WordPress categories - sans refetch automatique
   const { categories, refetch: refetchCategories } = useWordPressCategories();
 
-  // Initial load of categories
   useEffect(() => {
     if (user?.wordpressConfigId) {
       refetchCategories();
     }
   }, [user?.wordpressConfigId, refetchCategories]);
 
-  // Fetch announcements from Supabase
+  // Fetch announcements - désactivation complète des refetch automatiques
   const { data: announcements, isLoading, refetch } = useQuery({
     queryKey: ["announcements"],
     queryFn: async () => {
@@ -49,7 +47,6 @@ const Announcements = () => {
         .from("announcements")
         .select("*");
       
-      // If not admin, only show own announcements
       if (!isAdmin) {
         query = query.filter("user_id", "eq", user?.id);
       }
@@ -61,17 +58,13 @@ const Announcements = () => {
         return [];
       }
       
-      // Map WordPress category IDs to names and strip HTML from descriptions for list view only
       return data.map(announcement => {
-        // Create a new object with all properties from announcement
         const processed: Announcement = { ...announcement } as Announcement;
         
-        // Strip HTML tags from description for the list view only
         if (processed.description) {
           processed.description = stripHtmlTags(processed.description);
         }
         
-        // Add WordPress category name if available
         if (announcement.wordpress_category_id && categories) {
           const category = categories.find(
             c => c.id.toString() === announcement.wordpress_category_id
@@ -86,18 +79,19 @@ const Announcements = () => {
       });
     },
     enabled: !!user,
+    refetchOnWindowFocus: false, // Pas de refetch sur changement de fenêtre
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
 
-  // Filter announcements based on search and status
+  // Filter announcements
   const filteredAnnouncements = announcements?.filter(announcement => {
-    // Filter by search term
     const matchesSearch = 
       filter.search === "" || 
       announcement.title.toLowerCase().includes(filter.search.toLowerCase()) ||
       (announcement.description && announcement.description.toLowerCase().includes(filter.search.toLowerCase())) ||
       (announcement.wordpress_category_name && announcement.wordpress_category_name.toLowerCase().includes(filter.search.toLowerCase()));
     
-    // Filter by status
     const matchesStatus = 
       filter.status === "all" || 
       announcement.status === filter.status;
@@ -105,14 +99,12 @@ const Announcements = () => {
     return matchesSearch && matchesStatus;
   });
 
-  // Refetch data when categories change
   useEffect(() => {
     if (categories.length > 0) {
       refetch();
     }
   }, [categories, refetch]);
 
-  // Handle announcement deletion
   const handleDelete = async (id: string) => {
     try {
       if (!user?.id) {
@@ -120,7 +112,6 @@ const Announcements = () => {
         return;
       }
 
-      // Utiliser l'API pour supprimer l'annonce (et son équivalent WordPress si existant)
       await apiDeleteAnnouncement(id, user.id);
       
       toast.success("Annonce supprimée avec succès");
