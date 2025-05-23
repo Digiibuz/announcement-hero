@@ -74,68 +74,49 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       
       const toastId = toast.loading("Création de l'utilisateur en cours...");
       
-      console.log("Envoi des données:", values);
-      
       // Préparation des données à envoyer
       const userData = {
         email: values.email,
         name: values.name,
         password: values.password,
         role: values.role,
-        // Seulement envoyer wordpressConfigId si le rôle est client et qu'une valeur est sélectionnée
-        wordpressConfigId: values.role === "client" ? (values.wordpressConfigId !== "none" ? values.wordpressConfigId : "") : "",
+        wordpressConfigId: values.role === "client" ? values.wordpressConfigId : "",
       };
       
-      // Call the Edge function with better error handling
-      const { data, error: functionCallError } = await supabase.functions.invoke("create-user", {
+      console.log("Données envoyées pour création:", userData);
+      
+      // Appel à la fonction Edge
+      const { data, error } = await supabase.functions.invoke("create-user", {
         body: userData,
       });
       
-      if (functionCallError) {
-        console.error("Erreur d'appel à la fonction Edge:", functionCallError);
+      if (error) {
+        console.error("Erreur lors de l'appel à la fonction:", error);
         toast.dismiss(toastId);
-        toast.error(`Erreur: ${functionCallError.message || "Échec de la création de l'utilisateur"}`);
+        toast.error(`Erreur: ${error.message || "Échec de la création de l'utilisateur"}`);
         return;
       }
-      
-      console.log("Réponse de la fonction Edge:", data);
-      
-      if (!data || (data as any).error) {
-        const errorMessage = (data as any)?.error || "Erreur lors de la création de l'utilisateur";
-        const errorDetails = (data as any)?.details || "";
-        toast.dismiss(toastId);
+
+      // Vérifier la réponse de la fonction Edge
+      if (!data || data.error) {
+        console.error("Erreur retournée par la fonction:", data);
+        const errorMessage = data?.error || "Erreur inconnue";
+        const errorDetails = data?.details || "";
         
-        // Messages d'erreur plus précis pour les cas courants
-        if (errorMessage.includes("L'utilisateur existe déjà")) {
-          toast.error(`Cet email est déjà utilisé par un autre utilisateur. ${errorDetails}`);
-        } else {
-          toast.error(`${errorMessage}${errorDetails ? ` - ${errorDetails}` : ""}`);
-        }
+        toast.dismiss(toastId);
+        toast.error(`${errorMessage}${errorDetails ? ` - ${errorDetails}` : ""}`);
         return;
       }
       
+      // Succès
       toast.dismiss(toastId);
       toast.success("Utilisateur créé avec succès");
       form.reset();
       onUserCreated();
+      
     } catch (error: any) {
-      toast.dismiss();
-      console.error("Error creating user:", error);
-      
-      // More detailed error message for debugging
-      let errorMessage = error.message || "Erreur lors de la création de l'utilisateur";
-      
-      // If the error contains additional details
-      if (error.details) {
-        errorMessage += ` (${error.details})`;
-      }
-      
-      // Add status to the error if available
-      if (error.status) {
-        errorMessage += ` (Status: ${error.status})`;
-      }
-      
-      toast.error(errorMessage);
+      console.error("Erreur non gérée:", error);
+      toast.error(`Erreur: ${error.message || "Une erreur est survenue"}`);
     } finally {
       setIsSubmitting(false);
     }
