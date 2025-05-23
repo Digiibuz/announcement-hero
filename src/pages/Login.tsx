@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -10,13 +10,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
+import { supabase, cleanupAuthState } from "@/integrations/supabase/client";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already authenticated
@@ -31,13 +32,36 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      await login(email, password);
+      console.log("Attempting login with email:", email);
+      
+      // Cleanup auth state before logging in to prevent conflicts
+      cleanupAuthState();
+      
+      // Try to sign out first to clear any existing sessions
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (err) {
+        console.log("Sign out before login failed, continuing anyway:", err);
+      }
+      
+      // Direct Supabase login to bypass any potential AuthContext issues
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        console.error("Login error from Supabase:", error);
+        throw error;
+      }
+      
+      console.log("Login successful, user data:", data.user);
       toast.success("Connexion réussie");
       
-      // Redirect after successful login
+      // Delay navigation slightly to allow session to be properly stored
       setTimeout(() => {
         navigate("/dashboard");
-      }, 300);
+      }, 500);
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
       toast.error(error.message || "Échec de la connexion");

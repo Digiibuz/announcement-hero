@@ -7,10 +7,41 @@ import type { Database } from './types';
 const supabaseUrl = "https://rdwqedmvzicerwotjseg.supabase.co";
 const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkd3FlZG12emljZXJ3b3Rqc2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwNzg4MzEsImV4cCI6MjA1ODY1NDgzMX0.Ohle_vVvdoCvsObP9A_AdyM52XdzisIvHvH1D1a88zk";
 
-// Create a Supabase client for client-side operations only
+// Function to clean up auth state before login/logout
+export const cleanupAuthState = () => {
+  console.log("Cleaning up auth state");
+  // Remove standard auth tokens
+  localStorage.removeItem('supabase.auth.token');
+  
+  // Remove all Supabase auth keys from localStorage
+  Object.keys(localStorage).forEach((key) => {
+    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+      console.log(`Removing key: ${key}`);
+      localStorage.removeItem(key);
+    }
+  });
+  
+  // Remove from sessionStorage if in use
+  Object.keys(sessionStorage || {}).forEach((key) => {
+    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+      console.log(`Removing session key: ${key}`);
+      sessionStorage.removeItem(key);
+    }
+  });
+};
+
+// Create a Supabase client with explicit configuration for auth
 export const supabase = createClient<Database>(
   supabaseUrl, 
-  supabaseAnonKey
+  supabaseAnonKey,
+  {
+    auth: {
+      storage: localStorage,
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true
+    }
+  }
 );
 
 // Note: This client only has anon permissions
