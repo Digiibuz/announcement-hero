@@ -3,13 +3,9 @@
 project_id = "rdwqedmvzicerwotjseg"
 
 [api]
-# ID du projet pour les configurations spécifiques
+# Configuration de l'API
 
 [db]
-# Configurations de la base de données
-
-[functions.google-business]
-verify_jwt = true
-import_map = "./import_map.json"
+# Configuration de la base de données
 
 # Section pour variables d'environnement globales

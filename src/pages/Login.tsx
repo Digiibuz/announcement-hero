@@ -32,21 +32,21 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      // Clean up existing auth state to prevent conflicts
+      // Nettoyage de l'état d'authentification existant
       cleanupAuthState();
       
       console.log("Tentative de connexion pour:", email);
       
-      // Try global sign out first to clear any existing sessions
+      // Déconnexion globale d'abord pour effacer les sessions existantes
       try {
         await supabase.auth.signOut({ scope: 'global' });
         console.log("Déconnexion globale réussie");
       } catch (err) {
         console.log("Erreur lors de la déconnexion globale (ignorée):", err);
-        // Continue even if this fails
+        // On continue même si cette étape échoue
       }
       
-      // Use direct Supabase auth to login
+      // Utiliser directement l'authentification Supabase
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -60,7 +60,7 @@ const Login = () => {
         console.log("Connexion réussie pour:", data.user.email);
         toast.success("Connexion réussie");
         
-        // Redirect after successful login
+        // Redirection après connexion réussie
         setTimeout(() => {
           navigate("/dashboard");
         }, 300);
