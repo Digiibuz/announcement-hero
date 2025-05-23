@@ -66,6 +66,7 @@ serve(async (req) => {
         throw searchError;
       }
 
+      // Check if user exists in auth.users but not in profiles
       if (existingUsers && existingUsers.users.length > 0) {
         console.log("L'utilisateur existe déjà dans auth.users:", email);
         
@@ -81,20 +82,58 @@ serve(async (req) => {
         
         if (existingProfiles && existingProfiles.length > 0) {
           console.log("L'utilisateur existe également dans la table profiles:", existingProfiles);
+          return new Response(
+            JSON.stringify({ 
+              error: "L'utilisateur existe déjà", 
+              details: "L'email est déjà utilisé dans le système d'authentification"
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 400,
+            }
+          );
         } else {
-          console.log("L'utilisateur existe dans auth.users mais PAS dans la table profiles");
-        }
-        
-        return new Response(
-          JSON.stringify({ 
-            error: "L'utilisateur existe déjà", 
-            details: "L'email est déjà utilisé dans le système d'authentification"
-          }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 400,
+          console.log("L'utilisateur existe dans auth.users mais PAS dans la table profiles. Création du profil manquant.");
+          
+          // Create profile for existing auth user
+          try {
+            const existingUser = existingUsers.users[0];
+            const { error: profileCreateError } = await supabaseAdmin
+              .from('profiles')
+              .insert({
+                id: existingUser.id,
+                email: email,
+                name: name,
+                role: role,
+                wordpress_config_id: role === "client" ? wordpressConfigId : null,
+              });
+              
+            if (profileCreateError) {
+              throw profileCreateError;
+            }
+            
+            return new Response(
+              JSON.stringify({ 
+                success: true, 
+                user: existingUser,
+                message: "Profil créé pour un utilisateur existant" 
+              }),
+              {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 200,
+              }
+            );
+          } catch (error) {
+            console.error("Erreur lors de la création du profil pour utilisateur existant:", error);
+            return new Response(
+              JSON.stringify({ error: error.message || "Erreur lors de la création du profil pour utilisateur existant" }),
+              {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 500,
+              }
+            );
           }
-        );
+        }
       }
     } catch (error) {
       console.error("Erreur lors de la vérification d'utilisateur existant:", error);

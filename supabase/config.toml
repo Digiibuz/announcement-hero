@@ -1,10 +1,19 @@
 
-# Votre ID de projet Supabase
+# Nom du projet Supabase
 project_id = "rdwqedmvzicerwotjseg"
 
-[functions]
-[functions.get-public-config]
-verify_jwt = false
+[api]
+# ID du projet pour les configurations spécifiques
 
-[functions.auth]
-verify_jwt = false
+[db]
+# Configurations de la base de données
+
+[functions.google-business]
+verify_jwt = true
+import_map = "./import_map.json"
+
+[functions.secure-operations]
+verify_jwt = true
+import_map = "./import_map.json"
+
+# Section pour variables d'environnement globales
