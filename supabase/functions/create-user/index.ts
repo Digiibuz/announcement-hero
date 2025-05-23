@@ -185,21 +185,42 @@ serve(async (req) => {
     console.log("Création de l'utilisateur dans auth:", email);
     let newUserData;
     try {
-      // Créer l'utilisateur dans le système d'authentification en utilisant createUser au lieu de admin.createUser
-      const { data, error } = await supabaseAdmin.auth.admin.createUser({
+      // Utiliser la méthode spécifique pour créer un utilisateur: signUp au lieu de admin.createUser
+      const { data, error } = await supabaseAdmin.auth.signUp({
         email,
         password,
-        email_confirm: true, // Confirmer l'email automatiquement
-        user_metadata: {
-          name,
-          role,
-          wordpressConfigId: role === "client" && wordpressConfigId && wordpressConfigId !== "none" ? wordpressConfigId : null,
-        },
+        options: {
+          data: {
+            name,
+            role,
+            wordpressConfigId: role === "client" && wordpressConfigId && wordpressConfigId !== "none" ? wordpressConfigId : null,
+          },
+          emailRedirectTo: `${Deno.env.get("SITE_URL") || "https://app.digiibuz.fr"}/login`,
+        }
       });
 
       if (error) {
-        console.error("Erreur lors de la création de l'utilisateur dans auth:", error.message);
-        throw error;
+        console.error("Erreur lors de la création de l'utilisateur dans auth avec signUp:", error.message);
+        
+        // Essayer une autre méthode si signUp échoue
+        console.log("Tentative avec admin.createUser comme méthode alternative");
+        const adminResult = await supabaseAdmin.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true,
+          user_metadata: {
+            name,
+            role,
+            wordpressConfigId: role === "client" && wordpressConfigId && wordpressConfigId !== "none" ? wordpressConfigId : null,
+          },
+        });
+        
+        if (adminResult.error) {
+          console.error("Erreur avec la méthode alternative admin.createUser:", adminResult.error.message);
+          throw adminResult.error;
+        }
+        
+        data = adminResult.data;
       }
       
       if (!data || !data.user || !data.user.id) {
