@@ -20,15 +20,9 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  // Don't replace runtime environment variables
+  // Define for Deno global in browser builds
   define: {
     // Add this to handle the Deno global in browser builds
     "Deno": "undefined"
   },
-  // Exclude env-config.js from processing
-  build: {
-    rollupOptions: {
-      external: ['/env-config.js']
-    }
-  }
 }));
