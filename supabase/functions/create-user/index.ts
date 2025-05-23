@@ -185,42 +185,21 @@ serve(async (req) => {
     console.log("Création de l'utilisateur dans auth:", email);
     let newUserData;
     try {
-      // Utiliser la méthode spécifique pour créer un utilisateur: signUp au lieu de admin.createUser
-      const { data, error } = await supabaseAdmin.auth.signUp({
+      // Créer l'utilisateur dans le système d'authentification
+      const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
-        options: {
-          data: {
-            name,
-            role,
-            wordpressConfigId: role === "client" && wordpressConfigId && wordpressConfigId !== "none" ? wordpressConfigId : null,
-          },
-          emailRedirectTo: `${Deno.env.get("SITE_URL") || "https://app.digiibuz.fr"}/login`,
-        }
+        email_confirm: true, // Confirmer l'email automatiquement
+        user_metadata: {
+          name,
+          role,
+          wordpressConfigId: role === "client" && wordpressConfigId && wordpressConfigId !== "none" ? wordpressConfigId : null,
+        },
       });
 
       if (error) {
-        console.error("Erreur lors de la création de l'utilisateur dans auth avec signUp:", error.message);
-        
-        // Essayer une autre méthode si signUp échoue
-        console.log("Tentative avec admin.createUser comme méthode alternative");
-        const adminResult = await supabaseAdmin.auth.admin.createUser({
-          email,
-          password,
-          email_confirm: true,
-          user_metadata: {
-            name,
-            role,
-            wordpressConfigId: role === "client" && wordpressConfigId && wordpressConfigId !== "none" ? wordpressConfigId : null,
-          },
-        });
-        
-        if (adminResult.error) {
-          console.error("Erreur avec la méthode alternative admin.createUser:", adminResult.error.message);
-          throw adminResult.error;
-        }
-        
-        data = adminResult.data;
+        console.error("Erreur lors de la création de l'utilisateur dans auth:", error.message);
+        throw error;
       }
       
       if (!data || !data.user || !data.user.id) {
@@ -232,18 +211,11 @@ serve(async (req) => {
       console.log("Utilisateur créé avec succès dans auth:", newUserData.user.id);
       
       // ***** VÉRIFIER QUE L'UTILISATEUR A BIEN ÉTÉ CRÉÉ DANS AUTH *****
-      const { data: verifyUser, error: verifyError } = await supabaseAdmin.auth.admin.getUserById(newUserData.user.id);
-      
-      if (verifyError) {
-        console.error("Erreur lors de la vérification de l'utilisateur:", verifyError.message);
-        throw verifyError;
-      }
-      
+      const { data: verifyUser } = await supabaseAdmin.auth.admin.getUserById(newUserData.user.id);
       if (!verifyUser || !verifyUser.user) {
         console.error("L'utilisateur n'a pas été trouvé après sa création");
         throw new Error("Échec de vérification de la création de l'utilisateur dans auth");
       }
-      
       console.log("Utilisateur vérifié dans auth:", verifyUser.user.id);
       
     } catch (error) {
@@ -301,16 +273,13 @@ serve(async (req) => {
 
     // ***** VÉRIFICATION FINALE QUE TOUT EST CRÉÉ CORRECTEMENT *****
     try {
-      const { data: finalAuth } = await supabaseAdmin.auth.admin.getUserById(newUserData.user.id);
-      console.log("Vérification finale utilisateur auth:", finalAuth ? "OK" : "NON TROUVÉ");
-      
-      const { data: finalProfile } = await supabaseAdmin
+      const { data: finalCheck } = await supabaseAdmin
         .from('profiles')
         .select('*')
         .eq('id', newUserData.user.id)
         .single();
         
-      console.log("Vérification finale du profil créé:", finalProfile ? "OK" : "NON TROUVÉ");
+      console.log("Vérification finale du profil créé:", finalCheck ? "OK" : "NON TROUVÉ");
     } catch (error) {
       console.log("Erreur lors de la vérification finale (non bloquante):", error);
     }
