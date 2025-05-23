@@ -185,7 +185,7 @@ serve(async (req) => {
     console.log("Création de l'utilisateur dans auth:", email);
     let newUserData;
     try {
-      // Créer l'utilisateur dans le système d'authentification
+      // Créer l'utilisateur dans le système d'authentification en utilisant createUser au lieu de admin.createUser
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
@@ -211,11 +211,18 @@ serve(async (req) => {
       console.log("Utilisateur créé avec succès dans auth:", newUserData.user.id);
       
       // ***** VÉRIFIER QUE L'UTILISATEUR A BIEN ÉTÉ CRÉÉ DANS AUTH *****
-      const { data: verifyUser } = await supabaseAdmin.auth.admin.getUserById(newUserData.user.id);
+      const { data: verifyUser, error: verifyError } = await supabaseAdmin.auth.admin.getUserById(newUserData.user.id);
+      
+      if (verifyError) {
+        console.error("Erreur lors de la vérification de l'utilisateur:", verifyError.message);
+        throw verifyError;
+      }
+      
       if (!verifyUser || !verifyUser.user) {
         console.error("L'utilisateur n'a pas été trouvé après sa création");
         throw new Error("Échec de vérification de la création de l'utilisateur dans auth");
       }
+      
       console.log("Utilisateur vérifié dans auth:", verifyUser.user.id);
       
     } catch (error) {
@@ -273,13 +280,16 @@ serve(async (req) => {
 
     // ***** VÉRIFICATION FINALE QUE TOUT EST CRÉÉ CORRECTEMENT *****
     try {
-      const { data: finalCheck } = await supabaseAdmin
+      const { data: finalAuth } = await supabaseAdmin.auth.admin.getUserById(newUserData.user.id);
+      console.log("Vérification finale utilisateur auth:", finalAuth ? "OK" : "NON TROUVÉ");
+      
+      const { data: finalProfile } = await supabaseAdmin
         .from('profiles')
         .select('*')
         .eq('id', newUserData.user.id)
         .single();
         
-      console.log("Vérification finale du profil créé:", finalCheck ? "OK" : "NON TROUVÉ");
+      console.log("Vérification finale du profil créé:", finalProfile ? "OK" : "NON TROUVÉ");
     } catch (error) {
       console.log("Erreur lors de la vérification finale (non bloquante):", error);
     }
