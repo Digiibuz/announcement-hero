@@ -1,21 +1,13 @@
 
 // Nom du cache
-const CACHE_NAME = 'digiibuz-cache-v19';
+const CACHE_NAME = 'digiibuz-cache-v18';
 
-// Liste des ressources à mettre en cache immédiatement (shell de l'application)
-const CORE_ASSETS = [
+// Liste des ressources à mettre en cache
+const urlsToCache = [
   '/',
   '/index.html',
   '/manifest.json',
   '/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png',
-];
-
-// Assets supplémentaires à mettre en cache pour une utilisation hors ligne
-const SECONDARY_ASSETS = [
-  // Polices web essentielles
-  'https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800&display=swap',
-  // Images d'interface communes
-  '/placeholder.svg',
 ];
 
 // Vérification qu'une URL est valide pour la mise en cache
@@ -24,25 +16,6 @@ function isValidCacheUrl(url) {
   try {
     const urlObj = new URL(url);
     return validSchemes.includes(urlObj.protocol);
-  } catch (e) {
-    return false;
-  }
-}
-
-// Déterminer si une URL est un asset statique qui peut être mis en cache
-function isStaticAsset(url) {
-  try {
-    const urlObj = new URL(url);
-    return (
-      urlObj.pathname.endsWith('.css') ||
-      urlObj.pathname.endsWith('.woff2') ||
-      urlObj.pathname.endsWith('.png') ||
-      urlObj.pathname.endsWith('.svg') ||
-      urlObj.pathname.endsWith('.jpg') ||
-      urlObj.pathname.endsWith('.webp') ||
-      urlObj.pathname.endsWith('.avif') ||
-      urlObj.pathname.endsWith('.ico')
-    );
   } catch (e) {
     return false;
   }
@@ -72,6 +45,7 @@ function shouldSkipCaching(url) {
       url.includes('supabase.co') || 
       url.includes('wp-json') ||
       url.includes('storage.googleapis.com') ||
+      url.includes('images/') ||
       url.includes('camera') ||
       url.includes('image/') ||
       url.includes('upload') ||
@@ -86,33 +60,23 @@ function shouldSkipCaching(url) {
   }
 }
 
-// Installation du service worker avec préchargement optimisé
+// Installation du service worker
 self.addEventListener('install', event => {
-  console.log('Installing Service Worker v19 (Optimisation Réseau)');
-  
-  // Stratégie de préchargement optimisée pour réseaux lents
+  console.log('Installing Service Worker v18');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Préchargement du cache shell application');
-        // D'abord mettre en cache les ressources essentielles
-        return cache.addAll(CORE_ASSETS).then(() => {
-          // Ensuite tenter de mettre en cache les ressources secondaires
-          // mais ne pas bloquer l'activation si ça échoue
-          return cache.addAll(SECONDARY_ASSETS).catch(err => {
-            console.warn('Ressources secondaires non mises en cache:', err);
-          });
-        });
+        console.log('Cache ouvert');
+        return cache.addAll(urlsToCache);
       })
   );
-  
   // Force l'activation immédiate
   self.skipWaiting();
 });
 
 // Activation et nettoyage des anciens caches
 self.addEventListener('activate', event => {
-  console.log('Activating Service Worker v19 (Optimisation Réseau)');
+  console.log('Activating Service Worker v18');
   const cacheWhitelist = [CACHE_NAME];
 
   event.waitUntil(
@@ -134,7 +98,7 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Gestion des requêtes avec stratégies adaptées aux réseaux lents
+// Gestion des requêtes 
 self.addEventListener('fetch', event => {
   // Pour tous les fichiers JavaScript, surtout Login, aller directement au réseau
   if (event.request.url.includes('Login-') || event.request.url.includes('.js')) {
@@ -149,128 +113,36 @@ self.addEventListener('fetch', event => {
   // Stratégie pour les requêtes de navigation (HTML)
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      // Stratégie "network first, fallback to cache" 
-      // Avec timeout pour réseaux lents
-      Promise.race([
-        // Timeout pour éviter les attentes trop longues sur réseaux lents
-        new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Timeout')), 3000); // 3s de timeout
-        }),
-        fetch(event.request)
-      ])
-      .then(response => {
-        // Mettre en cache la nouvelle version pour usage futur
-        const responseClone = response.clone();
-        caches.open(CACHE_NAME).then(cache => {
-          cache.put(event.request, responseClone);
-        });
-        return response;
-      })
-      .catch(() => {
-        console.log('Récupération depuis le cache suite au timeout ou échec réseau');
-        // En cas d'échec, utiliser le cache ou rediriger vers la page d'accueil
-        return caches.match(event.request)
-          .then(cachedResponse => {
-            return cachedResponse || caches.match('/index.html');
-          });
-      })
-    );
-    return;
-  }
-
-  // Stratégie pour les assets statiques (images, CSS, polices)
-  if (isStaticAsset(event.request.url)) {
-    event.respondWith(
-      // Stratégie "cache first, fallback to network"
-      caches.match(event.request)
-        .then(cachedResponse => {
-          if (cachedResponse) {
-            // Si déjà en cache, l'utiliser immédiatement
-            return cachedResponse;
-          }
-          
-          // Sinon, aller chercher sur le réseau
-          return fetch(event.request)
-            .then(response => {
-              // Mettre en cache pour usage futur
-              const responseClone = response.clone();
-              caches.open(CACHE_NAME).then(cache => {
-                cache.put(event.request, responseClone);
-              });
-              return response;
-            })
-            .catch(error => {
-              console.error('Erreur de récupération asset statique:', error);
-              // Réponse par défaut pour les images
-              if (event.request.url.match(/\.(jpg|png|svg|webp|avif)$/)) {
-                return caches.match('/placeholder.svg');
-              }
-              return new Response('', { status: 404 });
-            });
+      fetch(event.request)
+        .catch(() => {
+          // En cas d'échec, utiliser le cache ou rediriger vers la page d'accueil
+          return caches.match('/index.html');
         })
     );
     return;
   }
 
-  // Pour les autres requêtes - stratégie réseau d'abord, puis cache avec timeout
+  // Pour les autres requêtes - stratégie réseau d'abord, puis cache
   event.respondWith(
-    Promise.race([
-      // Timeout pour éviter les attentes trop longues sur réseaux lents
-      new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout')), 5000); // 5s de timeout
-      }),
-      fetch(event.request)
-    ])
-    .then(response => {
-      // Ne pas mettre en cache les réponses non réussies
-      if (!response || response.status !== 200) {
-        return response;
-      }
-      
-      // Mettre en cache les bonnes réponses
-      const responseClone = response.clone();
-      caches.open(CACHE_NAME).then(cache => {
-        cache.put(event.request, responseClone);
-      });
-      return response;
-    })
-    .catch(error => {
-      console.log('Récupération depuis le cache suite au timeout ou échec réseau', error);
-      return caches.match(event.request)
-        .then(cachedResponse => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          
-          // Pour les ressources non trouvées, retourner une réponse vide
-          return new Response('', { status: 404 });
-        });
-    })
+    fetch(event.request)
+      .catch(error => {
+        return caches.match(event.request)
+          .then(cachedResponse => {
+            if (cachedResponse) {
+              return cachedResponse;
+            }
+            
+            // Pour les ressources non trouvées, retourner une réponse vide
+            return new Response('', { status: 404 });
+          });
+      })
   );
 });
 
-// Gestion des messages entre clients avec fonctionnalités réseau
+// Amélioration de la gestion des messages entre clients
 self.addEventListener('message', event => {
   if (event.data === 'skipWaiting') {
     self.skipWaiting();
-  }
-  
-  // Récupérer l'état réseau actuel
-  if (event.data === 'getNetworkStatus') {
-    self.clients.matchAll().then(clients => {
-      clients.forEach(client => {
-        // Obtenir les performances de mise en cache
-        caches.open(CACHE_NAME).then(cache => {
-          cache.keys().then(keys => {
-            client.postMessage({
-              type: 'networkStatus',
-              cachedItems: keys.length,
-              timestamp: Date.now()
-            });
-          });
-        });
-      });
-    });
   }
   
   // Ajout d'une commande pour supprimer complètement le cache
