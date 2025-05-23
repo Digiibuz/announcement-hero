@@ -35,7 +35,7 @@ const Login = () => {
       // Nettoyer l'état d'authentification avant de se connecter
       cleanupAuthState();
       
-      // Essayer de se déconnecter globalement d'abord
+      // Essayer de se déconnecter globalement d'abord pour éviter les conflits
       try {
         await supabase.auth.signOut({ scope: 'global' });
       } catch (err) {
@@ -43,7 +43,9 @@ const Login = () => {
         console.warn("Échec de la déconnexion globale:", err);
       }
       
-      // Appeler la fonction edge sécurisée
+      console.log("Tentative de connexion pour:", email);
+      
+      // Appeler la fonction edge sécurisée avec une gestion d'erreur améliorée
       const response = await supabase.functions.invoke("secure-login", {
         body: {
           email,
@@ -61,6 +63,8 @@ const Login = () => {
         throw new Error("Aucune session n'a été créée");
       }
       
+      console.log("Réponse de connexion réussie:", response.data);
+      
       // Définir la session manuellement avec les données retournées
       await supabase.auth.setSession({
         access_token: response.data.session.access_token,
@@ -71,7 +75,7 @@ const Login = () => {
         ? "Connexion réussie avec sécurité renforcée" 
         : "Connexion réussie");
       
-      // Redirect after successful login
+      // Redirect after successful login with a small delay
       setTimeout(() => {
         navigate("/dashboard");
       }, 300);

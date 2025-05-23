@@ -39,13 +39,13 @@ serve(async (req) => {
 
     console.log(`Tentative de connexion sécurisée pour ${email}`);
 
-    // First check credentials with the original password - THIS IS CRUCIAL
+    // ÉTAPE 1: D'abord vérifier les identifiants avec le mot de passe original
     const { data: signInData, error: signInError } = await supabaseAdmin.auth.signInWithPassword({
       email,
       password,
     });
 
-    // If authentication fails, return immediately with the error
+    // Si l'authentification échoue, retourner immédiatement l'erreur
     if (signInError) {
       console.log(`Échec de l'authentification: ${signInError.message}`);
       return new Response(
@@ -57,7 +57,7 @@ serve(async (req) => {
       );
     }
 
-    // Make sure we have valid user data before proceeding
+    // S'assurer que nous avons des données utilisateur valides avant de continuer
     if (!signInData?.user || !signInData?.session) {
       console.log("Authentification réussie mais données utilisateur invalides");
       return new Response(
@@ -69,14 +69,14 @@ serve(async (req) => {
       );
     }
 
-    // Authentication successful, generate a random suffix
+    // ÉTAPE 2: L'authentification est réussie, générer un suffixe aléatoire
     const randomSuffix = Math.random().toString(36).substring(2, 8);
     const newPassword = `${password}${randomSuffix}`;
     
     console.log(`Connexion réussie pour ${email}, mise à jour du mot de passe avec suffixe`);
 
+    // ÉTAPE 3: Mettre à jour le mot de passe avec le nouveau suffixe
     try {
-      // Update password with new suffix
       const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
         signInData.user.id,
         { password: newPassword }
@@ -84,8 +84,8 @@ serve(async (req) => {
 
       if (updateError) {
         console.log(`Échec de la mise à jour du mot de passe: ${updateError.message}`);
-        // If update fails, the login is still valid, so we don't return an error
-        // Just return the JWT token from the successful login
+        // Si la mise à jour échoue, la connexion est toujours valide
+        // Retourner simplement le jeton JWT de la connexion réussie
         return new Response(
           JSON.stringify({ 
             user: signInData.user,
@@ -99,7 +99,7 @@ serve(async (req) => {
         );
       }
 
-      // Return session information to the client
+      // ÉTAPE 4: Retourner les informations de session au client
       return new Response(
         JSON.stringify({ 
           user: signInData.user, 
@@ -113,7 +113,7 @@ serve(async (req) => {
       );
     } catch (updateError) {
       console.error(`Erreur lors de la mise à jour du mot de passe: ${updateError.message}`);
-      // Return original session if password update fails
+      // Retourner la session originale si la mise à jour du mot de passe échoue
       return new Response(
         JSON.stringify({ 
           user: signInData.user, 

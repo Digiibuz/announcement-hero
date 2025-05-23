@@ -39,4 +39,6 @@ export const cleanupAuthState = () => {
       sessionStorage.removeItem(key);
     }
   });
+  
+  console.log("Nettoyage de l'état d'authentification effectué");
 };
