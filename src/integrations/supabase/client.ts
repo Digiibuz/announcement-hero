@@ -23,6 +23,8 @@ export const supabase = createClient<Database>(
 
 // Fonction utilitaire pour nettoyer tous les jetons d'authentification
 export const cleanupAuthState = () => {
+  console.log("Nettoyage de l'état d'authentification...");
+  
   // Supprimer les jetons standards
   localStorage.removeItem('supabase.auth.token');
   

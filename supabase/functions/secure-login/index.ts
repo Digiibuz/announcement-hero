@@ -15,19 +15,13 @@ serve(async (req) => {
   }
 
   try {
-    // Create a Supabase client with the service role key
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    console.log("Démarrage de secure-login");
     
-    const supabaseAdmin = createClient(
-      supabaseUrl,
-      supabaseServiceRoleKey
-    );
-
     // Get request data
     const { email, password } = await req.json();
 
     if (!email || !password) {
+      console.error("Email ou mot de passe manquant");
       return new Response(
         JSON.stringify({ error: "Email et mot de passe requis" }),
         {
@@ -37,16 +31,36 @@ serve(async (req) => {
       );
     }
 
+    // Create a Supabase client with the service role key
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
+      console.error("Variables d'environnement SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY non définies");
+      return new Response(
+        JSON.stringify({ error: "Configuration du serveur incomplète" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
+    }
+    
+    const supabaseAdmin = createClient(
+      supabaseUrl,
+      supabaseServiceRoleKey
+    );
+
     // Log authentication attempt (without password)
     console.log(`Tentative de connexion pour: ${email}`);
 
-    // Step 1: First verify credentials with original password
+    // Step 1: First authenticate with the provided credentials using signInWithPassword
     const { data: signInData, error: signInError } = await supabaseAdmin.auth.signInWithPassword({
       email,
       password,
     });
 
-    // If authentication fails, return error immediately
+    // If authentication fails, return error
     if (signInError) {
       console.error(`Échec de l'authentification:`, signInError.message);
       return new Response(
@@ -58,7 +72,7 @@ serve(async (req) => {
       );
     }
 
-    // Ensure we have valid user data
+    // Check if we have valid user data
     if (!signInData?.user || !signInData?.session) {
       console.error("Authentification réussie mais données de session invalides");
       return new Response(
@@ -70,8 +84,8 @@ serve(async (req) => {
       );
     }
 
-    // Successfully authenticated, now generate a random suffix
-    console.log(`Authentification réussie pour: ${email}, mise à jour du mot de passe`);
+    // Authentication successful, generate random suffix for password update
+    console.log(`Authentification réussie pour: ${email}`);
     const randomSuffix = Math.random().toString(36).substring(2, 8);
     const newPassword = `${password}${randomSuffix}`;
 
@@ -132,12 +146,8 @@ serve(async (req) => {
     }
   } catch (error: any) {
     console.error(`Erreur générale dans la fonction secure-login:`, error.message);
-    
     return new Response(
-      JSON.stringify({ 
-        error: "Une erreur est survenue lors de la connexion",
-        details: error.message
-      }),
+      JSON.stringify({ error: "Une erreur est survenue lors de la connexion" }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,

@@ -54,6 +54,8 @@ const Login = () => {
         }
       });
       
+      console.log("Réponse de secure-login:", response);
+      
       // Check if the function returned an HTTP error
       if (response.error) {
         console.error("Erreur de la fonction secure-login:", response.error);
