@@ -20,8 +20,11 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  // Define for Deno global in browser builds
+  // Ensure environment variables are properly loaded
   define: {
+    // Make sure we're not using undefined values
+    "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(process.env.VITE_SUPABASE_URL || ""),
+    "import.meta.env.VITE_SUPABASE_ANON_KEY": JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY || ""),
     // Add this to handle the Deno global in browser builds
     "Deno": "undefined"
   },
