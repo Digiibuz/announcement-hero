@@ -10,9 +10,9 @@ import Login from "@/pages/Login";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/NotFound";
+import Dashboard from "@/pages/Dashboard"; // Import Dashboard directly instead of lazy loading
 
 // Lazy loaded components
-const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Announcements = lazy(() => import('@/pages/Announcements'));
 const CreateAnnouncement = lazy(() => import('@/pages/CreateAnnouncement'));
 const AnnouncementDetail = lazy(() => import('@/pages/AnnouncementDetail'));
