@@ -103,16 +103,18 @@ export const useUserManagement = () => {
     try {
       setIsDeleting(true);
       
-      // Alternative à la fonction Edge: supprimer seulement le profil
-      // Note: Cela ne supprime pas l'utilisateur dans auth.users 
-      // mais désactive son accès à l'application
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', userId);
-      
+      // Appeler la fonction Edge delete-user pour supprimer l'utilisateur complètement
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userId }
+      });
+
       if (error) {
+        console.error("Error calling delete-user function:", error);
         throw error;
+      }
+
+      if (!data?.success) {
+        throw new Error("La suppression de l'utilisateur a échoué");
       }
       
       // Mise à jour de la liste locale d'utilisateurs
@@ -126,7 +128,7 @@ export const useUserManagement = () => {
     }
   };
 
-  // Chargement des utilisateurs au montage - Fixed from useState to useEffect
+  // Chargement des utilisateurs au montage
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
