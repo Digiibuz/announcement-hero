@@ -9,26 +9,6 @@ import { UserProfile, AuthContextType } from "@/types/auth";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Fonction utilitaire pour nettoyer le stockage local des jetons d'authentification
-const cleanupAuthState = () => {
-  // Supprimer les jetons standard
-  localStorage.removeItem('supabase.auth.token');
-  
-  // Supprimer toutes les clés d'authentification Supabase de localStorage
-  Object.keys(localStorage).forEach((key) => {
-    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-      localStorage.removeItem(key);
-    }
-  });
-  
-  // Supprimer de sessionStorage si utilisé
-  Object.keys(sessionStorage || {}).forEach((key) => {
-    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-      sessionStorage.removeItem(key);
-    }
-  });
-};
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const { userProfile, setUserProfile, fetchFullProfile } = useUserProfile();
@@ -135,126 +115,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [userProfile?.role, userProfile?.id]);
 
-  // Fonction de login améliorée avec détection des erreurs et journalisation
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     
     try {
-      // Nettoyer d'abord l'état d'authentification pour éviter les problèmes
-      cleanupAuthState();
-      
-      console.log("Tentative de connexion via Edge Function pour:", email);
-      
-      // Construire l'URL complète pour l'Edge Function
-      const edgeFunctionURL = `${window.location.origin}/api/auth`;
-      console.log("URL de l'Edge Function:", edgeFunctionURL);
-      
-      // Utiliser l'Edge Function pour l'authentification
-      const response = await fetch(edgeFunctionURL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          action: 'login',
-          email,
-          password
-        })
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
       });
       
-      // Vérifier si la réponse est OK et analyser le JSON
-      if (!response.ok) {
-        const responseText = await response.text();
-        console.error("Réponse d'erreur non-JSON:", responseText);
-        
-        let errorMessage = "Échec de la connexion";
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.error || errorMessage;
-        } catch (parseError) {
-          console.error("Impossible de parser la réponse d'erreur:", parseError);
-        }
-        
-        throw new Error(errorMessage);
+      if (error) {
+        throw error;
       }
       
-      // Analyser la réponse JSON
-      let data;
-      try {
-        data = await response.json();
-      } catch (jsonError) {
-        console.error("Erreur lors du parsing de la réponse JSON:", jsonError);
-        throw new Error("Format de réponse invalide du serveur");
-      }
-      
-      const { session, user } = data;
-      
-      if (!session || !user) {
-        throw new Error("Données d'authentification invalides");
-      }
-      
-      console.log("Session récupérée avec succès");
-      
-      // Mettre à jour la session dans Supabase côté client
-      await supabase.auth.setSession({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token
-      });
-      
-      console.log("Session mise à jour côté client");
-      
-      // Le reste sera géré par le listener onAuthStateChange
-      
+      // User will be set by the auth state change listener
     } catch (error: any) {
-      console.error("Erreur complète lors de la connexion:", error);
       setIsLoading(false);
-      throw new Error(error.message || "Erreur de connexion");
+      throw new Error(error.message || "Login error");
     }
   };
 
-  // Nouvelle implémentation de logout utilisant l'edge function
   const logout = async () => {
     try {
-      // Nettoyer d'abord le stockage local
-      cleanupAuthState();
       localStorage.removeItem('userRole');
       localStorage.removeItem('userId');
       sessionStorage.removeItem('lastAdminPath');
       sessionStorage.removeItem('lastAuthenticatedPath');
-      localStorage.removeItem("originalUser");
       
-      // Récupérer l'URL complète pour l'Edge Function
-      const edgeFunctionURL = `${window.location.origin}/api/auth`;
-      
-      try {
-        // Récupérer le token actuel si disponible
-        const sessionResult = await supabase.auth.getSession();
-        const accessToken = sessionResult.data.session?.access_token || '';
-        
-        // Appeler l'edge function pour la déconnexion uniquement si nous avons un token
-        if (accessToken) {
-          console.log("Appel de l'Edge Function pour la déconnexion");
-          await fetch(edgeFunctionURL, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${accessToken}`
-            },
-            body: JSON.stringify({
-              action: 'logout'
-            })
-          });
-          console.log("Déconnexion via Edge Function réussie");
-        }
-      } catch (apiError) {
-        console.warn("Échec de l'appel à l'API de déconnexion:", apiError);
-        // Continuer malgré l'erreur
-      }
-      
-      // Nettoyage supplémentaire côté client
       await supabase.auth.signOut();
       setUserProfile(null);
-      console.log("Nettoyage local et déconnexion Supabase effectués");
+      localStorage.removeItem("originalUser");
     } catch (error) {
       console.error("Error during logout:", error);
     }
