@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -9,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, cleanupAuthState } from "@/integrations/supabase/client";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -31,29 +32,42 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      // Appeler notre fonction edge sécurisée plutôt que le login standard
-      const { data, error } = await supabase.functions.invoke("secure-login", {
+      // Nettoyer l'état d'authentification avant de se connecter
+      cleanupAuthState();
+      
+      // Essayer de se déconnecter globalement d'abord
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (err) {
+        // Continuer même si cela échoue
+        console.warn("Échec de la déconnexion globale:", err);
+      }
+      
+      // Appeler la fonction edge sécurisée
+      const response = await supabase.functions.invoke("secure-login", {
         body: {
           email,
           password
         }
       });
       
-      if (error) {
-        throw new Error(error.message || "Échec de la connexion");
+      // Vérifier si la fonction a retourné une erreur HTTP
+      if (response.error) {
+        throw new Error(response.error.message || "Échec de la connexion");
       }
       
-      if (!data.session) {
+      // Vérifier si les données sont présentes
+      if (!response.data || !response.data.session) {
         throw new Error("Aucune session n'a été créée");
       }
       
       // Définir la session manuellement avec les données retournées
       await supabase.auth.setSession({
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token
+        access_token: response.data.session.access_token,
+        refresh_token: response.data.session.refresh_token
       });
       
-      toast.success(data.passwordUpdated 
+      toast.success(response.data.passwordUpdated 
         ? "Connexion réussie avec sécurité renforcée" 
         : "Connexion réussie");
       

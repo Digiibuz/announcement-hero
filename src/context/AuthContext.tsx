@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase, cleanupAuthState } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
@@ -130,25 +131,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       // Appeler la fonction edge sécurisée
-      const { data, error } = await supabase.functions.invoke("secure-login", {
+      const response = await supabase.functions.invoke("secure-login", {
         body: {
           email,
           password
         }
       });
       
-      if (error) {
-        throw new Error(error.message || "Échec de la connexion");
+      // Vérifier si la fonction a retourné une erreur HTTP
+      if (response.error) {
+        throw new Error(response.error.message || "Échec de la connexion");
       }
       
-      if (!data.session) {
+      // Vérifier si les données sont présentes
+      if (!response.data || !response.data.session) {
         throw new Error("Aucune session n'a été créée");
       }
       
       // Définir la session manuellement avec les données retournées
       await supabase.auth.setSession({
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token
+        access_token: response.data.session.access_token,
+        refresh_token: response.data.session.refresh_token
       });
       
       // L'événement onAuthStateChange sera déclenché et mettra à jour l'état utilisateur
