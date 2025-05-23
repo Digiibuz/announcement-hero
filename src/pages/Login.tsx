@@ -10,7 +10,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
-import { supabase, cleanupAuthState } from "@/integrations/supabase/client";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -20,10 +19,9 @@ const Login = () => {
   const { isAuthenticated, login } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect if already authenticated - without full page reload
-  React.useEffect(() => {
+  // Redirect if already authenticated
+  useEffect(() => {
     if (isAuthenticated) {
-      // Utiliser navigate au lieu de window.location pour éviter un rechargement complet
       navigate("/dashboard", { replace: true });
     }
   }, [isAuthenticated, navigate]);
@@ -34,14 +32,9 @@ const Login = () => {
     
     try {
       console.log("Attempting login with email:", email);
-      
-      // Utiliser la méthode login du contexte auth plutôt que d'appeler Supabase directement
       await login(email, password);
-      
       toast.success("Connexion réussie");
-      
-      // La navigation sera prise en charge par l'effet de redirection ci-dessus
-      // qui utilisera React Router au lieu d'un rechargement complet
+      // Navigation handled by the useEffect above
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
       toast.error(error.message || "Échec de la connexion");

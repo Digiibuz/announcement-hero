@@ -1,16 +1,14 @@
 
-import React, { lazy, Suspense, useEffect } from 'react';
-import { Navigate, Route, Routes as RouterRoutes, useLocation, useNavigationType } from "react-router-dom";
+import React, { lazy, Suspense } from 'react';
+import { Navigate, Route, Routes as RouterRoutes } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { useScrollRestoration } from '@/hooks/useScrollRestoration';
-import { useAppLifecycle } from '@/hooks/useAppLifecycle';
 import ProtectedRoute from "./ProtectedRoute";
 import AdminRoute from "./AdminRoute";
 import Login from "@/pages/Login";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/NotFound";
-import Dashboard from "@/pages/Dashboard"; // Direct import to avoid dynamic loading issues
+import Dashboard from "@/pages/Dashboard";
 
 // Lazy loaded components
 const Announcements = lazy(() => import('@/pages/Announcements'));
@@ -23,58 +21,96 @@ const GoogleBusinessPage = lazy(() => import('@/pages/GoogleBusinessPage'));
 
 const AppRoutes = () => {
   const { isAuthenticated, isOnResetPasswordPage } = useAuth();
-  const { pathname } = useLocation();
-  const navigationType = useNavigationType();
-  useScrollRestoration();
-  
-  // Hook de cycle de vie optimisé pour éviter les rechargements
-  useAppLifecycle({
-    onResume: () => {
-      console.log("Application reprise - navigation fluide maintenue");
-      // Aucune invalidation de requêtes ici pour éviter les rechargements
-    }
-  });
-  
-  // Stocker le type de navigation pour utilisation dans les gestionnaires d'événements
-  useEffect(() => {
-    if (window.navigationType !== navigationType) {
-      window.navigationType = navigationType;
-      console.log(`Navigation de type: ${navigationType}`);
-    }
-  }, [navigationType]);
-
-  // Si nous sommes sur une page de réinitialisation, autoriser l'accès
-  if (isOnResetPasswordPage) {
-    return (
-      <Suspense fallback={<div>Chargement...</div>}>
-        <RouterRoutes>
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="*" element={<Navigate to="/reset-password" replace />} />
-        </RouterRoutes>
-      </Suspense>
-    );
-  }
 
   return (
     <Suspense fallback={<div>Chargement...</div>}>
       <RouterRoutes>
         {/* Public routes */}
-        <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" replace />} />
-        <Route path="/forgot-password" element={!isAuthenticated ? <ForgotPassword /> : <Navigate to="/dashboard" replace />} />
+        <Route 
+          path="/login" 
+          element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" replace />} 
+        />
+        <Route 
+          path="/forgot-password" 
+          element={!isAuthenticated ? <ForgotPassword /> : <Navigate to="/dashboard" replace />} 
+        />
         <Route path="/reset-password" element={<ResetPassword />} />
         
         {/* Protected routes */}
-        <Route path="/" element={<ProtectedRoute><Navigate to="/dashboard" replace /></ProtectedRoute>} />
-        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/announcements" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
-        <Route path="/announcements/:id" element={<ProtectedRoute><AnnouncementDetail /></ProtectedRoute>} />
-        <Route path="/create" element={<ProtectedRoute><CreateAnnouncement /></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
+        <Route 
+          path="/" 
+          element={
+            <ProtectedRoute>
+              <Navigate to="/dashboard" replace />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/announcements" 
+          element={
+            <ProtectedRoute>
+              <Announcements />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/announcements/:id" 
+          element={
+            <ProtectedRoute>
+              <AnnouncementDetail />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/create" 
+          element={
+            <ProtectedRoute>
+              <CreateAnnouncement />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/profile" 
+          element={
+            <ProtectedRoute>
+              <UserProfile />
+            </ProtectedRoute>
+          } 
+        />
         
         {/* Admin routes */}
-        <Route path="/wordpress" element={<AdminRoute><WordPressManagement /></AdminRoute>} />
-        <Route path="/users" element={<AdminRoute adminOnly><UserManagement /></AdminRoute>} />
-        <Route path="/google-business" element={<ProtectedRoute><GoogleBusinessPage /></ProtectedRoute>} />
+        <Route 
+          path="/wordpress" 
+          element={
+            <AdminRoute>
+              <WordPressManagement />
+            </AdminRoute>
+          } 
+        />
+        <Route 
+          path="/users" 
+          element={
+            <AdminRoute adminOnly>
+              <UserManagement />
+            </AdminRoute>
+          } 
+        />
+        <Route 
+          path="/google-business" 
+          element={
+            <ProtectedRoute>
+              <GoogleBusinessPage />
+            </ProtectedRoute>
+          } 
+        />
         
         {/* Fallback routes */}
         <Route path="/404" element={<NotFound />} />
