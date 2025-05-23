@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -10,19 +10,17 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
-import { supabase, cleanupAuthState } from "@/integrations/supabase/client";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const { isAuthenticated } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already authenticated
-  useEffect(() => {
+  React.useEffect(() => {
     if (isAuthenticated) {
       navigate("/dashboard");
     }
@@ -31,62 +29,18 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setErrorMessage("");
     
     try {
-      console.log("Tentative de connexion avec:", email);
+      await login(email, password);
+      toast.success("Connexion réussie");
       
-      // Clean up auth state before login attempt
-      cleanupAuthState();
-      
-      // Attempt global sign out to ensure clean state
-      try {
-        await supabase.auth.signOut({ scope: 'global' });
-        console.log("Global sign out successful");
-      } catch (err) {
-        console.warn("Error during global sign out:", err);
-        // Continue even if this fails
-      }
-      
-      // Login attempt using direct Supabase auth
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-      
-      console.log("Login result:", error ? "Failed" : "Success");
-      
-      if (error) {
-        throw error;
-      }
-      
-      if (data && data.user) {
-        toast.success("Connexion réussie");
-        console.log("Successful login for:", data.user.email);
-        
-        // Redirect after successful login
-        setTimeout(() => {
-          navigate("/dashboard");
-        }, 500);
-      } else {
-        throw new Error("No user returned after login");
-      }
+      // Redirect after successful login
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 300);
     } catch (error: any) {
-      console.error("Login error:", error);
-      
-      // More specific error message to help the user
-      let displayError = "Échec de la connexion";
-      
-      if (error.message) {
-        if (error.message.includes("Invalid login credentials")) {
-          displayError = "Email ou mot de passe incorrect. Vérifiez vos identifiants et assurez-vous que cet utilisateur existe dans l'authentification Supabase.";
-        } else {
-          displayError = error.message;
-        }
-      }
-      
-      setErrorMessage(displayError);
-      toast.error(displayError);
+      console.error("Erreur de connexion:", error);
+      toast.error(error.message || "Échec de la connexion");
     } finally {
       setIsLoading(false);
     }
@@ -173,15 +127,6 @@ const Login = () => {
                   </Button>
                 </div>
               </div>
-              
-              {errorMessage && (
-                <div className="p-3 rounded-md bg-destructive/15 text-destructive text-sm">
-                  <p className="flex items-center">
-                    <span className="mr-2">●</span>
-                    {errorMessage}
-                  </p>
-                </div>
-              )}
               
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
