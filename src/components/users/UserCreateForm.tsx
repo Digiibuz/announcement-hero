@@ -34,6 +34,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Email invalide" }),
@@ -54,6 +56,7 @@ interface UserCreateFormProps {
 const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { configs } = useWordPressConfigs();
 
   const form = useForm<FormSchema>({
@@ -70,10 +73,8 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
   const onSubmit = async (values: FormSchema) => {
     try {
       setIsSubmitting(true);
+      setErrorMessage(null);
       const toastId = toast.loading("Création de l'utilisateur en cours...");
-      
-      // Fermer le dialogue après la soumission
-      setIsDialogOpen(false);
       
       // Préparer les données à envoyer
       const userData = {
@@ -93,6 +94,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       
       if (error) {
         console.error("Erreur lors de l'appel à la fonction:", error);
+        setErrorMessage(`Erreur lors de l'appel à la fonction: ${error.message}`);
         toast.dismiss(toastId);
         toast.error(`Erreur: ${error.message || "Échec de la création de l'utilisateur"}`);
         return;
@@ -101,11 +103,12 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       // Vérifier la réponse de la fonction Edge
       if (!data?.success) {
         console.error("Erreur retournée par la fonction:", data);
-        const errorMessage = data?.error || "Erreur inconnue";
+        const errorMsg = data?.error || "Erreur inconnue";
         const errorDetails = data?.details || "";
         
+        setErrorMessage(`${errorMsg}${errorDetails ? ` - ${errorDetails}` : ""}`);
         toast.dismiss(toastId);
-        toast.error(`${errorMessage}${errorDetails ? ` - ${errorDetails}` : ""}`);
+        toast.error(`${errorMsg}${errorDetails ? ` - ${errorDetails}` : ""}`);
         return;
       }
       
@@ -113,9 +116,12 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       toast.dismiss(toastId);
       toast.success("Utilisateur créé avec succès");
       form.reset();
+      setErrorMessage(null);
       onUserCreated();
+      setIsDialogOpen(false);
     } catch (apiError: any) {
       console.error("Erreur d'API:", apiError);
+      setErrorMessage(`Erreur API: ${apiError.message || "Échec de la connexion à l'API"}`);
       toast.error(`Erreur API: ${apiError.message || "Échec de la connexion à l'API"}`);
     } finally {
       setIsSubmitting(false);
@@ -137,6 +143,14 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
             Créez un compte pour un nouveau client ou administrateur.
           </DialogDescription>
         </DialogHeader>
+        
+        {errorMessage && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{errorMessage}</AlertDescription>
+          </Alert>
+        )}
+        
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
