@@ -52,8 +52,7 @@ serve(async (req) => {
       );
     }
 
-    // Vérifier si l'utilisateur existe déjà dans l'authentification
-    let existingUser = null;
+    // Check if the user already exists in Auth
     try {
       console.log("Vérification si l'utilisateur existe dans auth.users:", email);
       const { data: existingUsers, error: searchError } = await supabaseAdmin.auth.admin.listUsers({
@@ -68,13 +67,76 @@ serve(async (req) => {
       }
 
       if (existingUsers && existingUsers.users.length > 0) {
-        existingUser = existingUsers.users[0];
-        console.log("L'utilisateur existe déjà dans auth.users:", existingUser.id);
+        console.log("L'utilisateur existe déjà dans auth.users:", email);
+        
+        // Check if the user exists in the profiles table
+        const { data: existingProfiles, error: profilesError } = await supabaseAdmin
+          .from('profiles')
+          .select('*')
+          .eq('email', email);
+          
+        if (profilesError) {
+          console.error("Erreur lors de la vérification du profil existant:", profilesError);
+        }
+        
+        if (existingProfiles && existingProfiles.length > 0) {
+          console.log("L'utilisateur existe également dans la table profiles:", existingProfiles);
+        } else {
+          console.log("L'utilisateur existe dans auth.users mais PAS dans la table profiles");
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            error: "L'utilisateur existe déjà", 
+            details: "L'email est déjà utilisé dans le système d'authentification"
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400,
+          }
+        );
       }
     } catch (error) {
       console.error("Erreur lors de la vérification d'utilisateur existant:", error);
       return new Response(
-        JSON.stringify({ error: "Erreur lors de la vérification d'utilisateur existant" }),
+        JSON.stringify({ error: error.message || "Erreur lors de la vérification d'utilisateur existant" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
+    }
+    
+    // Also check if the email exists in the profiles table
+    try {
+      console.log("Vérification si l'email existe dans la table profiles:", email);
+      const { data: existingProfiles, error: profilesError } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .eq('email', email);
+        
+      if (profilesError) {
+        console.error("Erreur lors de la vérification du profil existant:", profilesError);
+        throw profilesError;
+      }
+      
+      if (existingProfiles && existingProfiles.length > 0) {
+        console.log("L'email existe déjà dans la table profiles mais pas dans auth.users:", existingProfiles);
+        return new Response(
+          JSON.stringify({ 
+            error: "L'utilisateur existe déjà", 
+            details: "L'email est déjà utilisé dans la table des profils mais pas dans le système d'authentification. Incohérence de données détectée."
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400,
+          }
+        );
+      }
+    } catch (error) {
+      console.error("Erreur lors de la vérification du profil existant:", error);
+      return new Response(
+        JSON.stringify({ error: error.message || "Erreur lors de la vérification du profil existant" }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 500,
@@ -82,156 +144,80 @@ serve(async (req) => {
       );
     }
 
-    let userData = null;
+    // Create the user
+    console.log("Création de l'utilisateur:", email);
+    let newUserData;
+    try {
+      const { data, error } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          name,
+          role,
+          wordpressConfigId: role === "client" ? wordpressConfigId : null,
+        },
+      });
 
-    if (!existingUser) {
-      // Create the user in auth.users
-      try {
-        console.log("Création de l'utilisateur dans auth:", email);
-        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-          email,
-          password,
-          email_confirm: true,
-          user_metadata: {
-            name,
-            role,
-            wordpressConfigId: role === "client" ? wordpressConfigId : null,
-          },
+      if (error) {
+        console.log("Erreur lors de la création de l'utilisateur:", error.message);
+        throw error;
+      }
+      
+      newUserData = data;
+      console.log("Utilisateur créé dans auth:", newUserData.user.id);
+    } catch (error) {
+      console.error("Erreur lors de la création de l'utilisateur:", error);
+      return new Response(
+        JSON.stringify({ error: error.message || "Erreur lors de la création de l'utilisateur" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
+    }
+
+    // After creating the user in Auth, create their profile
+    try {
+      console.log("Création du profil pour l'utilisateur:", newUserData.user.id);
+      const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .insert({
+          id: newUserData.user.id,
+          email: email,
+          name: name,
+          role: role,
+          wordpress_config_id: role === "client" ? wordpressConfigId : null,
         });
 
-        if (createError) {
-          console.error("Erreur lors de la création de l'utilisateur:", createError);
-          throw createError;
-        }
-        
-        userData = newUser;
-        console.log("Utilisateur créé avec succès dans auth:", userData.user.id);
-      } catch (error) {
-        console.error("Erreur lors de la création de l'utilisateur:", error);
-        return new Response(
-          JSON.stringify({ error: error.message || "Erreur lors de la création de l'utilisateur" }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 500,
-          }
-        );
-      }
-    } else {
-      userData = existingUser;
-      console.log("Utilisation de l'utilisateur existant:", existingUser.id);
-      
-      // Update user metadata if needed
-      try {
-        const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-          existingUser.id,
-          {
-            user_metadata: {
-              name,
-              role,
-              wordpressConfigId: role === "client" ? wordpressConfigId : null,
-            }
-          }
-        );
-        
-        if (updateError) {
-          console.log("Erreur lors de la mise à jour des métadonnées:", updateError.message);
-          // Non-critical, continue anyway
-        }
-      } catch (error) {
-        console.warn("Erreur lors de la mise à jour des métadonnées:", error);
-        // Non-critical, continue anyway
-      }
-    }
-
-    // Check if the profile already exists
-    let profileExists = false;
-    try {
-      const { data: existingProfile, error: profileError } = await supabaseAdmin
-        .from('profiles')
-        .select('*')
-        .eq('id', userData.user.id)
-        .maybeSingle();
-        
       if (profileError) {
-        console.error("Erreur lors de la vérification du profil:", profileError);
-      } else if (existingProfile) {
-        profileExists = true;
-        console.log("Le profil existe déjà:", existingProfile.id);
+        console.log("Erreur lors de la création du profil:", profileError.message);
         
-        // Update the existing profile
-        const { error: updateError } = await supabaseAdmin
-          .from('profiles')
-          .update({
-            email: email,
-            name: name,
-            role: role,
-            wordpress_config_id: role === "client" ? wordpressConfigId : null,
-          })
-          .eq('id', userData.user.id);
-          
-        if (updateError) {
-          console.error("Erreur lors de la mise à jour du profil:", updateError);
-        } else {
-          console.log("Profil mis à jour avec succès");
+        // If profile creation fails, delete the user to avoid inconsistencies
+        try {
+          console.log("Suppression de l'utilisateur après échec de création de profil:", newUserData.user.id);
+          await supabaseAdmin.auth.admin.deleteUser(newUserData.user.id);
+        } catch (deleteError) {
+          console.error("Erreur lors de la suppression de l'utilisateur après échec de création de profil:", deleteError);
         }
+        
+        throw profileError;
       }
     } catch (error) {
-      console.error("Erreur lors de la vérification du profil:", error);
-      // Non-critical, continue anyway
-    }
-
-    // Create profile if it doesn't exist
-    if (!profileExists) {
-      try {
-        console.log("Création du profil pour l'utilisateur:", userData.user.id);
-        const { error: profileError } = await supabaseAdmin
-          .from('profiles')
-          .insert({
-            id: userData.user.id,
-            email: email,
-            name: name,
-            role: role,
-            wordpress_config_id: role === "client" ? wordpressConfigId : null,
-          });
-
-        if (profileError) {
-          console.error("Erreur lors de la création du profil:", profileError);
-          
-          // If profile creation fails and this is a new user, delete the user to avoid inconsistencies
-          if (!existingUser) {
-            try {
-              console.log("Suppression de l'utilisateur après échec de création de profil:", userData.user.id);
-              await supabaseAdmin.auth.admin.deleteUser(userData.user.id);
-            } catch (deleteError) {
-              console.error("Erreur lors de la suppression de l'utilisateur:", deleteError);
-            }
-          }
-          
-          throw profileError;
+      console.error("Erreur lors de la création du profil:", error);
+      return new Response(
+        JSON.stringify({ error: error.message || "Erreur lors de la création du profil" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
         }
-        
-        console.log("Profil créé avec succès");
-      } catch (error) {
-        console.error("Erreur lors de la création du profil:", error);
-        return new Response(
-          JSON.stringify({ error: error.message || "Erreur lors de la création du profil" }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 500,
-          }
-        );
-      }
+      );
     }
+
+    console.log("Utilisateur créé avec succès:", newUserData.user.id);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        user: userData.user,
-        isNewUser: !existingUser,
-        message: existingUser 
-          ? "Utilisateur existant mis à jour" 
-          : "Nouvel utilisateur créé avec succès" 
-      }),
+      JSON.stringify({ success: true, user: newUserData.user }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,

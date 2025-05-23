@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -110,30 +109,23 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
         return;
       }
       
-      // Check if this was a profile creation for an existing user
-      const userMessage = (data as any).message || "";
-      let successMessage = "Utilisateur créé avec succès";
-      
-      if (userMessage.includes("Profil créé")) {
-        successMessage = "Profil créé pour un utilisateur existant";
-      } else if (userMessage.includes("Profil mis à jour")) {
-        successMessage = "Profil mis à jour pour l'utilisateur existant";
-      }
-      
       toast.dismiss(toastId);
-      toast.success(successMessage);
+      toast.success("Utilisateur créé avec succès");
       form.reset();
       onUserCreated();
     } catch (error: any) {
       toast.dismiss();
       console.error("Error creating user:", error);
       
+      // More detailed error message for debugging
       let errorMessage = error.message || "Erreur lors de la création de l'utilisateur";
       
+      // If the error contains additional details
       if (error.details) {
         errorMessage += ` (${error.details})`;
       }
       
+      // Add status to the error if available
       if (error.status) {
         errorMessage += ` (Status: ${error.status})`;
       }
@@ -197,9 +189,6 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
                     <Input type="password" placeholder="••••••••" {...field} />
                   </FormControl>
                   <FormMessage />
-                  <FormDescription>
-                    Notez bien ce mot de passe, il sera utilisé pour la connexion.
-                  </FormDescription>
                 </FormItem>
               )}
             />
