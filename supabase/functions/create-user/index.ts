@@ -52,6 +52,13 @@ serve(async (req) => {
       );
     }
 
+    // Validate wordpressConfigId - if empty string or not provided, set to null
+    const sanitizedWordpressConfigId = (wordpressConfigId && wordpressConfigId.trim() !== "") 
+      ? wordpressConfigId 
+      : null;
+
+    console.log(`WordpressConfigId sanitisé: "${sanitizedWordpressConfigId}"`);
+
     // First check if the email exists in the profiles table
     try {
       console.log("Vérification si l'email existe dans la table profiles:", email);
@@ -121,7 +128,7 @@ serve(async (req) => {
               email: email,
               name: name,
               role: role,
-              wordpress_config_id: role === "client" ? wordpressConfigId : null,
+              wordpress_config_id: role === "client" && sanitizedWordpressConfigId ? sanitizedWordpressConfigId : null,
             });
 
           if (profileError) {
@@ -136,7 +143,7 @@ serve(async (req) => {
                   email: email,
                   name: name,
                   role: role,
-                  wordpress_config_id: role === "client" ? wordpressConfigId : null,
+                  wordpress_config_id: role === "client" && sanitizedWordpressConfigId ? sanitizedWordpressConfigId : null,
                 })
                 .eq('id', existingUser.id);
                 
@@ -160,7 +167,7 @@ serve(async (req) => {
               user_metadata: {
                 name,
                 role,
-                wordpressConfigId: role === "client" ? wordpressConfigId : null,
+                wordpressConfigId: role === "client" && sanitizedWordpressConfigId ? sanitizedWordpressConfigId : null,
               },
             }
           );
@@ -214,7 +221,7 @@ serve(async (req) => {
         user_metadata: {
           name,
           role,
-          wordpressConfigId: role === "client" ? wordpressConfigId : null,
+          wordpressConfigId: role === "client" && sanitizedWordpressConfigId ? sanitizedWordpressConfigId : null,
         },
       });
 
@@ -246,7 +253,7 @@ serve(async (req) => {
           email: email,
           name: name,
           role: role,
-          wordpress_config_id: role === "client" ? wordpressConfigId : null,
+          wordpress_config_id: role === "client" && sanitizedWordpressConfigId ? sanitizedWordpressConfigId : null,
         });
 
       if (profileError) {

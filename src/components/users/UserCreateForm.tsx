@@ -76,15 +76,19 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       
       console.log("Envoi des données:", values);
       
+      // Préparation des données à envoyer
+      const userData = {
+        email: values.email,
+        name: values.name,
+        password: values.password,
+        role: values.role,
+        // Seulement envoyer wordpressConfigId si le rôle est client et qu'une valeur est sélectionnée
+        wordpressConfigId: values.role === "client" ? (values.wordpressConfigId !== "none" ? values.wordpressConfigId : "") : "",
+      };
+      
       // Call the Edge function with better error handling
       const { data, error: functionCallError } = await supabase.functions.invoke("create-user", {
-        body: {
-          email: values.email,
-          name: values.name,
-          password: values.password,
-          role: values.role,
-          wordpressConfigId: values.role === "client" ? values.wordpressConfigId : null,
-        },
+        body: userData,
       });
       
       if (functionCallError) {
