@@ -74,45 +74,34 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       
       const toastId = toast.loading("Création de l'utilisateur en cours...");
       
-      console.log("[UserCreateForm] Début de la soumission du formulaire");
-      console.log("[UserCreateForm] Données du formulaire:", JSON.stringify(values, null, 2));
+      console.log("Envoi des données:", values);
       
-      // Properly handle wordpressConfigId
-      const wordpressConfigId = values.wordpressConfigId === "none" || !values.wordpressConfigId 
-                              ? null 
-                              : values.wordpressConfigId;
-      
-      console.log("[UserCreateForm] WordPress config ID après traitement:", wordpressConfigId);
-      
-      const requestPayload = {
-        email: values.email,
-        name: values.name,
-        password: values.password,
-        role: values.role,
-        wordpressConfigId: wordpressConfigId,
-      };
-      
-      console.log("[UserCreateForm] Payload envoyé à l'Edge function:", JSON.stringify(requestPayload, null, 2));
-      
+      // Call the Edge function with better error handling
       const { data, error: functionCallError } = await supabase.functions.invoke("create-user", {
-        body: requestPayload,
+        body: {
+          email: values.email,
+          name: values.name,
+          password: values.password,
+          role: values.role,
+          wordpressConfigId: values.role === "client" ? values.wordpressConfigId : null,
+        },
       });
       
-      console.log("[UserCreateForm] Réponse brute de l'Edge function:", JSON.stringify(data, null, 2));
-      
       if (functionCallError) {
-        console.error("[UserCreateForm] Erreur d'appel à la fonction Edge:", functionCallError);
+        console.error("Erreur d'appel à la fonction Edge:", functionCallError);
         toast.dismiss(toastId);
         toast.error(`Erreur: ${functionCallError.message || "Échec de la création de l'utilisateur"}`);
         return;
       }
       
+      console.log("Réponse de la fonction Edge:", data);
+      
       if (!data || (data as any).error) {
         const errorMessage = (data as any)?.error || "Erreur lors de la création de l'utilisateur";
         const errorDetails = (data as any)?.details || "";
-        console.error("[UserCreateForm] Erreur retournée par l'Edge function:", errorMessage, errorDetails);
         toast.dismiss(toastId);
         
+        // Messages d'erreur plus précis pour les cas courants
         if (errorMessage.includes("L'utilisateur existe déjà")) {
           toast.error(`Cet email est déjà utilisé par un autre utilisateur. ${errorDetails}`);
         } else {
@@ -121,21 +110,23 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
         return;
       }
       
-      console.log("[UserCreateForm] Utilisateur créé avec succès:", data);
       toast.dismiss(toastId);
-      toast.success("Utilisateur créé avec succès");
+      toast.success((data as any).message || "Utilisateur créé avec succès");
       form.reset();
       onUserCreated();
     } catch (error: any) {
       toast.dismiss();
-      console.error("[UserCreateForm] Erreur non gérée:", error);
+      console.error("Error creating user:", error);
       
+      // More detailed error message for debugging
       let errorMessage = error.message || "Erreur lors de la création de l'utilisateur";
       
+      // If the error contains additional details
       if (error.details) {
         errorMessage += ` (${error.details})`;
       }
       
+      // Add status to the error if available
       if (error.status) {
         errorMessage += ` (Status: ${error.status})`;
       }
@@ -227,6 +218,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
               )}
             />
             
+            {/* Sélection de configuration WordPress uniquement pour les clients */}
             {form.watch("role") === "client" && (
               <FormField
                 control={form.control}

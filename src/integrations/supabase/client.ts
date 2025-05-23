@@ -3,46 +3,15 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://rdwqedmvzicerwotjseg.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkd3FlZG12emljZXJ3b3Rqc2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwNzg4MzEsImV4cCI6MjA1ODY1NDgzMX0.Ohle_vVvdoCvsObP9A_AdyM52XdzisIvHvH1D1a88zk";
+// Hardcode the actual Supabase URL and anon key for this project
+const supabaseUrl = "https://rdwqedmvzicerwotjseg.supabase.co";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkd3FlZG12emljZXJ3b3Rqc2VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwNzg4MzEsImV4cCI6MjA1ODY1NDgzMX0.Ohle_vVvdoCvsObP9A_AdyM52XdzisIvHvH1D1a88zk";
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
-
+// Create a Supabase client for client-side operations only
 export const supabase = createClient<Database>(
-  SUPABASE_URL, 
-  SUPABASE_PUBLISHABLE_KEY,
-  {
-    auth: {
-      storage: localStorage,
-      persistSession: true,
-      autoRefreshToken: true,
-    }
-  }
+  supabaseUrl, 
+  supabaseAnonKey
 );
 
-// Fonction utilitaire pour nettoyer tous les jetons d'authentification
-export const cleanupAuthState = () => {
-  console.log("Nettoyage de l'état d'authentification...");
-  
-  // Supprimer les jetons standards
-  localStorage.removeItem('supabase.auth.token');
-  
-  // Supprimer tous les clés d'authentification Supabase du localStorage
-  Object.keys(localStorage).forEach((key) => {
-    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-      console.log(`Nettoyage de la clé localStorage: ${key}`);
-      localStorage.removeItem(key);
-    }
-  });
-  
-  // Supprimer du sessionStorage si utilisé
-  Object.keys(sessionStorage || {}).forEach((key) => {
-    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-      console.log(`Nettoyage de la clé sessionStorage: ${key}`);
-      sessionStorage.removeItem(key);
-    }
-  });
-  
-  console.log("Nettoyage de l'état d'authentification effectué");
-};
+// Note: This client only has anon permissions
+// For any sensitive operations, use edge functions that can access service role keys securely

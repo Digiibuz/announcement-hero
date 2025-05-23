@@ -1,9 +1,7 @@
 
 {
   "imports": {
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.38.4",
-    "std/server": "https://deno.land/std@0.168.0/http/server.ts",
-    "openai": "https://esm.sh/openai@4.11.1",
-    "googleapis/gmail": "https://esm.sh/@googleapis/gmail@5.0.0"
+    "std/": "https://deno.land/std@0.168.0/",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.38.4"
   }
 }

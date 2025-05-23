@@ -10,7 +10,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
-import { supabase, cleanupAuthState } from "@/integrations/supabase/client";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -32,58 +31,13 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      // Clean up authentication state before login
-      cleanupAuthState();
+      await login(email, password);
+      toast.success("Connexion réussie");
       
-      // Try to sign out globally first to prevent conflicts
-      try {
-        await supabase.auth.signOut({ scope: 'global' });
-        console.log("Déconnexion globale réussie");
-      } catch (err) {
-        // Continue even if this fails
-        console.warn("Échec de la déconnexion globale:", err);
-      }
-      
-      console.log("Tentative de connexion pour:", email);
-      
-      // Call secure-login edge function with improved error handling
-      const response = await supabase.functions.invoke("secure-login", {
-        body: {
-          email,
-          password
-        }
-      });
-      
-      console.log("Réponse de secure-login:", response);
-      
-      // Check if the function returned an HTTP error
-      if (response.error) {
-        console.error("Erreur de la fonction secure-login:", response.error);
-        throw new Error(response.error.message || "Échec de la connexion");
-      }
-      
-      // Check if data is present
-      if (!response.data || !response.data.session) {
-        console.error("Réponse invalide de secure-login:", response.data);
-        throw new Error("Aucune session n'a été créée");
-      }
-      
-      console.log("Réponse de connexion réussie:", response.data);
-      
-      // Manually set the session with the returned data
-      await supabase.auth.setSession({
-        access_token: response.data.session.access_token,
-        refresh_token: response.data.session.refresh_token
-      });
-      
-      toast.success(response.data.passwordUpdated 
-        ? "Connexion réussie avec sécurité renforcée" 
-        : "Connexion réussie");
-      
-      // Redirect after successful login with a delay
+      // Redirect after successful login
       setTimeout(() => {
         navigate("/dashboard");
-      }, 500);
+      }, 300);
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
       toast.error(error.message || "Échec de la connexion");

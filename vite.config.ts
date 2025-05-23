@@ -1,3 +1,4 @@
+
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
@@ -18,5 +19,10 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  // Define for Deno global in browser builds
+  define: {
+    // Add this to handle the Deno global in browser builds
+    "Deno": "undefined"
   },
 }));

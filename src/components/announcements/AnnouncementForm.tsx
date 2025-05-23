@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -74,10 +73,7 @@ const AnnouncementForm = ({
     clearSavedData,
     hasSavedData,
     saveData
-  } = useFormPersistence(form, storageKey, initialValues, 5000,
-    // Sauvegarde toutes les 5 secondes en plus des changements
-    true // Activer le debug pour voir ce qui se passe
-  );
+  } = useFormPersistence(form, storageKey, initialValues);
   
   const [showDraftNotice, setShowDraftNotice] = useState(false);
   
