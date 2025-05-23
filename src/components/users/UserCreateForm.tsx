@@ -70,11 +70,12 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
   const onSubmit = async (values: FormSchema) => {
     try {
       setIsSubmitting(true);
-      setIsDialogOpen(false);
-      
       const toastId = toast.loading("Création de l'utilisateur en cours...");
       
-      // Prepare data to send
+      // Fermer le dialogue après la soumission
+      setIsDialogOpen(false);
+      
+      // Préparer les données à envoyer
       const userData = {
         email: values.email,
         name: values.name,
@@ -85,44 +86,37 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       
       console.log("Données envoyées pour création:", userData);
       
-      try {
-        // Call the Edge Function
-        const { data, error } = await supabase.functions.invoke("create-user", {
-          body: userData,
-        });
-        
-        if (error) {
-          console.error("Erreur lors de l'appel à la fonction:", error);
-          toast.dismiss(toastId);
-          toast.error(`Erreur: ${error.message || "Échec de la création de l'utilisateur"}`);
-          return;
-        }
+      // Appeler la fonction Edge
+      const { data, error } = await supabase.functions.invoke("create-user", {
+        body: userData,
+      });
+      
+      if (error) {
+        console.error("Erreur lors de l'appel à la fonction:", error);
+        toast.dismiss(toastId);
+        toast.error(`Erreur: ${error.message || "Échec de la création de l'utilisateur"}`);
+        return;
+      }
 
-        // Check the response from the Edge Function
-        if (!data?.success) {
-          console.error("Erreur retournée par la fonction:", data);
-          const errorMessage = data?.error || "Erreur inconnue";
-          const errorDetails = data?.details || "";
-          
-          toast.dismiss(toastId);
-          toast.error(`${errorMessage}${errorDetails ? ` - ${errorDetails}` : ""}`);
-          return;
-        }
+      // Vérifier la réponse de la fonction Edge
+      if (!data?.success) {
+        console.error("Erreur retournée par la fonction:", data);
+        const errorMessage = data?.error || "Erreur inconnue";
+        const errorDetails = data?.details || "";
         
-        // Success
         toast.dismiss(toastId);
-        toast.success("Utilisateur créé avec succès");
-        form.reset();
-        onUserCreated();
-      } catch (apiError: any) {
-        console.error("Erreur d'API:", apiError);
-        toast.dismiss(toastId);
-        toast.error(`Erreur API: ${apiError.message || "Échec de la connexion à l'API"}`);
+        toast.error(`${errorMessage}${errorDetails ? ` - ${errorDetails}` : ""}`);
+        return;
       }
       
-    } catch (error: any) {
-      console.error("Erreur non gérée:", error);
-      toast.error(`Erreur: ${error.message || "Une erreur est survenue"}`);
+      // Succès
+      toast.dismiss(toastId);
+      toast.success("Utilisateur créé avec succès");
+      form.reset();
+      onUserCreated();
+    } catch (apiError: any) {
+      console.error("Erreur d'API:", apiError);
+      toast.error(`Erreur API: ${apiError.message || "Échec de la connexion à l'API"}`);
     } finally {
       setIsSubmitting(false);
     }
