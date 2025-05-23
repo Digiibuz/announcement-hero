@@ -81,20 +81,57 @@ serve(async (req) => {
         
         if (existingProfiles && existingProfiles.length > 0) {
           console.log("L'utilisateur existe également dans la table profiles:", existingProfiles);
+          return new Response(
+            JSON.stringify({ 
+              error: "L'utilisateur existe déjà", 
+              details: "L'email est déjà utilisé dans le système d'authentification"
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 400,
+            }
+          );
         } else {
-          console.log("L'utilisateur existe dans auth.users mais PAS dans la table profiles");
-        }
-        
-        return new Response(
-          JSON.stringify({ 
-            error: "L'utilisateur existe déjà", 
-            details: "L'email est déjà utilisé dans le système d'authentification"
-          }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 400,
+          console.log("L'utilisateur existe dans auth.users mais PAS dans la table profiles. Création du profil manquant.");
+          try {
+            // Create profile for existing auth user
+            const { error: profileCreateError } = await supabaseAdmin
+              .from('profiles')
+              .insert({
+                id: existingUsers.users[0].id,
+                email: email,
+                name: name,
+                role: role,
+                wordpress_config_id: role === "client" && wordpressConfigId ? wordpressConfigId : null,
+              });
+
+            if (profileCreateError) {
+              console.error("Erreur lors de la création du profil pour utilisateur existant:", profileCreateError);
+              throw profileCreateError;
+            }
+
+            return new Response(
+              JSON.stringify({ 
+                success: true, 
+                user: existingUsers.users[0],
+                message: "Profil créé pour l'utilisateur existant"
+              }),
+              {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 200,
+              }
+            );
+          } catch (error) {
+            console.error("Erreur lors de la création du profil pour utilisateur existant:", error);
+            return new Response(
+              JSON.stringify({ error: error.message || "Erreur lors de la création du profil" }),
+              {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 500,
+              }
+            );
           }
-        );
+        }
       }
     } catch (error) {
       console.error("Erreur lors de la vérification d'utilisateur existant:", error);
@@ -187,7 +224,7 @@ serve(async (req) => {
           email: email,
           name: name,
           role: role,
-          wordpress_config_id: role === "client" ? wordpressConfigId : null,
+          wordpress_config_id: role === "client" && wordpressConfigId ? wordpressConfigId : null,
         });
 
       if (profileError) {
