@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
@@ -115,51 +114,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [userProfile?.role, userProfile?.id]);
 
-  // Fonction pour authentifier via la fonction Edge
-  const authenticateAndSecurePassword = async (email: string, password: string) => {
-    try {
-      console.log("Vérification des identifiants via la fonction edge sécurisée");
-      const supabaseUrl = "https://rdwqedmvzicerwotjseg.supabase.co";
-      
-      // Appel à la fonction edge pour vérifier les identifiants originaux et obtenir un mot de passe sécurisé
-      console.log(`Appel à ${supabaseUrl}/functions/v1/secure-password avec email: ${email}`);
-      
-      const response = await fetch(`${supabaseUrl}/functions/v1/secure-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
-      
-      console.log("Statut de la réponse:", response.status);
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Échec de l'authentification:", errorData);
-        throw new Error(errorData.error || "Identifiants invalides");
-      }
-      
-      const data = await response.json();
-      console.log("Réponse de l'authentification sécurisée:", { 
-        success: data.success, 
-        userExists: !!data.user,
-        newUser: data.newUser
-      });
-      
-      if (!data.success || !data.user) {
-        console.error("La réponse ne contient pas d'informations d'utilisateur valides");
-        throw new Error("Erreur lors de l'authentification");
-      }
-      
-      console.log("Authentification sécurisée réussie");
-      return data;
-    } catch (error: any) {
-      console.error("Erreur lors de l'authentification sécurisée:", error);
-      throw error;
-    }
-  };
-
   // Nettoyage des états d'authentification précédents
   const cleanupAuthState = () => {
     try {
@@ -184,6 +138,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Fonction pour authentifier via la fonction Edge
+  const authenticateWithSecurePassword = async (email: string, password: string) => {
+    try {
+      console.log("Authentification via la fonction secure-password");
+      
+      const supabaseUrl = "https://rdwqedmvzicerwotjseg.supabase.co";
+      
+      const response = await fetch(`${supabaseUrl}/functions/v1/secure-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+      
+      console.log("Status de secure-password:", response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Échec de secure-password:", errorData);
+        throw new Error(errorData.error || "Échec de l'authentification");
+      }
+      
+      const data = await response.json();
+      console.log("Succès de secure-password, mot de passe renforcé obtenu");
+      
+      return data;
+    } catch (error: any) {
+      console.error("Erreur lors de l'appel à secure-password:", error);
+      throw error;
+    }
+  };
+
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     
@@ -199,59 +186,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log("Déconnexion globale effectuée avec succès");
       } catch (err) {
         console.warn("Erreur lors de la déconnexion globale:", err);
-        // Continuer même si cela échoue
       }
       
-      // Stratégie unifiée: Utiliser la fonction secure-password qui gère à la fois les utilisateurs existants et nouveaux
-      console.log("Utilisation de la fonction secure-password unifiée");
+      // 1. D'abord, essayer une connexion directe
+      console.log("Tentative de connexion directe avec le mot de passe original");
       
-      try {
-        const authResult = await authenticateAndSecurePassword(email, password);
-        
-        if (!authResult || !authResult.success) {
-          throw new Error("Échec de l'authentification via secure-password");
-        }
-        
-        // Si l'authentification via secure-password est réussie, on procède à la connexion
-        console.log("Identifiants validés, tentative de connexion directe");
-        
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-        
-        if (signInError) {
-          console.error("Erreur lors de la connexion après validation:", signInError);
-          throw signInError;
-        }
-        
-        console.log("Connexion réussie!");
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (!signInError) {
+        console.log("Connexion directe réussie!");
         toast.success("Connexion réussie");
-        
+        setIsLoading(false);
         return signInData;
-      } catch (authError: any) {
-        console.error("Échec de l'authentification:", authError);
-        throw authError;
       }
+      
+      console.log("Connexion directe échouée, erreur:", signInError.message);
+      
+      // 2. Si la connexion directe échoue, essayer via secure-password
+      console.log("Tentative via secure-password");
+      
+      const secureAuthResult = await authenticateWithSecurePassword(email, password);
+      
+      if (!secureAuthResult || !secureAuthResult.success) {
+        console.error("Échec de l'authentification via secure-password");
+        throw new Error("Identifiants invalides");
+      }
+      
+      // Si secure-password réussit, connexion avec le mot de passe renforcé
+      const { data: secureSignInData, error: secureSignInError } = await supabase.auth.signInWithPassword({
+        email,
+        password: secureAuthResult.securedPassword
+      });
+      
+      if (secureSignInError) {
+        console.error("Erreur lors de la connexion avec mot de passe renforcé:", secureSignInError);
+        throw secureSignInError;
+      }
+      
+      console.log("Connexion réussie avec mot de passe renforcé!");
+      toast.success("Connexion réussie");
+      
+      setIsLoading(false);
+      return secureSignInData;
+      
     } catch (error: any) {
       setIsLoading(false);
       console.error("Erreur finale de connexion:", error);
       throw new Error(error.message || "Erreur de connexion");
-    }
-  };
-
-  const logout = async () => {
-    try {
-      localStorage.removeItem('userRole');
-      localStorage.removeItem('userId');
-      sessionStorage.removeItem('lastAdminPath');
-      sessionStorage.removeItem('lastAuthenticatedPath');
-      
-      await supabase.auth.signOut();
-      setUserProfile(null);
-      localStorage.removeItem("originalUser");
-    } catch (error) {
-      console.error("Error during logout:", error);
     }
   };
 
@@ -278,7 +262,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user: userProfile,
     isLoading,
     login,
-    logout,
+    logout: async () => {
+      try {
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('userId');
+        sessionStorage.removeItem('lastAdminPath');
+        sessionStorage.removeItem('lastAuthenticatedPath');
+        
+        await supabase.auth.signOut();
+        setUserProfile(null);
+        localStorage.removeItem("originalUser");
+      } catch (error) {
+        console.error("Error during logout:", error);
+      }
+    },
     isAuthenticated: !!userProfile,
     isAdmin: userProfile?.role === "admin",
     isClient: userProfile?.role === "client",

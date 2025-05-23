@@ -11,16 +11,34 @@ import { toast } from "sonner";
 import { Eye, EyeOff, Lock, LogIn, Loader2, RefreshCw } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
 import { supabase } from "@/integrations/supabase/client";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+
+// Schéma de validation pour le formulaire de connexion
+const loginSchema = z.object({
+  email: z.string().email("Veuillez saisir une adresse email valide"),
+  password: z.string().min(1, "Le mot de passe est requis"),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 const Login = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [clearingCache, setClearingCache] = useState(false);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -29,16 +47,15 @@ const Login = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
     setErrorMessage("");
     
     try {
-      console.log("Tentative de connexion avec:", email);
+      console.log("Tentative de connexion avec:", values.email);
       
       // Tentative de connexion
-      const result = await login(email, password);
+      const result = await login(values.email, values.password);
       console.log("Résultat de connexion:", result);
       
       if (result && result.user) {
@@ -141,100 +158,115 @@ const Login = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">              
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="email@example.com"
-                  required
-                  autoComplete="email"
-                  disabled={isLoading}
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="email"
+                          placeholder="email@example.com"
+                          autoComplete="email"
+                          disabled={isLoading}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Mot de passe</Label>
-                  <Button 
-                    variant="link" 
-                    className="p-0 h-auto text-xs" 
-                    type="button" 
-                    disabled={isLoading}
-                    asChild
-                  >
-                    <Link to="/forgot-password">Mot de passe oublié ?</Link>
-                  </Button>
-                </div>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    autoComplete="current-password"
-                    disabled={isLoading}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full px-3"
-                    onClick={togglePasswordVisibility}
-                    disabled={isLoading}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-              
-              {errorMessage && (
-                <div className="p-3 rounded-md bg-destructive/15 text-destructive text-sm">
-                  <p className="flex items-center">
-                    <span className="mr-2">●</span>
-                    {errorMessage}
-                  </p>
-                </div>
-              )}
-              
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
-                  <div className="flex items-center">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Connexion en cours...
+                
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex items-center justify-between">
+                        <FormLabel>Mot de passe</FormLabel>
+                        <Button 
+                          variant="link" 
+                          className="p-0 h-auto text-xs" 
+                          type="button" 
+                          disabled={isLoading}
+                          asChild
+                        >
+                          <Link to="/forgot-password">Mot de passe oublié ?</Link>
+                        </Button>
+                      </div>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            {...field}
+                            type={showPassword ? "text" : "password"}
+                            placeholder="••••••••"
+                            autoComplete="current-password"
+                            disabled={isLoading}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-0 top-0 h-full px-3"
+                            onClick={togglePasswordVisibility}
+                            disabled={isLoading}
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {errorMessage && (
+                  <div className="p-3 rounded-md bg-destructive/15 text-destructive text-sm">
+                    <p className="flex items-center">
+                      <span className="mr-2">●</span>
+                      {errorMessage}
+                    </p>
                   </div>
-                ) : (
-                  <>
-                    <LogIn className="mr-2 h-4 w-4" />
-                    Se connecter
-                  </>
                 )}
-              </Button>
-              
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={clearBrowserCache} 
-                className="w-full"
-                disabled={clearingCache}
-              >
-                {clearingCache ? (
-                  <div className="flex items-center">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Nettoyage en cours...
-                  </div>
-                ) : (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Nettoyer le cache d'authentification
-                  </>
-                )}
-              </Button>
-            </form>
+                
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? (
+                    <div className="flex items-center">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Connexion en cours...
+                    </div>
+                  ) : (
+                    <>
+                      <LogIn className="mr-2 h-4 w-4" />
+                      Se connecter
+                    </>
+                  )}
+                </Button>
+                
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={clearBrowserCache} 
+                  className="w-full"
+                  disabled={clearingCache}
+                >
+                  {clearingCache ? (
+                    <div className="flex items-center">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Nettoyage en cours...
+                    </div>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Nettoyer le cache d'authentification
+                    </>
+                  )}
+                </Button>
+              </form>
+            </Form>
           </CardContent>
           <CardFooter>
             <p className="text-xs text-center text-muted-foreground w-full">

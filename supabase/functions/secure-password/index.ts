@@ -15,7 +15,7 @@ const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Fonction pour générer un suffixe aléatoire
-function generateRandomSuffix(minLength = 5, maxLength = 10) {
+function generateRandomSuffix(minLength = 3, maxLength = 6) {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   const length = Math.floor(Math.random() * (maxLength - minLength + 1)) + minLength;
   let result = "";
@@ -37,78 +37,57 @@ export function securePassword(password: string): string {
 }
 
 // Vérifier si un utilisateur existe dans la base de données
-async function userExists(email: string): Promise<boolean> {
+async function getUserByEmail(email: string): Promise<any> {
   try {
-    console.log(`Vérification de l'existence de l'utilisateur: ${email}`);
+    console.log(`Recherche de l'utilisateur: ${email}`);
     
     const { data, error } = await supabase.auth.admin.listUsers();
     
     if (error) {
-      console.error(`Erreur lors de la vérification de l'utilisateur: ${error.message}`);
-      return false;
+      console.error(`Erreur lors de la recherche de l'utilisateur: ${error.message}`);
+      return null;
     }
     
-    const userFound = data?.users.some(user => user.email === email);
-    console.log(`Utilisateur ${email} trouvé: ${userFound}`);
+    const user = data?.users.find(user => user.email === email);
+    console.log(`Utilisateur ${email} trouvé: ${Boolean(user)}`);
     
-    return userFound;
+    return user || null;
   } catch (error) {
-    console.error(`Exception lors de la vérification de l'utilisateur: ${error}`);
-    return false;
+    console.error(`Exception lors de la recherche de l'utilisateur: ${error}`);
+    return null;
   }
 }
 
-// Fonction pour créer un nouvel utilisateur
-async function createNewUser(email: string, password: string): Promise<boolean> {
+// Vérifier les identifiants directement avec le mot de passe original
+async function verifyOriginalCredentials(email: string, password: string): Promise<boolean> {
   try {
-    console.log(`Tentative de création de l'utilisateur: ${email}`);
+    console.log(`Vérification des identifiants originaux pour: ${email}`);
     
-    const { data, error } = await supabase.auth.admin.createUser({
-      email: email,
-      password: password,
-      email_confirm: true
-    });
-    
-    if (error) {
-      console.error(`Échec de la création de l'utilisateur: ${error.message}`);
-      return false;
-    }
-    
-    console.log(`Utilisateur créé avec succès: ${email}`);
-    return true;
-  } catch (error) {
-    console.error(`Exception lors de la création de l'utilisateur: ${error}`);
-    return false;
-  }
-}
-
-// Fonction pour vérifier les identifiants directement sans renforcer le mot de passe
-async function verifyCredentials(email: string, password: string): Promise<boolean> {
-  try {
-    console.log(`Vérification directe des identifiants pour: ${email}`);
-    
+    // Tentative de connexion directe avec le mot de passe original
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email,
       password: password
     });
     
     if (error) {
-      console.error(`Échec de la vérification des identifiants: ${error.message}`);
+      console.error(`Échec de la vérification des identifiants originaux: ${error.message}`);
       return false;
     }
     
-    console.log(`Identifiants vérifiés avec succès pour: ${email}`);
+    console.log(`Identifiants originaux vérifiés avec succès pour: ${email}`);
     
-    // N'oubliez pas de déconnecter cette session temporaire
-    try {
-      await supabase.auth.admin.signOut(data.session.access_token);
-    } catch (err) {
-      console.warn("Erreur lors de la déconnexion temporaire:", err);
+    // Déconnecter cette session temporaire
+    if (data.session?.access_token) {
+      try {
+        await supabase.auth.admin.signOut(data.session.access_token);
+      } catch (err) {
+        console.warn("Erreur lors de la déconnexion temporaire:", err);
+      }
     }
     
     return true;
   } catch (error) {
-    console.error(`Erreur lors de la vérification des identifiants: ${error}`);
+    console.error(`Exception lors de la vérification des identifiants originaux: ${error}`);
     return false;
   }
 }
@@ -140,55 +119,10 @@ serve(async (req) => {
     console.log(`Authentification pour: ${email} avec mot de passe: ${password.substr(0, 3)}***`);
     
     // Vérifier si l'utilisateur existe
-    const exists = await userExists(email);
+    const user = await getUserByEmail(email);
     
-    if (!exists) {
-      console.log(`L'utilisateur ${email} n'existe pas. Tentative de connexion directe pour nouveaux utilisateurs.`);
-      
-      // Pour les nouveaux utilisateurs, essayer une connexion directe
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password
-      });
-      
-      if (error) {
-        console.error(`Connexion directe échouée pour nouvel utilisateur: ${error.message}`);
-        return new Response(
-          JSON.stringify({ 
-            error: "Identifiants invalides", 
-            details: "Email ou mot de passe incorrect",
-            code: 401
-          }),
-          {
-            status: 401,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
-      
-      // Si la connexion réussit pour un nouvel utilisateur
-      console.log(`Connexion directe réussie pour nouvel utilisateur: ${email}`);
-      
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          securedPassword: password, // Pas besoin de sécuriser pour les nouveaux utilisateurs
-          user: data.user,
-          originalPassword: password,
-          newUser: true
-        }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-    
-    // Pour les utilisateurs existants, vérifier les identifiants
-    const credentialsValid = await verifyCredentials(email, password);
-    
-    if (!credentialsValid) {
-      console.error(`Identifiants invalides pour: ${email}`);
+    if (!user) {
+      console.log(`L'utilisateur ${email} n'existe pas.`);
       return new Response(
         JSON.stringify({ 
           error: "Identifiants invalides", 
@@ -202,35 +136,26 @@ serve(async (req) => {
       );
     }
     
-    // Si on arrive ici, les identifiants sont corrects
-    // Récupérer l'utilisateur
-    const { data: userData, error: userError } = await supabase.auth.admin.listUsers();
+    // Pour les utilisateurs existants, vérifier d'abord les identifiants originaux
+    const credentialsValid = await verifyOriginalCredentials(email, password);
     
-    if (userError) {
-      console.error(`Erreur lors de la récupération de l'utilisateur: ${userError.message}`);
+    if (!credentialsValid) {
+      console.error(`Identifiants originaux invalides pour: ${email}`);
       return new Response(
-        JSON.stringify({ error: "Erreur serveur" }),
+        JSON.stringify({ 
+          error: "Identifiants invalides", 
+          details: "Email ou mot de passe incorrect",
+          code: 401
+        }),
         {
-          status: 500,
+          status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
     
-    const user = userData?.users.find(u => u.email === email);
-    
-    if (!user) {
-      console.error(`Utilisateur non trouvé après vérification: ${email}`);
-      return new Response(
-        JSON.stringify({ error: "Utilisateur non trouvé" }),
-        {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-    
-    // Génération d'un mot de passe sécurisé pour la session
+    // Si on arrive ici, les identifiants originaux sont corrects
+    // Générer un mot de passe sécurisé pour la session
     const securedPassword = securePassword(password);
     
     console.log(`Mot de passe renforcé créé avec succès pour ${email}: ${securedPassword.substr(0, 3)}***`);
