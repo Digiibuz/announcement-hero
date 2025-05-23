@@ -1,13 +1,27 @@
 
 import { Provider } from '@supabase/supabase-js';
 
+export type Role = 'admin' | 'editor' | 'client';
+
 export interface UserProfile {
   id: string;
   name: string | null;
   email: string;
-  role: 'admin' | 'editor' | 'client';
+  role: Role;
   clientId?: string | null;
   wordpressConfigId?: string | null;
+  lastLogin?: string | null;
+}
+
+export interface GoogleBusinessProfile {
+  id: string;
+  userId: string;
+  businessName: string;
+  businessAddress: string;
+  placeId: string;
+  status: 'active' | 'pending' | 'error';
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AuthContextType {

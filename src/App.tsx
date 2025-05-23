@@ -1,4 +1,3 @@
-
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
@@ -6,7 +5,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { Toaster as UIToaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
-import { Routes } from "@/components/routing/Routes";
+import AppRoutes from "@/components/routing/Routes";
 import { useAppLifecycle } from "./hooks/useAppLifecycle";
 
 const queryClient = new QueryClient({
@@ -41,7 +40,7 @@ function App() {
           <AuthProvider>
             <TooltipProvider>
               <AppLifecycleManager />
-              <Routes />
+              <AppRoutes />
               <SonnerToaster />
               <UIToaster />
             </TooltipProvider>

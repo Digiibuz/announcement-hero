@@ -1,6 +1,6 @@
 
 import React, { lazy, Suspense, useEffect } from 'react';
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes as RouterRoutes, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useAppLifecycle } from '@/hooks/useAppLifecycle';
@@ -31,17 +31,17 @@ const AppRoutes = () => {
   if (isOnResetPasswordPage) {
     return (
       <Suspense fallback={<div>Chargement...</div>}>
-        <Routes>
+        <RouterRoutes>
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="*" element={<Navigate to="/reset-password" replace />} />
-        </Routes>
+        </RouterRoutes>
       </Suspense>
     );
   }
 
   return (
     <Suspense fallback={<div>Chargement...</div>}>
-      <Routes>
+      <RouterRoutes>
         {/* Public routes */}
         <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" replace />} />
         <Route path="/forgot-password" element={!isAuthenticated ? <ForgotPassword /> : <Navigate to="/dashboard" replace />} />
@@ -63,7 +63,7 @@ const AppRoutes = () => {
         {/* Fallback routes */}
         <Route path="/404" element={<NotFound />} />
         <Route path="*" element={<Navigate to="/404" replace />} />
-      </Routes>
+      </RouterRoutes>
     </Suspense>
   );
 };

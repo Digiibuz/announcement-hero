@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { LoadingIndicator } from "@/components/ui/loading-indicator";
 import { useEffect } from "react";
 
-export const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+const AdminRoute = ({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) => {
   const { isAuthenticated, isLoading, isAdmin, isClient, isOnResetPasswordPage } = useAuth();
   const location = useLocation();
 
@@ -36,5 +36,12 @@ export const AdminRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/dashboard" replace />;
   }
 
+  // Additional check for admin-only routes
+  if (adminOnly && !isAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return <>{children}</>;
 };
+
+export default AdminRoute;

@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { LoadingIndicator } from "@/components/ui/loading-indicator";
 import { useEffect } from "react";
 
-export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading, isOnResetPasswordPage } = useAuth();
   const location = useLocation();
 
@@ -32,3 +32,5 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   return <>{children}</>;
 };
+
+export default ProtectedRoute;
