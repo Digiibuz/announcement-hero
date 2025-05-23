@@ -7,6 +7,7 @@ import { useUserProfile, createProfileFromMetadata } from "@/hooks/useUserProfil
 import { useImpersonation } from "@/hooks/useImpersonation";
 import { UserProfile, AuthContextType } from "@/types/auth";
 
+// Create the context with undefined as default value
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -187,6 +188,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+// Move the useAuth hook so it's defined as a proper React hook function
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {

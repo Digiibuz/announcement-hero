@@ -30,6 +30,7 @@ const AnnouncementDetail = () => {
     <AnnouncementActions
       id={announcement.id}
       status={announcement.status}
+      wordpressPostId={announcement.wordpress_post_id}
     />
   ) : null;
 
