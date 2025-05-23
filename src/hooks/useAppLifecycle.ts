@@ -18,7 +18,6 @@ export function useAppLifecycle(options: AppLifecycleOptions = {}) {
   const [isVisible, setIsVisible] = useState<boolean>(document.visibilityState === 'visible');
   const formStateRef = useRef<Record<string, any>>({});
   const lastVisibilityState = useRef<string>(document.visibilityState);
-  const navigationTypeRef = useRef<string | null>(window.navigationType || null);
 
   // Fonction optimisée pour sauvegarder l'état du formulaire
   const saveFormState = useCallback(
@@ -110,13 +109,10 @@ export function useAppLifecycle(options: AppLifecycleOptions = {}) {
     // Écouter les changements de visibilité
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
-    // Désactiver complètement le rechargement lors du changement d'onglet
+    // Configuration simple pour la restauration du scroll
     if ('scrollRestoration' in history) {
       history.scrollRestoration = 'manual';
     }
-    
-    // Permettre les navigations réelles mais empêcher les rechargements automatiques
-    window.preventReload = true;
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
