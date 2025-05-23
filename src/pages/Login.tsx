@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
+import { supabase, cleanupAuthState } from "@/integrations/supabase/client";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -17,7 +18,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const { login, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already authenticated
@@ -35,35 +36,57 @@ const Login = () => {
     try {
       console.log("Tentative de connexion avec:", email);
       
-      // Tentative de connexion
-      const result = await login(email, password);
-      console.log("Résultat de connexion:", result);
+      // Clean up auth state before login attempt
+      cleanupAuthState();
       
-      if (result && result.user) {
+      // Attempt global sign out to ensure clean state
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+        console.log("Global sign out successful");
+      } catch (err) {
+        console.warn("Error during global sign out:", err);
+        // Continue even if this fails
+      }
+      
+      // Login attempt using direct Supabase auth
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      console.log("Login result:", error ? "Failed" : "Success");
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data && data.user) {
         toast.success("Connexion réussie");
-        console.log("Connexion réussie pour:", result.user.email);
+        console.log("Successful login for:", data.user.email);
         
         // Redirect after successful login
         setTimeout(() => {
           navigate("/dashboard");
-        }, 300);
+        }, 500);
       } else {
-        throw new Error("Aucun utilisateur retourné après connexion");
+        throw new Error("No user returned after login");
       }
     } catch (error: any) {
-      console.error("Erreur de connexion:", error);
+      console.error("Login error:", error);
       
-      // Message d'erreur plus spécifique pour aider l'utilisateur
-      let errorMessage = "Échec de la connexion";
+      // More specific error message to help the user
+      let displayError = "Échec de la connexion";
       
-      if (error.message && error.message.includes("Invalid login credentials")) {
-        errorMessage = "Email ou mot de passe incorrect. Vérifiez vos identifiants et assurez-vous que cet utilisateur existe dans l'authentification Supabase.";
-      } else if (error.message) {
-        errorMessage = error.message;
+      if (error.message) {
+        if (error.message.includes("Invalid login credentials")) {
+          displayError = "Email ou mot de passe incorrect. Vérifiez vos identifiants et assurez-vous que cet utilisateur existe dans l'authentification Supabase.";
+        } else {
+          displayError = error.message;
+        }
       }
       
-      setErrorMessage(errorMessage);
-      toast.error(errorMessage);
+      setErrorMessage(displayError);
+      toast.error(displayError);
     } finally {
       setIsLoading(false);
     }
