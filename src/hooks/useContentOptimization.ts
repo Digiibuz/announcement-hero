@@ -22,7 +22,7 @@ export const useContentOptimization = () => {
     
     try {
       console.log(`Optimisation du ${type} en cours...`);
-      console.log(`Paramètres: Type=${type}, Titre="${title.substring(0, 20)}...", Description="${description.substring(0, 30)}..."`);
+      console.log(`Paramètres: Type=${type}, Titre="${title.substring(0, 20)}...", Description="${description?.substring(0, 30) || ""}..."`);
       
       // Vérification des entrées
       if (!title) {
@@ -42,10 +42,21 @@ export const useContentOptimization = () => {
       
       if (error) {
         console.error("Erreur Supabase Functions:", error);
+        
+        // Vérifier si c'est une erreur de quota
+        if (error.message && error.message.includes("429")) {
+          throw new Error("Limite d'utilisation de l'API OpenAI atteinte. Veuillez réessayer plus tard.");
+        }
+        
         throw new Error(`Erreur lors de l'appel à la fonction: ${error.message}`);
       }
       
       if (!data || !data.success) {
+        // Traitement spécifique pour les erreurs de quota OpenAI
+        if (data?.error && (data.error.includes("quota") || data.error.includes("limite"))) {
+          throw new Error("Limite d'utilisation de l'API OpenAI atteinte. Veuillez réessayer plus tard.");
+        }
+        
         throw new Error(data?.error || "L'optimisation a échoué pour une raison inconnue");
       }
       
@@ -59,7 +70,18 @@ export const useContentOptimization = () => {
       return data.content;
     } catch (error: any) {
       console.error(`Erreur lors de l'optimisation du ${type}:`, error);
-      toast.error(`Erreur lors de l'optimisation: ${error.message || error}`);
+      
+      // Message d'erreur plus convivial pour les erreurs de quota
+      if (error.message && (
+          error.message.includes("quota") || 
+          error.message.includes("limite") || 
+          error.message.includes("OpenAI")
+      )) {
+        toast.error("Limite d'utilisation de l'IA atteinte. Veuillez réessayer plus tard ou contacter le support.");
+      } else {
+        toast.error(`Erreur lors de l'optimisation: ${error.message || error}`);
+      }
+      
       return null;
     } finally {
       setIsOptimizing(prev => ({ ...prev, [type]: false }));

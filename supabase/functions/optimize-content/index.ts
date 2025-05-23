@@ -67,64 +67,95 @@ serve(async (req) => {
       throw new Error("Clé API OpenAI manquante. Veuillez configurer la variable d'environnement OPENAI_API_KEY.");
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemMessage },
-          { role: 'user', content: prompt }
-        ],
-        temperature: type === "generateDescription" ? 0.8 : 0.7, // Un peu plus de créativité pour la génération
-      }),
-    });
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: systemMessage },
+            { role: 'user', content: prompt }
+          ],
+          temperature: type === "generateDescription" ? 0.8 : 0.7, // Un peu plus de créativité pour la génération
+        }),
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      console.error("Erreur OpenAI:", error);
-      throw new Error(`Erreur OpenAI: ${error.error?.message || 'Erreur inconnue'}`);
+      if (!response.ok) {
+        const error = await response.json();
+        console.error("Erreur OpenAI:", error);
+        
+        // Gestion spécifique des erreurs de quotas
+        if (error.error && error.error.message && error.error.message.includes("quota")) {
+          return new Response(JSON.stringify({ 
+            success: false, 
+            error: "Limite d'utilisation de l'API OpenAI atteinte. Veuillez vérifier votre abonnement ou réessayer plus tard.",
+            details: error.error.message
+          }), {
+            status: 429, // Too Many Requests
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
+        throw new Error(`Erreur OpenAI: ${error.error?.message || 'Erreur inconnue'}`);
+      }
+
+      const data = await response.json();
+      console.log("Réponse OpenAI reçue avec succès");
+      
+      let optimizedContent = data.choices[0].message.content;
+      
+      // Post-traitement pour retirer tout texte introductif ou commentaire
+      optimizedContent = optimizedContent
+        // Supprime les phrases d'introduction comme "Voici" ou "Bien sûr"
+        .replace(/^(Bien sûr !|Voici|Certainement|D'accord|Absolument|Voilà|Avec plaisir)[^\n]*\n+/i, '')
+        // Supprime les commentaires finaux commençant par des tirets ou des remarques
+        .replace(/\n+(-{2,}|Remarque|Note|Cette version)[^\n]*$/i, '')
+        // Supprime les guillemets qui pourraient entourer la réponse
+        .replace(/^["\s]+|["\s]+$/g, '')
+        // Supprime les titres (lignes suivies de ':' ou lignes avec # au début)
+        .replace(/^#+\s+.*$|^\s*[\w\s]+\s*:\s*$/gm, '')
+        // Supprime les exemples entre parenthèses ou qui commencent par "Exemple :"
+        .replace(/\(exemple.*?\)|exemple\s*:.*?(\n|$)/gi, '')
+        // Supprime toutes les mises en gras (balises Markdown ** ou __)
+        .replace(/(\*\*|__)(.*?)(\*\*|__)/g, "$2")
+        // Supprime les marqueurs d'icônes et symboles courants
+        .replace(/:[a-z_]+:|🔍|✅|⚠️|❗|📝|💡|🔑|📊|🎯|⭐|👉|✨|🚀|💪|⚡|📌|🔖|📢|🔔/g, '')
+        .trim();
+
+      console.log("Contenu optimisé traité: ", optimizedContent.substring(0, 100) + "...");
+
+      return new Response(JSON.stringify({ 
+        success: true, 
+        content: optimizedContent 
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    } catch (openAIError) {
+      console.error("Erreur lors de l'appel à OpenAI:", openAIError);
+      
+      // Vérifiez si c'est une erreur de dépassement de quota
+      if (openAIError.message && openAIError.message.includes("quota")) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: "Limite d'utilisation de l'API OpenAI atteinte. Veuillez vérifier votre abonnement ou réessayer plus tard.",
+          details: openAIError.message
+        }), {
+          status: 429, // Too Many Requests
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      throw openAIError;
     }
-
-    const data = await response.json();
-    console.log("Réponse OpenAI reçue avec succès");
-    
-    let optimizedContent = data.choices[0].message.content;
-    
-    // Post-traitement pour retirer tout texte introductif ou commentaire
-    optimizedContent = optimizedContent
-      // Supprime les phrases d'introduction comme "Voici" ou "Bien sûr"
-      .replace(/^(Bien sûr !|Voici|Certainement|D'accord|Absolument|Voilà|Avec plaisir)[^\n]*\n+/i, '')
-      // Supprime les commentaires finaux commençant par des tirets ou des remarques
-      .replace(/\n+(-{2,}|Remarque|Note|Cette version)[^\n]*$/i, '')
-      // Supprime les guillemets qui pourraient entourer la réponse
-      .replace(/^["\s]+|["\s]+$/g, '')
-      // Supprime les titres (lignes suivies de ':' ou lignes avec # au début)
-      .replace(/^#+\s+.*$|^\s*[\w\s]+\s*:\s*$/gm, '')
-      // Supprime les exemples entre parenthèses ou qui commencent par "Exemple :"
-      .replace(/\(exemple.*?\)|exemple\s*:.*?(\n|$)/gi, '')
-      // Supprime toutes les mises en gras (balises Markdown ** ou __)
-      .replace(/(\*\*|__)(.*?)(\*\*|__)/g, "$2")
-      // Supprime les marqueurs d'icônes et symboles courants
-      .replace(/:[a-z_]+:|🔍|✅|⚠️|❗|📝|💡|🔑|📊|🎯|⭐|👉|✨|🚀|💪|⚡|📌|🔖|📢|🔔/g, '')
-      .trim();
-
-    console.log("Contenu optimisé traité: ", optimizedContent.substring(0, 100) + "...");
-
-    return new Response(JSON.stringify({ 
-      success: true, 
-      content: optimizedContent 
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
   } catch (error) {
     console.error('Erreur dans la fonction optimize-content:', error);
     return new Response(JSON.stringify({ 
       success: false, 
-      error: error.message 
+      error: error.message || "Une erreur inconnue s'est produite"
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
