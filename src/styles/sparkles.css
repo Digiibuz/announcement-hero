@@ -2,39 +2,74 @@
 @keyframes sparkle {
   0%, 100% { 
     opacity: 0; 
-    transform: scale(0.5); 
+    transform: scale(0.3) translateY(0px) translateX(0px); 
+  }
+  25% { 
+    opacity: 0.7; 
+    transform: scale(1.2) translateY(-8px) translateX(4px); 
   }
   50% { 
     opacity: 1; 
-    transform: scale(1); 
+    transform: scale(1) translateY(-12px) translateX(-6px); 
+  }
+  75% { 
+    opacity: 0.8; 
+    transform: scale(1.1) translateY(-4px) translateX(8px); 
   }
 }
 
 @keyframes twinkle {
   0%, 100% { 
-    opacity: 0.3; 
-    transform: scale(0.8) rotate(0deg); 
+    opacity: 0.2; 
+    transform: scale(0.6) rotate(0deg) translateY(0px) translateX(0px); 
   }
-  25% { 
+  20% { 
     opacity: 1; 
-    transform: scale(1.2) rotate(90deg); 
+    transform: scale(1.3) rotate(72deg) translateY(-10px) translateX(6px); 
   }
-  50% { 
+  40% { 
+    opacity: 0.5; 
+    transform: scale(1) rotate(144deg) translateY(-8px) translateX(-4px); 
+  }
+  60% { 
+    opacity: 0.9; 
+    transform: scale(1.2) rotate(216deg) translateY(-14px) translateX(8px); 
+  }
+  80% { 
     opacity: 0.7; 
-    transform: scale(1) rotate(180deg); 
+    transform: scale(0.8) rotate(288deg) translateY(-6px) translateX(-8px); 
   }
-  75% { 
+}
+
+@keyframes sparkle-float {
+  0%, 100% { 
+    opacity: 0; 
+    transform: scale(0.4) translateY(0px) rotate(0deg); 
+  }
+  33% { 
+    opacity: 0.8; 
+    transform: scale(1.1) translateY(-15px) rotate(120deg); 
+  }
+  66% { 
     opacity: 1; 
-    transform: scale(1.1) rotate(270deg); 
+    transform: scale(0.9) translateY(-8px) rotate(240deg); 
   }
 }
 
 .sparkle-star {
-  animation: sparkle 1.5s ease-in-out infinite;
+  animation: sparkle 1.8s ease-in-out infinite;
+}
+
+.sparkle-star:nth-child(odd) {
+  animation: sparkle-float 2.2s ease-in-out infinite;
 }
 
 .twinkle-star {
-  animation: twinkle 2s ease-in-out infinite;
+  animation: twinkle 2.5s ease-in-out infinite;
+}
+
+.twinkle-star:nth-child(even) {
+  animation-duration: 1.8s;
 }
 
 .sparkle-container:hover .sparkle-star {
@@ -43,4 +78,13 @@
 
 .sparkle-container:hover .twinkle-star {
   animation-play-state: running;
+}
+
+/* Animation plus rapide au survol */
+.sparkle-container:hover .sparkle-star {
+  animation-duration: 1.2s;
+}
+
+.sparkle-container:hover .twinkle-star {
+  animation-duration: 1.5s;
 }
