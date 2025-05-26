@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
 import { useUserManagement } from "@/hooks/useUserManagement";
@@ -60,7 +59,7 @@ const WebsiteOverviewTable = () => {
               .select('publish_date, created_at')
               .eq('user_id', client.id)
               .eq('status', 'published')
-              .order('publish_date', { ascending: false, nullsLast: true })
+              .order('publish_date', { ascending: false })
               .order('created_at', { ascending: false })
               .limit(1);
 
