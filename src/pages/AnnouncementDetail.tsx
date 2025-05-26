@@ -30,6 +30,7 @@ const AnnouncementDetail = () => {
       id={announcement.id}
       status={announcement.status}
       wordpressPostId={announcement.wordpress_post_id}
+      seoSlug={announcement.seo_slug}
     />
   ) : null;
 

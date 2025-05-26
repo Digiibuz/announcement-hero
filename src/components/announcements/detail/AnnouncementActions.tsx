@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Trash2, Send, Archive } from "lucide-react";
+import { Trash2, Send, Archive, ExternalLink } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,20 +22,28 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
 
 interface AnnouncementActionsProps {
   id: string;
   status: string;
   wordpressPostId?: number | null;
+  seoSlug?: string;
 }
 
-const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ id, status, wordpressPostId }) => {
+const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ 
+  id, 
+  status, 
+  wordpressPostId, 
+  seoSlug 
+}) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { wordpressConfigs } = useWordPressConfigs();
 
   const deleteAnnouncement = async () => {
     try {
@@ -95,8 +103,45 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ id, status, w
     }
   };
 
+  const viewOnWordPress = () => {
+    if (!wordpressPostId || !wordpressConfigs || wordpressConfigs.length === 0) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de trouver le lien vers l'annonce.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Get the WordPress site URL from the first config (assuming single config for now)
+    const wordpressConfig = wordpressConfigs[0];
+    const siteUrl = wordpressConfig.site_url.replace(/\/+$/, ''); // Remove trailing slashes
+    
+    // Build the URL: if we have a seoSlug, use it, otherwise use the post ID
+    let postUrl;
+    if (seoSlug) {
+      postUrl = `${siteUrl}/annonces/${seoSlug}`;
+    } else {
+      postUrl = `${siteUrl}/?p=${wordpressPostId}`;
+    }
+    
+    window.open(postUrl, '_blank');
+  };
+
   return (
     <div className="flex flex-wrap gap-2 items-center">
+      {/* View on WordPress button - only show if the post is published and has a WordPress post ID */}
+      {status === "published" && wordpressPostId && (
+        <Button 
+          onClick={viewOnWordPress}
+          variant="outline"
+          className="bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 hover:border-blue-300"
+        >
+          <ExternalLink className="mr-2 h-4 w-4" />
+          Voir sur le site
+        </Button>
+      )}
+
       {status !== "published" && (
         <Button 
           onClick={publishAnnouncement}
