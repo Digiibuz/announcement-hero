@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import PageLayout from "@/components/ui/layout/PageLayout";
@@ -48,9 +47,13 @@ const Dashboard = () => {
             Bienvenue, {user?.name || user?.email || 'Utilisateur'}
           </p>
           {!isAdmin && (
-            <Button asChild className="mt-2 sm:mt-0 bg-digibuz-yellow text-digibuz-navy hover:bg-digibuz-yellow/90">
+            <Button 
+              asChild 
+              className="mt-2 sm:mt-0 bg-digibuz-yellow text-digibuz-navy hover:bg-digibuz-yellow/90 transform transition-all duration-300 hover:scale-105 hover:shadow-lg active:scale-95 animate-pulse-subtle group relative overflow-hidden"
+            >
               <Link to="/create">
-                <Plus className="mr-2 h-4 w-4" />
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                <Plus className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:rotate-90" />
                 Créer une annonce
               </Link>
             </Button>
@@ -211,10 +214,11 @@ const Dashboard = () => {
           asChild
           showOnMobile={true}
           hideOnDesktop={true}
-          className="bg-digibuz-yellow text-digibuz-navy hover:bg-digibuz-yellow/90 font-bold"
+          className="bg-digibuz-yellow text-digibuz-navy hover:bg-digibuz-yellow/90 font-bold transform transition-all duration-300 hover:scale-110 hover:shadow-xl active:scale-95 animate-pulse-subtle group relative overflow-hidden"
         >
           <Link to="/create">
-            <Plus className="mr-2 h-4 w-4" />
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+            <Plus className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:rotate-90" />
             Créer
           </Link>
         </FloatingActionButton>
