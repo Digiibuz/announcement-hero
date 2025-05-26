@@ -77,19 +77,19 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
 
   if (isLoadingConfigs) {
     return (
-      <ScrollArea className="max-h-[400px] pr-4">
-        <div className="space-y-4">
-          {/* Bouton Enregistrer en haut */}
-          <div className="flex justify-between items-center">
-            <Button type="button" variant="outline" onClick={onCancel}>
-              Annuler
-            </Button>
-            <Button type="button" disabled>
-              <Save className="h-4 w-4 mr-2" />
-              Enregistrer
-            </Button>
-          </div>
+      <div className="space-y-4">
+        {/* Bouton Enregistrer en haut */}
+        <div className="flex justify-between items-center">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Annuler
+          </Button>
+          <Button type="button" disabled>
+            <Save className="h-4 w-4 mr-2" />
+            Enregistrer
+          </Button>
+        </div>
 
+        <ScrollArea className="h-[400px] pr-4">
           <Card>
             <CardContent className="p-6">
               <div className="animate-pulse">
@@ -98,25 +98,25 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
               </div>
             </CardContent>
           </Card>
-        </div>
-      </ScrollArea>
+        </ScrollArea>
+      </div>
     );
   }
 
   return (
-    <ScrollArea className="max-h-[400px] pr-4">
-      <div className="space-y-4">
-        {/* Bouton Enregistrer en haut */}
-        <div className="flex justify-between items-center">
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Annuler
-          </Button>
-          <Button type="button" disabled={isUpdating} onClick={() => onSubmit(form.getValues())}>
-            <Save className="h-4 w-4 mr-2" />
-            {isUpdating ? "Enregistrement..." : "Enregistrer"}
-          </Button>
-        </div>
+    <div className="space-y-4">
+      {/* Bouton Enregistrer en haut */}
+      <div className="flex justify-between items-center">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Annuler
+        </Button>
+        <Button type="button" disabled={isUpdating} onClick={() => onSubmit(form.getValues())}>
+          <Save className="h-4 w-4 mr-2" />
+          {isUpdating ? "Enregistrement..." : "Enregistrer"}
+        </Button>
+      </div>
 
+      <ScrollArea className="h-[400px] pr-4">
         {configs.length > 0 ? (
           <Card>
             <CardHeader className="pb-4">
@@ -234,8 +234,8 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
             </CardContent>
           </Card>
         )}
-      </div>
-    </ScrollArea>
+      </ScrollArea>
+    </div>
   );
 };
 
