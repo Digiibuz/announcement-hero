@@ -4,13 +4,11 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import { Loader2, Save, Search } from "lucide-react";
+import { Loader2, Save } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ImageUploader from "./ImageUploader";
 import DescriptionField from "./DescriptionField";
 import PublishingOptions from "./PublishingOptions";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useFormPersistence } from "@/hooks/useFormPersistence";
@@ -210,85 +208,6 @@ const AnnouncementForm = ({
                 </CardHeader>
                 <CardContent className={`${isMobile ? "px-0 py-3" : ""}`}>
                   <PublishingOptions form={form} />
-                </CardContent>
-              </Card>
-            </div>
-            
-            <div className={`${isMobile ? "px-4" : ""}`}>
-              <Card className={getCardStyles(true)}>
-                <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"} flex flex-row items-center justify-between space-y-0`}>
-                  <div>
-                    <CardTitle className="text-lg font-medium">SEO</CardTitle>
-                    {!isMobile && <CardDescription className="text-amber-400">
-                        Optimisez votre annonce pour les moteurs de recherche
-                      </CardDescription>}
-                  </div>
-                  <Badge variant="outline" className="ml-2">
-                    SEO
-                  </Badge>
-                </CardHeader>
-                <CardContent className={`space-y-4 ${isMobile ? "px-0 py-3" : ""}`}>
-                  {!isMobile}
-                  
-                  <FormField control={form.control} name="seoTitle" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>Titre SEO</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Titre optimisé pour les moteurs de recherche" {...field} />
-                        </FormControl>
-                        <FormDescription className="font-normal">
-                          Idéalement entre 50 et 60 caractères.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>} />
-                  
-                  <FormField control={form.control} name="seoDescription" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>Méta description</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Description courte qui apparaîtra dans les résultats de recherche" className="resize-none min-h-[100px]" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          Idéalement entre 120 et 158 caractères.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>} />
-                  
-                  <FormField control={form.control} name="seoSlug" render={({
-                  field
-                }) => <FormItem>
-                        <FormLabel>URL Slug</FormLabel>
-                        <FormControl>
-                          <div className="flex items-center">
-                            <span className="text-sm text-muted-foreground mr-2 hidden sm:inline">yoursite.com/annonces/</span>
-                            <Input placeholder="slug-de-url" {...field} />
-                          </div>
-                        </FormControl>
-                        <FormDescription>
-                          L'URL qui sera utilisée pour accéder à cette annonce.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>} />
-                  
-                  {!isMobile && <Card className="border border-muted mt-4 bg-muted/10">
-                      <CardContent className="p-4">
-                        <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
-                          <Search className="h-4 w-4" />
-                          Aperçu dans Google
-                        </h3>
-                        <div className="text-blue-600 text-lg font-medium truncate">
-                          {form.getValues('seoTitle') || form.getValues('title') || "Titre de votre annonce"}
-                        </div>
-                        <div className="text-green-700 text-sm mb-1">
-                          yoursite.com/annonces/{form.getValues('seoSlug') || "url-de-lannonce"}
-                        </div>
-                        <div className="text-slate-700 text-sm line-clamp-2">
-                          {form.getValues('seoDescription') || "Ajoutez une méta description pour qu'elle apparaisse ici."}
-                        </div>
-                      </CardContent>
-                    </Card>}
                 </CardContent>
               </Card>
             </div>
