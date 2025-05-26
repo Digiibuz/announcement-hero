@@ -279,8 +279,8 @@ const PublicationCounter = ({ className }: PublicationCounterProps) => {
         )}
       </CardContent>
 
-      {/* Custom CSS for animations */}
-      <style jsx>{`
+      {/* CSS Animations using style element */}
+      <style>{`
         @keyframes slide-bg {
           0% { transform: translateX(-100%); }
           100% { transform: translateX(100%); }
