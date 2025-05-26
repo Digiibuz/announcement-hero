@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useUserProfile, createProfileFromMetadata } from "@/hooks/useUserProfile";
+import { useImpersonation } from "@/hooks/useImpersonation";
 import { UserProfile, AuthContextType } from "@/types/auth";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -10,8 +11,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const { userProfile, setUserProfile, fetchFullProfile } = useUserProfile();
+  const { originalUser, isImpersonating, impersonateUser: hookImpersonateUser, stopImpersonating: hookStopImpersonating } = useImpersonation(userProfile);
 
-  // Très simple gestion d'auth - pas de détection de changement de fenêtre
+  // Gestion d'auth - pas de détection de changement de fenêtre
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -66,6 +68,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const impersonateUser = (userToImpersonate: UserProfile) => {
+    const impersonatedUser = hookImpersonateUser(userToImpersonate);
+    if (impersonatedUser) {
+      setUserProfile(impersonatedUser);
+    }
+  };
+
+  const stopImpersonating = () => {
+    const originalUserData = hookStopImpersonating();
+    if (originalUserData) {
+      setUserProfile(originalUserData);
+    }
+  };
+
   const value: AuthContextType = {
     user: userProfile,
     isLoading,
@@ -74,11 +90,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isAuthenticated: !!userProfile,
     isAdmin: userProfile?.role === "admin",
     isClient: userProfile?.role === "client",
-    impersonateUser: () => {}, // Désactivé pour simplifier
-    stopImpersonating: () => {}, // Désactivé pour simplifier
-    originalUser: null,
-    isImpersonating: false,
-    isOnResetPasswordPage: false, // Supprimé la détection complexe
+    impersonateUser,
+    stopImpersonating,
+    originalUser,
+    isImpersonating,
+    isOnResetPasswordPage: false,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
