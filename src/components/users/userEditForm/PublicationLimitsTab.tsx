@@ -2,7 +2,6 @@
 import React from "react";
 import { UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/ui/button";
-import { Form } from "@/components/ui/form";
 import { UserProfile } from "@/types/auth";
 import PublicationLimitsField from "./PublicationLimitsField";
 

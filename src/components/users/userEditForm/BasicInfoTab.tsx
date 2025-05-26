@@ -5,86 +5,121 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Key, UserMinus } from "lucide-react";
+import DeleteUserDialog from "./DeleteUserDialog";
 
 interface BasicInfoTabProps {
   form: UseFormReturn<any>;
   isUpdating: boolean;
   onCancel: () => void;
   onSubmit: (data: any) => void;
+  onResetPassword?: () => void;
+  onDeleteUser?: () => Promise<void>;
+  isDeleting?: boolean;
+  confirmDeleteOpen: boolean;
+  setConfirmDeleteOpen: (open: boolean) => void;
 }
 
 const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
   form,
   isUpdating,
   onCancel,
-  onSubmit
+  onSubmit,
+  onResetPassword,
+  onDeleteUser,
+  isDeleting = false,
+  confirmDeleteOpen,
+  setConfirmDeleteOpen
 }) => {
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <div className="grid grid-cols-1 gap-4">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nom</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input {...field} type="email" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="role"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Rôle</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+    <div className="space-y-6">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nom</FormLabel>
                   <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un rôle" />
-                    </SelectTrigger>
+                    <Input {...field} />
                   </FormControl>
-                  <SelectContent>
-                    <SelectItem value="admin">Administrateur</SelectItem>
-                    <SelectItem value="client">Client</SelectItem>
-                    <SelectItem value="editor">Éditeur</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <div className="flex justify-end gap-2 pt-4">
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Annuler
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input {...field} type="email" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Rôle</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un rôle" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="admin">Administrateur</SelectItem>
+                      <SelectItem value="client">Client</SelectItem>
+                      <SelectItem value="editor">Éditeur</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Annuler
+            </Button>
+            <Button type="submit" disabled={isUpdating}>
+              {isUpdating ? "Mise à jour..." : "Mettre à jour"}
+            </Button>
+          </div>
+        </form>
+      </Form>
+
+      {/* Actions administratives */}
+      <div className="border-t pt-4 space-y-3">
+        <h4 className="text-sm font-medium text-gray-900 mb-3">Actions administratives</h4>
+        
+        {onResetPassword && (
+          <Button variant="outline" onClick={onResetPassword} className="w-full">
+            <Key className="h-4 w-4 mr-2" />
+            Réinitialiser le mot de passe
           </Button>
-          <Button type="submit" disabled={isUpdating}>
-            {isUpdating ? "Mise à jour..." : "Mettre à jour"}
-          </Button>
-        </div>
-      </form>
-    </Form>
+        )}
+        
+        {onDeleteUser && (
+          <DeleteUserDialog 
+            isOpen={confirmDeleteOpen} 
+            isDeleting={isDeleting} 
+            onOpenChange={setConfirmDeleteOpen} 
+            onDelete={onDeleteUser} 
+          />
+        )}
+      </div>
+    </div>
   );
 };
 
