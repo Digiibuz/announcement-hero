@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import PageLayout from "@/components/ui/layout/PageLayout";
@@ -5,6 +6,7 @@ import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import DashboardCard from "@/components/dashboard/DashboardCard";
 import PublicationCounter from "@/components/dashboard/PublicationCounter";
 import RecentAnnouncements from "@/components/dashboard/RecentAnnouncements";
+import AdminAlerts from "@/components/dashboard/AdminAlerts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, Clock, Calendar, Plus, Users, Server } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -129,6 +131,13 @@ const Dashboard = () => {
           )}
         </div>
       </AnimatedContainer>
+
+      {/* Admin Alerts Section */}
+      {isAdmin && (
+        <AnimatedContainer delay={250}>
+          <AdminAlerts />
+        </AnimatedContainer>
+      )}
 
       {/* Publication Counter for non-admin users */}
       {!isAdmin && (
