@@ -94,7 +94,7 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
                       type="button" 
                       size="sm" 
                       variant="outline" 
-                      className="flex items-center gap-1 h-8 relative overflow-hidden transition-all duration-300 hover:bg-purple-50 hover:border-purple-300"
+                      className="flex items-center gap-1 h-8 relative overflow-hidden transition-all duration-300 bg-purple-600 text-white border-purple-600 hover:bg-purple-700 hover:border-purple-700"
                       onClick={() => optimizeSeoContent('seoTitle')} 
                       disabled={isOptimizing.seoTitle}
                     >
@@ -106,8 +106,8 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
                         </>
                       ) : (
                         <>
-                          <Sparkles size={14} className={cn("transition-colors duration-300", isHoveringSeoTitle && "text-purple-600")} />
-                          <span className={cn("text-xs transition-colors duration-300", isHoveringSeoTitle && "text-purple-600")}>Générer</span>
+                          <Sparkles size={14} className="text-white" />
+                          <span className="text-xs text-white">Générer</span>
                         </>
                       )}
                     </Button>
@@ -155,7 +155,7 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
                       type="button" 
                       size="sm" 
                       variant="outline" 
-                      className="flex items-center gap-1 h-8 relative overflow-hidden transition-all duration-300 hover:bg-purple-50 hover:border-purple-300"
+                      className="flex items-center gap-1 h-8 relative overflow-hidden transition-all duration-300 bg-purple-600 text-white border-purple-600 hover:bg-purple-700 hover:border-purple-700"
                       onClick={() => optimizeSeoContent('seoDescription')} 
                       disabled={isOptimizing.seoDescription}
                     >
@@ -167,8 +167,8 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
                         </>
                       ) : (
                         <>
-                          <Sparkles size={14} className={cn("transition-colors duration-300", isHoveringSeoDescription && "text-purple-600")} />
-                          <span className={cn("text-xs transition-colors duration-300", isHoveringSeoDescription && "text-purple-600")}>Générer</span>
+                          <Sparkles size={14} className="text-white" />
+                          <span className="text-xs text-white">Générer</span>
                         </>
                       )}
                     </Button>

@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
@@ -203,7 +202,7 @@ const DescriptionField = ({
               type="button" 
               size="sm" 
               variant="outline" 
-              className="flex items-center gap-1 relative overflow-hidden transition-all duration-300 hover:bg-purple-50 hover:border-purple-300" 
+              className="flex items-center gap-1 relative overflow-hidden transition-all duration-300 bg-purple-600 text-white border-purple-600 hover:bg-purple-700 hover:border-purple-700" 
               onClick={generateNewContent} 
               disabled={isOptimizing.generateDescription}
             >
@@ -212,8 +211,8 @@ const DescriptionField = ({
                   <Loader2 size={16} className="animate-spin" />
                   <span>Génération...</span>
                 </> : <>
-                  <Wand2 size={16} className={cn("transition-colors duration-300", isHoveringGenerate && "text-purple-600")} />
-                  <span className={cn("transition-colors duration-300", isHoveringGenerate && "text-purple-600")}>Générer avec l'IA</span>
+                  <Wand2 size={16} className="text-white" />
+                  <span className="text-white">Générer avec l'IA</span>
                 </>}
             </Button>
           </div>
@@ -226,8 +225,8 @@ const DescriptionField = ({
             <Button 
               type="button" 
               size="sm" 
-              variant="secondary" 
-              className="flex items-center gap-1 relative overflow-hidden transition-all duration-300 hover:bg-purple-50 hover:border-purple-300" 
+              variant="outline" 
+              className="flex items-center gap-1 relative overflow-hidden transition-all duration-300 bg-purple-600 text-white border-purple-600 hover:bg-purple-700 hover:border-purple-700" 
               onClick={generateImprovedContent} 
               disabled={isOptimizing.description}
             >
@@ -236,8 +235,8 @@ const DescriptionField = ({
                   <Loader2 size={16} className="animate-spin" />
                   <span>Optimisation...</span>
                 </> : <>
-                  <Sparkles size={16} className={cn("transition-colors duration-300", isHoveringOptimize && "text-purple-600")} />
-                  <span className={cn("transition-colors duration-300", isHoveringOptimize && "text-purple-600")}>Optimiser avec l'IA</span>
+                  <Sparkles size={16} className="text-white" />
+                  <span className="text-white">Optimiser avec l'IA</span>
                 </>}
             </Button>
           </div>
