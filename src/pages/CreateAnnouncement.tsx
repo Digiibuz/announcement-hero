@@ -344,11 +344,13 @@ const CreateAnnouncement = () => {
         seoSlug: ""
       });
 
+      // Navigation améliorée pour éviter les pages blanches
       setTimeout(() => {
         setShowPublishingOverlay(false);
         resetPublishingState();
-        navigate("/announcements");
-      }, 1500);
+        // Navigation avec replace pour éviter les retours en arrière problématiques
+        navigate("/announcements", { replace: true });
+      }, 2000); // Délai augmenté pour s'assurer que tout est bien chargé
     } catch (error: any) {
       console.error("Error saving announcement:", error);
       toast({

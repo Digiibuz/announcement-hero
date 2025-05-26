@@ -30,7 +30,7 @@ const Announcements = () => {
   });
   const viewMode = "grid";
   
-  // Get WordPress categories - sans refetch automatique
+  // Get WordPress categories - réactivation du refetch
   const { categories, refetch: refetchCategories } = useWordPressCategories();
 
   useEffect(() => {
@@ -39,7 +39,7 @@ const Announcements = () => {
     }
   }, [user?.wordpressConfigId, refetchCategories]);
 
-  // Fetch announcements - désactivation complète des refetch automatiques
+  // Fetch announcements - réactivation partielle des refetch pour éviter les pages blanches
   const { data: announcements, isLoading, refetch } = useQuery({
     queryKey: ["announcements"],
     queryFn: async () => {
@@ -79,9 +79,11 @@ const Announcements = () => {
       });
     },
     enabled: !!user,
-    refetchOnWindowFocus: false, // Pas de refetch sur changement de fenêtre
-    refetchOnMount: false,
-    refetchOnReconnect: false,
+    refetchOnWindowFocus: true, // Réactivé pour éviter les pages blanches
+    refetchOnMount: true,       // Réactivé pour assurer le chargement
+    refetchOnReconnect: false,  // Gardé désactivé pour éviter les refetch excessifs
+    staleTime: 30000,          // Cache pendant 30 secondes
+    gcTime: 5 * 60 * 1000,     // Garde en cache pendant 5 minutes
   });
 
   // Filter announcements
