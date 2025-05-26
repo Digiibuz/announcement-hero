@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
+import { usePublicationLimits } from "@/hooks/usePublicationLimits";
 
 interface AnnouncementActionsProps {
   id: string;
@@ -43,6 +44,7 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
   const { toast } = useToast();
   const { user } = useAuth();
   const { configs } = useWordPressConfigs();
+  const { canPublish, stats } = usePublicationLimits();
 
   const deleteAnnouncement = async () => {
     try {
@@ -82,6 +84,16 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
   };
 
   const publishAnnouncement = async () => {
+    // Check publication limits before publishing
+    if (!canPublish()) {
+      toast({
+        title: "Limite atteinte",
+        description: `Vous avez atteint votre limite de ${stats.maxLimit} publications ce mois-ci.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setIsPublishing(true);
       await apiPublishAnnouncement(id);
@@ -144,8 +156,9 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
       {status !== "published" && (
         <Button 
           onClick={publishAnnouncement}
-          disabled={isPublishing}
-          className="bg-green-600 hover:bg-green-700"
+          disabled={isPublishing || !canPublish()}
+          className="bg-green-600 hover:bg-green-700 disabled:opacity-50"
+          title={!canPublish() ? `Limite de ${stats.maxLimit} publications atteinte ce mois-ci` : ""}
         >
           {isPublishing ? (
             <>

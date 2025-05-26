@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
+import { usePublicationLimits } from "@/hooks/usePublicationLimits";
 import { Announcement } from "@/types/announcement";
 
 export interface ExtendedAnnouncement extends Omit<Announcement, 'wordpress_post_id'> {
@@ -19,6 +20,7 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { isPublishing } = useWordPressPublishing();
+  const { canPublish, stats } = usePublicationLimits();
   const [activeTab, setActiveTab] = useState("preview");
   const [formData, setFormData] = useState<any>(null);
 
@@ -83,6 +85,14 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
     try {
       setIsSubmitting(true);
       
+      // Check publication limits if trying to publish or schedule
+      if ((formData.status === 'published' || formData.status === 'scheduled') && !canPublish()) {
+        toast.error(`Limite de ${stats.maxLimit} publications atteinte ce mois-ci. Votre annonce sera sauvegardée en brouillon.`);
+        
+        // Force the status to draft if limit is reached
+        formData.status = 'draft';
+      }
+      
       // Map form data to database column names
       const updateData = {
         title: formData.title,
@@ -127,6 +137,8 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
     setActiveTab,
     fetchAnnouncement,
     handleSubmit,
-    formData
+    formData,
+    canPublish,
+    publicationStats: stats
   };
 };
