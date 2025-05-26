@@ -88,17 +88,22 @@ export const useAdminAlerts = () => {
 
   const testWordPressConnection = async (config: any): Promise<boolean> => {
     try {
-      // Normaliser l'URL
-      const siteUrl = config.site_url.replace(/([^:]\/)\/+/g, "$1");
+      console.log(`Testing WordPress connection for: ${config.site_url}`);
       
-      // Test simple avec timeout court
+      // Normaliser l'URL (enlever les doubles slashes)
+      let siteUrl = config.site_url;
+      if (siteUrl.endsWith('/')) {
+        siteUrl = siteUrl.slice(0, -1);
+      }
+      
+      // Test de l'API REST WordPress avec timeout plus court
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 secondes timeout
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 secondes
       
-      const testUrl = `${siteUrl}/wp-json/wp/v2`;
+      const testUrl = `${siteUrl}/wp-json/wp/v2/posts?per_page=1`;
       
       const response = await fetch(testUrl, {
-        method: 'HEAD',
+        method: 'GET',
         signal: controller.signal,
         headers: {
           'User-Agent': 'DigiCheck/1.0'
@@ -107,20 +112,34 @@ export const useAdminAlerts = () => {
       
       clearTimeout(timeoutId);
       
-      // Si la réponse est OK (200-299) ou même 401 (non autorisé), 
-      // cela signifie que le site répond
-      return response.ok || response.status === 401 || response.status === 403;
+      console.log(`Response status for ${siteUrl}: ${response.status}`);
+      
+      // Le site est considéré comme connecté si :
+      // - 200 (OK)
+      // - 401 (Unauthorized - l'API existe mais nécessite une auth)
+      // - 403 (Forbidden - l'API existe mais accès refusé)
+      const isConnected = response.status === 200 || response.status === 401 || response.status === 403;
+      
+      console.log(`Site ${siteUrl} connection result: ${isConnected ? 'Connected' : 'Disconnected'}`);
+      return isConnected;
       
     } catch (error: any) {
       console.log(`Connection test failed for ${config.site_url}:`, error.message);
-      // Toute erreur (timeout, network error, etc.) indique que le site est inaccessible
+      
+      // Toute erreur (timeout, network error, CORS, etc.) = site déconnecté
+      if (error.name === 'AbortError') {
+        console.log(`Timeout for ${config.site_url}`);
+      } else if (error.message.includes('Failed to fetch')) {
+        console.log(`Network error for ${config.site_url}`);
+      }
+      
       return false;
     }
   };
 
   const fetchWordPressErrors = async () => {
     try {
-      console.log('Checking WordPress configurations...');
+      console.log('Checking WordPress configurations for admin alerts...');
       
       // Récupérer toutes les configurations WordPress
       const { data: configs, error } = await supabase
@@ -138,32 +157,35 @@ export const useAdminAlerts = () => {
         return;
       }
 
-      console.log(`Testing ${configs.length} WordPress configurations...`);
+      console.log(`Testing ${configs.length} WordPress configurations for admin alerts...`);
       
       // Tester la connectivité de chaque configuration
       const errorConfigs: WordPressError[] = [];
       
-      for (const config of configs) {
-        console.log(`Testing connection to: ${config.site_url}`);
-        
+      // Tester les sites en parallèle pour améliorer les performances
+      const connectionTests = configs.map(async (config) => {
         const isConnected = await testWordPressConnection(config);
         
         if (!isConnected) {
-          console.log(`Site ${config.site_url} is disconnected`);
-          errorConfigs.push({
+          console.log(`Site ${config.site_url} is disconnected - adding to alerts`);
+          return {
             id: config.id,
             name: config.name,
             site_url: config.site_url,
             error_message: 'Site inaccessible ou en erreur',
             last_checked: new Date().toISOString()
-          });
-        } else {
-          console.log(`Site ${config.site_url} is connected`);
+          };
         }
-      }
-
-      console.log(`Found ${errorConfigs.length} sites with connection errors`);
-      setWordPressErrors(errorConfigs);
+        
+        console.log(`Site ${config.site_url} is connected - no alert needed`);
+        return null;
+      });
+      
+      const results = await Promise.all(connectionTests);
+      const disconnectedSites = results.filter(result => result !== null);
+      
+      console.log(`Found ${disconnectedSites.length} disconnected sites for admin alerts`);
+      setWordPressErrors(disconnectedSites);
       
     } catch (error) {
       console.error('Error fetching WordPress errors:', error);
