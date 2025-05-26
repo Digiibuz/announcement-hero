@@ -7,6 +7,7 @@ import DashboardCard from "@/components/dashboard/DashboardCard";
 import PublicationCounter from "@/components/dashboard/PublicationCounter";
 import RecentAnnouncements from "@/components/dashboard/RecentAnnouncements";
 import AdminAlerts from "@/components/dashboard/AdminAlerts";
+import WebsiteOverviewTable from "@/components/websites/WebsiteOverviewTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, Clock, Calendar, Plus, Users, Server } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -136,6 +137,13 @@ const Dashboard = () => {
       {isAdmin && (
         <AnimatedContainer delay={250}>
           <AdminAlerts />
+        </AnimatedContainer>
+      )}
+
+      {/* Website Overview Table for admins */}
+      {isAdmin && (
+        <AnimatedContainer delay={300} className="mt-8">
+          <WebsiteOverviewTable />
         </AnimatedContainer>
       )}
 
