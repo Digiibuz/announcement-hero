@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import DashboardCard from "@/components/dashboard/DashboardCard";
+import PublicationCounter from "@/components/dashboard/PublicationCounter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, Clock, Calendar, Plus, Users, Server } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -128,6 +129,13 @@ const Dashboard = () => {
           )}
         </div>
       </AnimatedContainer>
+
+      {/* Publication Counter for non-admin users */}
+      {!isAdmin && (
+        <AnimatedContainer delay={250}>
+          <PublicationCounter className="mb-8" />
+        </AnimatedContainer>
+      )}
 
       {/* Only show these sections for non-admin users */}
       {!isAdmin && (

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -10,6 +11,7 @@ import { Announcement } from "@/types/announcement";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
 import { Button } from "@/components/ui/button";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { usePublicationLimits } from "@/hooks/usePublicationLimits";
 import PublishingLoadingOverlay, { PublishingStep as PublishingStepType } from "@/components/announcements/PublishingLoadingOverlay";
 import CategoryStep from "@/components/announcements/steps/CategoryStep";
 import DescriptionStep from "@/components/announcements/steps/DescriptionStep";
@@ -23,6 +25,8 @@ import { StepConfig, AnnouncementFormStep } from "@/types/steps";
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
 import { AnnouncementFormData } from "@/components/announcements/AnnouncementForm";
 import CreateAnnouncementHeader from "@/components/announcements/steps/CreateAnnouncementHeader";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertTriangle, TrendingUp } from "lucide-react";
 
 const FORM_STORAGE_KEY = "announcement-form-draft";
 
@@ -66,6 +70,7 @@ const CreateAnnouncement = () => {
     publishingState,
     resetPublishingState
   } = useWordPressPublishing();
+  const { canPublish, incrementPublicationCount, stats } = usePublicationLimits();
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [showPublishingOverlay, setShowPublishingOverlay] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -257,6 +262,20 @@ const CreateAnnouncement = () => {
   };
 
   const handleSubmit = async () => {
+    // Check publication limits before submitting
+    const formData = form.getValues();
+    if ((formData.status === 'published' || formData.status === 'scheduled') && !canPublish()) {
+      toast({
+        title: "Limite atteinte",
+        description: `Vous avez atteint votre limite de ${stats.maxLimit} publications ce mois-ci. Votre annonce sera sauvegardée en brouillon.`,
+        variant: "destructive"
+      });
+      
+      // Force the status to draft if limit is reached
+      form.setValue('status', 'draft');
+      formData.status = 'draft';
+    }
+
     try {
       setIsSubmitting(true);
       setShowPublishingOverlay(true);
@@ -269,8 +288,6 @@ const CreateAnnouncement = () => {
           description: "Enregistrement de votre annonce..."
         });
       }
-
-      const formData = form.getValues();
 
       const announcementData = {
         user_id: user?.id,
@@ -290,6 +307,11 @@ const CreateAnnouncement = () => {
         error
       } = await supabase.from("announcements").insert(announcementData).select().single();
       if (error) throw error;
+
+      // Increment publication count only for published/scheduled announcements
+      if ((formData.status === 'published' || formData.status === 'scheduled') && canPublish()) {
+        await incrementPublicationCount();
+      }
 
       toast({
         title: "Succès",
@@ -402,6 +424,31 @@ const CreateAnnouncement = () => {
         onSaveDraft={saveAnnouncementDraft}
         isSavingDraft={isSavingDraft}
       />
+
+      {/* Publication limit warning */}
+      {!canPublish() && (
+        <div className="pt-16 px-4">
+          <div className="max-w-3xl mx-auto mb-4">
+            <Card className="border-orange-200 bg-orange-50">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-orange-600" />
+                  <CardTitle className="text-orange-800 text-lg">Limite mensuelle atteinte</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-orange-700 mb-2">
+                  Vous avez publié {stats.publishedCount}/{stats.maxLimit} annonces ce mois-ci.
+                </p>
+                <p className="text-orange-600 text-sm">
+                  Vos nouvelles annonces seront automatiquement sauvegardées en brouillon. 
+                  Nouveau quota disponible le mois prochain !
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
     
       <div className="pt-16 pb-20 px-4 md:max-w-3xl md:mx-auto">
         <Form {...form}>

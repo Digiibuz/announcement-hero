@@ -92,6 +92,39 @@ export type Database = {
           },
         ]
       }
+      monthly_publication_limits: {
+        Row: {
+          created_at: string
+          id: string
+          max_limit: number | null
+          month: number
+          published_count: number | null
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          max_limit?: number | null
+          month: number
+          published_count?: number | null
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          max_limit?: number | null
+          month?: number
+          published_count?: number | null
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           client_id: string | null
@@ -319,6 +352,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_monthly_publication_count: {
+        Args: { p_user_id: string }
+        Returns: {
+          published_count: number
+          max_limit: number
+          remaining: number
+        }[]
+      }
+      increment_monthly_publication_count: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
