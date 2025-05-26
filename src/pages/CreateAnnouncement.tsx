@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -402,7 +403,7 @@ const CreateAnnouncement = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-digibuz-light">
       <CreateAnnouncementHeader 
         currentStep={currentStepIndex} 
         totalSteps={stepConfigs.length} 
@@ -432,7 +433,7 @@ const CreateAnnouncement = () => {
               {currentStep.id === "summary" && <AnnouncementSummary data={form.getValues()} isMobile={isMobile} categoryName={getCategoryName()} />}
             </div>
             
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-digibuz-light border-t">
               <StepNavigation 
                 currentStep={currentStepIndex} 
                 totalSteps={stepConfigs.length} 
