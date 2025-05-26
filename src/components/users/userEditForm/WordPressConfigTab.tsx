@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, Settings, Globe } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { WordPressConfig } from "@/types/wordpress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import WordPressConfigForm from "@/components/wordpress/WordPressConfigForm";
@@ -69,8 +68,8 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
 
   if (isLoadingConfigs) {
     return (
-      <ScrollArea className="max-h-[400px] pr-4">
-        <div className="space-y-4">
+      <div className="flex flex-col h-full">
+        <div className="flex-1 space-y-4">
           <Card>
             <CardContent className="p-6">
               <div className="animate-pulse">
@@ -79,23 +78,23 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
               </div>
             </CardContent>
           </Card>
-          
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onCancel}>
-              Annuler
-            </Button>
-            <Button type="button" disabled>
-              Mise à jour...
-            </Button>
-          </div>
         </div>
-      </ScrollArea>
+        
+        <div className="flex justify-end gap-2 pt-4 border-t bg-white">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Annuler
+          </Button>
+          <Button type="button" disabled>
+            Mise à jour...
+          </Button>
+        </div>
+      </div>
     );
   }
 
   return (
-    <ScrollArea className="max-h-[400px] pr-4">
-      <div className="space-y-4">
+    <div className="flex flex-col h-full max-h-[500px]">
+      <div className="flex-1 overflow-y-auto pr-2 space-y-4">
         {configs.length > 0 ? (
           <Card>
             <CardHeader className="pb-4">
@@ -213,18 +212,18 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
             </CardContent>
           </Card>
         )}
-
-        {/* Boutons d'action principaux */}
-        <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Annuler
-          </Button>
-          <Button type="button" disabled={isUpdating} onClick={() => onSubmit(form.getValues())}>
-            {isUpdating ? "Mise à jour..." : "Mettre à jour"}
-          </Button>
-        </div>
       </div>
-    </ScrollArea>
+
+      {/* Boutons d'action fixes en bas */}
+      <div className="flex-shrink-0 flex justify-end gap-2 pt-4 border-t bg-white">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Annuler
+        </Button>
+        <Button type="button" disabled={isUpdating} onClick={() => onSubmit(form.getValues())}>
+          {isUpdating ? "Mise à jour..." : "Mettre à jour"}
+        </Button>
+      </div>
+    </div>
   );
 };
 
