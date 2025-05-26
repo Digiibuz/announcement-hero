@@ -24,6 +24,18 @@ const CategoryStep = ({
     hasCategories
   } = useWordPressCategories();
 
+  // Logs de debug pour comprendre l'état
+  useEffect(() => {
+    console.log("CategoryStep - Debug info:", {
+      categories: categories,
+      categoriesLength: categories?.length,
+      isLoading: isCategoriesLoading,
+      error: categoriesError,
+      hasCategories: hasCategories,
+      currentValue: form.getValues().wordpressCategory
+    });
+  }, [categories, isCategoriesLoading, categoriesError, hasCategories, form]);
+
   const getCardStyles = () => {
     if (isMobile) {
       return "border-0 border-b border-border shadow-none rounded-none bg-transparent mb-3 last:border-b-0 last:mb-0";
@@ -43,7 +55,10 @@ const CategoryStep = ({
                 <FormLabel>Sélectionner une catégorie</FormLabel>
                 
                 <Select 
-                  onValueChange={field.onChange} 
+                  onValueChange={(value) => {
+                    console.log("CategoryStep - Category selected:", value);
+                    field.onChange(value);
+                  }} 
                   value={field.value || ""}
                   disabled={isCategoriesLoading}
                 >
