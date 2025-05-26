@@ -4,7 +4,7 @@ import { UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Settings, Globe } from "lucide-react";
+import { ExternalLink, Settings, Globe, Save } from "lucide-react";
 import { WordPressConfig } from "@/types/wordpress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import WordPressConfigForm from "@/components/wordpress/WordPressConfigForm";
@@ -69,6 +69,17 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
   if (isLoadingConfigs) {
     return (
       <div className="space-y-4">
+        {/* Bouton Enregistrer en haut */}
+        <div className="flex justify-between items-center">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Annuler
+          </Button>
+          <Button type="button" disabled>
+            <Save className="h-4 w-4 mr-2" />
+            Enregistrer
+          </Button>
+        </div>
+
         <Card>
           <CardContent className="p-6">
             <div className="animate-pulse">
@@ -77,21 +88,23 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
             </div>
           </CardContent>
         </Card>
-        
-        <div className="flex justify-end gap-2 pt-4 border-t bg-white">
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Annuler
-          </Button>
-          <Button type="button" disabled>
-            Mise à jour...
-          </Button>
-        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      {/* Bouton Enregistrer en haut */}
+      <div className="flex justify-between items-center">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Annuler
+        </Button>
+        <Button type="button" disabled={isUpdating} onClick={() => onSubmit(form.getValues())}>
+          <Save className="h-4 w-4 mr-2" />
+          {isUpdating ? "Enregistrement..." : "Enregistrer"}
+        </Button>
+      </div>
+
       {configs.length > 0 ? (
         <Card>
           <CardHeader className="pb-4">
@@ -209,16 +222,6 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
           </CardContent>
         </Card>
       )}
-
-      {/* Boutons d'action principaux */}
-      <div className="flex justify-end gap-2 pt-4 border-t">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Annuler
-        </Button>
-        <Button type="button" disabled={isUpdating} onClick={() => onSubmit(form.getValues())}>
-          {isUpdating ? "Mise à jour..." : "Mettre à jour"}
-        </Button>
-      </div>
     </div>
   );
 };
