@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -122,7 +123,7 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
             </CardHeader>
             <CardContent className="space-y-4">
               {isEditingAssignment ? (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-1 block">
                       Sélectionner une configuration WordPress
@@ -141,20 +142,33 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => setIsEditingAssignment(false)}
-                    >
-                      Annuler
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      onClick={handleAssignmentChange}
-                    >
-                      Confirmer
-                    </Button>
+                  
+                  {/* Boutons d'action déplacés ici pour être visibles */}
+                  <div className="flex justify-between gap-2 pt-2 border-t">
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setIsEditingAssignment(false)}
+                      >
+                        Annuler l'édition
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        onClick={handleAssignmentChange}
+                      >
+                        Confirmer l'assignation
+                      </Button>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" onClick={onCancel}>
+                        Fermer
+                      </Button>
+                      <Button type="button" disabled={isUpdating} onClick={() => onSubmit(form.getValues())}>
+                        {isUpdating ? "Mise à jour..." : "Mettre à jour"}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ) : assignedConfig ? (
@@ -212,16 +226,38 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
                       }
                     />
                   </div>
+                  
+                  {/* Boutons d'action pour le mode normal */}
+                  <div className="flex justify-end gap-2 pt-4 border-t">
+                    <Button type="button" variant="outline" onClick={onCancel}>
+                      Annuler
+                    </Button>
+                    <Button type="button" disabled={isUpdating} onClick={() => onSubmit(form.getValues())}>
+                      {isUpdating ? "Mise à jour..." : "Mettre à jour"}
+                    </Button>
+                  </div>
                 </>
               ) : (
-                <div className="text-center py-4">
-                  <p className="text-gray-600 mb-4">
-                    Aucune configuration sélectionnée
-                  </p>
-                  <Button variant="outline" onClick={handleStartEditing}>
-                    Assigner une configuration
-                  </Button>
-                </div>
+                <>
+                  <div className="text-center py-4">
+                    <p className="text-gray-600 mb-4">
+                      Aucune configuration sélectionnée
+                    </p>
+                    <Button variant="outline" onClick={handleStartEditing}>
+                      Assigner une configuration
+                    </Button>
+                  </div>
+                  
+                  {/* Boutons d'action pour le cas sans configuration */}
+                  <div className="flex justify-end gap-2 pt-4 border-t">
+                    <Button type="button" variant="outline" onClick={onCancel}>
+                      Annuler
+                    </Button>
+                    <Button type="button" disabled={isUpdating} onClick={() => onSubmit(form.getValues())}>
+                      {isUpdating ? "Mise à jour..." : "Mettre à jour"}
+                    </Button>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -238,18 +274,19 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
               <Badge variant="secondary">
                 Non configuré
               </Badge>
+              
+              {/* Boutons d'action pour le cas sans configurations disponibles */}
+              <div className="flex justify-end gap-2 pt-4 mt-4 border-t">
+                <Button type="button" variant="outline" onClick={onCancel}>
+                  Annuler
+                </Button>
+                <Button type="button" disabled={isUpdating} onClick={() => onSubmit(form.getValues())}>
+                  {isUpdating ? "Mise à jour..." : "Mettre à jour"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
-
-        <div className="flex justify-end gap-2 pt-4">
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Annuler
-          </Button>
-          <Button type="button" disabled={isUpdating} onClick={() => onSubmit(form.getValues())}>
-            {isUpdating ? "Mise à jour..." : "Mettre à jour"}
-          </Button>
-        </div>
       </div>
     </ScrollArea>
   );
