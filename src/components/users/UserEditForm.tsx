@@ -130,6 +130,8 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
                   isUpdating={isUpdating}
                   onCancel={() => setIsDialogOpen(false)}
                   onSubmit={handleSubmit}
+                  userId={user.id}
+                  userRole={user.role}
                 />
               </TabsContent>
               
