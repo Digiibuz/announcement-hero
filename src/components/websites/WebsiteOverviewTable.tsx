@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
 import { useUserManagement } from "@/hooks/useUserManagement";
 import {
@@ -23,11 +23,13 @@ import { MoreHorizontal, Eye, Globe, CheckCircle, XCircle, Clock } from "lucide-
 import { LoadingIndicator } from "@/components/ui/loading-indicator";
 import ClientDetailDialog from "./ClientDetailDialog";
 import { WordPressConfig } from "@/types/wordpress";
+import { supabase } from "@/integrations/supabase/client";
 
 const WebsiteOverviewTable = () => {
   const { configs, isLoading } = useWordPressConfigs();
   const { users } = useUserManagement();
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
+  const [lastPublications, setLastPublications] = useState<Record<string, string>>({});
 
   // Get connection status for a site (simplified for now)
   const getConnectionStatus = (config: WordPressConfig) => {
@@ -44,10 +46,47 @@ const WebsiteOverviewTable = () => {
     return users.find(user => user.wordpressConfigId === configId && user.role === 'client');
   };
 
-  // Get last publication date (placeholder for now)
-  const getLastPublicationDate = () => {
-    return "2024-01-15"; // Placeholder - à connecter avec les vraies données d'annonces
-  };
+  // Fetch last publication dates for all clients
+  useEffect(() => {
+    const fetchLastPublications = async () => {
+      const publications: Record<string, string> = {};
+      
+      for (const config of configs) {
+        const client = getClientForConfig(config.id);
+        if (client) {
+          try {
+            const { data, error } = await supabase
+              .from('announcements')
+              .select('publish_date, created_at')
+              .eq('user_id', client.id)
+              .eq('status', 'published')
+              .order('publish_date', { ascending: false, nullsLast: true })
+              .order('created_at', { ascending: false })
+              .limit(1);
+
+            if (!error && data && data.length > 0) {
+              const announcement = data[0];
+              const publicationDate = announcement.publish_date || announcement.created_at;
+              publications[config.id] = new Date(publicationDate).toLocaleDateString('fr-FR');
+            } else {
+              publications[config.id] = "Aucune publication";
+            }
+          } catch (error) {
+            console.error(`Error fetching last publication for config ${config.id}:`, error);
+            publications[config.id] = "Erreur";
+          }
+        } else {
+          publications[config.id] = "Client non assigné";
+        }
+      }
+      
+      setLastPublications(publications);
+    };
+
+    if (configs.length > 0 && users.length > 0) {
+      fetchLastPublications();
+    }
+  }, [configs, users]);
 
   if (isLoading) {
     return (
@@ -81,7 +120,7 @@ const WebsiteOverviewTable = () => {
               {configs.map((config) => {
                 const connectionStatus = getConnectionStatus(config);
                 const client = getClientForConfig(config.id);
-                const lastPublication = getLastPublicationDate();
+                const lastPublication = lastPublications[config.id] || "Chargement...";
 
                 return (
                   <TableRow key={config.id}>

@@ -8,9 +8,15 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useUserManagement } from "@/hooks/useUserManagement";
 import { LoadingIndicator } from "@/components/ui/loading-indicator";
-import { User, Globe, Calendar, FileText } from "lucide-react";
+import { User, Globe, Calendar, FileText, Eye, ExternalLink } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from "react";
+import { Announcement } from "@/types/announcement";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 interface ClientDetailDialogProps {
   clientId: string;
@@ -20,8 +26,39 @@ interface ClientDetailDialogProps {
 
 const ClientDetailDialog = ({ clientId, open, onOpenChange }: ClientDetailDialogProps) => {
   const { users, isLoading } = useUserManagement();
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [isLoadingAnnouncements, setIsLoadingAnnouncements] = useState(false);
   
   const client = users.find(user => user.id === clientId);
+
+  // Fetch client's announcements
+  useEffect(() => {
+    const fetchClientAnnouncements = async () => {
+      if (!clientId || !open) return;
+      
+      try {
+        setIsLoadingAnnouncements(true);
+        const { data, error } = await supabase
+          .from('announcements')
+          .select('*')
+          .eq('user_id', clientId)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching client announcements:', error);
+          return;
+        }
+
+        setAnnouncements(data || []);
+      } catch (error) {
+        console.error('Error fetching client announcements:', error);
+      } finally {
+        setIsLoadingAnnouncements(false);
+      }
+    };
+
+    fetchClientAnnouncements();
+  }, [clientId, open]);
 
   if (isLoading) {
     return (
@@ -47,6 +84,19 @@ const ClientDetailDialog = ({ clientId, open, onOpenChange }: ClientDetailDialog
       </Dialog>
     );
   }
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "published":
+        return <Badge className="bg-green-500">Publié</Badge>;
+      case "draft":
+        return <Badge variant="outline">Brouillon</Badge>;
+      case "scheduled":
+        return <Badge className="bg-blue-500">Programmé</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -112,9 +162,10 @@ const ClientDetailDialog = ({ clientId, open, onOpenChange }: ClientDetailDialog
                       href={client.wordpressConfig.site_url} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-primary hover:underline"
+                      className="text-primary hover:underline flex items-center gap-1"
                     >
                       {client.wordpressConfig.site_url}
+                      <ExternalLink className="h-4 w-4" />
                     </a>
                   </div>
                 </div>
@@ -127,15 +178,63 @@ const ClientDetailDialog = ({ clientId, open, onOpenChange }: ClientDetailDialog
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <FileText className="h-5 w-5" />
-                Annonces publiées
+                Annonces publiées ({announcements.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Fonctionnalité à implémenter</p>
-                <p className="text-sm">L'historique des annonces sera affiché ici</p>
-              </div>
+              {isLoadingAnnouncements ? (
+                <div className="flex justify-center items-center py-8">
+                  <LoadingIndicator variant="dots" size={32} />
+                </div>
+              ) : announcements.length > 0 ? (
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {announcements.map((announcement) => (
+                    <div key={announcement.id} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-medium text-sm">{announcement.title}</h4>
+                        {getStatusBadge(announcement.status)}
+                      </div>
+                      
+                      {announcement.description && (
+                        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                          {announcement.description}
+                        </p>
+                      )}
+                      
+                      <div className="flex justify-between items-center text-xs text-muted-foreground">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {format(new Date(announcement.created_at), "dd MMM yyyy", { locale: fr })}
+                          </div>
+                          {announcement.wordpress_post_id && (
+                            <div className="flex items-center gap-1">
+                              <Globe className="h-3 w-3" />
+                              WordPress ID: {announcement.wordpress_post_id}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2"
+                          onClick={() => window.open(`/announcements/${announcement.id}`, '_blank')}
+                        >
+                          <Eye className="h-3 w-3 mr-1" />
+                          Voir
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Aucune annonce trouvée</p>
+                  <p className="text-sm">Ce client n'a pas encore créé d'annonces</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
