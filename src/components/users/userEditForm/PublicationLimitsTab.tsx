@@ -22,23 +22,21 @@ const PublicationLimitsTab: React.FC<PublicationLimitsTabProps> = ({
   form
 }) => {
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <PublicationLimitsField 
-          user={user} 
-          isUpdating={isUpdating}
-        />
+    <div className="space-y-4">
+      <PublicationLimitsField 
+        user={user} 
+        isUpdating={isUpdating}
+      />
 
-        <div className="flex justify-end gap-2 pt-4">
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Annuler
-          </Button>
-          <Button type="submit" disabled={isUpdating}>
-            {isUpdating ? "Mise à jour..." : "Mettre à jour"}
-          </Button>
-        </div>
-      </form>
-    </Form>
+      <div className="flex justify-end gap-2 pt-4">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Annuler
+        </Button>
+        <Button type="button" disabled={isUpdating} onClick={() => onSubmit(form.getValues())}>
+          {isUpdating ? "Mise à jour..." : "Mettre à jour"}
+        </Button>
+      </div>
+    </div>
   );
 };
 
