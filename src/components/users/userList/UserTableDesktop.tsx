@@ -8,8 +8,7 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Clock, UserMinus } from "lucide-react";
+import { Clock } from "lucide-react";
 import { UserProfile } from "@/types/auth";
 import UserActionsMenu from "./UserActionsMenu";
 import { UserListUtils } from "./UserListUtils";
@@ -70,27 +69,16 @@ const UserTableDesktop: React.FC<UserTableDesktopProps> = ({
                 {formatLastLogin(user.lastLogin)}
               </TableCell>
               <TableCell className="text-right">
-                <div className="flex justify-end gap-2">
-                  <UserActionsMenu
-                    user={user}
-                    isUpdating={isUpdating}
-                    isDeleting={isDeleting}
-                    onResetPassword={onResetPassword}
-                    onUpdateUser={onUpdateUser}
-                    onDeleteUser={onDeleteUser}
-                    onImpersonateUser={onImpersonateUser}
-                  />
-                  
-                  <Button 
-                    variant="destructive" 
-                    size="sm"
-                    onClick={() => onDeleteClick(user.id)}
-                    disabled={isDeleting}
-                  >
-                    <UserMinus className="h-4 w-4 mr-1" />
-                    Supprimer
-                  </Button>
-                </div>
+                <UserActionsMenu
+                  user={user}
+                  isUpdating={isUpdating}
+                  isDeleting={isDeleting}
+                  onResetPassword={onResetPassword}
+                  onUpdateUser={onUpdateUser}
+                  onDeleteUser={onDeleteUser}
+                  onImpersonateUser={onImpersonateUser}
+                  onDeleteClick={onDeleteClick}
+                />
               </TableCell>
             </TableRow>
           ))}

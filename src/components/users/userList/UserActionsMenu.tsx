@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { UserProfile } from "@/types/auth";
 import { Button } from "@/components/ui/button";
-import { UserCog, LogIn, MoreHorizontal } from "lucide-react";
+import { UserCog, LogIn, MoreHorizontal, UserMinus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +20,7 @@ interface UserActionsMenuProps {
   onUpdateUser: (userId: string, userData: Partial<UserProfile>) => Promise<void>;
   onDeleteUser: (userId: string) => Promise<void>;
   onImpersonateUser: (user: UserProfile) => void;
+  onDeleteClick: (userId: string) => void;
 }
 
 const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
@@ -29,12 +30,17 @@ const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
   onResetPassword,
   onUpdateUser,
   onDeleteUser,
-  onImpersonateUser
+  onImpersonateUser,
+  onDeleteClick
 }) => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const handleEditClick = () => {
     setIsEditDialogOpen(true);
+  };
+
+  const handleDeleteClick = () => {
+    onDeleteClick(user.id);
   };
 
   return (
@@ -50,6 +56,17 @@ const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
           <DropdownMenuItem onClick={handleEditClick} className="cursor-pointer">
             <UserCog className="h-4 w-4 mr-2" />
             Modifier l'utilisateur
+          </DropdownMenuItem>
+          
+          <DropdownMenuSeparator />
+          
+          <DropdownMenuItem 
+            onClick={handleDeleteClick}
+            className="cursor-pointer text-red-600 focus:text-red-600"
+            disabled={isDeleting}
+          >
+            <UserMinus className="h-4 w-4 mr-2" />
+            Supprimer
           </DropdownMenuItem>
           
           {user.role === 'client' && (

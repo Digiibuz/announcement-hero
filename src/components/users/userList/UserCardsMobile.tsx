@@ -1,8 +1,7 @@
 
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { User, Mail, BadgeCheck, Clock, UserMinus } from "lucide-react";
+import { User, Mail, BadgeCheck, Clock } from "lucide-react";
 import { UserProfile } from "@/types/auth";
 import UserActionsMenu from "./UserActionsMenu";
 import { UserListUtils } from "./UserListUtils";
@@ -64,7 +63,7 @@ const UserCardsMobile: React.FC<UserCardsMobileProps> = ({
                 <span className="ml-1">{formatLastLogin(user.lastLogin)}</span>
               </div>
 
-              <div className="pt-2 flex justify-between">
+              <div className="pt-2 flex justify-end">
                 <UserActionsMenu
                   user={user}
                   isUpdating={isUpdating}
@@ -73,17 +72,8 @@ const UserCardsMobile: React.FC<UserCardsMobileProps> = ({
                   onUpdateUser={onUpdateUser}
                   onDeleteUser={onDeleteUser}
                   onImpersonateUser={onImpersonateUser}
+                  onDeleteClick={onDeleteClick}
                 />
-                
-                <Button 
-                  variant="destructive" 
-                  size="sm"
-                  onClick={() => onDeleteClick(user.id)}
-                  disabled={isDeleting}
-                >
-                  <UserMinus className="h-4 w-4 mr-1" />
-                  Supprimer
-                </Button>
               </div>
             </div>
           </CardContent>
