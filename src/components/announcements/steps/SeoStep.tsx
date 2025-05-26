@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -100,7 +101,7 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
                       type="button" 
                       size="sm" 
                       variant="outline" 
-                      className="flex items-center gap-1 h-8 relative overflow-hidden transition-all duration-300 bg-purple-600 text-white border-purple-600 hover:bg-purple-700 hover:border-purple-700"
+                      className="flex items-center gap-1 h-8 relative overflow-hidden transition-all duration-300 bg-white text-purple-600 border-purple-600 hover:bg-purple-600 hover:text-white hover:border-purple-600"
                       onClick={() => optimizeSeoContent('seoTitle')} 
                       disabled={isOptimizing.seoTitle}
                     >
@@ -112,8 +113,8 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
                         </>
                       ) : (
                         <>
-                          <Sparkles size={14} className="text-white" />
-                          <span className="text-xs text-white">Générer</span>
+                          <Sparkles size={14} />
+                          <span className="text-xs">Générer</span>
                         </>
                       )}
                     </Button>
@@ -161,7 +162,7 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
                       type="button" 
                       size="sm" 
                       variant="outline" 
-                      className="flex items-center gap-1 h-8 relative overflow-hidden transition-all duration-300 bg-purple-600 text-white border-purple-600 hover:bg-purple-700 hover:border-purple-700"
+                      className="flex items-center gap-1 h-8 relative overflow-hidden transition-all duration-300 bg-white text-purple-600 border-purple-600 hover:bg-purple-600 hover:text-white hover:border-purple-600"
                       onClick={() => optimizeSeoContent('seoDescription')} 
                       disabled={isOptimizing.seoDescription}
                     >
@@ -173,8 +174,8 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
                         </>
                       ) : (
                         <>
-                          <Sparkles size={14} className="text-white" />
-                          <span className="text-xs text-white">Générer</span>
+                          <Sparkles size={14} />
+                          <span className="text-xs">Générer</span>
                         </>
                       )}
                     </Button>

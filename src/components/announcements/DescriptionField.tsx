@@ -208,7 +208,7 @@ const DescriptionField = ({
               type="button" 
               size="sm" 
               variant="outline" 
-              className="flex items-center gap-1 relative overflow-hidden transition-all duration-300 bg-purple-600 text-white border-purple-600 hover:bg-purple-700 hover:border-purple-700" 
+              className="flex items-center gap-1 relative overflow-hidden transition-all duration-300 bg-white text-purple-600 border-purple-600 hover:bg-purple-600 hover:text-white hover:border-purple-600" 
               onClick={generateNewContent} 
               disabled={isOptimizing.generateDescription}
             >
@@ -217,8 +217,8 @@ const DescriptionField = ({
                   <Loader2 size={16} className="animate-spin" />
                   <span>Génération...</span>
                 </> : <>
-                  <Wand2 size={16} className="text-white" />
-                  <span className="text-white">Générer avec l'IA</span>
+                  <Wand2 size={16} />
+                  <span>Générer avec l'IA</span>
                 </>}
             </Button>
           </div>
@@ -232,7 +232,7 @@ const DescriptionField = ({
               type="button" 
               size="sm" 
               variant="outline" 
-              className="flex items-center gap-1 relative overflow-hidden transition-all duration-300 bg-purple-600 text-white border-purple-600 hover:bg-purple-700 hover:border-purple-700" 
+              className="flex items-center gap-1 relative overflow-hidden transition-all duration-300 bg-white text-purple-600 border-purple-600 hover:bg-purple-600 hover:text-white hover:border-purple-600" 
               onClick={generateImprovedContent} 
               disabled={isOptimizing.description}
             >
@@ -241,8 +241,8 @@ const DescriptionField = ({
                   <Loader2 size={16} className="animate-spin" />
                   <span>Optimisation...</span>
                 </> : <>
-                  <Sparkles size={16} className="text-white" />
-                  <span className="text-white">Optimiser avec l'IA</span>
+                  <Sparkles size={16} />
+                  <span>Optimiser avec l'IA</span>
                 </>}
             </Button>
           </div>
