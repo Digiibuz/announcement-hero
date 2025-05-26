@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Trash2, Send, Archive, ExternalLink } from "lucide-react";
@@ -43,7 +42,7 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { wordpressConfigs } = useWordPressConfigs();
+  const { configs } = useWordPressConfigs();
 
   const deleteAnnouncement = async () => {
     try {
@@ -104,7 +103,7 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
   };
 
   const viewOnWordPress = () => {
-    if (!wordpressPostId || !wordpressConfigs || wordpressConfigs.length === 0) {
+    if (!wordpressPostId || !configs || configs.length === 0) {
       toast({
         title: "Erreur",
         description: "Impossible de trouver le lien vers l'annonce.",
@@ -114,7 +113,7 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
     }
 
     // Get the WordPress site URL from the first config (assuming single config for now)
-    const wordpressConfig = wordpressConfigs[0];
+    const wordpressConfig = configs[0];
     const siteUrl = wordpressConfig.site_url.replace(/\/+$/, ''); // Remove trailing slashes
     
     // Build the URL: if we have a seoSlug, use it, otherwise use the post ID
