@@ -26,19 +26,6 @@ const PublicationCounter = ({ className }: PublicationCounterProps) => {
   const statusColor = getStatusColor();
   const badgeText = getBadgeText();
 
-  const getProgressColorClass = () => {
-    switch (statusColor) {
-      case "green":
-        return "bg-gradient-to-r from-green-500 to-emerald-500";
-      case "orange":
-        return "bg-gradient-to-r from-orange-500 to-amber-500";
-      case "red":
-        return "bg-gradient-to-r from-red-500 to-rose-500";
-      default:
-        return "bg-gradient-to-r from-blue-500 to-indigo-500";
-    }
-  };
-
   const getCardBorderClass = () => {
     if (percentage >= 90) return "border-red-200 shadow-red-100/50";
     if (percentage >= 70) return "border-orange-200 shadow-orange-100/50";
@@ -124,20 +111,17 @@ const PublicationCounter = ({ className }: PublicationCounterProps) => {
 
         {/* Progress bar with custom styling */}
         <div className="space-y-2">
-          <Progress 
-            value={percentage} 
-            className="h-3 bg-gray-100"
-          />
-          <style jsx>{`
-            .progress-indicator {
-              background: ${statusColor === "green" 
-                ? "linear-gradient(to right, #10b981, #059669)" 
-                : statusColor === "orange"
-                ? "linear-gradient(to right, #f59e0b, #d97706)"
-                : "linear-gradient(to right, #ef4444, #dc2626)"
-              };
-            }
-          `}</style>
+          <div className="relative w-full bg-gray-100 rounded-full h-3">
+            <div 
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                statusColor === "green" && "bg-gradient-to-r from-green-500 to-emerald-500",
+                statusColor === "orange" && "bg-gradient-to-r from-orange-500 to-amber-500",
+                statusColor === "red" && "bg-gradient-to-r from-red-500 to-rose-500"
+              )}
+              style={{ width: `${percentage}%` }}
+            />
+          </div>
         </div>
 
         {/* Status text */}
