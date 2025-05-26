@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import { Loader2, Save, Sparkles, Search } from "lucide-react";
+import { Loader2, Save, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ImageUploader from "./ImageUploader";
 import DescriptionField from "./DescriptionField";
@@ -12,7 +13,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
-import { useContentOptimization } from "@/hooks/useContentOptimization";
 import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 export interface AnnouncementFormProps {
@@ -117,10 +117,6 @@ const AnnouncementForm = ({
   
   const navigate = useNavigate();
   const {
-    optimizeContent,
-    isOptimizing
-  } = useContentOptimization();
-  const {
     watch,
     setValue
   } = form;
@@ -135,23 +131,6 @@ const AnnouncementForm = ({
       }
     }
   }, [title, setValue, form]);
-  
-  const optimizeSeoContent = async (field: 'seoTitle' | 'seoDescription') => {
-    try {
-      const currentTitle = form.getValues('title');
-      const currentDescription = form.getValues('description');
-      if (!currentTitle || !currentDescription) {
-        toast.warning("Veuillez d'abord saisir le titre et la description de l'annonce");
-        return;
-      }
-      const optimizedContent = await optimizeContent(field, currentTitle, currentDescription);
-      if (optimizedContent) {
-        form.setValue(field, optimizedContent);
-      }
-    } catch (error: any) {
-      console.error(`Error optimizing ${field}:`, error);
-    }
-  };
   
   const handleCancel = () => {
     if (window.confirm("Êtes-vous sûr de vouloir quitter ? Votre brouillon sera conservé pour plus tard.")) {
@@ -254,18 +233,7 @@ const AnnouncementForm = ({
                   <FormField control={form.control} name="seoTitle" render={({
                   field
                 }) => <FormItem>
-                        <div className="flex justify-between items-center">
-                          <FormLabel>Titre SEO</FormLabel>
-                          <Button type="button" size="sm" variant="outline" className="flex items-center gap-1 h-8" onClick={() => optimizeSeoContent('seoTitle')} disabled={isOptimizing.seoTitle}>
-                            {isOptimizing.seoTitle ? <>
-                                <Loader2 size={14} className="animate-spin" />
-                                <span className="text-xs">Optimisation...</span>
-                              </> : <>
-                                <Sparkles size={14} />
-                                <span className="text-xs">Générer</span>
-                              </>}
-                          </Button>
-                        </div>
+                        <FormLabel>Titre SEO</FormLabel>
                         <FormControl>
                           <Input placeholder="Titre optimisé pour les moteurs de recherche" {...field} />
                         </FormControl>
@@ -278,18 +246,7 @@ const AnnouncementForm = ({
                   <FormField control={form.control} name="seoDescription" render={({
                   field
                 }) => <FormItem>
-                        <div className="flex justify-between items-center">
-                          <FormLabel>Méta description</FormLabel>
-                          <Button type="button" size="sm" variant="outline" className="flex items-center gap-1 h-8" onClick={() => optimizeSeoContent('seoDescription')} disabled={isOptimizing.seoDescription}>
-                            {isOptimizing.seoDescription ? <>
-                                <Loader2 size={14} className="animate-spin" />
-                                <span className="text-xs">Optimisation...</span>
-                              </> : <>
-                                <Sparkles size={14} />
-                                <span className="text-xs">Générer</span>
-                              </>}
-                          </Button>
-                        </div>
+                        <FormLabel>Méta description</FormLabel>
                         <FormControl>
                           <Textarea placeholder="Description courte qui apparaîtra dans les résultats de recherche" className="resize-none min-h-[100px]" {...field} />
                         </FormControl>
