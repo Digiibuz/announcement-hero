@@ -41,12 +41,14 @@ const Dashboard = () => {
           <p className="text-muted-foreground dark:text-gray-300">
             Bienvenue, {user?.name || user?.email || 'Utilisateur'}
           </p>
-          <Button asChild className="mt-2 sm:mt-0 bg-digibuz-yellow text-digibuz-navy hover:bg-digibuz-yellow/90">
-            <Link to="/create">
-              <Plus className="mr-2 h-4 w-4" />
-              Créer une annonce
-            </Link>
-          </Button>
+          {!isAdmin && (
+            <Button asChild className="mt-2 sm:mt-0 bg-digibuz-yellow text-digibuz-navy hover:bg-digibuz-yellow/90">
+              <Link to="/create">
+                <Plus className="mr-2 h-4 w-4" />
+                Créer une annonce
+              </Link>
+            </Button>
+          )}
         </div>
       </AnimatedContainer>
 
@@ -169,18 +171,20 @@ const Dashboard = () => {
         </div>
       )}
 
-      <FloatingActionButton 
-        position="bottom-right" 
-        asChild
-        showOnMobile={true}
-        hideOnDesktop={true}
-        className="bg-digibuz-yellow text-digibuz-navy hover:bg-digibuz-yellow/90 font-bold"
-      >
-        <Link to="/create">
-          <Plus className="mr-2 h-4 w-4" />
-          Créer
-        </Link>
-      </FloatingActionButton>
+      {!isAdmin && (
+        <FloatingActionButton 
+          position="bottom-right" 
+          asChild
+          showOnMobile={true}
+          hideOnDesktop={true}
+          className="bg-digibuz-yellow text-digibuz-navy hover:bg-digibuz-yellow/90 font-bold"
+        >
+          <Link to="/create">
+            <Plus className="mr-2 h-4 w-4" />
+            Créer
+          </Link>
+        </FloatingActionButton>
+      )}
     </PageLayout>
   );
 };
