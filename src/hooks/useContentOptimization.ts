@@ -4,13 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AIGenerationSettings } from "@/components/announcements/AIGenerationOptions";
 
-export type OptimizationType = "description" | "seoTitle" | "seoDescription" | "generateDescription";
+export type OptimizationType = "generateDescription";
 
 export const useContentOptimization = () => {
   const [isOptimizing, setIsOptimizing] = useState<Record<OptimizationType, boolean>>({
-    description: false,
-    seoTitle: false,
-    seoDescription: false,
     generateDescription: false,
   });
 
@@ -23,17 +20,12 @@ export const useContentOptimization = () => {
     setIsOptimizing(prev => ({ ...prev, [type]: true }));
     
     try {
-      console.log(`Optimisation du ${type} en cours...`);
-      console.log(`Paramètres: Type=${type}, Titre="${title.substring(0, 20)}...", Description="${description?.substring(0, 30) || ""}..."`);
+      console.log(`Génération de contenu en cours...`);
+      console.log(`Paramètres: Titre="${title.substring(0, 20)}...", Description="${description?.substring(0, 30) || ""}..."`);
       
       // Vérification des entrées
       if (!title) {
-        throw new Error("Le titre est requis pour l'optimisation");
-      }
-      
-      // Pour la génération, la description n'est pas obligatoire
-      if (type !== "generateDescription" && !description) {
-        throw new Error("La description est requise pour l'optimisation");
+        throw new Error("Le titre est requis pour la génération de contenu");
       }
       
       const { data, error } = await supabase.functions.invoke("optimize-content", {
@@ -63,19 +55,14 @@ export const useContentOptimization = () => {
           throw new Error("Limite d'utilisation de l'API OpenAI atteinte. Veuillez réessayer plus tard ou vérifier votre abonnement.");
         }
         
-        throw new Error(data?.error || "L'optimisation a échoué pour une raison inconnue");
+        throw new Error(data?.error || "La génération a échoué pour une raison inconnue");
       }
       
-      const messageType = type === "description" ? "Contenu optimisé" : 
-                          type === "generateDescription" ? "Contenu généré" :
-                          type === "seoTitle" ? "Titre SEO optimisé" : 
-                          "Méta-description optimisée";
-      
-      toast.success(`${messageType} avec succès`);
+      toast.success("Contenu généré avec succès");
       
       return data.content;
     } catch (error: any) {
-      console.error(`Erreur lors de l'optimisation du ${type}:`, error);
+      console.error(`Erreur lors de la génération:`, error);
       
       // Message d'erreur plus convivial pour les erreurs de quota
       if (error.message && (
@@ -86,7 +73,7 @@ export const useContentOptimization = () => {
       )) {
         toast.error("Limite d'utilisation de l'IA atteinte. Veuillez réessayer plus tard ou contacter le support pour augmenter votre quota.");
       } else {
-        toast.error(`Erreur lors de l'optimisation: ${error.message || error}`);
+        toast.error(`Erreur lors de la génération: ${error.message || error}`);
       }
       
       return null;

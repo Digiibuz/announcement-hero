@@ -1,9 +1,8 @@
-
 import React, { useRef, useState, useEffect } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Loader2, Sparkles, Wand2, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Link, Mic, MicOff, Settings } from "lucide-react";
+import { Loader2, Wand2, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Link, Mic, MicOff, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
@@ -65,31 +64,6 @@ const DescriptionField = ({
     const text = e.clipboardData.getData('text/plain');
     document.execCommand('insertText', false, text);
     updateFormValue();
-  };
-
-  const generateImprovedContent = async () => {
-    const currentDescription = form.getValues('description');
-    const currentTitle = form.getValues('title');
-    
-    if (!currentDescription) {
-      toast.warning("Veuillez d'abord saisir du contenu à améliorer");
-      return;
-    }
-
-    try {
-      const optimizedContent = await optimizeContent(
-        "description", 
-        currentTitle, 
-        currentDescription
-      );
-      
-      if (optimizedContent && editorRef.current) {
-        editorRef.current.innerHTML = optimizedContent;
-        updateFormValue();
-      }
-    } catch (error: any) {
-      console.error("Error generating content:", error);
-    }
   };
 
   const generateNewContent = async () => {
@@ -387,7 +361,6 @@ const DescriptionField = ({
               </div>
             </div>
           </PopoverContent>
-        </Popover>
 
         {/* Voice Recording Button */}
         {isSupported && 

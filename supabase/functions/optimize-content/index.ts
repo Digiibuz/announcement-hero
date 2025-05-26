@@ -28,48 +28,31 @@ serve(async (req) => {
       console.log(`Options IA: Ton=${aiSettings.tone}, Longueur=${aiSettings.length}`);
     }
     
-    let prompt = "";
-    let systemMessage = "";
-    
-    // Configure the prompt based on the type of optimization
-    switch (type) {
-      case "description":
-        systemMessage = "Tu es un rédacteur professionnel. Reprend le texte et améliore seulement les tournures de phrase. Conserve la structure et les informations d'origine. IMPORTANT: Fournis UNIQUEMENT le texte réécrit, sans préface ni commentaire.";
-        prompt = `Voici un contenu à améliorer: "${description}". Reprend ce texte et améliore seulement les tournures de phrase. Ne change pas le sens du texte, ne rajoute pas d'informations supplémentaires, n'ajoute pas de titre, ne mets aucun mot en gras, ne crée pas d'exemples, n'ajoute pas d'icônes, et ne change pas le formatage original. Ne commence pas ta réponse par une phrase d'introduction et n'ajoute pas de commentaires à la fin.`;
-        break;
-      case "generateDescription":
-        // Définir les paramètres selon les options IA
-        const toneInstructions = getToneInstructions(aiSettings?.tone || "convivial");
-        const lengthInstructions = getLengthInstructions(aiSettings?.length || "standard");
-        
-        systemMessage = `Tu es un rédacteur professionnel spécialisé dans la création de contenu pour des annonces. Rédige un texte informatif, structuré et engageant ${lengthInstructions.target} basé sur le titre fourni. ${toneInstructions.system} IMPORTANT: Fournis UNIQUEMENT le texte généré, sans préface ni commentaire.`;
-        
-        prompt = `Titre de l'annonce: "${title}".
-        ${description ? `Voici un exemple de contenu ou notes: "${description}"` : ""}
-        
-        Rédige un texte structuré, informatif et engageant ${lengthInstructions.target} qui servira de description pour cette annonce. 
-        Ton texte doit:
-        - Avoir une structure claire avec des paragraphes
-        - ${toneInstructions.style}
-        - ${lengthInstructions.structure}
-        - Ne pas contenir de titre ni sous-titres
-        - Ne pas inclure de formatage spécial (pas de gras, italique...)
-        
-        Renvoie uniquement le texte généré sans aucune introduction ou commentaire supplémentaire.`;
-        break;
-      case "seoTitle":
-        systemMessage = "Tu es un expert en SEO. Crée un titre optimisé pour les moteurs de recherche basé sur le contenu fourni. Le titre doit être accrocheur, pertinent et contenir des mots-clés importants. Maximum 60 caractères. IMPORTANT: Fournis UNIQUEMENT le titre, sans préface ni commentaire.";
-        prompt = `Voici le titre actuel: "${title}" et la description: "${description}". Génère un titre SEO optimisé d'environ 50-60 caractères basé sur ce contenu. Renvoie uniquement le titre sans aucune phrase d'introduction ou commentaire.`;
-        break;
-      case "seoDescription":
-        systemMessage = "Tu es un expert en SEO. Crée une méta-description optimisée pour les moteurs de recherche basée sur le contenu fourni. La description doit être informative, inciter à l'action, et contenir des mots-clés importants. Maximum 155 caractères. IMPORTANT: Fournis UNIQUEMENT la méta-description, sans préface ni commentaire.";
-        prompt = `Voici le titre: "${title}" et la description: "${description}". Génère une méta-description SEO d'environ 120-155 caractères qui résume le contenu de manière attrayante. Renvoie uniquement la méta-description sans aucune phrase d'introduction ou commentaire.`;
-        break;
-      default:
-        throw new Error(`Type d'optimisation non supporté: ${type}`);
+    // Seule la génération de description est supportée maintenant
+    if (type !== "generateDescription") {
+      throw new Error(`Type d'opération non supporté: ${type}`);
     }
+    
+    // Définir les paramètres selon les options IA
+    const toneInstructions = getToneInstructions(aiSettings?.tone || "convivial");
+    const lengthInstructions = getLengthInstructions(aiSettings?.length || "standard");
+    
+    const systemMessage = `Tu es un rédacteur professionnel spécialisé dans la création de contenu pour des annonces. Rédige un texte informatif, structuré et engageant ${lengthInstructions.target} basé sur le titre fourni. ${toneInstructions.system} IMPORTANT: Fournis UNIQUEMENT le texte généré, sans préface ni commentaire.`;
+    
+    const prompt = `Titre de l'annonce: "${title}".
+    ${description ? `Voici un exemple de contenu ou notes: "${description}"` : ""}
+    
+    Rédige un texte structuré, informatif et engageant ${lengthInstructions.target} qui servira de description pour cette annonce. 
+    Ton texte doit:
+    - Avoir une structure claire avec des paragraphes
+    - ${toneInstructions.style}
+    - ${lengthInstructions.structure}
+    - Ne pas contenir de titre ni sous-titres
+    - Ne pas inclure de formatage spécial (pas de gras, italique...)
+    
+    Renvoie uniquement le texte généré sans aucune introduction ou commentaire supplémentaire.`;
 
-    console.log(`Type d'optimisation: ${type}, appel à OpenAI en cours...`);
+    console.log(`Génération de contenu, appel à OpenAI en cours...`);
 
     if (!openAIApiKey) {
       throw new Error("Clé API OpenAI manquante. Veuillez configurer la variable d'environnement OPENAI_API_KEY.");
@@ -88,7 +71,7 @@ serve(async (req) => {
             { role: 'system', content: systemMessage },
             { role: 'user', content: prompt }
           ],
-          temperature: type === "generateDescription" ? 0.8 : 0.7, // Un peu plus de créativité pour la génération
+          temperature: 0.8,
         }),
       });
 
@@ -139,7 +122,7 @@ serve(async (req) => {
         .replace(/:[a-z_]+:|🔍|✅|⚠️|❗|📝|💡|🔑|📊|🎯|⭐|👉|✨|🚀|💪|⚡|📌|🔖|📢|🔔/g, '')
         .trim();
 
-      console.log("Contenu optimisé traité: ", optimizedContent.substring(0, 100) + "...");
+      console.log("Contenu généré traité: ", optimizedContent.substring(0, 100) + "...");
 
       return new Response(JSON.stringify({ 
         success: true, 
