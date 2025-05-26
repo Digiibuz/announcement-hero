@@ -78,37 +78,14 @@ export const useAdminAlerts = () => {
     }
   };
 
-  const testWordPressConnection = async (config: any): Promise<boolean> => {
-    try {
-      // Normaliser l'URL
-      let siteUrl = config.site_url;
-      if (siteUrl.endsWith('/')) {
-        siteUrl = siteUrl.slice(0, -1);
-      }
-      
-      // Test simple avec timeout court
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
-      
-      const testUrl = `${siteUrl}/wp-json/wp/v2/posts?per_page=1`;
-      
-      const response = await fetch(testUrl, {
-        method: 'GET',
-        signal: controller.signal,
-        headers: {
-          'User-Agent': 'DigiCheck/1.0'
-        }
-      });
-      
-      clearTimeout(timeoutId);
-      
-      // Site connecté si 200, 401 ou 403
-      return response.status === 200 || response.status === 401 || response.status === 403;
-      
-    } catch (error) {
-      // Toute erreur = site déconnecté
-      return false;
+  // Utiliser la même logique que DisconnectedSitesTable pour déterminer le statut de connexion
+  const getConnectionStatus = (config: any) => {
+    if (config.app_username && config.app_password) {
+      return { status: "connected", label: "Connecté" };
+    } else if (config.rest_api_key) {
+      return { status: "partial", label: "Partiel" };
     }
+    return { status: "disconnected", label: "Déconnecté" };
   };
 
   const fetchDisconnectedSites = async () => {
@@ -128,15 +105,13 @@ export const useAdminAlerts = () => {
         return;
       }
 
-      // Tester la connectivité en parallèle
-      const connectionTests = configs.map(async (config) => {
-        return await testWordPressConnection(config);
+      // Filtrer les sites déconnectés en utilisant la même logique que DisconnectedSitesTable
+      const disconnectedConfigs = configs.filter(config => {
+        const status = getConnectionStatus(config);
+        return status.status === "disconnected";
       });
       
-      const results = await Promise.all(connectionTests);
-      const disconnectedCount = results.filter(isConnected => !isConnected).length;
-      
-      setDisconnectedSitesCount(disconnectedCount);
+      setDisconnectedSitesCount(disconnectedConfigs.length);
       
     } catch (error) {
       console.error('Error checking WordPress connections:', error);
