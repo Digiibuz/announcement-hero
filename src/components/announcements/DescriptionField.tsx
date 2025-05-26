@@ -170,7 +170,8 @@ const DescriptionField = ({
     return () => subscription.unsubscribe();
   }, [form]);
 
-  return <div className="space-y-2">
+  return (
+    <div className="space-y-2">
       {/* AI Loading Overlay */}
       <AILoadingOverlay 
         isVisible={isOptimizing.generateDescription} 
@@ -194,13 +195,17 @@ const DescriptionField = ({
               disabled={isOptimizing.generateDescription}
             >
               <SparklingStars isVisible={isHoveringGenerate && !isOptimizing.generateDescription} />
-              {isOptimizing.generateDescription ? <>
+              {isOptimizing.generateDescription ? (
+                <>
                   <Loader2 size={16} className="animate-spin" />
                   <span>Génération...</span>
-                </> : <>
+                </>
+              ) : (
+                <>
                   <Wand2 size={16} />
                   <span>Générer avec l'IA</span>
-                </>}
+                </>
+              )}
             </Button>
           </div>
 
@@ -347,13 +352,25 @@ const DescriptionField = ({
                   <Label htmlFor="url" className="text-right col-span-1">
                     URL
                   </Label>
-                  <input id="url" placeholder="https://example.com" className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} />
+                  <input 
+                    id="url" 
+                    placeholder="https://example.com" 
+                    className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" 
+                    value={linkUrl} 
+                    onChange={e => setLinkUrl(e.target.value)} 
+                  />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="text" className="text-right col-span-1">
                     Texte
                   </Label>
-                  <input id="text" placeholder="Texte du lien (optionnel)" className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" value={linkText} onChange={e => setLinkText(e.target.value)} />
+                  <input 
+                    id="text" 
+                    placeholder="Texte du lien (optionnel)" 
+                    className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" 
+                    value={linkText} 
+                    onChange={e => setLinkText(e.target.value)} 
+                  />
                 </div>
                 <Button type="button" onClick={insertLink} className="mt-2">
                   Insérer le lien
@@ -361,9 +378,10 @@ const DescriptionField = ({
               </div>
             </div>
           </PopoverContent>
+        </Popover>
 
         {/* Voice Recording Button */}
-        {isSupported && 
+        {isSupported && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -386,12 +404,14 @@ const DescriptionField = ({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-        }
+        )}
       </div>
       
-      <FormField control={form.control} name="description" render={({
-      field
-    }) => <FormItem>
+      <FormField 
+        control={form.control} 
+        name="description" 
+        render={({ field }) => (
+          <FormItem>
             <FormControl>
               <div 
                 ref={editorRef} 
@@ -405,7 +425,9 @@ const DescriptionField = ({
               />
             </FormControl>
             <FormMessage />
-          </FormItem>} />
+          </FormItem>
+        )} 
+      />
 
       {/* Add a hint for voice dictation with punctuation commands */}
       {isRecording && (
@@ -423,6 +445,8 @@ const DescriptionField = ({
           </ul>
         </div>
       )}
-    </div>;
+    </div>
+  );
 };
+
 export default DescriptionField;
