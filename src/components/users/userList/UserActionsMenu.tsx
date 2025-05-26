@@ -52,7 +52,7 @@ const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
             <span className="sr-only">Ouvrir le menu</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-gray-800 border shadow-lg z-50">
+        <DropdownMenuContent align="end" className="w-60 bg-white dark:bg-gray-800 border shadow-lg z-50">
           <DropdownMenuItem onClick={handleEditClick} className="cursor-pointer">
             <UserCog className="h-4 w-4 mr-2" />
             Modifier l'utilisateur
