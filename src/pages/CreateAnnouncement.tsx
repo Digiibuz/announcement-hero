@@ -14,7 +14,6 @@ import PublishingLoadingOverlay, { PublishingStep as PublishingStepType } from "
 import CategoryStep from "@/components/announcements/steps/CategoryStep";
 import DescriptionStep from "@/components/announcements/steps/DescriptionStep";
 import ImagesStep from "@/components/announcements/steps/ImagesStep";
-import SeoStep from "@/components/announcements/steps/SeoStep";
 import PublishingStep from "@/components/announcements/steps/PublishingStep";
 import StepNavigation from "@/components/announcements/steps/StepNavigation";
 import AnnouncementSummary from "@/components/announcements/steps/AnnouncementSummary";
@@ -42,11 +41,6 @@ const stepConfigs: StepConfig[] = [
     id: "images",
     title: "Images",
     description: "Les annonces avec des images de qualité attirent davantage l'attention et génèrent plus d'intérêt."
-  },
-  {
-    id: "seo",
-    title: "SEO",
-    description: "Améliorez la visibilité de votre annonce dans les moteurs de recherche comme Google."
   },
   {
     id: "publishing",
@@ -423,8 +417,6 @@ const CreateAnnouncement = () => {
               {currentStep.id === "description" && <DescriptionStep form={form} isMobile={isMobile} />}
               
               {currentStep.id === "images" && <ImagesStep form={form} isMobile={isMobile} />}
-              
-              {currentStep.id === "seo" && <SeoStep form={form} isMobile={isMobile} />}
               
               {currentStep.id === "publishing" && <PublishingStep form={form} isMobile={isMobile} />}
               
