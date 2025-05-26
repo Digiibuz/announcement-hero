@@ -59,15 +59,19 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
   };
 
   const handleAssignmentChange = () => {
-    if (newConfigId) {
+    if (newConfigId && newConfigId !== "none") {
       form.setValue("wpConfigIds", [newConfigId]);
       setIsEditingAssignment(false);
       console.log("Assignment changed to config:", newConfigId);
+    } else if (newConfigId === "none") {
+      form.setValue("wpConfigIds", []);
+      setIsEditingAssignment(false);
+      console.log("Assignment removed");
     }
   };
 
   const handleStartEditing = () => {
-    setNewConfigId(assignedConfig?.id || "");
+    setNewConfigId(assignedConfig?.id || "none");
     setIsEditingAssignment(true);
   };
 
@@ -130,7 +134,7 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
                         <SelectValue placeholder="Choisir une configuration" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Aucune configuration</SelectItem>
+                        <SelectItem value="none">Aucune configuration</SelectItem>
                         {configs.map((config) => (
                           <SelectItem key={config.id} value={config.id}>
                             {config.name} - {config.site_url}
