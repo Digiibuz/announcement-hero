@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import PageLayout from "@/components/ui/layout/PageLayout";
@@ -7,7 +6,7 @@ import DashboardCard from "@/components/dashboard/DashboardCard";
 import PublicationCounter from "@/components/dashboard/PublicationCounter";
 import RecentAnnouncements from "@/components/dashboard/RecentAnnouncements";
 import AdminAlerts from "@/components/dashboard/AdminAlerts";
-import WebsiteOverviewTable from "@/components/websites/WebsiteOverviewTable";
+import DisconnectedSitesTable from "@/components/dashboard/DisconnectedSitesTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, Clock, Calendar, Plus, Users, Server } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -140,10 +139,10 @@ const Dashboard = () => {
         </AnimatedContainer>
       )}
 
-      {/* Website Overview Table for admins */}
+      {/* Disconnected Sites Table for admins */}
       {isAdmin && (
         <AnimatedContainer delay={300} className="mt-8">
-          <WebsiteOverviewTable />
+          <DisconnectedSitesTable />
         </AnimatedContainer>
       )}
 
