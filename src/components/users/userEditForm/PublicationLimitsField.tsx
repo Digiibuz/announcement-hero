@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Save, TrendingUp } from "lucide-react";
+import { Save, TrendingUp, RotateCcw } from "lucide-react";
 import { usePublicationLimits } from "@/hooks/usePublicationLimits";
 import { UserProfile } from "@/types/auth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface PublicationLimitsFieldProps {
   user: UserProfile;
@@ -19,9 +21,10 @@ const PublicationLimitsField: React.FC<PublicationLimitsFieldProps> = ({
   user,
   isUpdating
 }) => {
-  const { stats, isLoading, updateMaxLimit, getProgressPercentage } = usePublicationLimits(user.id);
+  const { stats, isLoading, updateMaxLimit, getProgressPercentage, refetch } = usePublicationLimits(user.id);
   const [newLimit, setNewLimit] = useState(stats.maxLimit);
   const [isSaving, setIsSaving] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   const handleUpdateLimit = async () => {
     if (newLimit < 1 || newLimit > 100) {
@@ -34,6 +37,38 @@ const PublicationLimitsField: React.FC<PublicationLimitsFieldProps> = ({
       setNewLimit(stats.maxLimit);
     }
     setIsSaving(false);
+  };
+
+  const handleResetCount = async () => {
+    setIsResetting(true);
+    try {
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth() + 1;
+
+      // Remettre le compteur à 0 pour le mois actuel
+      const { error } = await supabase
+        .from('monthly_publication_limits')
+        .upsert({
+          user_id: user.id,
+          year: currentYear,
+          month: currentMonth,
+          max_limit: stats.maxLimit,
+          published_count: 0,
+        }, {
+          onConflict: 'user_id,year,month'
+        });
+
+      if (error) throw error;
+
+      // Actualiser les statistiques
+      await refetch();
+      toast.success("Compteur de publications remis à zéro");
+    } catch (error) {
+      console.error('Error resetting publication count:', error);
+      toast.error("Erreur lors de la remise à zéro");
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   if (user.role !== 'client') {
@@ -85,7 +120,7 @@ const PublicationLimitsField: React.FC<PublicationLimitsFieldProps> = ({
         </div>
 
         {/* Admin controls */}
-        <div className="space-y-2 pt-2 border-t">
+        <div className="space-y-3 pt-2 border-t">
           <Label htmlFor="publication-limit" className="text-sm font-medium">
             Limite mensuelle
           </Label>
@@ -112,6 +147,26 @@ const PublicationLimitsField: React.FC<PublicationLimitsFieldProps> = ({
           <p className="text-xs text-muted-foreground">
             Définit le nombre maximum de publications autorisées par mois
           </p>
+
+          {/* Reset counter button */}
+          <div className="pt-2 border-t">
+            <Label className="text-sm font-medium mb-2 block">
+              Actions
+            </Label>
+            <Button
+              onClick={handleResetCount}
+              disabled={isResetting || isUpdating || stats.publishedCount === 0}
+              size="sm"
+              variant="outline"
+              className="w-full"
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              {isResetting ? "Remise à zéro..." : "Remettre le compteur à 0"}
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2">
+              Remet le compteur de publications du mois actuel à zéro
+            </p>
+          </div>
         </div>
       </CardContent>
     </Card>
