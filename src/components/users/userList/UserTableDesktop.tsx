@@ -9,9 +9,9 @@ import {
   TableRow
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Clock, UserMinus, UserCog } from "lucide-react";
+import { Clock, UserMinus } from "lucide-react";
 import { UserProfile } from "@/types/auth";
-import UserEditForm from "../UserEditForm";
+import UserActionsMenu from "./UserActionsMenu";
 import { UserListUtils } from "./UserListUtils";
 
 interface UserTableDesktopProps {
@@ -71,32 +71,15 @@ const UserTableDesktop: React.FC<UserTableDesktopProps> = ({
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-2">
-                  <UserEditForm 
-                    user={user} 
-                    onUserUpdated={onUpdateUser}
-                    onDeleteUser={onDeleteUser}
+                  <UserActionsMenu
+                    user={user}
                     isUpdating={isUpdating}
                     isDeleting={isDeleting}
+                    onResetPassword={onResetPassword}
+                    onUpdateUser={onUpdateUser}
+                    onDeleteUser={onDeleteUser}
+                    onImpersonateUser={onImpersonateUser}
                   />
-                  
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => onResetPassword(user.email)}
-                  >
-                    Réinitialiser MDP
-                  </Button>
-                  
-                  {user.role === 'client' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onImpersonateUser(user)}
-                    >
-                      <UserCog className="h-4 w-4 mr-1" />
-                      Se connecter en tant que
-                    </Button>
-                  )}
                   
                   <Button 
                     variant="destructive" 

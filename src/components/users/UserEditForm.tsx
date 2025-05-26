@@ -71,10 +71,12 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <UserCog className="h-4 w-4 mr-2" />
-          Modifier
-        </Button>
+        <div className="w-full">
+          <Button variant="ghost" size="sm" className="w-full justify-start">
+            <UserCog className="h-4 w-4 mr-2" />
+            Modifier l'utilisateur
+          </Button>
+        </div>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
@@ -104,7 +106,7 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
                 onDelete={handleDeleteUser}
               />
             )}
-            <div></div> {/* Empty div to push buttons to their sides */}
+            <div></div>
           </div>
         </div>
       </DialogContent>

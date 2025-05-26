@@ -2,9 +2,9 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User, Mail, BadgeCheck, Clock, UserMinus, UserCog } from "lucide-react";
+import { User, Mail, BadgeCheck, Clock, UserMinus } from "lucide-react";
 import { UserProfile } from "@/types/auth";
-import UserEditForm from "../UserEditForm";
+import UserActionsMenu from "./UserActionsMenu";
 import { UserListUtils } from "./UserListUtils";
 
 interface UserCardsMobileProps {
@@ -64,33 +64,16 @@ const UserCardsMobile: React.FC<UserCardsMobileProps> = ({
                 <span className="ml-1">{formatLastLogin(user.lastLogin)}</span>
               </div>
 
-              <div className="pt-2 flex flex-wrap gap-2">
-                <UserEditForm 
-                  user={user} 
-                  onUserUpdated={onUpdateUser}
-                  onDeleteUser={onDeleteUser}
+              <div className="pt-2 flex justify-between">
+                <UserActionsMenu
+                  user={user}
                   isUpdating={isUpdating}
                   isDeleting={isDeleting}
+                  onResetPassword={onResetPassword}
+                  onUpdateUser={onUpdateUser}
+                  onDeleteUser={onDeleteUser}
+                  onImpersonateUser={onImpersonateUser}
                 />
-                
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => onResetPassword(user.email)}
-                >
-                  Réinitialiser MDP
-                </Button>
-                
-                {user.role === 'client' && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onImpersonateUser(user)}
-                  >
-                    <UserCog className="h-4 w-4 mr-1" />
-                    Se connecter en tant que
-                  </Button>
-                )}
                 
                 <Button 
                   variant="destructive" 
