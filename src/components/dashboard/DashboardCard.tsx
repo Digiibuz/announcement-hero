@@ -1,9 +1,9 @@
-
 import React from "react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import SparklingStars from "@/components/ui/SparklingStars";
 
 interface DashboardCardProps {
   title: string;
@@ -35,12 +35,18 @@ const DashboardCard = ({
         <Link to={to} className="block">
           <Card className={cn("hover-scale overflow-hidden h-full transform transition-all duration-300 hover:scale-105 hover:shadow-xl hover:-translate-y-1 group relative", className)}>
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+            <SparklingStars className="opacity-0 group-hover:opacity-100 transition-opacity duration-500" isVisible={true} />
             {children}
           </Card>
         </Link>
       );
     }
-    return <Card className={cn("overflow-hidden h-full transform transition-all duration-300 hover:scale-105 hover:shadow-xl hover:-translate-y-1", className)}>{children}</Card>;
+    return (
+      <Card className={cn("overflow-hidden h-full transform transition-all duration-300 hover:scale-105 hover:shadow-xl hover:-translate-y-1 group relative", className)}>
+        <SparklingStars className="opacity-0 group-hover:opacity-100 transition-opacity duration-500" isVisible={true} />
+        {children}
+      </Card>
+    );
   };
 
   return (
