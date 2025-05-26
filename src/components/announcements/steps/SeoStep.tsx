@@ -10,6 +10,7 @@ import { UseFormReturn } from "react-hook-form";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
 import { cn } from "@/lib/utils";
 import SparklingStars from "@/components/ui/SparklingStars";
+import AILoadingOverlay from "@/components/ui/AILoadingOverlay";
 import "@/styles/sparkles.css";
 
 interface SeoStepProps {
@@ -76,6 +77,11 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
 
   return (
     <div className="space-y-6">
+      {/* AI Loading Overlay */}
+      <AILoadingOverlay 
+        isVisible={isOptimizing.seoTitle || isOptimizing.seoDescription} 
+      />
+      
       <Card className={getCardStyles()}>
         <CardContent className={`space-y-4 ${isMobile ? "px-0 py-4" : "p-6"}`}>
           <FormField 

@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useContentOptimization } from "@/hooks/useContentOptimization";
 import useVoiceRecognition from "@/hooks/useVoiceRecognition";
 import SparklingStars from "@/components/ui/SparklingStars";
+import AILoadingOverlay from "@/components/ui/AILoadingOverlay";
 import "@/styles/editor.css";
 import "@/styles/sparkles.css";
 
@@ -189,6 +190,11 @@ const DescriptionField = ({
   }, [form]);
 
   return <div className="space-y-2">
+      {/* AI Loading Overlay */}
+      <AILoadingOverlay 
+        isVisible={isOptimizing.generateDescription || isOptimizing.description} 
+      />
+      
       <div className="flex justify-between items-center">
         <Label>Description</Label>
         
