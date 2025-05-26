@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -23,8 +22,22 @@ export const useUserManagement = () => {
         throw profilesError;
       }
       
-      // Format user profiles without relying on the Edge function
+      // Fetch last login data from Edge function
+      let loginData: any[] = [];
+      try {
+        const { data: loginResponse, error: loginError } = await supabase.functions.invoke('get-user-logins');
+        if (!loginError && loginResponse) {
+          loginData = loginResponse;
+        }
+      } catch (error) {
+        console.warn("Could not fetch login data:", error);
+        // Continue without login data
+      }
+      
+      // Format user profiles with login data
       const processedUsers: UserProfile[] = profilesData.map(profile => {
+        const userLoginInfo = loginData.find(login => login.id === profile.id);
+        
         return {
           id: profile.id,
           email: profile.email,
@@ -36,7 +49,7 @@ export const useUserManagement = () => {
             name: profile.wordpress_configs.name,
             site_url: profile.wordpress_configs.site_url
           } : null,
-          lastLogin: null // Nous n'avons plus accès à cette information sans la fonction Edge
+          lastLogin: userLoginInfo?.last_sign_in_at || null
         };
       });
       
