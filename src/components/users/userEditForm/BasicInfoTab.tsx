@@ -44,7 +44,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
         </Button>
       </div>
 
-      <ScrollArea className="h-[600px] pr-4">
+      <ScrollArea className="h-[450px] pr-4">
         <div className="space-y-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
