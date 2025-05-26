@@ -30,33 +30,57 @@ export const useAdminAlerts = () => {
       const currentYear = new Date().getFullYear();
       const currentMonth = new Date().getMonth() + 1;
 
-      const { data, error } = await supabase
+      // Récupérer les utilisateurs avec leurs limites de publication
+      const { data: limits, error: limitsError } = await supabase
         .from('monthly_publication_limits')
-        .select(`
-          *,
-          profiles:user_id (
-            id,
-            name,
-            email
-          )
-        `)
+        .select('*')
         .eq('year', currentYear)
-        .eq('month', currentMonth)
-        .lt('published_count', 'max_limit')
-        .gte('published_count', supabase.raw('max_limit - 5')); // Utilisateurs avec moins de 5 publications restantes
+        .eq('month', currentMonth);
 
-      if (error) throw error;
+      if (limitsError) {
+        console.error('Error fetching publication limits:', limitsError);
+        return;
+      }
 
-      const users = data?.map(item => ({
-        id: item.profiles?.id || '',
-        name: item.profiles?.name || 'Utilisateur inconnu',
-        email: item.profiles?.email || '',
-        published_count: item.published_count,
-        max_limit: item.max_limit,
-        remaining: item.max_limit - item.published_count
-      })) || [];
+      if (!limits || limits.length === 0) {
+        setUsersNearLimit([]);
+        return;
+      }
 
-      setUsersNearLimit(users);
+      // Récupérer les profils des utilisateurs
+      const userIds = limits.map(limit => limit.user_id);
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, name, email')
+        .in('id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        return;
+      }
+
+      // Combiner les données et filtrer les utilisateurs proches de leurs limites
+      const usersNearLimits = limits
+        .map(limit => {
+          const profile = profiles?.find(p => p.id === limit.user_id);
+          if (!profile) return null;
+
+          const remaining = limit.max_limit - limit.published_count;
+          
+          return {
+            id: profile.id,
+            name: profile.name || 'Utilisateur inconnu',
+            email: profile.email || '',
+            published_count: limit.published_count,
+            max_limit: limit.max_limit,
+            remaining: remaining
+          };
+        })
+        .filter((user): user is UserNearLimit => 
+          user !== null && user.remaining <= 5 && user.remaining > 0
+        );
+
+      setUsersNearLimit(usersNearLimits);
     } catch (error) {
       console.error('Error fetching users near limit:', error);
     }
@@ -64,24 +88,65 @@ export const useAdminAlerts = () => {
 
   const fetchWordPressErrors = async () => {
     try {
-      // Pour le moment, on simule des erreurs WordPress
-      // Dans une vraie implémentation, on aurait une table pour stocker les statuts de connexion
+      // Récupérer toutes les configurations WordPress
       const { data: configs, error } = await supabase
         .from('wordpress_configs')
         .select('*');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching WordPress configs:', error);
+        return;
+      }
 
-      // Simulation d'erreurs pour la démonstration
-      const errors: WordPressError[] = [];
+      if (!configs || configs.length === 0) {
+        setWordPressErrors([]);
+        return;
+      }
+
+      // Tester la connectivité de chaque configuration
+      const errorConfigs: WordPressError[] = [];
       
-      // On peut ajouter une logique pour tester la connectivité en arrière-plan
-      // et stocker les résultats dans une table séparée
-      
-      setWordPressErrors(errors);
+      for (const config of configs) {
+        try {
+          // Test simple de connectivité avec timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          
+          const testUrl = `${config.site_url}/wp-json`;
+          const response = await fetch(testUrl, {
+            method: 'HEAD',
+            mode: 'no-cors',
+            signal: controller.signal,
+          });
+          
+          clearTimeout(timeoutId);
+          
+        } catch (fetchError: any) {
+          // Si le fetch échoue, c'est probablement un problème de connectivité
+          if (fetchError.name === 'AbortError') {
+            errorConfigs.push({
+              id: config.id,
+              name: config.name,
+              site_url: config.site_url,
+              error_message: 'Délai d\'attente dépassé - Site inaccessible',
+              last_checked: new Date().toISOString()
+            });
+          } else if (fetchError.message.includes('Failed to fetch')) {
+            errorConfigs.push({
+              id: config.id,
+              name: config.name,
+              site_url: config.site_url,
+              error_message: 'Impossible d\'accéder au site',
+              last_checked: new Date().toISOString()
+            });
+          }
+        }
+      }
+
+      setWordPressErrors(errorConfigs);
     } catch (error) {
       console.error('Error fetching WordPress errors:', error);
-      toast.error("Erreur lors de la récupération des statuts WordPress");
+      toast.error("Erreur lors de la vérification des sites WordPress");
     }
   };
 
