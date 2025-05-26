@@ -1,4 +1,3 @@
-
 import React from "react";
 import { UserCog } from "lucide-react";
 import { UserProfile } from "@/types/auth";
@@ -87,7 +86,7 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
           </div>
         </DialogTrigger>
       )}
-      <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Modifier l'utilisateur</DialogTitle>
           <DialogDescription>
@@ -95,8 +94,8 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
           </DialogDescription>
         </DialogHeader>
         
-        <div className="flex-1 overflow-hidden">
-          <Tabs defaultValue="basic" className="h-full flex flex-col">
+        <ScrollArea className="flex-1 pr-4">
+          <Tabs defaultValue="basic" className="w-full">
             <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
               <TabsTrigger value="basic">Informations</TabsTrigger>
               <TabsTrigger value="wordpress" disabled={role !== "client"}>
@@ -107,51 +106,45 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
               </TabsTrigger>
             </TabsList>
             
-            <div className="flex-1 overflow-hidden mt-4">
-              <TabsContent value="basic" className="mt-0 h-full">
-                <ScrollArea className="h-full pr-4">
-                  <BasicInfoTab 
-                    form={form}
-                    isUpdating={isUpdating}
-                    onCancel={() => setIsDialogOpen(false)}
-                    onSubmit={handleSubmit}
-                    onResetPassword={onResetPassword ? handleResetPasswordClick : undefined}
-                    onDeleteUser={onDeleteUser ? handleDeleteUser : undefined}
-                    isDeleting={isDeleting}
-                    confirmDeleteOpen={confirmDeleteOpen}
-                    setConfirmDeleteOpen={setConfirmDeleteOpen}
-                  />
-                </ScrollArea>
+            <div className="mt-4">
+              <TabsContent value="basic" className="mt-0">
+                <BasicInfoTab 
+                  form={form}
+                  isUpdating={isUpdating}
+                  onCancel={() => setIsDialogOpen(false)}
+                  onSubmit={handleSubmit}
+                  onResetPassword={onResetPassword ? handleResetPasswordClick : undefined}
+                  onDeleteUser={onDeleteUser ? handleDeleteUser : undefined}
+                  isDeleting={isDeleting}
+                  confirmDeleteOpen={confirmDeleteOpen}
+                  setConfirmDeleteOpen={setConfirmDeleteOpen}
+                />
               </TabsContent>
               
-              <TabsContent value="wordpress" className="mt-0 h-full">
-                <ScrollArea className="h-full pr-4">
-                  <WordPressConfigTab 
-                    form={form}
-                    configs={configs}
-                    isLoadingConfigs={isLoadingConfigs}
-                    selectedConfigIds={selectedConfigIds}
-                    isUpdating={isUpdating}
-                    onCancel={() => setIsDialogOpen(false)}
-                    onSubmit={handleSubmit}
-                  />
-                </ScrollArea>
+              <TabsContent value="wordpress" className="mt-0">
+                <WordPressConfigTab 
+                  form={form}
+                  configs={configs}
+                  isLoadingConfigs={isLoadingConfigs}
+                  selectedConfigIds={selectedConfigIds}
+                  isUpdating={isUpdating}
+                  onCancel={() => setIsDialogOpen(false)}
+                  onSubmit={handleSubmit}
+                />
               </TabsContent>
               
-              <TabsContent value="limits" className="mt-0 h-full">
-                <ScrollArea className="h-full pr-4">
-                  <PublicationLimitsTab 
-                    user={user}
-                    isUpdating={isUpdating}
-                    onCancel={() => setIsDialogOpen(false)}
-                    onSubmit={handleSubmit}
-                    form={form}
-                  />
-                </ScrollArea>
+              <TabsContent value="limits" className="mt-0">
+                <PublicationLimitsTab 
+                  user={user}
+                  isUpdating={isUpdating}
+                  onCancel={() => setIsDialogOpen(false)}
+                  onSubmit={handleSubmit}
+                  form={form}
+                />
               </TabsContent>
             </div>
           </Tabs>
-        </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
