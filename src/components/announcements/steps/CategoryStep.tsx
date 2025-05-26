@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { AnnouncementFormData } from "../AnnouncementForm";
 import { UseFormReturn } from "react-hook-form";
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 interface CategoryStepProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -17,6 +18,9 @@ const CategoryStep = ({
   form,
   isMobile
 }: CategoryStepProps) => {
+  // Utiliser le hook de persistance pour sauvegarder/restaurer les données du formulaire
+  const { loadForm } = useFormPersistence(form, 'announcement_category', undefined, 500);
+
   const {
     categories,
     isLoading: isCategoriesLoading,
@@ -24,17 +28,10 @@ const CategoryStep = ({
     hasCategories
   } = useWordPressCategories();
 
-  // Logs de debug pour comprendre l'état
+  // Restaurer l'état du formulaire au chargement
   useEffect(() => {
-    console.log("CategoryStep - Debug info:", {
-      categories: categories,
-      categoriesLength: categories?.length,
-      isLoading: isCategoriesLoading,
-      error: categoriesError,
-      hasCategories: hasCategories,
-      currentValue: form.getValues().wordpressCategory
-    });
-  }, [categories, isCategoriesLoading, categoriesError, hasCategories, form]);
+    loadForm();
+  }, [loadForm]);
 
   const getCardStyles = () => {
     if (isMobile) {
@@ -43,8 +40,7 @@ const CategoryStep = ({
     return "border shadow-sm";
   };
 
-  return (
-    <div className="max-w-3xl mx-auto">
+  return <div className="max-w-3xl mx-auto">
       <Card className={getCardStyles()}>
         <CardContent className={`${isMobile ? "px-0 py-4" : "p-6"}`}>
           <FormField 
@@ -55,11 +51,9 @@ const CategoryStep = ({
                 <FormLabel>Sélectionner une catégorie</FormLabel>
                 
                 <Select 
-                  onValueChange={(value) => {
-                    console.log("CategoryStep - Category selected:", value);
-                    field.onChange(value);
-                  }} 
-                  value={field.value || ""}
+                  onValueChange={field.onChange} 
+                  defaultValue={field.value} 
+                  value={field.value}
                   disabled={isCategoriesLoading}
                 >
                   <FormControl>
@@ -68,26 +62,16 @@ const CategoryStep = ({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {isCategoriesLoading ? (
-                      <div className="flex items-center justify-center p-4">
+                    {isCategoriesLoading ? <div className="flex items-center justify-center p-4">
                         <Loader2 className="h-5 w-5 animate-spin mr-2" />
                         <span>Chargement des catégories...</span>
-                      </div>
-                    ) : categoriesError ? (
-                      <div className="p-2 text-center text-sm text-muted-foreground">
+                      </div> : categoriesError ? <div className="p-2 text-center text-sm text-muted-foreground">
                         Erreur: {categoriesError}
-                      </div>
-                    ) : hasCategories ? (
-                      categories.map(category => (
-                        <SelectItem key={category.id} value={String(category.id)}>
+                      </div> : hasCategories ? categories.map(category => <SelectItem key={category.id} value={String(category.id)}>
                           {category.name}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <div className="p-2 text-center text-sm text-muted-foreground">
+                        </SelectItem>) : <div className="p-2 text-center text-sm text-muted-foreground">
                         Aucune catégorie disponible
-                      </div>
-                    )}
+                      </div>}
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -96,8 +80,7 @@ const CategoryStep = ({
           />
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 };
 
 export default CategoryStep;

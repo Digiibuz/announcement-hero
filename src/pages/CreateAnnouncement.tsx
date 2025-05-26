@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -78,39 +79,43 @@ const CreateAnnouncement = () => {
   // Get current step config
   const currentStep = stepConfigs[currentStepIndex];
 
-  // Default values for a clean form
-  const defaultValues: AnnouncementFormData = {
-    title: "",
-    description: "",
-    wordpressCategory: "",
-    publishDate: undefined,
-    status: "published",
-    images: [],
-    seoTitle: "",
-    seoDescription: "",
-    seoSlug: ""
-  };
-
   // Initializing the form
   const form = useForm<AnnouncementFormData>({
-    defaultValues
+    defaultValues: {
+      title: "",
+      description: "",
+      wordpressCategory: "",
+      publishDate: undefined,
+      status: "published",
+      images: [],
+      seoTitle: "",
+      seoDescription: "",
+      seoSlug: ""
+    }
   });
 
-  // Clear form data only on initial mount, not on every render
+  // Clear form data when the component mounts
   useEffect(() => {
-    // Clear localStorage only once when component first mounts
     localStorage.removeItem(FORM_STORAGE_KEY);
-    
-    // Reset form to completely clean state
-    form.reset(defaultValues);
-  }, []); // Empty dependency array ensures this runs only once
+    form.reset({
+      title: "",
+      description: "",
+      wordpressCategory: "",
+      publishDate: undefined,
+      status: "published",
+      images: [],
+      seoTitle: "",
+      seoDescription: "",
+      seoSlug: ""
+    });
+  }, [form]);
 
-  // Use the form persistence hook but start fresh
+  // Use the form persistence hook
   const {
     clearSavedData,
     hasSavedData,
     saveData
-  } = useFormPersistence(form, FORM_STORAGE_KEY, defaultValues);
+  } = useFormPersistence(form, FORM_STORAGE_KEY);
 
   // Define the publishing steps
   const publishingSteps: PublishingStepType[] = [
@@ -230,7 +235,17 @@ const CreateAnnouncement = () => {
       clearSavedData();
       
       // Reset the form to clear all fields
-      form.reset(defaultValues);
+      form.reset({
+        title: "",
+        description: "",
+        wordpressCategory: "",
+        publishDate: undefined,
+        status: "published",
+        images: [],
+        seoTitle: "",
+        seoDescription: "",
+        seoSlug: ""
+      });
       
       // Navigate to announcements page to see the draft
       navigate("/announcements");
@@ -333,7 +348,17 @@ const CreateAnnouncement = () => {
       }
 
       // Reset the form to clear all fields
-      form.reset(defaultValues);
+      form.reset({
+        title: "",
+        description: "",
+        wordpressCategory: "",
+        publishDate: undefined,
+        status: "published",
+        images: [],
+        seoTitle: "",
+        seoDescription: "",
+        seoSlug: ""
+      });
 
       // Navigation améliorée pour éviter les pages blanches
       setTimeout(() => {
