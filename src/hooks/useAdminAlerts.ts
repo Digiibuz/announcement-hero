@@ -144,7 +144,7 @@ export const useAdminAlerts = () => {
       // Récupérer les profils des utilisateurs pour associer les clients
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, name, email, wordpressConfigId')
+        .select('id, name, email, wordpress_config_id')
         .eq('role', 'client');
 
       if (profilesError) {
@@ -158,14 +158,14 @@ export const useAdminAlerts = () => {
           if (status.status !== "disconnected") return null;
 
           // Trouver le client associé à cette configuration
-          const client = profiles?.find(profile => profile.wordpressConfigId === config.id);
+          const client = profiles?.find(profile => profile.wordpress_config_id === config.id);
 
           return {
             id: config.id,
             name: config.name || 'Site sans nom',
             site_url: config.site_url || '',
-            client_name: client?.name || undefined,
-            client_email: client?.email || undefined,
+            client_name: client?.name,
+            client_email: client?.email,
             disconnection_reason: status.reason
           };
         })
