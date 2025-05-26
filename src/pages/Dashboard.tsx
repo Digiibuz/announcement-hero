@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import PageLayout from "@/components/ui/layout/PageLayout";
@@ -145,7 +146,7 @@ const Dashboard = () => {
 
       {/* Disconnected Sites Table for admins - moved before alerts */}
       {isAdmin && (
-        <AnimatedContainer delay={250} className="mt-8">
+        <AnimatedContainer delay={250} className="mb-12">
           <DisconnectedSitesTable />
         </AnimatedContainer>
       )}
