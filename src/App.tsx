@@ -5,7 +5,6 @@ import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { Toaster as UIToaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
-import { ThemeProvider } from "next-themes";
 import AppRoutes from "@/components/routing/Routes";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
 
@@ -24,18 +23,16 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <BrowserRouter>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <TooltipProvider>
-              <ImpersonationBanner />
-              <AppRoutes />
-              <SonnerToaster />
-              <UIToaster />
-            </TooltipProvider>
-          </AuthProvider>
-        </QueryClientProvider>
-      </ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TooltipProvider>
+            <ImpersonationBanner />
+            <AppRoutes />
+            <SonnerToaster />
+            <UIToaster />
+          </TooltipProvider>
+        </AuthProvider>
+      </QueryClientProvider>
     </BrowserRouter>
   );
 }

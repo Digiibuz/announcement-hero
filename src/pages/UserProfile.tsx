@@ -6,15 +6,12 @@ import PageLayout from "@/components/ui/layout/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { useTheme } from "next-themes";
-import { Moon, Sun, User } from "lucide-react";
-import { Toggle } from "@/components/ui/toggle";
+import { User } from "lucide-react";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 
 const UserProfile = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { theme, setTheme } = useTheme();
 
   if (!user) {
     return (
@@ -27,10 +24,6 @@ const UserProfile = () => {
       </PageLayout>
     );
   }
-
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  };
 
   const handleLogout = () => {
     logout();
@@ -68,37 +61,6 @@ const UserProfile = () => {
         </AnimatedContainer>
 
         <AnimatedContainer delay={200}>
-          <Card className="mb-6">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-2xl font-bold">Préférences d'affichage</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-6">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="theme-toggle">Mode sombre</Label>
-                  <Toggle
-                    id="theme-toggle"
-                    variant="outline"
-                    pressed={theme === 'dark'}
-                    onPressedChange={toggleTheme}
-                    aria-label={theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
-                  >
-                    {theme === 'dark' ? (
-                      <Sun className="h-4 w-4" />
-                    ) : (
-                      <Moon className="h-4 w-4" />
-                    )}
-                    <span className="ml-2">
-                      {theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
-                    </span>
-                  </Toggle>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </AnimatedContainer>
-
-        <AnimatedContainer delay={300}>
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-2xl font-bold">Actions</CardTitle>

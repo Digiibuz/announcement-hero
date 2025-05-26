@@ -1,7 +1,7 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
-	darkMode: ["class"],
 	content: [
 		"./pages/**/*.{ts,tsx}",
 		"./components/**/*.{ts,tsx}",
@@ -67,8 +67,8 @@ export default {
 				},
 				digibuz: {
 					navy: '#0C1646',
-					yellow: '#FEC403', // Votre nouvelle couleur jaune
-					light: '#FBF4EF', // Votre nouveau fond
+					yellow: '#FEC403',
+					light: '#FBF4EF',
 					gray: '#8E9196',
 					accent: '#4A5568',
 					success: '#48BB78',
@@ -76,10 +76,10 @@ export default {
 					error: '#E53E3E',
 					info: '#4299E1'
 				},
-				'brand-orange': '#FEC403', // Mise à jour avec votre jaune
+				'brand-orange': '#FEC403',
 			},
 			backgroundColor: {
-				'brand-orange': '#FEC403', // Mise à jour avec votre jaune
+				'brand-orange': '#FEC403',
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

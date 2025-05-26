@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -49,45 +48,6 @@
     --sidebar-ring: 42 97% 50%;
   }
 
-  .dark {
-    --background: 222 47% 11%;
-    --foreground: 0 0% 98%;
-
-    --card: 222 47% 13%;
-    --card-foreground: 0 0% 98%;
-
-    --popover: 222 47% 13%;
-    --popover-foreground: 0 0% 98%;
-
-    --primary: 42 97% 50%; /* Garde le jaune en mode sombre */
-    --primary-foreground: 222 47% 11%;
-
-    --secondary: 222 47% 18%;
-    --secondary-foreground: 0 0% 98%;
-
-    --muted: 222 47% 18%;
-    --muted-foreground: 222 47% 80%;
-
-    --accent: 42 97% 50%;
-    --accent-foreground: 222 47% 11%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 222 47% 20%;
-    --input: 222 47% 20%;
-    --ring: 42 97% 50%;
-
-    --sidebar-background: 230 72% 13%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 42 97% 50%;
-    --sidebar-primary-foreground: 222 47% 11%;
-    --sidebar-accent: 230 40% 20%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 230 30% 18%;
-    --sidebar-ring: 42 97% 50%;
-  }
-
   * {
     @apply border-border;
   }
@@ -119,7 +79,7 @@
 
 @layer components {
   .glass-panel {
-    @apply bg-white/70 dark:bg-black/60 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-sm;
+    @apply bg-white/70 backdrop-blur-xl border border-white/20 shadow-sm;
   }
   
   .hover-scale {
@@ -144,7 +104,7 @@
   }
 
   .digiibuz-card {
-    @apply bg-white dark:bg-digibuz-navy/90 rounded-lg shadow-md border border-digibuz-light dark:border-digibuz-accent/20;
+    @apply bg-white rounded-lg shadow-md border border-digibuz-light;
   }
 
   .digiibuz-button-primary {
@@ -156,15 +116,15 @@
   }
 
   .digiibuz-button-outline {
-    @apply bg-transparent border border-digibuz-navy text-digibuz-navy hover:bg-digibuz-navy/10 rounded-md px-4 py-2 transition-colors dark:border-digibuz-light dark:text-digibuz-light;
+    @apply bg-transparent border border-digibuz-navy text-digibuz-navy hover:bg-digibuz-navy/10 rounded-md px-4 py-2 transition-colors;
   }
 
   .digiibuz-gradient-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-digibuz-navy to-digibuz-accent dark:from-digibuz-light dark:to-white;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-digibuz-navy to-digibuz-accent;
   }
 
   .digiibuz-panel {
-    @apply bg-digibuz-light/50 dark:bg-digibuz-navy/50 backdrop-blur-md rounded-lg p-6;
+    @apply bg-digibuz-light/50 backdrop-blur-md rounded-lg p-6;
   }
 
   .mobile-nav-button {
@@ -172,7 +132,7 @@
   }
   
   .back-button {
-    @apply bg-white dark:bg-gray-800 dark:text-white border-gray-300 text-gray-700;
+    @apply bg-white border-gray-300 text-gray-700;
   }
   
   .next-button {
@@ -189,7 +149,7 @@
   }
 }
 
-/* ... keep existing code (animations and utilities) */
+/* Animations and utilities */
 .animate-in {
   animation: fade-in 0.4s ease-out forwards;
 }
@@ -209,16 +169,4 @@
 
 .no-visible-scrollbar::-webkit-scrollbar {
   display: none;
-}
-
-.dark .text-muted-foreground {
-  color: rgba(214, 219, 230, 0.8);
-}
-
-.dark svg:not(.text-white):not(.text-destructive):not(.text-accent):not(.text-primary):not(.text-secondary) {
-  color: rgba(214, 219, 230, 0.85);
-}
-
-.dark .text-muted-foreground svg {
-  color: rgba(214, 219, 230, 0.85);
 }
