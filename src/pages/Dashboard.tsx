@@ -8,17 +8,19 @@ import RecentAnnouncements from "@/components/dashboard/RecentAnnouncements";
 import AdminAlerts from "@/components/dashboard/AdminAlerts";
 import DisconnectedSitesTable from "@/components/dashboard/DisconnectedSitesTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Clock, Calendar, Plus, Users, Server } from "lucide-react";
+import { FileText, Clock, Calendar, Plus, Users, Server, WifiOff } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import FloatingActionButton from "@/components/ui/FloatingActionButton";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { useAdminAlerts } from "@/hooks/useAdminAlerts";
 
 const Dashboard = () => {
   const { user, isAdmin } = useAuth();
   const { stats, isLoading } = useDashboardStats();
+  const { disconnectedSitesCount, isLoading: alertsLoading } = useAdminAlerts();
 
   // Simple greeting based on time of day
   const getGreeting = () => {
@@ -87,6 +89,15 @@ const Dashboard = () => {
                 className="card-shadow"
                 isLoading={isLoading}
               />
+              <DashboardCard
+                title="Sites déconnectés"
+                icon={<WifiOff size={20} className="dark:text-gray-200" />}
+                value={disconnectedSitesCount}
+                description="Sites WordPress"
+                to="/websites"
+                className="card-shadow"
+                isLoading={alertsLoading}
+              />
             </>
           ) : (
             // Client dashboard cards
@@ -132,17 +143,17 @@ const Dashboard = () => {
         </div>
       </AnimatedContainer>
 
-      {/* Admin Alerts Section */}
+      {/* Disconnected Sites Table for admins - moved before alerts */}
       {isAdmin && (
-        <AnimatedContainer delay={250}>
-          <AdminAlerts />
+        <AnimatedContainer delay={250} className="mt-8">
+          <DisconnectedSitesTable />
         </AnimatedContainer>
       )}
 
-      {/* Disconnected Sites Table for admins */}
+      {/* Admin Alerts Section - moved after disconnected sites */}
       {isAdmin && (
-        <AnimatedContainer delay={300} className="mt-8">
-          <DisconnectedSitesTable />
+        <AnimatedContainer delay={300}>
+          <AdminAlerts />
         </AnimatedContainer>
       )}
 
