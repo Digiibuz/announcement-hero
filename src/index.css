@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('./styles/sparkles.css');
+
 @layer base {
   html {
     font-family: 'Nunito', sans-serif;

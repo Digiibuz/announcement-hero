@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -9,6 +8,9 @@ import { Loader2, Sparkles, Search } from "lucide-react";
 import { AnnouncementFormData } from "../AnnouncementForm";
 import { UseFormReturn } from "react-hook-form";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
+import { cn } from "@/lib/utils";
+import SparklingStars from "@/components/ui/SparklingStars";
+import "@/styles/sparkles.css";
 
 interface SeoStepProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -19,6 +21,8 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const [seoTitleLength, setSeoTitleLength] = useState(0);
   const [seoDescriptionLength, setSeoDescriptionLength] = useState(0);
+  const [isHoveringSeoTitle, setIsHoveringSeoTitle] = useState(false);
+  const [isHoveringSeoDescription, setIsHoveringSeoDescription] = useState(false);
   
   useEffect(() => {
     // Mettre à jour les compteurs de caractères lors de l'initialisation et des changements
@@ -81,26 +85,33 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
               <FormItem>
                 <div className="flex justify-between items-center">
                   <FormLabel>Titre SEO</FormLabel>
-                  <Button 
-                    type="button" 
-                    size="sm" 
-                    variant="outline" 
-                    className="flex items-center gap-1 h-8"
-                    onClick={() => optimizeSeoContent('seoTitle')} 
-                    disabled={isOptimizing.seoTitle}
+                  <div 
+                    className="relative sparkle-container"
+                    onMouseEnter={() => setIsHoveringSeoTitle(true)}
+                    onMouseLeave={() => setIsHoveringSeoTitle(false)}
                   >
-                    {isOptimizing.seoTitle ? (
-                      <>
-                        <Loader2 size={14} className="animate-spin" />
-                        <span className="text-xs">Optimisation...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles size={14} />
-                        <span className="text-xs">Générer</span>
-                      </>
-                    )}
-                  </Button>
+                    <Button 
+                      type="button" 
+                      size="sm" 
+                      variant="outline" 
+                      className="flex items-center gap-1 h-8 relative overflow-hidden transition-all duration-300 hover:bg-purple-50 hover:border-purple-300"
+                      onClick={() => optimizeSeoContent('seoTitle')} 
+                      disabled={isOptimizing.seoTitle}
+                    >
+                      <SparklingStars isVisible={isHoveringSeoTitle && !isOptimizing.seoTitle} />
+                      {isOptimizing.seoTitle ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" />
+                          <span className="text-xs">Optimisation...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={14} className={cn("transition-colors duration-300", isHoveringSeoTitle && "text-purple-600")} />
+                          <span className={cn("text-xs transition-colors duration-300", isHoveringSeoTitle && "text-purple-600")}>Générer</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
                 <FormControl>
                   <div className="space-y-1">
@@ -135,26 +146,33 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
               <FormItem>
                 <div className="flex justify-between items-center">
                   <FormLabel>Méta description</FormLabel>
-                  <Button 
-                    type="button" 
-                    size="sm" 
-                    variant="outline" 
-                    className="flex items-center gap-1 h-8"
-                    onClick={() => optimizeSeoContent('seoDescription')} 
-                    disabled={isOptimizing.seoDescription}
+                  <div 
+                    className="relative sparkle-container"
+                    onMouseEnter={() => setIsHoveringSeoDescription(true)}
+                    onMouseLeave={() => setIsHoveringSeoDescription(false)}
                   >
-                    {isOptimizing.seoDescription ? (
-                      <>
-                        <Loader2 size={14} className="animate-spin" />
-                        <span className="text-xs">Optimisation...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles size={14} />
-                        <span className="text-xs">Générer</span>
-                      </>
-                    )}
-                  </Button>
+                    <Button 
+                      type="button" 
+                      size="sm" 
+                      variant="outline" 
+                      className="flex items-center gap-1 h-8 relative overflow-hidden transition-all duration-300 hover:bg-purple-50 hover:border-purple-300"
+                      onClick={() => optimizeSeoContent('seoDescription')} 
+                      disabled={isOptimizing.seoDescription}
+                    >
+                      <SparklingStars isVisible={isHoveringSeoDescription && !isOptimizing.seoDescription} />
+                      {isOptimizing.seoDescription ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" />
+                          <span className="text-xs">Optimisation...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={14} className={cn("transition-colors duration-300", isHoveringSeoDescription && "text-purple-600")} />
+                          <span className={cn("text-xs transition-colors duration-300", isHoveringSeoDescription && "text-purple-600")}>Générer</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
                 <FormControl>
                   <div className="space-y-1">

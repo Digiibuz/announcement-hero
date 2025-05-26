@@ -12,7 +12,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
 import useVoiceRecognition from "@/hooks/useVoiceRecognition";
+import SparklingStars from "@/components/ui/SparklingStars";
 import "@/styles/editor.css";
+import "@/styles/sparkles.css";
 
 interface DescriptionFieldProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -24,6 +26,8 @@ const DescriptionField = ({
   const [showLinkPopover, setShowLinkPopover] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
   const [linkText, setLinkText] = useState("");
+  const [isHoveringGenerate, setIsHoveringGenerate] = useState(false);
+  const [isHoveringOptimize, setIsHoveringOptimize] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const initialRenderRef = useRef(true);
@@ -190,24 +194,53 @@ const DescriptionField = ({
         <Label>Description</Label>
         
         <div className="flex gap-2">
-          <Button type="button" size="sm" variant="outline" className="flex items-center gap-1" onClick={generateNewContent} disabled={isOptimizing.generateDescription}>
-            {isOptimizing.generateDescription ? <>
-                <Loader2 size={16} className="animate-spin" />
-                <span>Génération...</span>
-              </> : <>
-                <Wand2 size={16} />
-                <span>Générer avec l'IA</span>
-              </>}
-          </Button>
-          <Button type="button" size="sm" variant="secondary" className="flex items-center gap-1" onClick={generateImprovedContent} disabled={isOptimizing.description}>
-            {isOptimizing.description ? <>
-                <Loader2 size={16} className="animate-spin" />
-                <span>Optimisation...</span>
-              </> : <>
-                <Sparkles size={16} />
-                <span>Optimiser avec l'IA</span>
-              </>}
-          </Button>
+          <div 
+            className="relative sparkle-container"
+            onMouseEnter={() => setIsHoveringGenerate(true)}
+            onMouseLeave={() => setIsHoveringGenerate(false)}
+          >
+            <Button 
+              type="button" 
+              size="sm" 
+              variant="outline" 
+              className="flex items-center gap-1 relative overflow-hidden transition-all duration-300 hover:bg-purple-50 hover:border-purple-300" 
+              onClick={generateNewContent} 
+              disabled={isOptimizing.generateDescription}
+            >
+              <SparklingStars isVisible={isHoveringGenerate && !isOptimizing.generateDescription} />
+              {isOptimizing.generateDescription ? <>
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Génération...</span>
+                </> : <>
+                  <Wand2 size={16} className={cn("transition-colors duration-300", isHoveringGenerate && "text-purple-600")} />
+                  <span className={cn("transition-colors duration-300", isHoveringGenerate && "text-purple-600")}>Générer avec l'IA</span>
+                </>}
+            </Button>
+          </div>
+          
+          <div 
+            className="relative sparkle-container"
+            onMouseEnter={() => setIsHoveringOptimize(true)}
+            onMouseLeave={() => setIsHoveringOptimize(false)}
+          >
+            <Button 
+              type="button" 
+              size="sm" 
+              variant="secondary" 
+              className="flex items-center gap-1 relative overflow-hidden transition-all duration-300 hover:bg-purple-50 hover:border-purple-300" 
+              onClick={generateImprovedContent} 
+              disabled={isOptimizing.description}
+            >
+              <SparklingStars isVisible={isHoveringOptimize && !isOptimizing.description} />
+              {isOptimizing.description ? <>
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Optimisation...</span>
+                </> : <>
+                  <Sparkles size={16} className={cn("transition-colors duration-300", isHoveringOptimize && "text-purple-600")} />
+                  <span className={cn("transition-colors duration-300", isHoveringOptimize && "text-purple-600")}>Optimiser avec l'IA</span>
+                </>}
+            </Button>
+          </div>
         </div>
       </div>
       
