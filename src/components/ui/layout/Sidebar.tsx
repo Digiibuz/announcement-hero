@@ -1,6 +1,7 @@
+
 "use client"
 
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useIsMobile } from "@/hooks/use-media-query";
@@ -18,7 +19,6 @@ import {
   Menu,
   UserCircle
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 
 const Sidebar = () => {
   const isMobile = useIsMobile();
@@ -26,9 +26,8 @@ const Sidebar = () => {
   const { user, logout, isLoading, isAuthenticated, isAdmin, isClient } = useAuth();
   const [isOpen, setIsOpen] = React.useState(false);
 
-  if (!isAuthenticated) return null;
-
-  const navItems = [
+  // Memoize navigation items to prevent unnecessary re-renders
+  const navItems = useMemo(() => [
     {
       name: "Mon Tableau de bord",
       href: "/dashboard",
@@ -47,9 +46,9 @@ const Sidebar = () => {
       icon: <Newspaper className="h-5 w-5" />,
       isActive: pathname === "/create",
     },
-  ];
+  ], [pathname]);
 
-  const adminItems = [
+  const adminItems = useMemo(() => [
     {
       name: "Gestion utilisateurs",
       href: "/users",
@@ -64,18 +63,20 @@ const Sidebar = () => {
       isActive: pathname === "/wordpress",
       adminOnly: false,
     },
-  ];
+  ], [pathname, isClient]);
 
-  const profileItems = [
+  const profileItems = useMemo(() => [
     {
       name: "Mon Profil",
       href: "/profile",
       icon: <UserCircle className="h-5 w-5" />,
       isActive: pathname === "/profile",
     }
-  ];
+  ], [pathname]);
 
-  const SidebarContent = () => (
+  if (!isAuthenticated) return null;
+
+  const SidebarContent = React.memo(() => (
     <>
       <div className="flex h-16 items-center px-6 border-b border-gray-100">
         <Link to="/dashboard" className="flex items-center gap-2">
@@ -170,7 +171,7 @@ const Sidebar = () => {
         </div>
       </div>
     </>
-  );
+  ));
 
   if (isMobile) {
     return (

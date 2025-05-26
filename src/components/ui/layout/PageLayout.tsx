@@ -2,7 +2,6 @@
 "use client"
 
 import React from "react";
-import Header from "@/components/ui/layout/Header";
 import Sidebar from "@/components/ui/layout/Sidebar";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -32,7 +31,7 @@ const PageLayout = ({
   isLoading = false
 }: PageLayoutProps) => {
   const isMobile = useMediaQuery("(max-width: 767px)");
-  const { isAdmin, isClient, isImpersonating } = useAuth();
+  const { isAdmin, isClient, isImpersonating, isAuthenticated } = useAuth();
   const location = useLocation();
   
   const isAdminPage = location.pathname === '/users' || location.pathname === '/wordpress';
@@ -58,10 +57,10 @@ const PageLayout = ({
 
   return (
     <div className="min-h-screen bg-digibuz-light">
-      <Header />
-      <Sidebar />
+      {/* Only render Sidebar for authenticated users */}
+      {isAuthenticated && <Sidebar />}
 
-      <main className={`pt-16 md:pl-64 ${bannerPadding}`}>
+      <main className={`${isAuthenticated ? 'pt-16 md:pl-64' : 'pt-16'} ${bannerPadding}`}>
         <div className={`container ${fullWidthMobile && isMobile ? 'px-0 sm:px-4' : 'px-4'} py-0 ${isCreateAnnouncementPage && !isMobile ? 'max-w-3xl mx-auto' : ''} ${containerClassName || ''}`}>
           {(title || titleAction || showRefreshButton) && (
             <AnimatedContainer delay={100} className={containerClassName?.includes('max-w-full') ? 'w-full' : ''}>
