@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,10 +37,17 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
   const allConfigIds = [...selectedConfigIds, ...wpConfigIds];
   const assignedConfig = configs.find(config => allConfigIds.includes(config.id));
   
-  // État local pour le menu déroulant
-  const [selectedConfigId, setSelectedConfigId] = useState<string>(
-    assignedConfig?.id || "none"
-  );
+  // État local pour le menu déroulant - initialiser avec la config assignée
+  const [selectedConfigId, setSelectedConfigId] = useState<string>("none");
+
+  // Mettre à jour selectedConfigId quand la config assignée change
+  useEffect(() => {
+    if (assignedConfig?.id) {
+      setSelectedConfigId(assignedConfig.id);
+    } else {
+      setSelectedConfigId("none");
+    }
+  }, [assignedConfig?.id]);
 
   console.log("WordPressConfigTab - Debug:", {
     selectedConfigIds,
@@ -58,6 +65,7 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
 
   // Update form when dropdown selection changes
   const handleConfigChange = (value: string) => {
+    console.log("WordPressConfigTab - Config change:", { value, previousValue: selectedConfigId });
     setSelectedConfigId(value);
     if (value && value !== "none") {
       form.setValue("wpConfigIds", [value]);

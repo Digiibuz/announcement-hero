@@ -44,10 +44,30 @@ export const useUserEditForm = (
     : [];
 
   useEffect(() => {
-    if (user.role === "client" && selectedConfigIds.length > 0) {
-      form.setValue("wpConfigIds", selectedConfigIds);
+    console.log("useUserEditForm - Setting up wpConfigIds:", {
+      userRole: user.role,
+      userWordpressConfigId: user.wordpressConfigId,
+      selectedConfigIds,
+      clientId: user.clientId
+    });
+
+    // Pour les clients, on utilise soit l'association client-config, soit le wordpressConfigId direct
+    if (user.role === "client") {
+      let configIds: string[] = [];
+      
+      // Priorité aux associations client-config
+      if (selectedConfigIds.length > 0) {
+        configIds = selectedConfigIds;
+      } 
+      // Sinon utiliser le wordpressConfigId direct
+      else if (user.wordpressConfigId) {
+        configIds = [user.wordpressConfigId];
+      }
+      
+      console.log("useUserEditForm - Final configIds for client:", configIds);
+      form.setValue("wpConfigIds", configIds);
     }
-  }, [selectedConfigIds, user.role, form]);
+  }, [selectedConfigIds, user.role, user.wordpressConfigId, user.clientId, form]);
 
   const handleSubmit = async (data: UserEditFormData) => {
     try {
