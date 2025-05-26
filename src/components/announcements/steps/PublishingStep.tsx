@@ -30,6 +30,13 @@ const PublishingStep = ({
     }
     return "border shadow-sm";
   };
+
+  // Calculer la date de remise à zéro (1er du mois suivant)
+  const getResetDate = () => {
+    const now = new Date();
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    return format(nextMonth, "dd/MM/yyyy");
+  };
   
   return (
     <div className="max-w-3xl mx-auto">
@@ -79,7 +86,9 @@ const PublishingStep = ({
                 <FormDescription>
                   {!canPublish() ? (
                     <span className="text-orange-600">
-                      Limite de {stats.maxLimit} publications atteinte ce mois-ci. Seuls les brouillons peuvent être enregistrés.
+                      Limite de {stats.maxLimit} publications atteinte ce mois-ci. 
+                      Remise à zéro le {getResetDate()}. 
+                      Seuls les brouillons peuvent être enregistrés.
                     </span>
                   ) : (
                     "Les brouillons peuvent être enregistrés maintenant et finalisés plus tard. Utilisez le bouton \"Enregistrer brouillon\" en bas de page."

@@ -10,6 +10,7 @@ import { Announcement } from "@/types/announcement";
 import { LoadingIndicator } from "@/components/ui/loading-indicator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle } from "lucide-react";
+import { format } from "date-fns";
 
 const AnnouncementDetail = () => {
   const { user } = useAuth();
@@ -38,6 +39,13 @@ const AnnouncementDetail = () => {
     />
   ) : null;
 
+  // Calculer la date de remise à zéro (1er du mois suivant)
+  const getResetDate = () => {
+    const now = new Date();
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    return format(nextMonth, "dd/MM/yyyy");
+  };
+
   return (
     <PageLayout title={isLoading ? "Chargement..." : announcement?.title} titleAction={titleAction}>
       <AnimatedContainer delay={200}>
@@ -55,8 +63,11 @@ const AnnouncementDetail = () => {
                 <p className="text-orange-700 mb-2">
                   Vous avez publié {publicationStats.publishedCount}/{publicationStats.maxLimit} annonces ce mois-ci.
                 </p>
-                <p className="text-orange-600 text-sm">
+                <p className="text-orange-600 text-sm mb-1">
                   Vous ne pouvez plus publier d'annonces ce mois-ci. Les modifications seront sauvegardées en brouillon.
+                </p>
+                <p className="text-orange-600 text-sm font-medium">
+                  Remise à zéro le {getResetDate()}.
                 </p>
               </CardContent>
             </Card>

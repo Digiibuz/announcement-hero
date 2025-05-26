@@ -22,6 +22,13 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
   const { categories, isLoading: isCategoriesLoading, error: categoriesError, hasCategories } = useWordPressCategories();
   const { canPublish, stats } = usePublicationLimits();
   
+  // Calculer la date de remise à zéro (1er du mois suivant)
+  const getResetDate = () => {
+    const now = new Date();
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    return format(nextMonth, "dd/MM/yyyy");
+  };
+  
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <FormField
@@ -111,7 +118,7 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
             </Select>
             {!canPublish() && (
               <p className="text-sm text-orange-600 mt-1">
-                Limite de {stats.maxLimit} publications atteinte ce mois-ci
+                Limite de {stats.maxLimit} publications atteinte ce mois-ci. Remise à zéro le {getResetDate()}.
               </p>
             )}
             <FormMessage />
