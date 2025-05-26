@@ -148,14 +148,14 @@ const PublicationLimitsField: React.FC<PublicationLimitsFieldProps> = ({
             Définit le nombre maximum de publications autorisées par mois
           </p>
 
-          {/* Reset counter button */}
+          {/* Reset counter button - Always visible for testing */}
           <div className="pt-2 border-t">
             <Label className="text-sm font-medium mb-2 block">
               Actions
             </Label>
             <Button
               onClick={handleResetCount}
-              disabled={isResetting || isUpdating || stats.publishedCount === 0}
+              disabled={isResetting || isUpdating}
               size="sm"
               variant="outline"
               className="w-full"
