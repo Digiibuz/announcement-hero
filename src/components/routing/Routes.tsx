@@ -9,6 +9,7 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/NotFound";
 import Dashboard from "@/pages/Dashboard";
+import { LoadingIndicator } from "@/components/ui/loading-indicator";
 
 // Lazy loaded components
 const Announcements = lazy(() => import('@/pages/Announcements'));
@@ -20,11 +21,26 @@ const UserProfile = lazy(() => import('@/pages/UserProfile'));
 const GoogleBusinessPage = lazy(() => import('@/pages/GoogleBusinessPage'));
 const WebsiteManagement = lazy(() => import('@/pages/WebsiteManagement'));
 
+// Composant de fallback amélioré avec debug
+const LazyLoadFallback = ({ componentName }: { componentName?: string }) => {
+  console.log(`Loading component: ${componentName || 'Unknown'}`);
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-digibuz-light">
+      <div className="text-center">
+        <LoadingIndicator variant="dots" size={42} />
+        <p className="mt-4 text-muted-foreground">
+          Chargement{componentName ? ` de ${componentName}` : ''}...
+        </p>
+      </div>
+    </div>
+  );
+};
+
 const AppRoutes = () => {
   const { isAuthenticated, isOnResetPasswordPage } = useAuth();
 
   return (
-    <Suspense fallback={<div>Chargement...</div>}>
+    <Suspense fallback={<LazyLoadFallback />}>
       <RouterRoutes>
         {/* Public routes */}
         <Route 
@@ -58,7 +74,9 @@ const AppRoutes = () => {
           path="/announcements" 
           element={
             <ProtectedRoute>
-              <Announcements />
+              <Suspense fallback={<LazyLoadFallback componentName="Annonces" />}>
+                <Announcements />
+              </Suspense>
             </ProtectedRoute>
           } 
         />
@@ -66,7 +84,9 @@ const AppRoutes = () => {
           path="/announcements/:id" 
           element={
             <ProtectedRoute>
-              <AnnouncementDetail />
+              <Suspense fallback={<LazyLoadFallback componentName="Détail de l'annonce" />}>
+                <AnnouncementDetail />
+              </Suspense>
             </ProtectedRoute>
           } 
         />
@@ -74,7 +94,9 @@ const AppRoutes = () => {
           path="/create" 
           element={
             <ProtectedRoute>
-              <CreateAnnouncement />
+              <Suspense fallback={<LazyLoadFallback componentName="Création d'annonce" />}>
+                <CreateAnnouncement />
+              </Suspense>
             </ProtectedRoute>
           } 
         />
@@ -82,7 +104,9 @@ const AppRoutes = () => {
           path="/profile" 
           element={
             <ProtectedRoute>
-              <UserProfile />
+              <Suspense fallback={<LazyLoadFallback componentName="Profil" />}>
+                <UserProfile />
+              </Suspense>
             </ProtectedRoute>
           } 
         />
@@ -92,7 +116,9 @@ const AppRoutes = () => {
           path="/wordpress" 
           element={
             <AdminRoute>
-              <WordPressManagement />
+              <Suspense fallback={<LazyLoadFallback componentName="Gestion WordPress" />}>
+                <WordPressManagement />
+              </Suspense>
             </AdminRoute>
           } 
         />
@@ -100,7 +126,9 @@ const AppRoutes = () => {
           path="/users" 
           element={
             <AdminRoute adminOnly>
-              <UserManagement />
+              <Suspense fallback={<LazyLoadFallback componentName="Gestion des utilisateurs" />}>
+                <UserManagement />
+              </Suspense>
             </AdminRoute>
           } 
         />
@@ -108,7 +136,9 @@ const AppRoutes = () => {
           path="/websites" 
           element={
             <AdminRoute adminOnly>
-              <WebsiteManagement />
+              <Suspense fallback={<LazyLoadFallback componentName="Gestion des sites web" />}>
+                <WebsiteManagement />
+              </Suspense>
             </AdminRoute>
           } 
         />
@@ -116,7 +146,9 @@ const AppRoutes = () => {
           path="/google-business" 
           element={
             <ProtectedRoute>
-              <GoogleBusinessPage />
+              <Suspense fallback={<LazyLoadFallback componentName="Google Business" />}>
+                <GoogleBusinessPage />
+              </Suspense>
             </ProtectedRoute>
           } 
         />

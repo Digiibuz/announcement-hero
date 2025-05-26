@@ -31,7 +31,7 @@ const PageLayout = ({
   isLoading = false
 }: PageLayoutProps) => {
   const isMobile = useMediaQuery("(max-width: 767px)");
-  const { isAdmin, isClient, isImpersonating, isAuthenticated } = useAuth();
+  const { isAdmin, isClient, isImpersonating, isAuthenticated, isLoading: authLoading } = useAuth();
   const location = useLocation();
   
   const isAdminPage = location.pathname === '/users' || location.pathname === '/wordpress';
@@ -47,13 +47,35 @@ const PageLayout = ({
 
   const bannerPadding = isImpersonating ? "pt-12" : "";
 
-  if (isLoading) {
+  console.log('PageLayout - State:', {
+    isLoading,
+    authLoading,
+    isAuthenticated,
+    pathname: location.pathname,
+    title
+  });
+
+  // Si l'authentification est en cours de chargement, afficher le loader
+  if (authLoading) {
+    console.log('PageLayout - Auth loading');
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-digibuz-light">
         <LoadingIndicator variant="dots" size={42} />
       </div>
     );
   }
+
+  // Si la page spécifique est en cours de chargement
+  if (isLoading) {
+    console.log('PageLayout - Page loading');
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-digibuz-light">
+        <LoadingIndicator variant="dots" size={42} />
+      </div>
+    );
+  }
+
+  console.log('PageLayout - Rendering content');
 
   return (
     <div className="min-h-screen bg-digibuz-light">

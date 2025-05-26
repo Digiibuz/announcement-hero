@@ -7,9 +7,20 @@ const AdminRoute = ({ children, adminOnly = false }: { children: React.ReactNode
   const { isAuthenticated, isLoading, isAdmin, isClient, isOnResetPasswordPage } = useAuth();
   const location = useLocation();
 
+  console.log('AdminRoute - State:', {
+    isAuthenticated,
+    isLoading,
+    isAdmin,
+    isClient,
+    adminOnly,
+    isOnResetPasswordPage,
+    pathname: location.pathname
+  });
+
   if (isLoading) {
+    console.log('AdminRoute - Showing loading state');
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-digibuz-light">
         <LoadingIndicator variant="dots" size={42} />
       </div>
     );
@@ -18,19 +29,24 @@ const AdminRoute = ({ children, adminOnly = false }: { children: React.ReactNode
   if (!isAuthenticated && !isOnResetPasswordPage) {
     const hasRecoveryToken = window.location.hash.includes('type=recovery');
     if (location.pathname === '/reset-password' && hasRecoveryToken) {
+      console.log('AdminRoute - Allowing reset password with recovery token');
       return <>{children}</>;
     }
+    console.log('AdminRoute - Redirecting to login');
     return <Navigate to="/login" replace />;
   }
 
   if (!isAdmin && !isClient && !isOnResetPasswordPage) {
+    console.log('AdminRoute - User not admin or client, redirecting to dashboard');
     return <Navigate to="/dashboard" replace />;
   }
 
   if (adminOnly && !isAdmin) {
+    console.log('AdminRoute - Admin only route but user is not admin, redirecting to dashboard');
     return <Navigate to="/dashboard" replace />;
   }
 
+  console.log('AdminRoute - Rendering admin content');
   return <>{children}</>;
 };
 
