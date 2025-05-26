@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -184,18 +185,67 @@ const PublicationCounter = ({ className }: PublicationCounterProps) => {
           <span className="text-xl text-muted-foreground">/{stats.maxLimit}</span>
         </div>
 
-        {/* Progress bar with custom styling */}
+        {/* Animated Progress bar */}
         <div className="space-y-2">
-          <div className="relative w-full bg-gray-100 rounded-full h-3">
+          <div className="relative w-full bg-gray-100 rounded-full h-4 overflow-hidden shadow-inner">
+            {/* Animated background pattern */}
+            <div 
+              className="absolute inset-0 opacity-20"
+              style={{
+                background: 'repeating-linear-gradient(90deg, transparent, transparent 10px, rgba(255,255,255,0.3) 10px, rgba(255,255,255,0.3) 20px)',
+                animation: 'slide-bg 2s linear infinite'
+              }}
+            />
+            
+            {/* Main progress bar with enhanced animation */}
             <div 
               className={cn(
-                "h-full rounded-full transition-all duration-500",
-                statusColor === "green" && "bg-gradient-to-r from-green-500 to-emerald-500",
-                statusColor === "orange" && "bg-gradient-to-r from-orange-500 to-amber-500",
-                statusColor === "red" && "bg-gradient-to-r from-red-500 to-rose-500"
+                "h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden",
+                statusColor === "green" && "bg-gradient-to-r from-green-400 via-green-500 to-emerald-600",
+                statusColor === "orange" && "bg-gradient-to-r from-orange-400 via-orange-500 to-amber-600",
+                statusColor === "red" && "bg-gradient-to-r from-red-400 via-red-500 to-rose-600",
+                isHovering && "animate-pulse"
               )}
-              style={{ width: `${percentage}%` }}
-            />
+              style={{ 
+                width: `${percentage}%`,
+                boxShadow: `0 0 10px ${
+                  statusColor === "green" ? "rgba(34, 197, 94, 0.4)" :
+                  statusColor === "orange" ? "rgba(249, 115, 22, 0.4)" :
+                  "rgba(239, 68, 68, 0.4)"
+                }`
+              }}
+            >
+              {/* Shimmer effect */}
+              <div 
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                style={{
+                  animation: 'shimmer 2s ease-in-out infinite',
+                  transform: 'translateX(-100%)'
+                }}
+              />
+              
+              {/* Pulse dots on high progress */}
+              {percentage >= 70 && (
+                <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                  <div className="w-2 h-2 bg-white/80 rounded-full animate-ping" />
+                </div>
+              )}
+            </div>
+
+            {/* Glowing border effect on hover */}
+            {isHovering && (
+              <div 
+                className={cn(
+                  "absolute inset-0 rounded-full border-2 opacity-70",
+                  statusColor === "green" && "border-green-400",
+                  statusColor === "orange" && "border-orange-400",
+                  statusColor === "red" && "border-red-400"
+                )}
+                style={{
+                  animation: 'glow-pulse 1.5s ease-in-out infinite'
+                }}
+              />
+            )}
           </div>
         </div>
 
@@ -228,6 +278,31 @@ const PublicationCounter = ({ className }: PublicationCounterProps) => {
           </div>
         )}
       </CardContent>
+
+      {/* Custom CSS for animations */}
+      <style jsx>{`
+        @keyframes slide-bg {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+        
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          50% { transform: translateX(100%); }
+          100% { transform: translateX(100%); }
+        }
+        
+        @keyframes glow-pulse {
+          0%, 100% { 
+            box-shadow: 0 0 5px currentColor;
+            opacity: 0.7;
+          }
+          50% { 
+            box-shadow: 0 0 15px currentColor;
+            opacity: 1;
+          }
+        }
+      `}</style>
     </Card>
   );
 };
