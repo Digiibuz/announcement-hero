@@ -50,8 +50,8 @@ const AIGenerationOptions = ({ settings, onSettingsChange }: AIGenerationOptions
               </SelectTrigger>
               <SelectContent>
                 {toneOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <div>
+                  <SelectItem key={option.value} value={option.value} className="px-2 py-3">
+                    <div className="w-full">
                       <div className="font-medium">{option.label}</div>
                       <div className="text-xs text-muted-foreground">{option.description}</div>
                     </div>
@@ -71,8 +71,8 @@ const AIGenerationOptions = ({ settings, onSettingsChange }: AIGenerationOptions
               </SelectTrigger>
               <SelectContent>
                 {lengthOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <div>
+                  <SelectItem key={option.value} value={option.value} className="px-2 py-3">
+                    <div className="w-full">
                       <div className="font-medium">{option.label}</div>
                       <div className="text-xs text-muted-foreground">{option.description}</div>
                     </div>
