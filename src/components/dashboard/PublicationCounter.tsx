@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -12,8 +11,19 @@ interface PublicationCounterProps {
   className?: string;
 }
 
+interface StarTrail {
+  id: number;
+  x: number;
+  y: number;
+  opacity: number;
+  scale: number;
+}
+
 const PublicationCounter = ({ className }: PublicationCounterProps) => {
   const [isHovering, setIsHovering] = useState(false);
+  const [starTrails, setStarTrails] = useState<StarTrail[]>([]);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const starIdRef = useRef(0);
   const { 
     stats, 
     isLoading, 
@@ -33,6 +43,49 @@ const PublicationCounter = ({ className }: PublicationCounterProps) => {
   };
 
   const shouldShowSparkles = percentage >= 80 || badgeText === "Expert";
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current || !isHovering) return;
+
+    const rect = cardRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const newStar: StarTrail = {
+      id: starIdRef.current++,
+      x,
+      y,
+      opacity: 1,
+      scale: Math.random() * 0.5 + 0.5,
+    };
+
+    setStarTrails(prev => [...prev.slice(-8), newStar]);
+
+    // Fade out stars gradually
+    setTimeout(() => {
+      setStarTrails(prev => 
+        prev.map(star => 
+          star.id === newStar.id 
+            ? { ...star, opacity: 0.7, scale: star.scale * 0.8 }
+            : star
+        )
+      );
+    }, 50);
+
+    setTimeout(() => {
+      setStarTrails(prev => 
+        prev.map(star => 
+          star.id === newStar.id 
+            ? { ...star, opacity: 0.4, scale: star.scale * 0.6 }
+            : star
+        )
+      );
+    }, 150);
+
+    setTimeout(() => {
+      setStarTrails(prev => prev.filter(star => star.id !== newStar.id));
+    }, 300);
+  }, [isHovering]);
 
   if (isLoading) {
     return (
@@ -55,14 +108,36 @@ const PublicationCounter = ({ className }: PublicationCounterProps) => {
 
   return (
     <Card 
+      ref={cardRef}
       className={cn(
         "relative overflow-hidden transition-all duration-300", 
         getCardBorderClass(),
         className
       )}
       onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
+      onMouseLeave={() => {
+        setIsHovering(false);
+        setStarTrails([]);
+      }}
+      onMouseMove={handleMouseMove}
     >
+      {/* Star Trail Effect */}
+      {starTrails.map((star) => (
+        <div
+          key={star.id}
+          className="absolute pointer-events-none z-10"
+          style={{
+            left: star.x - 4,
+            top: star.y - 4,
+            opacity: star.opacity,
+            transform: `scale(${star.scale})`,
+            transition: 'opacity 0.3s ease-out, transform 0.3s ease-out',
+          }}
+        >
+          <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full animate-pulse" />
+        </div>
+      ))}
+
       {/* Sparkles effect for high achievers */}
       {shouldShowSparkles && (
         <div className="absolute inset-0 pointer-events-none">
