@@ -11,9 +11,11 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import FloatingActionButton from "@/components/ui/FloatingActionButton";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
 
 const Dashboard = () => {
   const { user, isAdmin } = useAuth();
+  const { stats, isLoading } = useDashboardStats();
 
   // Simple greeting based on time of day
   const getGreeting = () => {
@@ -56,26 +58,29 @@ const Dashboard = () => {
               <DashboardCard
                 title="Utilisateurs"
                 icon={<Users size={20} className="dark:text-gray-200" />}
-                value={0}
+                value={stats.totalUsers}
                 description="Comptes utilisateurs"
                 to="/users"
                 className="card-shadow"
+                isLoading={isLoading}
               />
               <DashboardCard
                 title="WordPress"
                 icon={<Server size={20} className="dark:text-gray-200" />}
-                value={0}
+                value={stats.totalWordPressConfigs}
                 description="Configurations WordPress"
                 to="/wordpress"
                 className="card-shadow"
+                isLoading={isLoading}
               />
               <DashboardCard
                 title="Annonces"
                 icon={<FileText size={20} className="dark:text-gray-200" />}
-                value={0}
+                value={stats.totalAnnouncements}
                 description="Toutes plateformes"
                 to="/announcements"
                 className="card-shadow"
+                isLoading={isLoading}
               />
             </>
           ) : (
@@ -84,34 +89,38 @@ const Dashboard = () => {
               <DashboardCard
                 title="Publiées"
                 icon={<FileText size={20} className="dark:text-gray-200" />}
-                value={0}
+                value={stats.publishedAnnouncements}
                 description="Annonces actives"
                 to="/announcements?status=published"
                 className="card-shadow"
+                isLoading={isLoading}
               />
               <DashboardCard
                 title="Programmées"
                 icon={<Clock size={20} className="dark:text-gray-200" />}
-                value={0}
+                value={stats.scheduledAnnouncements}
                 description="Publications à venir"
                 to="/announcements?status=scheduled"
                 className="card-shadow"
+                isLoading={isLoading}
               />
               <DashboardCard
                 title="Brouillons"
                 icon={<FileText size={20} className="dark:text-gray-200" />}
-                value={0}
+                value={stats.draftAnnouncements}
                 description="En cours de rédaction"
                 to="/announcements?status=draft"
                 className="card-shadow"
+                isLoading={isLoading}
               />
               <DashboardCard
                 title="Total"
                 icon={<FileText size={20} className="dark:text-gray-200" />}
-                value={0}
+                value={stats.totalAnnouncements}
                 description="Toutes les annonces"
                 to="/announcements"
                 className="card-shadow"
+                isLoading={isLoading}
               />
             </>
           )}
