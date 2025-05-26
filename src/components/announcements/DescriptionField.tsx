@@ -1,8 +1,9 @@
+
 import React, { useRef, useState, useEffect } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Loader2, Sparkles, Wand2, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Link, Mic, MicOff } from "lucide-react";
+import { Loader2, Sparkles, Wand2, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Link, Mic, MicOff, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
@@ -13,6 +14,7 @@ import { useContentOptimization } from "@/hooks/useContentOptimization";
 import useVoiceRecognition from "@/hooks/useVoiceRecognition";
 import SparklingStars from "@/components/ui/SparklingStars";
 import AILoadingOverlay from "@/components/ui/AILoadingOverlay";
+import AIGenerationOptions, { AIGenerationSettings } from "./AIGenerationOptions";
 import "@/styles/editor.css";
 import "@/styles/sparkles.css";
 
@@ -27,6 +29,11 @@ const DescriptionField = ({
   const [linkUrl, setLinkUrl] = useState("");
   const [linkText, setLinkText] = useState("");
   const [isHoveringGenerate, setIsHoveringGenerate] = useState(false);
+  const [showAIOptions, setShowAIOptions] = useState(false);
+  const [aiSettings, setAISettings] = useState<AIGenerationSettings>({
+    tone: "convivial",
+    length: "standard"
+  });
   const editorRef = useRef<HTMLDivElement>(null);
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const initialRenderRef = useRef(true);
@@ -98,7 +105,8 @@ const DescriptionField = ({
       const generatedContent = await optimizeContent(
         "generateDescription", 
         currentTitle, 
-        currentDescription
+        currentDescription,
+        aiSettings
       );
       
       if (generatedContent && editorRef.current) {
@@ -221,6 +229,40 @@ const DescriptionField = ({
                 </>}
             </Button>
           </div>
+
+          <Popover open={showAIOptions} onOpenChange={setShowAIOptions}>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <PopoverTrigger asChild>
+                    <Button 
+                      type="button" 
+                      size="sm" 
+                      variant="outline"
+                      className="flex items-center gap-1"
+                    >
+                      <Settings size={16} />
+                    </Button>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Options de génération IA</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <PopoverContent className="w-[500px]" align="end">
+              <div className="space-y-3">
+                <h4 className="font-medium leading-none">Personnaliser la génération IA</h4>
+                <p className="text-sm text-muted-foreground">
+                  Ajustez le ton et la longueur du contenu généré selon vos besoins.
+                </p>
+                <AIGenerationOptions 
+                  settings={aiSettings}
+                  onSettingsChange={setAISettings}
+                />
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
       

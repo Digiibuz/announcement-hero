@@ -2,6 +2,7 @@
 import { useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { AIGenerationSettings } from "@/components/announcements/AIGenerationOptions";
 
 export type OptimizationType = "description" | "seoTitle" | "seoDescription" | "generateDescription";
 
@@ -16,7 +17,8 @@ export const useContentOptimization = () => {
   const optimizeContent = useCallback(async (
     type: OptimizationType,
     title: string,
-    description: string
+    description: string,
+    aiSettings?: AIGenerationSettings
   ): Promise<string | null> => {
     setIsOptimizing(prev => ({ ...prev, [type]: true }));
     
@@ -35,7 +37,7 @@ export const useContentOptimization = () => {
       }
       
       const { data, error } = await supabase.functions.invoke("optimize-content", {
-        body: { type, title, description }
+        body: { type, title, description, aiSettings }
       });
       
       console.log("Réponse de la fonction optimize-content:", data, error);

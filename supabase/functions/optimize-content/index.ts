@@ -18,11 +18,14 @@ serve(async (req) => {
   try {
     console.log("Fonction optimize-content appelée");
     
-    const { type, title, description } = await req.json();
+    const { type, title, description, aiSettings } = await req.json();
     
     console.log(`Paramètres reçus - Type: ${type}, Titre: "${title.substring(0, 20)}..."`);
     if (description) {
       console.log(`Description: "${description.substring(0, 30)}..."`);
+    }
+    if (aiSettings) {
+      console.log(`Options IA: Ton=${aiSettings.tone}, Longueur=${aiSettings.length}`);
     }
     
     let prompt = "";
@@ -35,15 +38,20 @@ serve(async (req) => {
         prompt = `Voici un contenu à améliorer: "${description}". Reprend ce texte et améliore seulement les tournures de phrase. Ne change pas le sens du texte, ne rajoute pas d'informations supplémentaires, n'ajoute pas de titre, ne mets aucun mot en gras, ne crée pas d'exemples, n'ajoute pas d'icônes, et ne change pas le formatage original. Ne commence pas ta réponse par une phrase d'introduction et n'ajoute pas de commentaires à la fin.`;
         break;
       case "generateDescription":
-        systemMessage = "Tu es un rédacteur professionnel spécialisé dans la création de contenu pour des annonces. Rédige un texte informatif, structuré et engageant d'environ 200 mots basé sur le titre fourni. IMPORTANT: Fournis UNIQUEMENT le texte généré, sans préface ni commentaire.";
+        // Définir les paramètres selon les options IA
+        const toneInstructions = getToneInstructions(aiSettings?.tone || "convivial");
+        const lengthInstructions = getLengthInstructions(aiSettings?.length || "standard");
+        
+        systemMessage = `Tu es un rédacteur professionnel spécialisé dans la création de contenu pour des annonces. Rédige un texte informatif, structuré et engageant ${lengthInstructions.target} basé sur le titre fourni. ${toneInstructions.system} IMPORTANT: Fournis UNIQUEMENT le texte généré, sans préface ni commentaire.`;
+        
         prompt = `Titre de l'annonce: "${title}".
         ${description ? `Voici un exemple de contenu ou notes: "${description}"` : ""}
         
-        Rédige un texte structuré, informatif et engageant d'environ 200 mots qui servira de description pour cette annonce. 
+        Rédige un texte structuré, informatif et engageant ${lengthInstructions.target} qui servira de description pour cette annonce. 
         Ton texte doit:
         - Avoir une structure claire avec des paragraphes
-        - Inclure des points importants qui valorisent l'annonce
-        - Utiliser un ton professionnel mais chaleureux
+        - ${toneInstructions.style}
+        - ${lengthInstructions.structure}
         - Ne pas contenir de titre ni sous-titres
         - Ne pas inclure de formatage spécial (pas de gras, italique...)
         
@@ -171,3 +179,52 @@ serve(async (req) => {
     });
   }
 });
+
+// Fonctions utilitaires pour les instructions de ton
+function getToneInstructions(tone: string) {
+  switch (tone) {
+    case "professionnel":
+      return {
+        system: "Adopte un ton professionnel, formel et expertisé.",
+        style: "Utiliser un vocabulaire technique approprié et un ton formel qui inspire confiance"
+      };
+    case "commercial":
+      return {
+        system: "Adopte un ton commercial, persuasif et vendeur.",
+        style: "Inclure des arguments de vente convaincants et des appels à l'action motivants"
+      };
+    case "informatif":
+      return {
+        system: "Adopte un ton informatif, neutre et descriptif.",
+        style: "Présenter les informations de manière factuelle et objective, sans langue de bois"
+      };
+    case "convivial":
+    default:
+      return {
+        system: "Adopte un ton convivial, chaleureux et accessible.",
+        style: "Utiliser un langage accessible et chaleureux qui met en confiance"
+      };
+  }
+}
+
+// Fonctions utilitaires pour les instructions de longueur
+function getLengthInstructions(length: string) {
+  switch (length) {
+    case "concis":
+      return {
+        target: "d'environ 100 mots",
+        structure: "Aller à l'essentiel avec des phrases courtes et percutantes"
+      };
+    case "detaille":
+      return {
+        target: "d'environ 300 mots",
+        structure: "Développer en détail avec des exemples concrets et des bénéfices clients"
+      };
+    case "standard":
+    default:
+      return {
+        target: "d'environ 200 mots",
+        structure: "Équilibrer les informations importantes avec une lecture fluide"
+      };
+  }
+}
