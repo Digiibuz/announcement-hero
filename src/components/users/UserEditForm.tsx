@@ -1,6 +1,6 @@
 
 import React from "react";
-import { UserCog } from "lucide-react";
+import { UserCog, Key } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserProfile } from "@/types/auth";
 import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
@@ -20,6 +20,7 @@ interface UserEditFormProps {
   user: UserProfile;
   onUserUpdated: (userId: string, userData: Partial<UserProfile>) => Promise<void>;
   onDeleteUser?: (userId: string) => Promise<void>;
+  onResetPassword?: (email: string) => void;
   isUpdating: boolean;
   isDeleting?: boolean;
   isDialogOpen?: boolean;
@@ -30,6 +31,7 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
   user, 
   onUserUpdated,
   onDeleteUser,
+  onResetPassword,
   isUpdating,
   isDeleting = false,
   isDialogOpen: externalIsDialogOpen,
@@ -76,6 +78,12 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
   const isDialogOpen = externalIsDialogOpen !== undefined ? externalIsDialogOpen : internalIsDialogOpen;
   const setIsDialogOpen = externalSetIsDialogOpen !== undefined ? externalSetIsDialogOpen : internalSetIsDialogOpen;
 
+  const handleResetPasswordClick = () => {
+    if (onResetPassword) {
+      onResetPassword(user.email);
+    }
+  };
+
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       {!externalIsDialogOpen && (
@@ -107,7 +115,18 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
             selectedConfigIds={selectedConfigIds}
           />
           
-          <div className="flex justify-between">
+          <div className="flex flex-col gap-3 pt-4 border-t">
+            {onResetPassword && (
+              <Button 
+                variant="outline" 
+                onClick={handleResetPasswordClick}
+                className="w-full"
+              >
+                <Key className="h-4 w-4 mr-2" />
+                Réinitialiser le mot de passe
+              </Button>
+            )}
+            
             {onDeleteUser && (
               <DeleteUserDialog
                 isOpen={confirmDeleteOpen}
@@ -116,7 +135,6 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
                 onDelete={handleDeleteUser}
               />
             )}
-            <div></div>
           </div>
         </div>
       </DialogContent>

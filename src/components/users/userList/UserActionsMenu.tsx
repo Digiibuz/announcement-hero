@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { UserProfile } from "@/types/auth";
 import { Button } from "@/components/ui/button";
-import { UserCog, Key, LogIn, MoreHorizontal } from "lucide-react";
+import { UserCog, LogIn, MoreHorizontal } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,16 +52,6 @@ const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
             Modifier l'utilisateur
           </DropdownMenuItem>
           
-          <DropdownMenuSeparator />
-          
-          <DropdownMenuItem 
-            onClick={() => onResetPassword(user.email)}
-            className="cursor-pointer"
-          >
-            <Key className="h-4 w-4 mr-2" />
-            Réinitialiser le mot de passe
-          </DropdownMenuItem>
-          
           {user.role === 'client' && (
             <>
               <DropdownMenuSeparator />
@@ -81,6 +71,7 @@ const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
         user={user} 
         onUserUpdated={onUpdateUser}
         onDeleteUser={onDeleteUser}
+        onResetPassword={onResetPassword}
         isUpdating={isUpdating}
         isDeleting={isDeleting}
         isDialogOpen={isEditDialogOpen}
