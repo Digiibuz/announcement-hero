@@ -12,17 +12,9 @@ interface UserNearLimit {
   remaining: number;
 }
 
-interface WordPressError {
-  id: string;
-  name: string;
-  site_url: string;
-  error_message: string;
-  last_checked: string;
-}
-
 export const useAdminAlerts = () => {
   const [usersNearLimit, setUsersNearLimit] = useState<UserNearLimit[]>([]);
-  const [wordpressErrors, setWordPressErrors] = useState<WordPressError[]>([]);
+  const [disconnectedSitesCount, setDisconnectedSitesCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchUsersNearLimit = async () => {
@@ -88,17 +80,15 @@ export const useAdminAlerts = () => {
 
   const testWordPressConnection = async (config: any): Promise<boolean> => {
     try {
-      console.log(`Testing WordPress connection for: ${config.site_url}`);
-      
-      // Normaliser l'URL (enlever les doubles slashes)
+      // Normaliser l'URL
       let siteUrl = config.site_url;
       if (siteUrl.endsWith('/')) {
         siteUrl = siteUrl.slice(0, -1);
       }
       
-      // Test de l'API REST WordPress avec timeout plus court
+      // Test simple avec timeout court
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 secondes
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
       
       const testUrl = `${siteUrl}/wp-json/wp/v2/posts?per_page=1`;
       
@@ -112,35 +102,17 @@ export const useAdminAlerts = () => {
       
       clearTimeout(timeoutId);
       
-      console.log(`Response status for ${siteUrl}: ${response.status}`);
+      // Site connecté si 200, 401 ou 403
+      return response.status === 200 || response.status === 401 || response.status === 403;
       
-      // Le site est considéré comme connecté si :
-      // - 200 (OK)
-      // - 401 (Unauthorized - l'API existe mais nécessite une auth)
-      // - 403 (Forbidden - l'API existe mais accès refusé)
-      const isConnected = response.status === 200 || response.status === 401 || response.status === 403;
-      
-      console.log(`Site ${siteUrl} connection result: ${isConnected ? 'Connected' : 'Disconnected'}`);
-      return isConnected;
-      
-    } catch (error: any) {
-      console.log(`Connection test failed for ${config.site_url}:`, error.message);
-      
-      // Toute erreur (timeout, network error, CORS, etc.) = site déconnecté
-      if (error.name === 'AbortError') {
-        console.log(`Timeout for ${config.site_url}`);
-      } else if (error.message.includes('Failed to fetch')) {
-        console.log(`Network error for ${config.site_url}`);
-      }
-      
+    } catch (error) {
+      // Toute erreur = site déconnecté
       return false;
     }
   };
 
-  const fetchWordPressErrors = async () => {
+  const fetchDisconnectedSites = async () => {
     try {
-      console.log('Checking WordPress configurations for admin alerts...');
-      
       // Récupérer toutes les configurations WordPress
       const { data: configs, error } = await supabase
         .from('wordpress_configs')
@@ -152,44 +124,22 @@ export const useAdminAlerts = () => {
       }
 
       if (!configs || configs.length === 0) {
-        console.log('No WordPress configs found');
-        setWordPressErrors([]);
+        setDisconnectedSitesCount(0);
         return;
       }
 
-      console.log(`Testing ${configs.length} WordPress configurations for admin alerts...`);
-      
-      // Tester la connectivité de chaque configuration
-      const errorConfigs: WordPressError[] = [];
-      
-      // Tester les sites en parallèle pour améliorer les performances
+      // Tester la connectivité en parallèle
       const connectionTests = configs.map(async (config) => {
-        const isConnected = await testWordPressConnection(config);
-        
-        if (!isConnected) {
-          console.log(`Site ${config.site_url} is disconnected - adding to alerts`);
-          return {
-            id: config.id,
-            name: config.name,
-            site_url: config.site_url,
-            error_message: 'Site inaccessible ou en erreur',
-            last_checked: new Date().toISOString()
-          };
-        }
-        
-        console.log(`Site ${config.site_url} is connected - no alert needed`);
-        return null;
+        return await testWordPressConnection(config);
       });
       
       const results = await Promise.all(connectionTests);
-      const disconnectedSites = results.filter(result => result !== null);
+      const disconnectedCount = results.filter(isConnected => !isConnected).length;
       
-      console.log(`Found ${disconnectedSites.length} disconnected sites for admin alerts`);
-      setWordPressErrors(disconnectedSites);
+      setDisconnectedSitesCount(disconnectedCount);
       
     } catch (error) {
-      console.error('Error fetching WordPress errors:', error);
-      toast.error("Erreur lors de la vérification des sites WordPress");
+      console.error('Error checking WordPress connections:', error);
     }
   };
 
@@ -197,7 +147,7 @@ export const useAdminAlerts = () => {
     setIsLoading(true);
     await Promise.all([
       fetchUsersNearLimit(),
-      fetchWordPressErrors()
+      fetchDisconnectedSites()
     ]);
     setIsLoading(false);
   };
@@ -208,7 +158,7 @@ export const useAdminAlerts = () => {
 
   return {
     usersNearLimit,
-    wordpressErrors,
+    disconnectedSitesCount,
     isLoading,
     refetch: fetchAlerts
   };

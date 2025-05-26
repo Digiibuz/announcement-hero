@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
 const AdminAlerts = () => {
-  const { usersNearLimit, wordpressErrors, isLoading } = useAdminAlerts();
+  const { usersNearLimit, disconnectedSitesCount, isLoading } = useAdminAlerts();
 
   if (isLoading) {
     return (
@@ -29,7 +29,7 @@ const AdminAlerts = () => {
     );
   }
 
-  const hasAlerts = usersNearLimit.length > 0 || wordpressErrors.length > 0;
+  const hasAlerts = usersNearLimit.length > 0 || disconnectedSitesCount > 0;
 
   return (
     <Card>
@@ -39,7 +39,7 @@ const AdminAlerts = () => {
           Alertes et notifications
           {hasAlerts && (
             <Badge variant="destructive" className="ml-2">
-              {usersNearLimit.length + wordpressErrors.length}
+              {usersNearLimit.length + disconnectedSitesCount}
             </Badge>
           )}
         </CardTitle>
@@ -51,6 +51,30 @@ const AdminAlerts = () => {
           </div>
         ) : (
           <>
+            {/* Sites déconnectés */}
+            {disconnectedSitesCount > 0 && (
+              <Alert variant="destructive">
+                <Server className="h-4 w-4" />
+                <AlertTitle>Sites WordPress déconnectés</AlertTitle>
+                <AlertDescription>
+                  <div className="mt-2">
+                    <div className="flex items-center justify-between p-2 bg-destructive/10 rounded">
+                      <span className="text-sm">
+                        {disconnectedSitesCount} site{disconnectedSitesCount > 1 ? 's' : ''} 
+                        {disconnectedSitesCount > 1 ? ' sont' : ' est'} actuellement déconnecté{disconnectedSitesCount > 1 ? 's' : ''}
+                      </span>
+                      <Badge variant="destructive">
+                        {disconnectedSitesCount}
+                      </Badge>
+                    </div>
+                    <Button asChild size="sm" className="mt-2">
+                      <Link to="/websites">Voir les détails</Link>
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* Utilisateurs proches de leurs limites */}
             {usersNearLimit.length > 0 && (
               <Alert>
@@ -73,35 +97,6 @@ const AdminAlerts = () => {
                     ))}
                     <Button asChild size="sm" className="mt-2">
                       <Link to="/users">Gérer les utilisateurs</Link>
-                    </Button>
-                  </div>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* Configurations WordPress en erreur */}
-            {wordpressErrors.length > 0 && (
-              <Alert variant="destructive">
-                <Server className="h-4 w-4" />
-                <AlertTitle>Configurations WordPress en erreur</AlertTitle>
-                <AlertDescription>
-                  <div className="mt-2 space-y-2">
-                    {wordpressErrors.map((config) => (
-                      <div key={config.id} className="flex items-center justify-between p-2 bg-destructive/10 rounded">
-                        <div>
-                          <span className="font-medium">{config.name}</span>
-                          <span className="text-sm text-muted-foreground ml-2 block">
-                            {config.site_url}
-                          </span>
-                          <span className="text-sm text-destructive">
-                            {config.error_message}
-                          </span>
-                        </div>
-                        <Badge variant="destructive">Erreur</Badge>
-                      </div>
-                    ))}
-                    <Button asChild size="sm" className="mt-2">
-                      <Link to="/wordpress">Gérer WordPress</Link>
                     </Button>
                   </div>
                 </AlertDescription>
