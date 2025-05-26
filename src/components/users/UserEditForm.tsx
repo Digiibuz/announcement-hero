@@ -22,6 +22,8 @@ interface UserEditFormProps {
   onDeleteUser?: (userId: string) => Promise<void>;
   isUpdating: boolean;
   isDeleting?: boolean;
+  isDialogOpen?: boolean;
+  setIsDialogOpen?: (open: boolean) => void;
 }
 
 const UserEditForm: React.FC<UserEditFormProps> = ({ 
@@ -29,14 +31,16 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
   onUserUpdated,
   onDeleteUser,
   isUpdating,
-  isDeleting = false
+  isDeleting = false,
+  isDialogOpen: externalIsDialogOpen,
+  setIsDialogOpen: externalSetIsDialogOpen
 }) => {
   const { configs, clientConfigs, associateClientToConfig, removeClientConfigAssociation } = useWordPressConfigs();
   
   const {
     form,
-    isDialogOpen,
-    setIsDialogOpen,
+    isDialogOpen: internalIsDialogOpen,
+    setIsDialogOpen: internalSetIsDialogOpen,
     confirmDeleteOpen,
     setConfirmDeleteOpen,
     isLoadingConfigs,
@@ -68,16 +72,22 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
     }
   }, onDeleteUser);
 
+  // Use external state if provided, otherwise use internal state
+  const isDialogOpen = externalIsDialogOpen !== undefined ? externalIsDialogOpen : internalIsDialogOpen;
+  const setIsDialogOpen = externalSetIsDialogOpen !== undefined ? externalSetIsDialogOpen : internalSetIsDialogOpen;
+
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-      <DialogTrigger asChild>
-        <div className="w-full">
-          <Button variant="ghost" size="sm" className="w-full justify-start">
-            <UserCog className="h-4 w-4 mr-2" />
-            Modifier l'utilisateur
-          </Button>
-        </div>
-      </DialogTrigger>
+      {!externalIsDialogOpen && (
+        <DialogTrigger asChild>
+          <div className="w-full">
+            <Button variant="ghost" size="sm" className="w-full justify-start">
+              <UserCog className="h-4 w-4 mr-2" />
+              Modifier l'utilisateur
+            </Button>
+          </div>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
           <DialogTitle>Modifier l'utilisateur</DialogTitle>

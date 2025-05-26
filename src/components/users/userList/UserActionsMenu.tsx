@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { UserProfile } from "@/types/auth";
 import { Button } from "@/components/ui/button";
 import { UserCog, Key, LogIn, MoreHorizontal } from "lucide-react";
@@ -31,51 +31,62 @@ const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
   onDeleteUser,
   onImpersonateUser
 }) => {
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  const handleEditClick = () => {
+    setIsEditDialogOpen(true);
+  };
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm">
-          <MoreHorizontal className="h-4 w-4" />
-          <span className="sr-only">Ouvrir le menu</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-gray-800 border shadow-lg z-50">
-        <DropdownMenuItem asChild>
-          <div className="w-full">
-            <UserEditForm 
-              user={user} 
-              onUserUpdated={onUpdateUser}
-              onDeleteUser={onDeleteUser}
-              isUpdating={isUpdating}
-              isDeleting={isDeleting}
-            />
-          </div>
-        </DropdownMenuItem>
-        
-        <DropdownMenuSeparator />
-        
-        <DropdownMenuItem 
-          onClick={() => onResetPassword(user.email)}
-          className="cursor-pointer"
-        >
-          <Key className="h-4 w-4 mr-2" />
-          Réinitialiser le mot de passe
-        </DropdownMenuItem>
-        
-        {user.role === 'client' && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              onClick={() => onImpersonateUser(user)}
-              className="cursor-pointer"
-            >
-              <LogIn className="h-4 w-4 mr-2" />
-              Se connecter en tant que
-            </DropdownMenuItem>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm">
+            <MoreHorizontal className="h-4 w-4" />
+            <span className="sr-only">Ouvrir le menu</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-gray-800 border shadow-lg z-50">
+          <DropdownMenuItem onClick={handleEditClick} className="cursor-pointer">
+            <UserCog className="h-4 w-4 mr-2" />
+            Modifier l'utilisateur
+          </DropdownMenuItem>
+          
+          <DropdownMenuSeparator />
+          
+          <DropdownMenuItem 
+            onClick={() => onResetPassword(user.email)}
+            className="cursor-pointer"
+          >
+            <Key className="h-4 w-4 mr-2" />
+            Réinitialiser le mot de passe
+          </DropdownMenuItem>
+          
+          {user.role === 'client' && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={() => onImpersonateUser(user)}
+                className="cursor-pointer"
+              >
+                <LogIn className="h-4 w-4 mr-2" />
+                Se connecter en tant que
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <UserEditForm 
+        user={user} 
+        onUserUpdated={onUpdateUser}
+        onDeleteUser={onDeleteUser}
+        isUpdating={isUpdating}
+        isDeleting={isDeleting}
+        isDialogOpen={isEditDialogOpen}
+        setIsDialogOpen={setIsEditDialogOpen}
+      />
+    </>
   );
 };
 
