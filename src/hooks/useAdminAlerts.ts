@@ -86,8 +86,42 @@ export const useAdminAlerts = () => {
     }
   };
 
+  const testWordPressConnection = async (config: any): Promise<boolean> => {
+    try {
+      // Normaliser l'URL
+      const siteUrl = config.site_url.replace(/([^:]\/)\/+/g, "$1");
+      
+      // Test simple avec timeout court
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 secondes timeout
+      
+      const testUrl = `${siteUrl}/wp-json/wp/v2`;
+      
+      const response = await fetch(testUrl, {
+        method: 'HEAD',
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'DigiCheck/1.0'
+        }
+      });
+      
+      clearTimeout(timeoutId);
+      
+      // Si la réponse est OK (200-299) ou même 401 (non autorisé), 
+      // cela signifie que le site répond
+      return response.ok || response.status === 401 || response.status === 403;
+      
+    } catch (error: any) {
+      console.log(`Connection test failed for ${config.site_url}:`, error.message);
+      // Toute erreur (timeout, network error, etc.) indique que le site est inaccessible
+      return false;
+    }
+  };
+
   const fetchWordPressErrors = async () => {
     try {
+      console.log('Checking WordPress configurations...');
+      
       // Récupérer toutes les configurations WordPress
       const { data: configs, error } = await supabase
         .from('wordpress_configs')
@@ -99,51 +133,38 @@ export const useAdminAlerts = () => {
       }
 
       if (!configs || configs.length === 0) {
+        console.log('No WordPress configs found');
         setWordPressErrors([]);
         return;
       }
 
+      console.log(`Testing ${configs.length} WordPress configurations...`);
+      
       // Tester la connectivité de chaque configuration
       const errorConfigs: WordPressError[] = [];
       
       for (const config of configs) {
-        try {
-          // Test simple de connectivité avec timeout
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
-          
-          const testUrl = `${config.site_url}/wp-json`;
-          const response = await fetch(testUrl, {
-            method: 'HEAD',
-            mode: 'no-cors',
-            signal: controller.signal,
+        console.log(`Testing connection to: ${config.site_url}`);
+        
+        const isConnected = await testWordPressConnection(config);
+        
+        if (!isConnected) {
+          console.log(`Site ${config.site_url} is disconnected`);
+          errorConfigs.push({
+            id: config.id,
+            name: config.name,
+            site_url: config.site_url,
+            error_message: 'Site inaccessible ou en erreur',
+            last_checked: new Date().toISOString()
           });
-          
-          clearTimeout(timeoutId);
-          
-        } catch (fetchError: any) {
-          // Si le fetch échoue, c'est probablement un problème de connectivité
-          if (fetchError.name === 'AbortError') {
-            errorConfigs.push({
-              id: config.id,
-              name: config.name,
-              site_url: config.site_url,
-              error_message: 'Délai d\'attente dépassé - Site inaccessible',
-              last_checked: new Date().toISOString()
-            });
-          } else if (fetchError.message.includes('Failed to fetch')) {
-            errorConfigs.push({
-              id: config.id,
-              name: config.name,
-              site_url: config.site_url,
-              error_message: 'Impossible d\'accéder au site',
-              last_checked: new Date().toISOString()
-            });
-          }
+        } else {
+          console.log(`Site ${config.site_url} is connected`);
         }
       }
 
+      console.log(`Found ${errorConfigs.length} sites with connection errors`);
       setWordPressErrors(errorConfigs);
+      
     } catch (error) {
       console.error('Error fetching WordPress errors:', error);
       toast.error("Erreur lors de la vérification des sites WordPress");
