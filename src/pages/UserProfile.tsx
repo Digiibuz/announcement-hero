@@ -6,8 +6,10 @@ import PageLayout from "@/components/ui/layout/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { User } from "lucide-react";
+import { User, Globe, KeyRound } from "lucide-react";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const UserProfile = () => {
   const { user, logout } = useAuth();
@@ -28,6 +30,23 @@ const UserProfile = () => {
   const handleLogout = () => {
     logout();
     navigate("/login");
+  };
+
+  const handleResetPassword = async () => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast.success("Un email de réinitialisation de mot de passe a été envoyé à votre adresse email");
+    } catch (error: any) {
+      console.error("Error resetting password:", error);
+      toast.error("Erreur lors de l'envoi de l'email de réinitialisation");
+    }
   };
 
   return (
@@ -55,6 +74,24 @@ const UserProfile = () => {
                     {user.email}
                   </div>
                 </div>
+                {user.wordpressConfig && (
+                  <div className="grid gap-3">
+                    <Label htmlFor="wordpress-site" className="flex items-center gap-2">
+                      <Globe className="h-4 w-4" />
+                      Site WordPress
+                    </Label>
+                    <div id="wordpress-site" className="text-lg font-medium">
+                      <a 
+                        href={user.wordpressConfig.site_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        {user.wordpressConfig.name} - {user.wordpressConfig.site_url}
+                      </a>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -66,9 +103,19 @@ const UserProfile = () => {
               <CardTitle className="text-2xl font-bold">Actions</CardTitle>
             </CardHeader>
             <CardContent>
-              <Button variant="destructive" onClick={handleLogout}>
-                Se déconnecter
-              </Button>
+              <div className="flex flex-col gap-3">
+                <Button 
+                  variant="outline" 
+                  onClick={handleResetPassword}
+                  className="flex items-center gap-2"
+                >
+                  <KeyRound className="h-4 w-4" />
+                  Réinitialiser le mot de passe
+                </Button>
+                <Button variant="destructive" onClick={handleLogout}>
+                  Se déconnecter
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </AnimatedContainer>
