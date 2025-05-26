@@ -72,8 +72,6 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Le titre et la description sont automatiquement ajoutés dans CreateAnnouncement.tsx */}
-      
       <Card className={getCardStyles()}>
         <CardContent className={`space-y-4 ${isMobile ? "px-0 py-4" : "p-6"}`}>
           <FormField 
@@ -109,6 +107,7 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
                     <Input 
                       placeholder="Titre optimisé pour les moteurs de recherche" 
                       {...field} 
+                      value={field.value || ""}
                       onChange={(e) => {
                         field.onChange(e);
                         setSeoTitleLength(e.target.value.length);
@@ -163,6 +162,7 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
                       placeholder="Description courte qui apparaîtra dans les résultats de recherche" 
                       className="resize-none min-h-[100px]" 
                       {...field}
+                      value={field.value || ""}
                       onChange={(e) => {
                         field.onChange(e);
                         setSeoDescriptionLength(e.target.value.length);
@@ -192,7 +192,11 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
                 <FormControl>
                   <div className="flex items-center">
                     <span className="text-sm text-muted-foreground mr-2 hidden sm:inline">yoursite.com/annonces/</span>
-                    <Input placeholder="slug-de-url" {...field} />
+                    <Input 
+                      placeholder="slug-de-url" 
+                      {...field} 
+                      value={field.value || ""}
+                    />
                   </div>
                 </FormControl>
                 <FormDescription>

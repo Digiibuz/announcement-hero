@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -164,7 +163,7 @@ const CreateAnnouncement = () => {
     };
   }, [form]);
 
-  // Handle title changes to update SEO title and slug
+  // Handle title changes to update SEO slug only (not SEO title automatically)
   useEffect(() => {
     const subscription = form.watch((value, {
       name
@@ -172,9 +171,6 @@ const CreateAnnouncement = () => {
       if (name === 'title') {
         const title = value.title as string;
         if (title) {
-          if (!form.getValues("seoTitle")) {
-            form.setValue("seoTitle", title);
-          }
           const normalizedTitle = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
           form.setValue("seoSlug", normalizedTitle);
         }
