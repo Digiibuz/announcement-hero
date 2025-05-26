@@ -6,6 +6,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Key, UserMinus } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import DeleteUserDialog from "./DeleteUserDialog";
 
 interface BasicInfoTabProps {
@@ -32,94 +33,96 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
   setConfirmDeleteOpen
 }) => {
   return (
-    <div className="space-y-6">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-1 gap-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nom</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input {...field} type="email" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Rôle</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+    <ScrollArea className="max-h-[400px] pr-4">
+      <div className="space-y-6">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nom</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un rôle" />
-                      </SelectTrigger>
+                      <Input {...field} />
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="admin">Administrateur</SelectItem>
-                      <SelectItem value="client">Client</SelectItem>
-                      <SelectItem value="editor">Éditeur</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="email" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Rôle</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner un rôle" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="admin">Administrateur</SelectItem>
+                        <SelectItem value="client">Client</SelectItem>
+                        <SelectItem value="editor">Éditeur</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Actions administratives */}
+            <div className="border-t pt-4 space-y-3">
+              <h4 className="text-sm font-medium text-gray-900 mb-3">Actions administratives</h4>
+              
+              {onResetPassword && (
+                <Button variant="outline" onClick={onResetPassword} className="w-full">
+                  <Key className="h-4 w-4 mr-2" />
+                  Réinitialiser le mot de passe
+                </Button>
               )}
-            />
-          </div>
+              
+              {onDeleteUser && (
+                <DeleteUserDialog 
+                  isOpen={confirmDeleteOpen} 
+                  isDeleting={isDeleting} 
+                  onOpenChange={setConfirmDeleteOpen} 
+                  onDelete={onDeleteUser} 
+                />
+              )}
+            </div>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onCancel}>
-              Annuler
-            </Button>
-            <Button type="submit" disabled={isUpdating}>
-              {isUpdating ? "Mise à jour..." : "Mettre à jour"}
-            </Button>
-          </div>
-        </form>
-      </Form>
-
-      {/* Actions administratives */}
-      <div className="border-t pt-4 space-y-3">
-        <h4 className="text-sm font-medium text-gray-900 mb-3">Actions administratives</h4>
-        
-        {onResetPassword && (
-          <Button variant="outline" onClick={onResetPassword} className="w-full">
-            <Key className="h-4 w-4 mr-2" />
-            Réinitialiser le mot de passe
-          </Button>
-        )}
-        
-        {onDeleteUser && (
-          <DeleteUserDialog 
-            isOpen={confirmDeleteOpen} 
-            isDeleting={isDeleting} 
-            onOpenChange={setConfirmDeleteOpen} 
-            onDelete={onDeleteUser} 
-          />
-        )}
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={onCancel}>
+                Annuler
+              </Button>
+              <Button type="submit" disabled={isUpdating}>
+                {isUpdating ? "Mise à jour..." : "Mettre à jour"}
+              </Button>
+            </div>
+          </form>
+        </Form>
       </div>
-    </div>
+    </ScrollArea>
   );
 };
 
