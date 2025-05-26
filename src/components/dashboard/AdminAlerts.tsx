@@ -2,14 +2,14 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Users, Server } from "lucide-react";
+import { AlertTriangle, Users, Server, ExternalLink } from "lucide-react";
 import { useAdminAlerts } from "@/hooks/useAdminAlerts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
 const AdminAlerts = () => {
-  const { usersNearLimit, disconnectedSitesCount, isLoading } = useAdminAlerts();
+  const { usersNearLimit, disconnectedSites, disconnectedSitesCount, isLoading } = useAdminAlerts();
 
   if (isLoading) {
     return (
@@ -51,24 +51,49 @@ const AdminAlerts = () => {
           </div>
         ) : (
           <>
-            {/* Sites déconnectés */}
+            {/* Sites déconnectés avec détails des problèmes */}
             {disconnectedSitesCount > 0 && (
               <Alert variant="destructive">
                 <Server className="h-4 w-4" />
                 <AlertTitle>Sites WordPress déconnectés</AlertTitle>
                 <AlertDescription>
-                  <div className="mt-2">
-                    <div className="flex items-center justify-between p-2 bg-destructive/10 rounded">
-                      <span className="text-sm">
-                        {disconnectedSitesCount} site{disconnectedSitesCount > 1 ? 's' : ''} 
-                        {disconnectedSitesCount > 1 ? ' sont' : ' est'} actuellement déconnecté{disconnectedSitesCount > 1 ? 's' : ''}
-                      </span>
-                      <Badge variant="destructive">
-                        {disconnectedSitesCount}
-                      </Badge>
-                    </div>
-                    <Button asChild size="sm" className="mt-2">
-                      <Link to="/websites">Voir les détails</Link>
+                  <div className="mt-3 space-y-3">
+                    {disconnectedSites.map((site) => (
+                      <div key={site.id} className="bg-destructive/10 rounded-lg p-3 border border-destructive/20">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium text-sm">{site.name}</span>
+                              {site.site_url && (
+                                <a 
+                                  href={site.site_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-destructive hover:text-destructive/80 transition-colors"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground mb-2">
+                              {site.site_url}
+                            </div>
+                            {site.client_name && (
+                              <div className="text-xs text-muted-foreground mb-2">
+                                Client: {site.client_name} ({site.client_email})
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <Badge variant="destructive" className="text-xs">
+                                Problème: {site.disconnection_reason}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <Button asChild size="sm" className="mt-3">
+                      <Link to="/websites">Voir tous les sites</Link>
                     </Button>
                   </div>
                 </AlertDescription>

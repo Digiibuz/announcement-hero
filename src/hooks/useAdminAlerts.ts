@@ -12,8 +12,18 @@ interface UserNearLimit {
   remaining: number;
 }
 
+interface DisconnectedSite {
+  id: string;
+  name: string;
+  site_url: string;
+  client_name?: string;
+  client_email?: string;
+  disconnection_reason: string;
+}
+
 export const useAdminAlerts = () => {
   const [usersNearLimit, setUsersNearLimit] = useState<UserNearLimit[]>([]);
+  const [disconnectedSites, setDisconnectedSites] = useState<DisconnectedSite[]>([]);
   const [disconnectedSitesCount, setDisconnectedSitesCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -78,14 +88,39 @@ export const useAdminAlerts = () => {
     }
   };
 
-  // Utiliser la même logique que DisconnectedSitesTable pour déterminer le statut de connexion
+  // Fonction pour déterminer le statut de connexion et le motif de déconnexion
   const getConnectionStatus = (config: any) => {
     if (config.app_username && config.app_password) {
-      return { status: "connected", label: "Connecté" };
+      return { 
+        status: "connected", 
+        label: "Connecté",
+        reason: ""
+      };
     } else if (config.rest_api_key) {
-      return { status: "partial", label: "Partiel" };
+      return { 
+        status: "partial", 
+        label: "Partiel",
+        reason: "Seule la clé API REST est configurée"
+      };
     }
-    return { status: "disconnected", label: "Déconnecté" };
+
+    // Déterminer la raison spécifique de la déconnexion
+    let reason = "Configuration incomplète";
+    if (!config.site_url) {
+      reason = "URL du site manquante";
+    } else if (!config.app_username && !config.app_password && !config.rest_api_key) {
+      reason = "Aucun identifiant configuré";
+    } else if (config.app_username && !config.app_password) {
+      reason = "Mot de passe d'application manquant";
+    } else if (!config.app_username && config.app_password) {
+      reason = "Nom d'utilisateur d'application manquant";
+    }
+
+    return { 
+      status: "disconnected", 
+      label: "Déconnecté",
+      reason: reason
+    };
   };
 
   const fetchDisconnectedSites = async () => {
@@ -101,16 +136,42 @@ export const useAdminAlerts = () => {
       }
 
       if (!configs || configs.length === 0) {
+        setDisconnectedSites([]);
         setDisconnectedSitesCount(0);
         return;
       }
 
-      // Filtrer les sites déconnectés en utilisant la même logique que DisconnectedSitesTable
-      const disconnectedConfigs = configs.filter(config => {
-        const status = getConnectionStatus(config);
-        return status.status === "disconnected";
-      });
+      // Récupérer les profils des utilisateurs pour associer les clients
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, name, email, wordpressConfigId')
+        .eq('role', 'client');
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+      }
+
+      // Filtrer les sites déconnectés et enrichir avec les informations client
+      const disconnectedConfigs = configs
+        .map(config => {
+          const status = getConnectionStatus(config);
+          if (status.status !== "disconnected") return null;
+
+          // Trouver le client associé à cette configuration
+          const client = profiles?.find(profile => profile.wordpressConfigId === config.id);
+
+          return {
+            id: config.id,
+            name: config.name || 'Site sans nom',
+            site_url: config.site_url || '',
+            client_name: client?.name || undefined,
+            client_email: client?.email || undefined,
+            disconnection_reason: status.reason
+          };
+        })
+        .filter((site): site is DisconnectedSite => site !== null);
       
+      setDisconnectedSites(disconnectedConfigs);
       setDisconnectedSitesCount(disconnectedConfigs.length);
       
     } catch (error) {
@@ -133,6 +194,7 @@ export const useAdminAlerts = () => {
 
   return {
     usersNearLimit,
+    disconnectedSites,
     disconnectedSitesCount,
     isLoading,
     refetch: fetchAlerts
