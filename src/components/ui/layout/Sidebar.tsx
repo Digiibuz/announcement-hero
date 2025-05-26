@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useEffect } from "react";
@@ -91,7 +90,7 @@ const Sidebar = () => {
         </Link>
       </div>
 
-      <div className={`h-[calc(100vh-4rem)] overflow-y-auto px-3 py-4 flex flex-col ${isMobile ? "" : "relative"}`}>
+      <div className={`h-[calc(100vh-8rem)] overflow-y-auto px-3 py-4 flex flex-col ${isMobile ? "" : "relative"}`}>
         {/* Main navigation items */}
         <div className="flex-grow">
           <ul className="space-y-2">
@@ -207,7 +206,7 @@ const Sidebar = () => {
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 transform transition-transform md:translate-x-0">
-      <div className="h-full m-4 mr-2 bg-white rounded-r-2xl shadow-lg border border-gray-100/50">
+      <div className="h-[calc(100vh-2rem)] m-4 bg-white rounded-r-2xl shadow-lg border border-gray-100/50">
         <SidebarContent />
       </div>
     </aside>
