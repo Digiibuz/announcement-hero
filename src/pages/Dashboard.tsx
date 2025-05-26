@@ -1,10 +1,10 @@
-
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import DashboardCard from "@/components/dashboard/DashboardCard";
 import PublicationCounter from "@/components/dashboard/PublicationCounter";
+import RecentAnnouncements from "@/components/dashboard/RecentAnnouncements";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, Clock, Calendar, Plus, Users, Server } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -154,9 +154,7 @@ const Dashboard = () => {
                 </Link>
               </CardHeader>
               <CardContent>
-                <div className="text-center p-6 text-muted-foreground dark:text-gray-300">
-                  Aucune annonce récente. <Link to="/create" className="text-primary dark:text-blue-300">Créer une annonce</Link>
-                </div>
+                <RecentAnnouncements />
               </CardContent>
             </Card>
           </AnimatedContainer>
