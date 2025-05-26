@@ -4,7 +4,7 @@ import { UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Settings, Globe, Edit3 } from "lucide-react";
+import { ExternalLink, Settings, Globe, Save } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { WordPressConfig } from "@/types/wordpress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -33,16 +33,15 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
   userId,
   userRole
 }) => {
-  const [isEditingAssignment, setIsEditingAssignment] = useState(false);
-  const [newConfigId, setNewConfigId] = useState<string>("");
-
   // Get the WordPress config assigned to this user
-  // Check both selectedConfigIds and form wpConfigIds
   const wpConfigIds = form.getValues("wpConfigIds") || [];
   const allConfigIds = [...selectedConfigIds, ...wpConfigIds];
-  
-  // Correction de la logique : on cherche la configuration qui correspond vraiment aux IDs assignés
   const assignedConfig = configs.find(config => allConfigIds.includes(config.id));
+  
+  // État local pour le menu déroulant
+  const [selectedConfigId, setSelectedConfigId] = useState<string>(
+    assignedConfig?.id || "none"
+  );
 
   console.log("WordPressConfigTab - Debug:", {
     selectedConfigIds,
@@ -50,28 +49,22 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
     allConfigIds,
     assignedConfig,
     userRole,
-    configsLength: configs.length
+    configsLength: configs.length,
+    selectedConfigId
   });
 
   const handleConfigUpdate = async (data: any) => {
     console.log('Updating WordPress config:', data);
   };
 
-  const handleAssignmentChange = () => {
-    if (newConfigId && newConfigId !== "none") {
-      form.setValue("wpConfigIds", [newConfigId]);
-      setIsEditingAssignment(false);
-      console.log("Assignment changed to config:", newConfigId);
-    } else if (newConfigId === "none") {
+  const handleSaveAssignment = () => {
+    if (selectedConfigId && selectedConfigId !== "none") {
+      form.setValue("wpConfigIds", [selectedConfigId]);
+      console.log("Assignment saved to config:", selectedConfigId);
+    } else {
       form.setValue("wpConfigIds", []);
-      setIsEditingAssignment(false);
       console.log("Assignment removed");
     }
-  };
-
-  const handleStartEditing = () => {
-    setNewConfigId(assignedConfig?.id || "none");
-    setIsEditingAssignment(true);
   };
 
   if (isLoadingConfigs) {
@@ -103,110 +96,85 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
   return (
     <ScrollArea className="max-h-[400px] pr-4">
       <div className="space-y-4">
-        {assignedConfig || configs.length > 0 ? (
+        {configs.length > 0 ? (
           <Card>
             <CardHeader className="pb-4">
               <CardTitle className="text-lg font-medium flex items-center gap-2">
                 <Globe className="h-5 w-5 text-blue-600" />
                 Site WordPress assigné
-                {!isEditingAssignment && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={handleStartEditing}
-                    className="ml-auto"
-                  >
-                    <Edit3 className="h-4 w-4" />
-                  </Button>
-                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {isEditingAssignment ? (
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">
-                      Sélectionner une configuration WordPress
-                    </label>
-                    <Select value={newConfigId} onValueChange={setNewConfigId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choisir une configuration" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Aucune configuration</SelectItem>
-                        {configs.map((config) => (
-                          <SelectItem key={config.id} value={config.id}>
-                            {config.name} - {config.site_url}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  {/* Boutons d'action déplacés ici pour être visibles */}
-                  <div className="flex justify-between gap-2 pt-2 border-t">
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => setIsEditingAssignment(false)}
-                      >
-                        Annuler l'édition
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        onClick={handleAssignmentChange}
-                      >
-                        Confirmer l'assignation
-                      </Button>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <Button type="button" variant="outline" onClick={onCancel}>
-                        Fermer
-                      </Button>
-                      <Button type="button" disabled={isUpdating} onClick={() => onSubmit(form.getValues())}>
-                        {isUpdating ? "Mise à jour..." : "Mettre à jour"}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ) : assignedConfig ? (
+              {/* Menu déroulant pour sélectionner la configuration */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Configuration WordPress
+                </label>
+                <Select value={selectedConfigId} onValueChange={setSelectedConfigId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choisir une configuration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Aucune configuration</SelectItem>
+                    {configs.map((config) => (
+                      <SelectItem key={config.id} value={config.id}>
+                        {config.name} - {config.site_url}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                {/* Bouton Enregistrer l'assignation */}
+                <Button 
+                  onClick={handleSaveAssignment}
+                  className="w-full"
+                  variant="outline"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Enregistrer l'assignation
+                </Button>
+              </div>
+
+              {/* Affichage des détails de la configuration assignée */}
+              {assignedConfig && (
                 <>
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-sm font-medium text-gray-700 mb-1">Nom du site</p>
-                      <p className="text-base">{assignedConfig.name}</p>
-                    </div>
-                    
-                    <div>
-                      <p className="text-sm font-medium text-gray-700 mb-1">URL du site</p>
-                      <div className="flex items-center gap-2">
-                        <p className="text-base text-blue-600">{assignedConfig.site_url}</p>
-                        <a 
-                          href={assignedConfig.site_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <p className="text-sm font-medium text-gray-700 mb-1">Statut</p>
-                      <Badge variant="outline" className="text-green-600 border-green-600">
-                        Connecté
-                      </Badge>
-                    </div>
-                    
-                    {assignedConfig.app_username && (
+                  <div className="pt-4 border-t">
+                    <h4 className="font-medium text-gray-900 mb-3">Détails de la configuration</h4>
+                    <div className="space-y-3">
                       <div>
-                        <p className="text-sm font-medium text-gray-700 mb-1">Nom d'utilisateur</p>
-                        <p className="text-base">{assignedConfig.app_username}</p>
+                        <p className="text-sm font-medium text-gray-700 mb-1">Nom du site</p>
+                        <p className="text-base">{assignedConfig.name}</p>
                       </div>
-                    )}
+                      
+                      <div>
+                        <p className="text-sm font-medium text-gray-700 mb-1">URL du site</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-base text-blue-600">{assignedConfig.site_url}</p>
+                          <a 
+                            href={assignedConfig.site_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <p className="text-sm font-medium text-gray-700 mb-1">Statut</p>
+                        <Badge variant="outline" className="text-green-600 border-green-600">
+                          Connecté
+                        </Badge>
+                      </div>
+                      
+                      {assignedConfig.app_username && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-700 mb-1">Nom d'utilisateur</p>
+                          <p className="text-base">{assignedConfig.app_username}</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="pt-4 border-t">
@@ -226,37 +194,6 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
                       }
                     />
                   </div>
-                  
-                  {/* Boutons d'action pour le mode normal */}
-                  <div className="flex justify-end gap-2 pt-4 border-t">
-                    <Button type="button" variant="outline" onClick={onCancel}>
-                      Annuler
-                    </Button>
-                    <Button type="button" disabled={isUpdating} onClick={() => onSubmit(form.getValues())}>
-                      {isUpdating ? "Mise à jour..." : "Mettre à jour"}
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="text-center py-4">
-                    <p className="text-gray-600 mb-4">
-                      Aucune configuration sélectionnée
-                    </p>
-                    <Button variant="outline" onClick={handleStartEditing}>
-                      Assigner une configuration
-                    </Button>
-                  </div>
-                  
-                  {/* Boutons d'action pour le cas sans configuration */}
-                  <div className="flex justify-end gap-2 pt-4 border-t">
-                    <Button type="button" variant="outline" onClick={onCancel}>
-                      Annuler
-                    </Button>
-                    <Button type="button" disabled={isUpdating} onClick={() => onSubmit(form.getValues())}>
-                      {isUpdating ? "Mise à jour..." : "Mettre à jour"}
-                    </Button>
-                  </div>
                 </>
               )}
             </CardContent>
@@ -274,19 +211,19 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
               <Badge variant="secondary">
                 Non configuré
               </Badge>
-              
-              {/* Boutons d'action pour le cas sans configurations disponibles */}
-              <div className="flex justify-end gap-2 pt-4 mt-4 border-t">
-                <Button type="button" variant="outline" onClick={onCancel}>
-                  Annuler
-                </Button>
-                <Button type="button" disabled={isUpdating} onClick={() => onSubmit(form.getValues())}>
-                  {isUpdating ? "Mise à jour..." : "Mettre à jour"}
-                </Button>
-              </div>
             </CardContent>
           </Card>
         )}
+
+        {/* Boutons d'action principaux */}
+        <div className="flex justify-end gap-2 pt-4 border-t">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Annuler
+          </Button>
+          <Button type="button" disabled={isUpdating} onClick={() => onSubmit(form.getValues())}>
+            {isUpdating ? "Mise à jour..." : "Mettre à jour"}
+          </Button>
+        </div>
       </div>
     </ScrollArea>
   );
