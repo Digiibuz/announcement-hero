@@ -1,3 +1,4 @@
+
 import React from "react";
 import { UserCog, Key } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { useUserEditForm } from "./userEditForm/useUserEditForm";
 import DeleteUserDialog from "./userEditForm/DeleteUserDialog";
 import FormFields from "./userEditForm/FormFields";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+
 interface UserEditFormProps {
   user: UserProfile;
   onUserUpdated: (userId: string, userData: Partial<UserProfile>) => Promise<void>;
@@ -17,6 +19,7 @@ interface UserEditFormProps {
   isDialogOpen?: boolean;
   setIsDialogOpen?: (open: boolean) => void;
 }
+
 const UserEditForm: React.FC<UserEditFormProps> = ({
   user,
   onUserUpdated,
@@ -33,6 +36,7 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
     associateClientToConfig,
     removeClientConfigAssociation
   } = useWordPressConfigs();
+
   const {
     form,
     isDialogOpen: internalIsDialogOpen,
@@ -63,17 +67,22 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
   // Use external state if provided, otherwise use internal state
   const isDialogOpen = externalIsDialogOpen !== undefined ? externalIsDialogOpen : internalIsDialogOpen;
   const setIsDialogOpen = externalSetIsDialogOpen !== undefined ? externalSetIsDialogOpen : internalSetIsDialogOpen;
+
   const handleResetPasswordClick = () => {
     if (onResetPassword) {
       onResetPassword(user.email);
     }
   };
-  return <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-      {!externalIsDialogOpen && <DialogTrigger asChild>
+
+  return (
+    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      {!externalIsDialogOpen && (
+        <DialogTrigger asChild>
           <div className="w-full">
-            
+            {/* Trigger content */}
           </div>
-        </DialogTrigger>}
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
           <DialogTitle>Modifier l'utilisateur</DialogTitle>
@@ -83,18 +92,38 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
         </DialogHeader>
         
         <div className="space-y-4">
-          <FormFields form={form} configs={configs} isLoadingConfigs={isLoadingConfigs} isUpdating={isUpdating} onCancel={() => setIsDialogOpen(false)} onSubmit={handleSubmit} selectedConfigIds={selectedConfigIds} />
+          <FormFields 
+            form={form} 
+            configs={configs} 
+            isLoadingConfigs={isLoadingConfigs} 
+            isUpdating={isUpdating} 
+            onCancel={() => setIsDialogOpen(false)} 
+            onSubmit={handleSubmit} 
+            selectedConfigIds={selectedConfigIds}
+            user={user}
+          />
           
           <div className="flex flex-col gap-3 pt-4 border-t">
-            {onResetPassword && <Button variant="outline" onClick={handleResetPasswordClick} className="w-full">
+            {onResetPassword && (
+              <Button variant="outline" onClick={handleResetPasswordClick} className="w-full">
                 <Key className="h-4 w-4 mr-2" />
                 Réinitialiser le mot de passe
-              </Button>}
+              </Button>
+            )}
             
-            {onDeleteUser && <DeleteUserDialog isOpen={confirmDeleteOpen} isDeleting={isDeleting} onOpenChange={setConfirmDeleteOpen} onDelete={handleDeleteUser} />}
+            {onDeleteUser && (
+              <DeleteUserDialog 
+                isOpen={confirmDeleteOpen} 
+                isDeleting={isDeleting} 
+                onOpenChange={setConfirmDeleteOpen} 
+                onDelete={handleDeleteUser} 
+              />
+            )}
           </div>
         </div>
       </DialogContent>
-    </Dialog>;
+    </Dialog>
+  );
 };
+
 export default UserEditForm;

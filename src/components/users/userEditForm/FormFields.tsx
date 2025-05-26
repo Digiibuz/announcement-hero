@@ -18,6 +18,7 @@ interface FormFieldsProps {
   onCancel: () => void;
   onSubmit: (data: any) => void;
   selectedConfigIds: string[];
+  user?: UserProfile;
 }
 
 const FormFields: React.FC<FormFieldsProps> = ({
@@ -27,9 +28,10 @@ const FormFields: React.FC<FormFieldsProps> = ({
   isUpdating,
   onCancel,
   onSubmit,
-  selectedConfigIds
+  selectedConfigIds,
+  user
 }) => {
-  const userRole = form.watch("role");
+  const role = form.watch("role");
 
   return (
     <Form {...form}>
@@ -75,7 +77,7 @@ const FormFields: React.FC<FormFieldsProps> = ({
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="admin">Administrateur</SelectItem>
                   <SelectItem value="client">Client</SelectItem>
                   <SelectItem value="editor">Éditeur</SelectItem>
                 </SelectContent>
@@ -85,80 +87,69 @@ const FormFields: React.FC<FormFieldsProps> = ({
           )}
         />
 
-        {userRole === "client" && (
-          <>
-            <FormField
-              control={form.control}
-              name="wpConfigIds"
-              render={() => (
-                <FormItem>
-                  <FormLabel>Configurations WordPress</FormLabel>
-                  <div className="space-y-2 max-h-32 overflow-y-auto">
-                    {isLoadingConfigs ? (
-                      <p className="text-sm text-muted-foreground">Chargement...</p>
-                    ) : configs.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        Aucune configuration WordPress disponible
-                      </p>
-                    ) : (
-                      configs.map((config) => (
-                        <FormField
-                          key={config.id}
-                          control={form.control}
-                          name="wpConfigIds"
-                          render={({ field }) => {
-                            return (
-                              <FormItem
-                                key={config.id}
-                                className="flex flex-row items-start space-x-3 space-y-0"
-                              >
-                                <FormControl>
-                                  <Checkbox
-                                    checked={selectedConfigIds.includes(config.id)}
-                                    onCheckedChange={(checked) => {
-                                      const currentIds = field.value || [];
-                                      if (checked) {
-                                        field.onChange([...currentIds, config.id]);
-                                      } else {
-                                        field.onChange(
-                                          currentIds.filter((id: string) => id !== config.id)
-                                        );
-                                      }
-                                    }}
-                                  />
-                                </FormControl>
-                                <div className="space-y-1 leading-none">
-                                  <FormLabel className="text-sm font-normal">
-                                    {config.name}
-                                  </FormLabel>
-                                  <p className="text-xs text-muted-foreground">
-                                    {config.site_url}
-                                  </p>
-                                </div>
-                              </FormItem>
-                            );
-                          }}
-                        />
-                      ))
-                    )}
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Publication limits management for clients */}
-            <PublicationLimitsField 
-              user={{
-                id: form.getValues("id"),
-                role: "client"
-              } as UserProfile}
-              isUpdating={isUpdating}
-            />
-          </>
+        {role === "client" && (
+          <FormField
+            control={form.control}
+            name="wpConfigIds"
+            render={() => (
+              <FormItem>
+                <FormLabel>Configurations WordPress</FormLabel>
+                <div className="space-y-2">
+                  {isLoadingConfigs ? (
+                    <div className="text-sm text-muted-foreground">Chargement des configurations...</div>
+                  ) : configs.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">Aucune configuration disponible</div>
+                  ) : (
+                    configs.map((config) => (
+                      <FormField
+                        key={config.id}
+                        control={form.control}
+                        name="wpConfigIds"
+                        render={({ field }) => {
+                          return (
+                            <FormItem
+                              key={config.id}
+                              className="flex flex-row items-start space-x-3 space-y-0"
+                            >
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value?.includes(config.id)}
+                                  onCheckedChange={(checked) => {
+                                    return checked
+                                      ? field.onChange([...field.value, config.id])
+                                      : field.onChange(
+                                          field.value?.filter(
+                                            (value: string) => value !== config.id
+                                          )
+                                        )
+                                  }}
+                                />
+                              </FormControl>
+                              <FormLabel className="text-sm font-normal">
+                                {config.name} ({config.site_url})
+                              </FormLabel>
+                            </FormItem>
+                          )
+                        }}
+                      />
+                    ))
+                  )}
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         )}
 
-        <div className="flex justify-end space-x-2 pt-4">
+        {/* Publication Limits Section for Client Users */}
+        {user && role === "client" && (
+          <PublicationLimitsField 
+            user={user} 
+            isUpdating={isUpdating}
+          />
+        )}
+
+        <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
             Annuler
           </Button>
