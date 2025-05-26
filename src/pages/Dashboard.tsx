@@ -127,44 +127,47 @@ const Dashboard = () => {
         </div>
       </AnimatedContainer>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <AnimatedContainer delay={300} className="lg:col-span-2">
-          <Card className="h-full card-shadow">
-            <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
-              <CardTitle className="text-lg font-medium">
-                Dernières Annonces
-              </CardTitle>
-              <Link 
-                to="/announcements" 
-                className="text-sm text-primary dark:text-blue-300 hover:underline flex items-center"
-              >
-                Voir toutes
-              </Link>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center p-6 text-muted-foreground dark:text-gray-300">
-                Aucune annonce récente. <Link to="/create" className="text-primary dark:text-blue-300">Créer une annonce</Link>
-              </div>
-            </CardContent>
-          </Card>
-        </AnimatedContainer>
+      {/* Only show these sections for non-admin users */}
+      {!isAdmin && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <AnimatedContainer delay={300} className="lg:col-span-2">
+            <Card className="h-full card-shadow">
+              <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
+                <CardTitle className="text-lg font-medium">
+                  Dernières Annonces
+                </CardTitle>
+                <Link 
+                  to="/announcements" 
+                  className="text-sm text-primary dark:text-blue-300 hover:underline flex items-center"
+                >
+                  Voir toutes
+                </Link>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center p-6 text-muted-foreground dark:text-gray-300">
+                  Aucune annonce récente. <Link to="/create" className="text-primary dark:text-blue-300">Créer une annonce</Link>
+                </div>
+              </CardContent>
+            </Card>
+          </AnimatedContainer>
 
-        <AnimatedContainer delay={400}>
-          <Card className="h-full card-shadow">
-            <CardHeader>
-              <CardTitle className="text-lg font-medium flex items-center">
-                <Calendar size={18} className="mr-2 dark:text-gray-200" />
-                Prochaines Publications
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-center p-6 text-muted-foreground dark:text-gray-300">
-                Aucune publication programmée
-              </div>
-            </CardContent>
-          </Card>
-        </AnimatedContainer>
-      </div>
+          <AnimatedContainer delay={400}>
+            <Card className="h-full card-shadow">
+              <CardHeader>
+                <CardTitle className="text-lg font-medium flex items-center">
+                  <Calendar size={18} className="mr-2 dark:text-gray-200" />
+                  Prochaines Publications
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-center p-6 text-muted-foreground dark:text-gray-300">
+                  Aucune publication programmée
+                </div>
+              </CardContent>
+            </Card>
+          </AnimatedContainer>
+        </div>
+      )}
 
       <FloatingActionButton 
         position="bottom-right" 
