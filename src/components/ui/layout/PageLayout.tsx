@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLocation } from "react-router-dom";
-import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
 import { LoadingIndicator } from "../loading-indicator";
 
 interface PageLayoutProps {
@@ -59,7 +58,6 @@ const PageLayout = ({
 
   return (
     <div className="min-h-screen bg-background">
-      <ImpersonationBanner />
       <Header />
       <Sidebar />
 

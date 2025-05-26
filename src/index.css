@@ -9,7 +9,7 @@
   }
 
   :root {
-    --background: 220 33% 98%;
+    --background: 32 13% 96%; /* #FBF4EF converti en HSL */
     --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
@@ -18,16 +18,16 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 230 72% 16%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 42 97% 50%; /* #FEC403 converti en HSL */
+    --primary-foreground: 222 47% 11%;
 
-    --secondary: 228 22% 95%;
+    --secondary: 32 13% 96%; /* Utilise le fond clair */
     --secondary-foreground: 222 47% 11%;
 
-    --muted: 228 22% 95%;
+    --muted: 32 13% 96%;
     --muted-foreground: 222 47% 45%;
 
-    --accent: 48 100% 50%;
+    --accent: 42 97% 50%; /* Utilise le jaune comme accent */
     --accent-foreground: 222 47% 11%;
 
     --destructive: 0 84% 60%;
@@ -35,18 +35,18 @@
 
     --border: 222 13% 90%;
     --input: 222 13% 90%;
-    --ring: 230 72% 16%;
+    --ring: 42 97% 50%; /* Ring en jaune */
 
     --radius: 12px;
 
     --sidebar-background: 230 72% 16%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 48 100% 50%;
+    --sidebar-primary: 42 97% 50%; /* Jaune pour la sidebar */
     --sidebar-primary-foreground: 222 47% 11%;
     --sidebar-accent: 230 40% 26%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 230 30% 24%;
-    --sidebar-ring: 48 100% 50%;
+    --sidebar-ring: 42 97% 50%;
   }
 
   .dark {
@@ -59,8 +59,8 @@
     --popover: 222 47% 13%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 230 72% 20%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 42 97% 50%; /* Garde le jaune en mode sombre */
+    --primary-foreground: 222 47% 11%;
 
     --secondary: 222 47% 18%;
     --secondary-foreground: 0 0% 98%;
@@ -68,7 +68,7 @@
     --muted: 222 47% 18%;
     --muted-foreground: 222 47% 80%;
 
-    --accent: 48 80% 50%;
+    --accent: 42 97% 50%;
     --accent-foreground: 222 47% 11%;
 
     --destructive: 0 62.8% 30.6%;
@@ -76,16 +76,16 @@
 
     --border: 222 47% 20%;
     --input: 222 47% 20%;
-    --ring: 230 72% 20%;
+    --ring: 42 97% 50%;
 
     --sidebar-background: 230 72% 13%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 48 100% 50%;
+    --sidebar-primary: 42 97% 50%;
     --sidebar-primary-foreground: 222 47% 11%;
     --sidebar-accent: 230 40% 20%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 230 30% 18%;
-    --sidebar-ring: 48 100% 50%;
+    --sidebar-ring: 42 97% 50%;
   }
 
   * {
@@ -96,10 +96,11 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
     font-family: 'Nunito', sans-serif;
+    font-weight: 700; /* Nunito Bold par défaut */
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-medium tracking-tight;
+    @apply font-bold tracking-tight; /* Changé de font-medium à font-bold */
     font-family: 'Nunito', sans-serif;
   }
 
@@ -126,7 +127,7 @@
   }
 
   .btn-subtle {
-    @apply px-4 py-2 rounded-full bg-secondary/80 hover:bg-secondary transition-all duration-300 text-sm font-medium;
+    @apply px-4 py-2 rounded-full bg-secondary/80 hover:bg-secondary transition-all duration-300 text-sm font-bold; /* Changé font-medium à font-bold */
   }
 
   .nav-link {
@@ -134,7 +135,7 @@
   }
 
   .nav-link.active {
-    @apply text-foreground font-medium;
+    @apply text-foreground font-bold; /* Changé font-medium à font-bold */
   }
 
   .nav-link.active::after {
@@ -167,7 +168,7 @@
   }
 
   .mobile-nav-button {
-    @apply h-[50px] rounded-full font-medium;
+    @apply h-[50px] rounded-full font-bold; /* Changé font-medium à font-bold */
   }
   
   .back-button {
@@ -175,13 +176,12 @@
   }
   
   .next-button {
-    /* Changed from using bg-brand-orange to the direct color values */
     @apply text-black;
-    background-color: #fdc407;
+    background-color: #FEC403; /* Mise à jour avec votre jaune */
   }
   
   .next-button:hover {
-    background-color: rgba(253, 196, 7, 0.9);
+    background-color: rgba(254, 196, 3, 0.9);
   }
 
   .character-counter {
@@ -189,6 +189,7 @@
   }
 }
 
+/* ... keep existing code (animations and utilities) */
 .animate-in {
   animation: fade-in 0.4s ease-out forwards;
 }
