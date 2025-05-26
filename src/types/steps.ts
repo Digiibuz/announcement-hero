@@ -3,7 +3,6 @@ export type AnnouncementFormStep =
   | "category" 
   | "description" 
   | "images" 
-  | "seo" 
   | "publishing" 
   | "summary";
 
