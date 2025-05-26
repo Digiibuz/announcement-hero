@@ -83,10 +83,23 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
     try {
       setIsSubmitting(true);
       
+      // Map form data to database column names
+      const updateData = {
+        title: formData.title,
+        description: formData.description,
+        wordpress_category_id: formData.wordpressCategory,
+        publish_date: formData.publishDate ? new Date(formData.publishDate).toISOString() : null,
+        status: formData.status,
+        images: formData.images || [],
+        seo_title: formData.seoTitle || null,
+        seo_description: formData.seoDescription || null,
+        seo_slug: formData.seoSlug || null
+      };
+      
       // Update announcement in database
       const { error } = await supabase
         .from("announcements")
-        .update(formData)
+        .update(updateData)
         .eq("id", id);
         
       if (error) throw error;
