@@ -105,21 +105,25 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
               <div className="border-t pt-4 space-y-3">
                 <h4 className="text-sm font-medium text-gray-900 mb-3">Actions administratives</h4>
                 
-                {onResetPassword && (
-                  <Button variant="outline" onClick={onResetPassword} className="w-full">
-                    <Key className="h-4 w-4 mr-2" />
-                    Réinitialiser le mot de passe
-                  </Button>
-                )}
-                
-                {onDeleteUser && (
-                  <DeleteUserDialog 
-                    isOpen={confirmDeleteOpen} 
-                    isDeleting={isDeleting} 
-                    onOpenChange={setConfirmDeleteOpen} 
-                    onDelete={onDeleteUser} 
-                  />
-                )}
+                <div className="flex gap-2">
+                  {onResetPassword && (
+                    <Button variant="outline" onClick={onResetPassword} className="flex-1">
+                      <Key className="h-4 w-4 mr-2" />
+                      Réinitialiser le mot de passe
+                    </Button>
+                  )}
+                  
+                  {onDeleteUser && (
+                    <div className="flex-1">
+                      <DeleteUserDialog 
+                        isOpen={confirmDeleteOpen} 
+                        isDeleting={isDeleting} 
+                        onOpenChange={setConfirmDeleteOpen} 
+                        onDelete={onDeleteUser} 
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </form>
           </Form>
