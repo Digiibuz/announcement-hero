@@ -1,30 +1,40 @@
-
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AnnouncementFormData } from "../AnnouncementForm";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, FileImage, FileText, Search, Tag } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CalendarIcon, FileImage, FileText, Search, Tag, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
+
 interface AnnouncementSummaryProps {
   data: AnnouncementFormData;
   isMobile?: boolean;
   categoryName?: string;
 }
+
 const AnnouncementSummary = ({
   data,
   isMobile,
   categoryName
 }: AnnouncementSummaryProps) => {
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  
   const getCardStyles = () => {
     if (isMobile) {
       return "border-0 border-b border-border shadow-none rounded-none bg-transparent mb-3 last:border-b-0 last:mb-0";
     }
     return "border shadow-sm";
   };
+
   const truncateText = (text: string, length: number) => {
     if (!text) return "";
     return text.length > length ? text.substring(0, length) + "..." : text;
   };
+
+  const shouldShowReadMore = (text: string, maxLength: number = 200) => {
+    return text && text.length > maxLength;
+  };
+
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       <div className="space-y-4">
@@ -45,7 +55,33 @@ const AnnouncementSummary = ({
               <div>
                 <div className="text-sm font-medium text-muted-foreground mb-1">Description</div>
                 <div className="text-foreground whitespace-pre-line">
-                  {truncateText(data.description, 200) || "Non spécifié"}
+                  {data.description ? (
+                    <>
+                      {isDescriptionExpanded ? data.description : truncateText(data.description, 200)}
+                      {shouldShowReadMore(data.description) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                          className="mt-2 p-0 h-auto text-blue-600 hover:text-blue-800 hover:bg-transparent"
+                        >
+                          {isDescriptionExpanded ? (
+                            <>
+                              <ChevronUp className="h-4 w-4 mr-1" />
+                              Lire moins
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="h-4 w-4 mr-1" />
+                              Lire plus
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    "Non spécifié"
+                  )}
                 </div>
               </div>
               
@@ -134,4 +170,5 @@ const AnnouncementSummary = ({
     </div>
   );
 };
+
 export default AnnouncementSummary;
