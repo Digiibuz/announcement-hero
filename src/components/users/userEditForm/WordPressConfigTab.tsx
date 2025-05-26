@@ -4,7 +4,7 @@ import { UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Settings, Globe, Save } from "lucide-react";
+import { ExternalLink, Settings, Globe } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { WordPressConfig } from "@/types/wordpress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -57,13 +57,13 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
     console.log('Updating WordPress config:', data);
   };
 
-  const handleSaveAssignment = () => {
-    if (selectedConfigId && selectedConfigId !== "none") {
-      form.setValue("wpConfigIds", [selectedConfigId]);
-      console.log("Assignment saved to config:", selectedConfigId);
+  // Update form when dropdown selection changes
+  const handleConfigChange = (value: string) => {
+    setSelectedConfigId(value);
+    if (value && value !== "none") {
+      form.setValue("wpConfigIds", [value]);
     } else {
       form.setValue("wpConfigIds", []);
-      console.log("Assignment removed");
     }
   };
 
@@ -110,7 +110,7 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
                 <label className="text-sm font-medium text-gray-700">
                   Configuration WordPress
                 </label>
-                <Select value={selectedConfigId} onValueChange={setSelectedConfigId}>
+                <Select value={selectedConfigId} onValueChange={handleConfigChange}>
                   <SelectTrigger>
                     <SelectValue placeholder="Choisir une configuration" />
                   </SelectTrigger>
@@ -123,77 +123,76 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
                     ))}
                   </SelectContent>
                 </Select>
-                
-                {/* Bouton Enregistrer l'assignation */}
-                <Button 
-                  onClick={handleSaveAssignment}
-                  className="w-full"
-                  variant="outline"
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  Enregistrer l'assignation
-                </Button>
               </div>
 
-              {/* Affichage des détails de la configuration assignée */}
-              {assignedConfig && (
+              {/* Affichage des détails de la configuration sélectionnée */}
+              {selectedConfigId && selectedConfigId !== "none" && (
                 <>
-                  <div className="pt-4 border-t">
-                    <h4 className="font-medium text-gray-900 mb-3">Détails de la configuration</h4>
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-sm font-medium text-gray-700 mb-1">Nom du site</p>
-                        <p className="text-base">{assignedConfig.name}</p>
-                      </div>
-                      
-                      <div>
-                        <p className="text-sm font-medium text-gray-700 mb-1">URL du site</p>
-                        <div className="flex items-center gap-2">
-                          <p className="text-base text-blue-600">{assignedConfig.site_url}</p>
-                          <a 
-                            href={assignedConfig.site_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
+                  {(() => {
+                    const currentConfig = configs.find(config => config.id === selectedConfigId);
+                    if (!currentConfig) return null;
+                    
+                    return (
+                      <>
+                        <div className="pt-4 border-t">
+                          <h4 className="font-medium text-gray-900 mb-3">Détails de la configuration</h4>
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-sm font-medium text-gray-700 mb-1">Nom du site</p>
+                              <p className="text-base">{currentConfig.name}</p>
+                            </div>
+                            
+                            <div>
+                              <p className="text-sm font-medium text-gray-700 mb-1">URL du site</p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-base text-blue-600">{currentConfig.site_url}</p>
+                                <a 
+                                  href={currentConfig.site_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-800"
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                </a>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <p className="text-sm font-medium text-gray-700 mb-1">Statut</p>
+                              <Badge variant="outline" className="text-green-600 border-green-600">
+                                Connecté
+                              </Badge>
+                            </div>
+                            
+                            {currentConfig.app_username && (
+                              <div>
+                                <p className="text-sm font-medium text-gray-700 mb-1">Nom d'utilisateur</p>
+                                <p className="text-base">{currentConfig.app_username}</p>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      
-                      <div>
-                        <p className="text-sm font-medium text-gray-700 mb-1">Statut</p>
-                        <Badge variant="outline" className="text-green-600 border-green-600">
-                          Connecté
-                        </Badge>
-                      </div>
-                      
-                      {assignedConfig.app_username && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-700 mb-1">Nom d'utilisateur</p>
-                          <p className="text-base">{assignedConfig.app_username}</p>
+                        
+                        <div className="pt-4 border-t">
+                          <WordPressConfigForm
+                            onSubmit={handleConfigUpdate}
+                            defaultValues={currentConfig}
+                            config={currentConfig}
+                            buttonText="Modifier la configuration"
+                            dialogTitle="Modifier la configuration WordPress"
+                            dialogDescription="Modifiez les paramètres de connexion WordPress"
+                            isSubmitting={isUpdating}
+                            trigger={
+                              <Button variant="outline" className="w-full">
+                                <Settings className="h-4 w-4 mr-2" />
+                                Modifier la configuration
+                              </Button>
+                            }
+                          />
                         </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="pt-4 border-t">
-                    <WordPressConfigForm
-                      onSubmit={handleConfigUpdate}
-                      defaultValues={assignedConfig}
-                      config={assignedConfig}
-                      buttonText="Modifier la configuration"
-                      dialogTitle="Modifier la configuration WordPress"
-                      dialogDescription="Modifiez les paramètres de connexion WordPress"
-                      isSubmitting={isUpdating}
-                      trigger={
-                        <Button variant="outline" className="w-full">
-                          <Settings className="h-4 w-4 mr-2" />
-                          Modifier la configuration
-                        </Button>
-                      }
-                    />
-                  </div>
+                      </>
+                    );
+                  })()}
                 </>
               )}
             </CardContent>
