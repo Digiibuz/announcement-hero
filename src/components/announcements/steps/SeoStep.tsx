@@ -4,15 +4,9 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescripti
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Loader2, Sparkles, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { AnnouncementFormData } from "../AnnouncementForm";
 import { UseFormReturn } from "react-hook-form";
-import { useContentOptimization } from "@/hooks/useContentOptimization";
-import { cn } from "@/lib/utils";
-import SparklingStars from "@/components/ui/SparklingStars";
-import AILoadingOverlay from "@/components/ui/AILoadingOverlay";
-import "@/styles/sparkles.css";
 
 interface SeoStepProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -20,11 +14,8 @@ interface SeoStepProps {
 }
 
 const SeoStep = ({ form, isMobile }: SeoStepProps) => {
-  const { optimizeContent, isOptimizing } = useContentOptimization();
   const [seoTitleLength, setSeoTitleLength] = useState(0);
   const [seoDescriptionLength, setSeoDescriptionLength] = useState(0);
-  const [isHoveringSeoTitle, setIsHoveringSeoTitle] = useState(false);
-  const [isHoveringSeoDescription, setIsHoveringSeoDescription] = useState(false);
   
   useEffect(() => {
     // Mettre à jour les compteurs de caractères lors de l'initialisation et des changements
@@ -52,37 +43,8 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
     return "border shadow-sm";
   };
 
-  const optimizeSeoContent = async (field: 'seoTitle' | 'seoDescription') => {
-    try {
-      const currentTitle = form.getValues('title');
-      const currentDescription = form.getValues('description');
-      
-      if (!currentTitle || !currentDescription) {
-        return;
-      }
-      
-      const optimizedContent = await optimizeContent(field, currentTitle, currentDescription);
-      
-      if (optimizedContent) {
-        form.setValue(field, optimizedContent);
-        if (field === 'seoTitle') {
-          setSeoTitleLength(optimizedContent.length);
-        } else {
-          setSeoDescriptionLength(optimizedContent.length);
-        }
-      }
-    } catch (error: any) {
-      console.error(`Error optimizing ${field}:`, error);
-    }
-  };
-
   return (
     <div className="space-y-6">
-      {/* AI Loading Overlay */}
-      <AILoadingOverlay 
-        isVisible={isOptimizing.seoTitle || isOptimizing.seoDescription} 
-      />
-      
       <Card className={getCardStyles()}>
         <CardContent className={`space-y-4 ${isMobile ? "px-0 py-4" : "p-6"}`}>
           <FormField 
@@ -90,36 +52,7 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
             name="seoTitle" 
             render={({ field }) => (
               <FormItem>
-                <div className="flex justify-between items-center">
-                  <FormLabel>Titre SEO</FormLabel>
-                  <div 
-                    className="relative sparkle-container"
-                    onMouseEnter={() => setIsHoveringSeoTitle(true)}
-                    onMouseLeave={() => setIsHoveringSeoTitle(false)}
-                  >
-                    <Button 
-                      type="button" 
-                      size="sm" 
-                      variant="outline" 
-                      className="flex items-center gap-1 h-8 relative overflow-hidden transition-all duration-300 bg-white text-purple-600 border-purple-600 hover:bg-purple-600 hover:text-white hover:border-purple-600"
-                      onClick={() => optimizeSeoContent('seoTitle')} 
-                      disabled={isOptimizing.seoTitle}
-                    >
-                      <SparklingStars isVisible={isHoveringSeoTitle && !isOptimizing.seoTitle} />
-                      {isOptimizing.seoTitle ? (
-                        <>
-                          <Loader2 size={14} className="animate-spin" />
-                          <span className="text-xs">Optimisation...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles size={14} />
-                          <span className="text-xs">Générer</span>
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
+                <FormLabel>Titre SEO</FormLabel>
                 <FormControl>
                   <div className="space-y-1">
                     <Input 
@@ -151,36 +84,7 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
             name="seoDescription" 
             render={({ field }) => (
               <FormItem>
-                <div className="flex justify-between items-center">
-                  <FormLabel>Méta description</FormLabel>
-                  <div 
-                    className="relative sparkle-container"
-                    onMouseEnter={() => setIsHoveringSeoDescription(true)}
-                    onMouseLeave={() => setIsHoveringSeoDescription(false)}
-                  >
-                    <Button 
-                      type="button" 
-                      size="sm" 
-                      variant="outline" 
-                      className="flex items-center gap-1 h-8 relative overflow-hidden transition-all duration-300 bg-white text-purple-600 border-purple-600 hover:bg-purple-600 hover:text-white hover:border-purple-600"
-                      onClick={() => optimizeSeoContent('seoDescription')} 
-                      disabled={isOptimizing.seoDescription}
-                    >
-                      <SparklingStars isVisible={isHoveringSeoDescription && !isOptimizing.seoDescription} />
-                      {isOptimizing.seoDescription ? (
-                        <>
-                          <Loader2 size={14} className="animate-spin" />
-                          <span className="text-xs">Optimisation...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles size={14} />
-                          <span className="text-xs">Générer</span>
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
+                <FormLabel>Méta description</FormLabel>
                 <FormControl>
                   <div className="space-y-1">
                     <Textarea 
