@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { AnnouncementFormData } from "../AnnouncementForm";
 import { UseFormReturn } from "react-hook-form";
+import { usePublicationLimits } from "@/hooks/usePublicationLimits";
 
 interface PublishingStepProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -21,6 +22,8 @@ const PublishingStep = ({
   form,
   isMobile
 }: PublishingStepProps) => {
+  const { canPublish, stats } = usePublicationLimits();
+  
   const getCardStyles = () => {
     if (isMobile) {
       return "border-0 border-b border-border shadow-none rounded-none bg-transparent mb-3 last:border-b-0 last:mb-0";
@@ -38,7 +41,16 @@ const PublishingStep = ({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Statut de publication</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select 
+                  onValueChange={(value) => {
+                    // Si on essaie de sélectionner published ou scheduled mais que la limite est atteinte
+                    if ((value === 'published' || value === 'scheduled') && !canPublish()) {
+                      return; // Ne pas changer la valeur
+                    }
+                    field.onChange(value);
+                  }} 
+                  defaultValue={field.value}
+                >
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionnez un statut" />
@@ -46,20 +58,39 @@ const PublishingStep = ({
                   </FormControl>
                   <SelectContent>
                     <SelectItem value="draft">Brouillon</SelectItem>
-                    <SelectItem value="published">Publier immédiatement</SelectItem>
-                    <SelectItem value="scheduled">Planifier</SelectItem>
+                    <SelectItem 
+                      value="published" 
+                      disabled={!canPublish()}
+                      className={!canPublish() ? "opacity-50 cursor-not-allowed" : ""}
+                    >
+                      Publier immédiatement
+                      {!canPublish() && " (Limite atteinte)"}
+                    </SelectItem>
+                    <SelectItem 
+                      value="scheduled" 
+                      disabled={!canPublish()}
+                      className={!canPublish() ? "opacity-50 cursor-not-allowed" : ""}
+                    >
+                      Planifier
+                      {!canPublish() && " (Limite atteinte)"}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <FormDescription>
-                  Les brouillons peuvent être enregistrés maintenant et finalisés plus tard. 
-                  Utilisez le bouton "Enregistrer brouillon" en bas de page.
+                  {!canPublish() ? (
+                    <span className="text-orange-600">
+                      Limite de {stats.maxLimit} publications atteinte ce mois-ci. Seuls les brouillons peuvent être enregistrés.
+                    </span>
+                  ) : (
+                    "Les brouillons peuvent être enregistrés maintenant et finalisés plus tard. Utilisez le bouton \"Enregistrer brouillon\" en bas de page."
+                  )}
                 </FormDescription>
                 <FormMessage />
               </FormItem>
             )} 
           />
 
-          {form.watch('status') === 'scheduled' && (
+          {form.watch('status') === 'scheduled' && canPublish() && (
             <FormField 
               control={form.control} 
               name="publishDate" 

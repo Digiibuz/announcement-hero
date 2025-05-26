@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { UseFormReturn } from "react-hook-form";
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
+import { usePublicationLimits } from "@/hooks/usePublicationLimits";
 import { AnnouncementFormData } from "./AnnouncementForm";
 
 interface PublishingOptionsProps {
@@ -19,6 +20,7 @@ interface PublishingOptionsProps {
 
 const PublishingOptions = ({ form }: PublishingOptionsProps) => {
   const { categories, isLoading: isCategoriesLoading, error: categoriesError, hasCategories } = useWordPressCategories();
+  const { canPublish, stats } = usePublicationLimits();
   
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -73,7 +75,13 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
           <FormItem>
             <Label>Statut de publication</Label>
             <Select
-              onValueChange={field.onChange}
+              onValueChange={(value) => {
+                // Si on essaie de sélectionner published ou scheduled mais que la limite est atteinte
+                if ((value === 'published' || value === 'scheduled') && !canPublish()) {
+                  return; // Ne pas changer la valeur
+                }
+                field.onChange(value);
+              }}
               defaultValue={field.value}
             >
               <FormControl>
@@ -83,16 +91,35 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
               </FormControl>
               <SelectContent>
                 <SelectItem value="draft">Brouillon</SelectItem>
-                <SelectItem value="published">Publier immédiatement</SelectItem>
-                <SelectItem value="scheduled">Planifier</SelectItem>
+                <SelectItem 
+                  value="published" 
+                  disabled={!canPublish()}
+                  className={!canPublish() ? "opacity-50 cursor-not-allowed" : ""}
+                >
+                  Publier immédiatement
+                  {!canPublish() && " (Limite atteinte)"}
+                </SelectItem>
+                <SelectItem 
+                  value="scheduled" 
+                  disabled={!canPublish()}
+                  className={!canPublish() ? "opacity-50 cursor-not-allowed" : ""}
+                >
+                  Planifier
+                  {!canPublish() && " (Limite atteinte)"}
+                </SelectItem>
               </SelectContent>
             </Select>
+            {!canPublish() && (
+              <p className="text-sm text-orange-600 mt-1">
+                Limite de {stats.maxLimit} publications atteinte ce mois-ci
+              </p>
+            )}
             <FormMessage />
           </FormItem>
         )}
       />
 
-      {form.watch('status') === 'scheduled' && (
+      {form.watch('status') === 'scheduled' && canPublish() && (
         <FormField
           control={form.control}
           name="publishDate"
