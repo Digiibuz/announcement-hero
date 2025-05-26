@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -40,10 +39,9 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
   // Check both selectedConfigIds and form wpConfigIds
   const wpConfigIds = form.getValues("wpConfigIds") || [];
   const allConfigIds = [...selectedConfigIds, ...wpConfigIds];
-  const assignedConfig = configs.find(config => 
-    allConfigIds.includes(config.id) || 
-    (userRole === "client" && configs.some(c => c.id === config.id))
-  );
+  
+  // Correction de la logique : on cherche la configuration qui correspond vraiment aux IDs assignés
+  const assignedConfig = configs.find(config => allConfigIds.includes(config.id));
 
   console.log("WordPressConfigTab - Debug:", {
     selectedConfigIds,
