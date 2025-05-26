@@ -27,7 +27,6 @@ const DescriptionField = ({
   const [linkUrl, setLinkUrl] = useState("");
   const [linkText, setLinkText] = useState("");
   const [isHoveringGenerate, setIsHoveringGenerate] = useState(false);
-  const [isHoveringOptimize, setIsHoveringOptimize] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const initialRenderRef = useRef(true);
@@ -192,7 +191,7 @@ const DescriptionField = ({
   return <div className="space-y-2">
       {/* AI Loading Overlay */}
       <AILoadingOverlay 
-        isVisible={isOptimizing.generateDescription || isOptimizing.description} 
+        isVisible={isOptimizing.generateDescription} 
       />
       
       <div className="flex justify-between items-center">
@@ -219,30 +218,6 @@ const DescriptionField = ({
                 </> : <>
                   <Wand2 size={16} />
                   <span>Générer avec l'IA</span>
-                </>}
-            </Button>
-          </div>
-          
-          <div 
-            className="relative sparkle-container"
-            onMouseEnter={() => setIsHoveringOptimize(true)}
-            onMouseLeave={() => setIsHoveringOptimize(false)}
-          >
-            <Button 
-              type="button" 
-              size="sm" 
-              variant="outline" 
-              className="flex items-center gap-1 relative overflow-hidden transition-all duration-300 bg-white text-purple-600 border-purple-600 hover:bg-purple-600 hover:text-white hover:border-purple-600" 
-              onClick={generateImprovedContent} 
-              disabled={isOptimizing.description}
-            >
-              <SparklingStars isVisible={isHoveringOptimize && !isOptimizing.description} />
-              {isOptimizing.description ? <>
-                  <Loader2 size={16} className="animate-spin" />
-                  <span>Optimisation...</span>
-                </> : <>
-                  <Sparkles size={16} />
-                  <span>Optimiser avec l'IA</span>
                 </>}
             </Button>
           </div>
