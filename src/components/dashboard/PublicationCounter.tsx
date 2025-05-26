@@ -1,5 +1,4 @@
-
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -20,11 +19,23 @@ interface StarTrail {
   scale: number;
 }
 
+interface StationaryStar {
+  id: number;
+  x: number;
+  y: number;
+  delay: number;
+  duration: number;
+}
+
 const PublicationCounter = ({ className }: PublicationCounterProps) => {
   const [isHovering, setIsHovering] = useState(false);
   const [starTrails, setStarTrails] = useState<StarTrail[]>([]);
+  const [stationaryStars, setStationaryStars] = useState<StationaryStar[]>([]);
+  const [showStationaryStars, setShowStationaryStars] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const starIdRef = useRef(0);
+  const stationaryStarIdRef = useRef(0);
+  const mouseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { 
     stats, 
     isLoading, 
@@ -45,8 +56,44 @@ const PublicationCounter = ({ className }: PublicationCounterProps) => {
 
   const shouldShowSparkles = percentage >= 80 || badgeText === "Expert";
 
+  const generateStationaryStars = useCallback(() => {
+    if (!cardRef.current) return;
+
+    const rect = cardRef.current.getBoundingClientRect();
+    const newStars: StationaryStar[] = [];
+
+    // Générer 8-12 étoiles à des positions aléatoires
+    const starCount = Math.floor(Math.random() * 5) + 8;
+    
+    for (let i = 0; i < starCount; i++) {
+      newStars.push({
+        id: stationaryStarIdRef.current++,
+        x: Math.random() * rect.width,
+        y: Math.random() * rect.height,
+        delay: Math.random() * 2000, // Délai d'apparition entre 0 et 2s
+        duration: Math.random() * 1000 + 1500, // Durée entre 1.5s et 2.5s
+      });
+    }
+
+    setStationaryStars(newStars);
+    setShowStationaryStars(true);
+
+    // Effacer les étoiles après 3 secondes
+    setTimeout(() => {
+      setShowStationaryStars(false);
+      setTimeout(() => setStationaryStars([]), 500);
+    }, 3000);
+  }, []);
+
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current || !isHovering) return;
+
+    // Effacer le timeout existant et les étoiles stationnaires si la souris bouge
+    if (mouseTimeoutRef.current) {
+      clearTimeout(mouseTimeoutRef.current);
+      setShowStationaryStars(false);
+      setStationaryStars([]);
+    }
 
     const rect = cardRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -86,7 +133,40 @@ const PublicationCounter = ({ className }: PublicationCounterProps) => {
     setTimeout(() => {
       setStarTrails(prev => prev.filter(star => star.id !== newStar.id));
     }, 300);
-  }, [isHovering]);
+
+    // Nouveau timeout pour les étoiles stationnaires
+    mouseTimeoutRef.current = setTimeout(() => {
+      generateStationaryStars();
+    }, 1500); // 1.5 secondes d'immobilité
+  }, [isHovering, generateStationaryStars]);
+
+  const handleMouseEnter = useCallback(() => {
+    setIsHovering(true);
+    // Démarrer le timer pour les étoiles stationnaires
+    mouseTimeoutRef.current = setTimeout(() => {
+      generateStationaryStars();
+    }, 1500);
+  }, [generateStationaryStars]);
+
+  const handleMouseLeave = useCallback(() => {
+    setIsHovering(false);
+    setStarTrails([]);
+    setShowStationaryStars(false);
+    setStationaryStars([]);
+    if (mouseTimeoutRef.current) {
+      clearTimeout(mouseTimeoutRef.current);
+      mouseTimeoutRef.current = null;
+    }
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (mouseTimeoutRef.current) {
+        clearTimeout(mouseTimeoutRef.current);
+      }
+    };
+  }, []);
 
   if (isLoading) {
     return (
@@ -115,11 +195,8 @@ const PublicationCounter = ({ className }: PublicationCounterProps) => {
         getCardBorderClass(),
         className
       )}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => {
-        setIsHovering(false);
-        setStarTrails([]);
-      }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       onMouseMove={handleMouseMove}
     >
       {/* Star Trail Effect */}
@@ -136,6 +213,29 @@ const PublicationCounter = ({ className }: PublicationCounterProps) => {
           }}
         >
           <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full animate-pulse" />
+        </div>
+      ))}
+
+      {/* Stationary Stars Effect */}
+      {stationaryStars.map((star) => (
+        <div
+          key={star.id}
+          className="absolute pointer-events-none z-10"
+          style={{
+            left: star.x - 6,
+            top: star.y - 6,
+            opacity: showStationaryStars ? 1 : 0,
+            transform: showStationaryStars ? 'scale(1)' : 'scale(0)',
+            transition: `opacity 0.5s ease-out ${star.delay}ms, transform 0.5s ease-out ${star.delay}ms`,
+          }}
+        >
+          <div 
+            className="w-3 h-3 bg-gradient-to-r from-yellow-300 via-purple-400 to-pink-400 rounded-full"
+            style={{
+              animation: showStationaryStars ? `twinkle-stationary ${star.duration}ms ease-in-out infinite` : 'none',
+              animationDelay: `${star.delay}ms`,
+            }}
+          />
         </div>
       ))}
 
@@ -300,6 +400,17 @@ const PublicationCounter = ({ className }: PublicationCounterProps) => {
           50% { 
             box-shadow: 0 0 15px currentColor;
             opacity: 1;
+          }
+        }
+        
+        @keyframes twinkle-stationary {
+          0%, 100% { 
+            opacity: 0.4;
+            transform: scale(0.8);
+          }
+          50% { 
+            opacity: 1;
+            transform: scale(1.2);
           }
         }
       `}</style>
