@@ -2,68 +2,71 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { UserProfile } from "@/types/auth";
-import { FormSchema, formSchema } from "./FormFields";
+import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
+
+const userEditSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "Le nom est requis"),
+  email: z.string().email("Email invalide"),
+  role: z.enum(["admin", "client", "editor"]),
+  wpConfigIds: z.array(z.string()).optional(),
+});
+
+type UserEditFormData = z.infer<typeof userEditSchema>;
 
 export const useUserEditForm = (
   user: UserProfile,
-  onUserUpdated: (userId: string, userData: Partial<UserProfile>) => Promise<void>,
-  onDeleteUser?: (userId: string) => Promise<void>
+  onUpdate: (userId: string, userData: Partial<UserProfile>) => Promise<void>,
+  onDelete?: (userId: string) => Promise<void>
 ) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [isLoadingConfigs, setIsLoadingConfigs] = useState(false);
-  const [selectedConfigIds, setSelectedConfigIds] = useState<string[]>([]);
+  const { configs, clientConfigs, isLoading: isLoadingConfigs } = useWordPressConfigs();
 
-  // Fix: We need to use a formSchema that correctly handles "editor" as a valid role
-  const form = useForm<FormSchema>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<UserEditFormData>({
+    resolver: zodResolver(userEditSchema),
     defaultValues: {
-      email: user.email || "",
+      id: user.id,
       name: user.name || "",
+      email: user.email,
       role: user.role,
-      clientId: user.clientId || "",
-      wordpressConfigId: user.wordpressConfigId || "",
       wpConfigIds: [],
     },
   });
 
-  useEffect(() => {
-    form.reset({
-      email: user.email || "",
-      name: user.name || "",
-      role: user.role,
-      clientId: user.clientId || "",
-      wordpressConfigId: user.wordpressConfigId || "",
-      wpConfigIds: selectedConfigIds,
-    });
-  }, [user, form, selectedConfigIds]);
+  // Get associated WordPress configurations for this client
+  const selectedConfigIds = user.role === "client" && user.clientId 
+    ? clientConfigs
+        .filter(cc => cc.client_id === user.clientId)
+        .map(cc => cc.wordpress_config_id)
+    : [];
 
   useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
-      if (name === "role") {
-        if (value.role === "admin") {
-          form.setValue("wpConfigIds", []);
-          form.setValue("wordpressConfigId", "");
-        }
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [form]);
+    if (user.role === "client" && selectedConfigIds.length > 0) {
+      form.setValue("wpConfigIds", selectedConfigIds);
+    }
+  }, [selectedConfigIds, user.role, form]);
 
-  const handleSubmit = async (values: FormSchema) => {
-    await onUserUpdated(user.id, {
-      email: values.email,
-      name: values.name,
-      role: values.role,
-      wordpressConfigId: values.role === "client" ? values.wordpressConfigId : undefined
-    });
-    setIsDialogOpen(false);
+  const handleSubmit = async (data: UserEditFormData) => {
+    try {
+      await onUpdate(user.id, {
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        clientId: user.clientId,
+        wordpressConfigId: data.role === "client" ? data.wpConfigIds?.[0] : null,
+      });
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error("Error updating user:", error);
+    }
   };
 
   const handleDeleteUser = async () => {
-    if (onDeleteUser) {
-      await onDeleteUser(user.id);
+    if (onDelete) {
+      await onDelete(user.id);
       setConfirmDeleteOpen(false);
       setIsDialogOpen(false);
     }
@@ -78,6 +81,6 @@ export const useUserEditForm = (
     isLoadingConfigs,
     selectedConfigIds,
     handleSubmit,
-    handleDeleteUser
+    handleDeleteUser,
   };
 };

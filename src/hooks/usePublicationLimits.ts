@@ -10,7 +10,7 @@ interface PublicationStats {
   remaining: number;
 }
 
-export const usePublicationLimits = () => {
+export const usePublicationLimits = (targetUserId?: string) => {
   const [stats, setStats] = useState<PublicationStats>({
     publishedCount: 0,
     maxLimit: 20,
@@ -20,13 +20,14 @@ export const usePublicationLimits = () => {
   const { user } = useAuth();
 
   const fetchPublicationStats = async () => {
-    if (!user?.id) return;
+    const userId = targetUserId || user?.id;
+    if (!userId) return;
 
     try {
       setIsLoading(true);
       
       const { data, error } = await supabase
-        .rpc('get_monthly_publication_count', { p_user_id: user.id });
+        .rpc('get_monthly_publication_count', { p_user_id: userId });
 
       if (error) throw error;
 
@@ -46,12 +47,47 @@ export const usePublicationLimits = () => {
     }
   };
 
+  const updateMaxLimit = async (newLimit: number) => {
+    const userId = targetUserId || user?.id;
+    if (!userId) return false;
+
+    try {
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth() + 1;
+
+      // Insert or update the limit for current month
+      const { error } = await supabase
+        .from('monthly_publication_limits')
+        .upsert({
+          user_id: userId,
+          year: currentYear,
+          month: currentMonth,
+          max_limit: newLimit,
+          published_count: stats.publishedCount, // Keep current count
+        }, {
+          onConflict: 'user_id,year,month'
+        });
+
+      if (error) throw error;
+
+      // Refresh stats after update
+      await fetchPublicationStats();
+      toast.success("Limite mise à jour avec succès");
+      return true;
+    } catch (error) {
+      console.error('Error updating max limit:', error);
+      toast.error("Erreur lors de la mise à jour de la limite");
+      return false;
+    }
+  };
+
   const incrementPublicationCount = async () => {
-    if (!user?.id) return false;
+    const userId = targetUserId || user?.id;
+    if (!userId) return false;
 
     try {
       const { error } = await supabase
-        .rpc('increment_monthly_publication_count', { p_user_id: user.id });
+        .rpc('increment_monthly_publication_count', { p_user_id: userId });
 
       if (error) throw error;
 
@@ -90,13 +126,14 @@ export const usePublicationLimits = () => {
 
   useEffect(() => {
     fetchPublicationStats();
-  }, [user]);
+  }, [user, targetUserId]);
 
   return {
     stats,
     isLoading,
     canPublish,
     incrementPublicationCount,
+    updateMaxLimit,
     getProgressPercentage,
     getStatusColor,
     getBadgeText,

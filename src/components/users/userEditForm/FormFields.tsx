@@ -1,80 +1,39 @@
 
 import React from "react";
-import * as z from "zod";
-import { Role } from "@/types/auth";
-import { useForm } from "react-hook-form";
-import { 
-  Form, 
-  FormControl, 
-  FormField, 
-  FormItem, 
-  FormLabel, 
-  FormMessage, 
-  FormDescription
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { UserProfile } from "@/types/auth";
 import { WordPressConfig } from "@/types/wordpress";
-
-// Make sure FormSchema aligns with our Role type
-export const formSchema = z.object({
-  email: z.string().email({
-    message: "Email invalide"
-  }),
-  name: z.string().min(2, {
-    message: "Le nom doit comporter au moins 2 caractères"
-  }),
-  role: z.enum(['admin', 'editor', 'client'] as const),
-  clientId: z.string().optional(),
-  wordpressConfigId: z.string().optional(),
-  wpConfigIds: z.array(z.string()).optional(),
-});
-
-export type FormSchema = z.infer<typeof formSchema>;
+import PublicationLimitsField from "./PublicationLimitsField";
 
 interface FormFieldsProps {
-  form: ReturnType<typeof useForm<FormSchema>>;
+  form: UseFormReturn<any>;
   configs: WordPressConfig[];
   isLoadingConfigs: boolean;
   isUpdating: boolean;
   onCancel: () => void;
-  onSubmit: (values: FormSchema) => void;
-  selectedConfigIds?: string[];
+  onSubmit: (data: any) => void;
+  selectedConfigIds: string[];
 }
 
-const FormFields: React.FC<FormFieldsProps> = ({ 
-  form, 
-  configs, 
-  isLoadingConfigs, 
-  isUpdating, 
+const FormFields: React.FC<FormFieldsProps> = ({
+  form,
+  configs,
+  isLoadingConfigs,
+  isUpdating,
   onCancel,
   onSubmit,
-  selectedConfigIds = [] 
+  selectedConfigIds
 }) => {
+  const userRole = form.watch("role");
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input placeholder="email@example.com" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
         <FormField
           control={form.control}
           name="name"
@@ -82,86 +41,129 @@ const FormFields: React.FC<FormFieldsProps> = ({
             <FormItem>
               <FormLabel>Nom</FormLabel>
               <FormControl>
-                <Input placeholder="Nom d'utilisateur" {...field} />
+                <Input {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
+
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input {...field} type="email" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <FormField
           control={form.control}
           name="role"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Rôle</FormLabel>
-              <Select 
-                onValueChange={field.onChange} 
-                defaultValue={field.value}
-              >
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner un rôle" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="admin">Administrateur</SelectItem>
-                  <SelectItem value="editor">Éditeur</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="client">Client</SelectItem>
+                  <SelectItem value="editor">Éditeur</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
             </FormItem>
           )}
         />
-        
-        {/* Ajouter la sélection de configuration WordPress pour les clients */}
-        {form.watch("role") === "client" && (
-          <FormField
-            control={form.control}
-            name="wordpressConfigId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Site WordPress</FormLabel>
-                <Select 
-                  onValueChange={field.onChange} 
-                  value={field.value || "none"}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un site WordPress" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="none">Aucun site</SelectItem>
-                    {configs.map((config) => (
-                      <SelectItem key={config.id} value={config.id}>
-                        {config.name} ({config.site_url})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormDescription>
-                  Site WordPress associé à ce client
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+
+        {userRole === "client" && (
+          <>
+            <FormField
+              control={form.control}
+              name="wpConfigIds"
+              render={() => (
+                <FormItem>
+                  <FormLabel>Configurations WordPress</FormLabel>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {isLoadingConfigs ? (
+                      <p className="text-sm text-muted-foreground">Chargement...</p>
+                    ) : configs.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        Aucune configuration WordPress disponible
+                      </p>
+                    ) : (
+                      configs.map((config) => (
+                        <FormField
+                          key={config.id}
+                          control={form.control}
+                          name="wpConfigIds"
+                          render={({ field }) => {
+                            return (
+                              <FormItem
+                                key={config.id}
+                                className="flex flex-row items-start space-x-3 space-y-0"
+                              >
+                                <FormControl>
+                                  <Checkbox
+                                    checked={selectedConfigIds.includes(config.id)}
+                                    onCheckedChange={(checked) => {
+                                      const currentIds = field.value || [];
+                                      if (checked) {
+                                        field.onChange([...currentIds, config.id]);
+                                      } else {
+                                        field.onChange(
+                                          currentIds.filter((id: string) => id !== config.id)
+                                        );
+                                      }
+                                    }}
+                                  />
+                                </FormControl>
+                                <div className="space-y-1 leading-none">
+                                  <FormLabel className="text-sm font-normal">
+                                    {config.name}
+                                  </FormLabel>
+                                  <p className="text-xs text-muted-foreground">
+                                    {config.site_url}
+                                  </p>
+                                </div>
+                              </FormItem>
+                            );
+                          }}
+                        />
+                      ))
+                    )}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Publication limits management for clients */}
+            <PublicationLimitsField 
+              user={{
+                id: form.getValues("id"),
+                role: "client"
+              } as UserProfile}
+              isUpdating={isUpdating}
+            />
+          </>
         )}
-        
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onCancel} type="button">
+
+        <div className="flex justify-end space-x-2 pt-4">
+          <Button type="button" variant="outline" onClick={onCancel}>
             Annuler
           </Button>
           <Button type="submit" disabled={isUpdating}>
-            {isUpdating ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Mise à jour...
-              </>
-            ) : (
-              "Mettre à jour"
-            )}
+            {isUpdating ? "Mise à jour..." : "Mettre à jour"}
           </Button>
         </div>
       </form>
