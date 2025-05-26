@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useEffect, useMemo } from "react";
@@ -28,26 +27,36 @@ const Sidebar = () => {
   const [isOpen, setIsOpen] = React.useState(false);
 
   // Memoize navigation items to prevent unnecessary re-renders
-  const navItems = useMemo(() => [
-    {
-      name: "Mon Tableau de bord",
-      href: "/dashboard",
-      icon: <LayoutDashboard className="h-5 w-5" />,
-      isActive: pathname === "/dashboard",
-    },
-    {
-      name: "Annonces",
-      href: "/announcements",
-      icon: <FileText className="h-5 w-5" />,
-      isActive: pathname === "/announcements",
-    },
-    {
-      name: "Créer une annonce",
-      href: "/create",
-      icon: <Newspaper className="h-5 w-5" />,
-      isActive: pathname === "/create",
-    },
-  ], [pathname]);
+  const navItems = useMemo(() => {
+    const items = [
+      {
+        name: "Mon Tableau de bord",
+        href: "/dashboard",
+        icon: <LayoutDashboard className="h-5 w-5" />,
+        isActive: pathname === "/dashboard",
+      },
+    ];
+
+    // Only show announcements and create links for non-admin users
+    if (!isAdmin) {
+      items.push(
+        {
+          name: "Annonces",
+          href: "/announcements",
+          icon: <FileText className="h-5 w-5" />,
+          isActive: pathname === "/announcements",
+        },
+        {
+          name: "Créer une annonce",
+          href: "/create",
+          icon: <Newspaper className="h-5 w-5" />,
+          isActive: pathname === "/create",
+        }
+      );
+    }
+
+    return items;
+  }, [pathname, isAdmin]);
 
   const adminItems = useMemo(() => [
     {
