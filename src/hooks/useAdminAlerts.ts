@@ -160,7 +160,7 @@ export const useAdminAlerts = () => {
           // Trouver le client associé à cette configuration
           const client = profiles?.find(profile => profile.wordpress_config_id === config.id);
 
-          return {
+          const disconnectedSite: DisconnectedSite = {
             id: config.id,
             name: config.name || 'Site sans nom',
             site_url: config.site_url || '',
@@ -168,6 +168,8 @@ export const useAdminAlerts = () => {
             client_email: client?.email,
             disconnection_reason: status.reason
           };
+
+          return disconnectedSite;
         })
         .filter((site): site is DisconnectedSite => site !== null);
       
