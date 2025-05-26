@@ -96,33 +96,21 @@ const CreateAnnouncement = () => {
     defaultValues
   });
 
-  // Clear ALL form data when the component mounts - including localStorage
+  // Clear form data only on initial mount, not on every render
   useEffect(() => {
-    // Clear localStorage completely
+    // Clear localStorage only once when component first mounts
     localStorage.removeItem(FORM_STORAGE_KEY);
     
     // Reset form to completely clean state
     form.reset(defaultValues);
-    
-    // Also clear any other potential storage keys
-    Object.keys(localStorage).forEach(key => {
-      if (key.includes('announcement') || key.includes('form')) {
-        localStorage.removeItem(key);
-      }
-    });
-  }, []); // Empty dependency array means this runs only once on mount
+  }, []); // Empty dependency array ensures this runs only once
 
-  // Use the form persistence hook but disable it initially
+  // Use the form persistence hook but start fresh
   const {
     clearSavedData,
     hasSavedData,
     saveData
   } = useFormPersistence(form, FORM_STORAGE_KEY, defaultValues);
-
-  // Force clear on mount and disable auto-loading of saved data
-  useEffect(() => {
-    clearSavedData();
-  }, [clearSavedData]);
 
   // Define the publishing steps
   const publishingSteps: PublishingStepType[] = [
