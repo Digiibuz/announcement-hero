@@ -17,7 +17,8 @@ import {
   Globe,
   FileText,
   Menu,
-  UserCircle
+  UserCircle,
+  Monitor
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -54,6 +55,13 @@ const Sidebar = () => {
       href: "/users",
       icon: <UserCog className="h-5 w-5" />,
       isActive: pathname === "/users",
+      adminOnly: true,
+    },
+    {
+      name: "Aperçu des sites",
+      href: "/websites",
+      icon: <Monitor className="h-5 w-5" />,
+      isActive: pathname === "/websites",
       adminOnly: true,
     },
     {

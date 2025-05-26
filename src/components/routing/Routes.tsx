@@ -18,6 +18,7 @@ const WordPressManagement = lazy(() => import('@/pages/WordPressManagement'));
 const UserManagement = lazy(() => import('@/pages/UserManagement'));
 const UserProfile = lazy(() => import('@/pages/UserProfile'));
 const GoogleBusinessPage = lazy(() => import('@/pages/GoogleBusinessPage'));
+const WebsiteManagement = lazy(() => import('@/pages/WebsiteManagement'));
 
 const AppRoutes = () => {
   const { isAuthenticated, isOnResetPasswordPage } = useAuth();
@@ -100,6 +101,14 @@ const AppRoutes = () => {
           element={
             <AdminRoute adminOnly>
               <UserManagement />
+            </AdminRoute>
+          } 
+        />
+        <Route 
+          path="/websites" 
+          element={
+            <AdminRoute adminOnly>
+              <WebsiteManagement />
             </AdminRoute>
           } 
         />
