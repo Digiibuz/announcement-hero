@@ -148,6 +148,30 @@ export default {
 					'50%': { 
 						opacity: '0.8'
 					}
+				},
+				'float': {
+					'0%, 100%': { 
+						transform: 'translateY(0px) rotate(0deg)' 
+					},
+					'50%': { 
+						transform: 'translateY(-20px) rotate(10deg)' 
+					}
+				},
+				'float-delayed': {
+					'0%, 100%': { 
+						transform: 'translateY(0px) rotate(12deg)' 
+					},
+					'50%': { 
+						transform: 'translateY(-15px) rotate(22deg)' 
+					}
+				},
+				'float-slow': {
+					'0%, 100%': { 
+						transform: 'translateY(0px) rotate(30deg)' 
+					},
+					'50%': { 
+						transform: 'translateY(-10px) rotate(40deg)' 
+					}
 				}
 			},
 			animation: {
@@ -157,7 +181,10 @@ export default {
 				'fade-out': 'fade-out 0.4s ease-out',
 				'scale-in': 'scale-in 0.3s ease-out',
 				'slide-in': 'slide-in 0.4s ease-out',
-				'pulse-subtle': 'pulse-subtle 3s ease-in-out infinite'
+				'pulse-subtle': 'pulse-subtle 3s ease-in-out infinite',
+				'float': 'float 6s ease-in-out infinite',
+				'float-delayed': 'float-delayed 8s ease-in-out infinite',
+				'float-slow': 'float-slow 10s ease-in-out infinite'
 			},
 			backdropFilter: {
 				'none': 'none',

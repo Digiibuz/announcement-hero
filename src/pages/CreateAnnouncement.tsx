@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -27,6 +26,7 @@ import { AnnouncementFormData } from "@/components/announcements/AnnouncementFor
 import CreateAnnouncementHeader from "@/components/announcements/steps/CreateAnnouncementHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, TrendingUp } from "lucide-react";
+import DynamicBackground from "@/components/ui/DynamicBackground";
 
 const FORM_STORAGE_KEY = "announcement-form-draft";
 
@@ -417,7 +417,7 @@ const CreateAnnouncement = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+    <DynamicBackground className="min-h-screen">
       <CreateAnnouncementHeader 
         currentStep={currentStepIndex} 
         totalSteps={stepConfigs.length} 
@@ -499,7 +499,7 @@ const CreateAnnouncement = () => {
         currentStepId={publishingState.currentStep} 
         progress={publishingState.progress} 
       />
-    </div>
+    </DynamicBackground>
   );
 };
 
