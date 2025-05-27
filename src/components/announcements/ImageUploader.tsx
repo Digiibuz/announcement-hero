@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { UseFormReturn } from "react-hook-form";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import heic2any from "heic2any";
 
 interface ImageUploaderProps {
   form: UseFormReturn<any>;
@@ -22,17 +23,55 @@ const ImageUploader = ({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useMediaQuery("(max-width: 767px)");
 
+  // Convert HEIC to JPEG before processing
+  const convertHeicToJpeg = async (file: File): Promise<File> => {
+    try {
+      console.log("🔄 Converting HEIC file:", file.name);
+      
+      const convertedBlob = await heic2any({
+        blob: file,
+        toType: "image/jpeg",
+        quality: 0.8
+      }) as Blob;
+      
+      const convertedFile = new File(
+        [convertedBlob], 
+        file.name.replace(/\.heic$/i, '.jpg'), 
+        { type: 'image/jpeg' }
+      );
+      
+      console.log("✅ HEIC converted successfully:", {
+        originalSize: file.size,
+        convertedSize: convertedFile.size,
+        originalName: file.name,
+        convertedName: convertedFile.name
+      });
+      
+      return convertedFile;
+    } catch (error) {
+      console.error("❌ HEIC conversion failed:", error);
+      throw new Error("Échec de la conversion HEIC");
+    }
+  };
+
+  // Detect if file is HEIC format
+  const isHeicFile = (file: File): boolean => {
+    return file.type === 'image/heic' || 
+           file.type === 'image/heif' || 
+           file.name.toLowerCase().endsWith('.heic') || 
+           file.name.toLowerCase().endsWith('.heif');
+  };
+
   // Optimized image compression for mobile with detailed logging
   const compressAndConvertToWebp = async (file: File): Promise<File> => {
     return new Promise((resolve, reject) => {
-      console.log("🔄 Starting conversion for file:", {
+      console.log("🔄 Starting WebP conversion for file:", {
         name: file.name,
         type: file.type,
         size: file.size,
         lastModified: file.lastModified
       });
 
-      // Check if browser supports WebP
       const canvas = document.createElement('canvas');
       const webpSupported = canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0;
       console.log("🌐 WebP support:", webpSupported);
@@ -53,7 +92,6 @@ const ImageUploader = ({
               naturalHeight: img.naturalHeight
             });
             
-            // Lower max dimensions for mobile to improve performance
             const MAX_WIDTH = isMobile ? 1200 : 1600;
             const MAX_HEIGHT = isMobile ? 1200 : 1600;
             let width = img.width;
@@ -86,13 +124,11 @@ const ImageUploader = ({
             
             console.log("🎨 Canvas context created successfully");
             
-            // Clear canvas and draw image
             ctx.clearRect(0, 0, width, height);
             ctx.drawImage(img, 0, 0, width, height);
             
             console.log("✅ Image drawn on canvas");
             
-            // Lower compression quality on mobile
             const compressionQuality = isMobile ? 0.65 : 0.7;
             console.log("🗜️ Compression quality:", compressionQuality);
             
@@ -159,10 +195,9 @@ const ImageUploader = ({
     try {
       setError(null);
       setIsUploading(true);
-      setUploadProgress(10);
+      setUploadProgress(5);
       toast.info("Traitement des images en cours...");
       
-      // Limite le nombre d'images sur mobile pour éviter les problèmes de mémoire
       const maxFiles = isMobile ? 3 : 10;
       const filesToProcess = Array.from(files).slice(0, maxFiles);
       
@@ -172,18 +207,33 @@ const ImageUploader = ({
         toast.warning(`Maximum ${maxFiles} images peuvent être téléversées à la fois sur mobile`);
       }
       
-      // Processus séquentiel pour éviter de surcharger l'appareil mobile
       const uploadedImageUrls: string[] = [];
       
       for (let i = 0; i < filesToProcess.length; i++) {
         try {
           console.log(`🔄 Processing file ${i + 1}/${filesToProcess.length}:`, filesToProcess[i].name);
-          setUploadProgress(10 + Math.floor((i / filesToProcess.length) * 40));
+          setUploadProgress(5 + Math.floor((i / filesToProcess.length) * 20));
           
-          const processedFile = await compressAndConvertToWebp(filesToProcess[i]);
+          let fileToProcess = filesToProcess[i];
+          
+          // Step 1: Convert HEIC to JPEG if needed
+          if (isHeicFile(fileToProcess)) {
+            console.log("📱 HEIC file detected, converting to JPEG...");
+            toast.info(`Conversion HEIC en cours... (${i + 1}/${filesToProcess.length})`);
+            fileToProcess = await convertHeicToJpeg(fileToProcess);
+            setUploadProgress(15 + Math.floor((i / filesToProcess.length) * 20));
+          }
+          
+          // Step 2: Convert to WebP
+          console.log("🔄 Converting to WebP...");
+          toast.info(`Optimisation WebP en cours... (${i + 1}/${filesToProcess.length})`);
+          const processedFile = await compressAndConvertToWebp(fileToProcess);
           console.log("✅ File processed successfully:", processedFile.name);
           
-          setUploadProgress(50 + Math.floor((i / filesToProcess.length) * 40));
+          setUploadProgress(35 + Math.floor((i / filesToProcess.length) * 45));
+          
+          // Step 3: Upload to storage
+          console.log("📤 Uploading to storage...");
           const imageUrl = await uploadSingleImage(processedFile);
           
           if (imageUrl) {
@@ -195,17 +245,31 @@ const ImageUploader = ({
         } catch (error) {
           console.error(`❌ Error processing file ${i + 1}:`, filesToProcess[i].name, error);
           
-          // Essayer l'upload sans conversion en cas d'erreur
+          // Fallback: try uploading original file without conversion
           try {
             console.log("🔄 Trying to upload original file without conversion...");
-            const imageUrl = await uploadSingleImage(filesToProcess[i]);
+            let fallbackFile = filesToProcess[i];
+            
+            // If it's HEIC, still try to convert to JPEG for upload compatibility
+            if (isHeicFile(fallbackFile)) {
+              try {
+                fallbackFile = await convertHeicToJpeg(fallbackFile);
+              } catch (heicError) {
+                console.error("❌ HEIC conversion failed in fallback:", heicError);
+                toast.error(`Impossible de traiter le fichier HEIC: ${fallbackFile.name}`);
+                continue;
+              }
+            }
+            
+            const imageUrl = await uploadSingleImage(fallbackFile);
             if (imageUrl) {
               uploadedImageUrls.push(imageUrl);
               console.log("✅ Original file uploaded successfully:", imageUrl);
-              toast.warning(`Image ${i + 1} uploadée sans conversion WebP`);
+              toast.warning(`Image ${i + 1} uploadée sans optimisation WebP`);
             }
           } catch (uploadError) {
             console.error("❌ Failed to upload original file:", uploadError);
+            toast.error(`Échec du téléversement: ${filesToProcess[i].name}`);
           }
         }
       }
@@ -248,7 +312,6 @@ const ImageUploader = ({
         console.error("❌ Storage upload error:", error);
         if (retries > 0) {
           console.log(`🔄 Retrying upload... (${retries} attempts left)`);
-          // Wait a moment before retrying
           await new Promise(resolve => setTimeout(resolve, 1000));
           return uploadSingleImage(file, retries - 1);
         }
@@ -323,14 +386,14 @@ const ImageUploader = ({
           type="file" 
           ref={fileInputRef} 
           multiple 
-          accept="image/*" 
+          accept="image/*,.heic,.heif" 
           className="hidden" 
           onChange={handleFileUpload} 
         />
         <input 
           type="file" 
           ref={cameraInputRef} 
-          accept="image/*" 
+          accept="image/*,.heic,.heif" 
           capture="environment" 
           className="hidden" 
           onChange={handleFileUpload} 
@@ -344,7 +407,7 @@ const ImageUploader = ({
           </div>
           <p className="mb-4 text-gray-950">
             {isMobile ? 
-              "Ajoutez des photos à votre annonce" : 
+              "Ajoutez des photos à votre annonce (HEIC/JPEG supportés)" : 
               "Glissez-déposez vos images ici, ou sélectionnez une option ci-dessous"
             }
           </p>
