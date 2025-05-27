@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -450,7 +451,7 @@ const CreateAnnouncement = () => {
         </div>
       )}
     
-      <div className="pt-16 pb-20 px-4 md:max-w-4xl md:mx-auto">
+      <div className={`pt-16 ${isMobile ? 'pb-32' : 'pb-20'} px-4 md:max-w-4xl md:mx-auto`}>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="h-full">
             <div className="max-w-4xl mx-auto">
@@ -474,7 +475,7 @@ const CreateAnnouncement = () => {
               </div>
             </div>
             
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-gray-200">
+            <div className={`fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-gray-200 ${isMobile ? 'z-40' : 'z-10'}`}>
               <StepNavigation 
                 currentStep={currentStepIndex} 
                 totalSteps={stepConfigs.length} 
