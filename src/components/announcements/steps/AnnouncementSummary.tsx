@@ -1,9 +1,10 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AnnouncementFormData } from "../AnnouncementForm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CalendarIcon, FileImage, FileText, Search, Tag, ChevronDown, ChevronUp } from "lucide-react";
+import { CalendarIcon, FileImage, FileText, Tag, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
 
 interface AnnouncementSummaryProps {
@@ -111,33 +112,6 @@ const AnnouncementSummary = ({
                     <img src={image} alt={`Image ${index + 1}`} className="w-full h-full object-cover" />
                   </div>)}
               </div> : <div className="text-muted-foreground">Aucune image ajoutée</div>}
-          </CardContent>
-        </Card>
-        
-        <Card className={getCardStyles()}>
-          <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"}`}>
-            <CardTitle className="text-lg font-medium flex items-center">
-              <Search className="h-5 w-5 mr-2" />
-              SEO
-            </CardTitle>
-          </CardHeader>
-          <CardContent className={`${isMobile ? "px-0 py-3" : ""}`}>
-            <div className="space-y-4">
-              <div>
-                <div className="text-sm font-medium text-muted-foreground mb-1">Titre SEO</div>
-                <div className="text-foreground">{data.seoTitle || "Non spécifié"}</div>
-              </div>
-              
-              <div>
-                <div className="text-sm font-medium text-muted-foreground mb-1">Meta description</div>
-                <div className="text-foreground">{data.seoDescription || "Non spécifié"}</div>
-              </div>
-              
-              <div>
-                <div className="text-sm font-medium text-muted-foreground mb-1">URL</div>
-                <div className="text-foreground">yoursite.com/annonces/{data.seoSlug || "url-de-lannonce"}</div>
-              </div>
-            </div>
           </CardContent>
         </Card>
         
