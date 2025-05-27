@@ -3,7 +3,7 @@ import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Button } from "@/components/ui/button";
-import { Home, FileText, Plus, FolderOpen } from "lucide-react";
+import { Home, Plus, FolderOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -22,12 +22,6 @@ const navItems: NavItem[] = [
     path: "/dashboard"
   },
   {
-    id: "announcements",
-    label: "Projets",
-    icon: <FileText className="h-5 w-5" />,
-    path: "/announcements"
-  },
-  {
     id: "create",
     label: "",
     icon: <Plus className="h-6 w-6" />,
@@ -35,13 +29,7 @@ const navItems: NavItem[] = [
     isCreate: true
   },
   {
-    id: "projects1",
-    label: "Projets",
-    icon: <FolderOpen className="h-5 w-5" />,
-    path: "/announcements"
-  },
-  {
-    id: "projects2",
+    id: "projects",
     label: "Projets",
     icon: <FolderOpen className="h-5 w-5" />,
     path: "/announcements"
