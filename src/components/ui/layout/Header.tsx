@@ -8,11 +8,6 @@ import MobileNav from "./MobileNav";
 const Header = () => {
   const { isAuthenticated } = useAuth();
 
-  // Si l'utilisateur est authentifié, ne pas afficher le header du tout
-  if (isAuthenticated) {
-    return null;
-  }
-
   return (
     <>
       {/* Header transparent pour mobile */}
@@ -38,15 +33,21 @@ const Header = () => {
               </Link>
             </div>
 
-            {/* Bouton de connexion */}
+            {/* Bouton de connexion ou profil */}
             <div className="flex items-center gap-4">
-              <Link to="/login">
-                <Button 
-                  className="bg-digibuz-navy hover:bg-digibuz-navy/90 text-white dark:bg-digibuz-yellow dark:text-digibuz-navy dark:hover:bg-digibuz-yellow/90"
-                >
-                  Se connecter
-                </Button>
-              </Link>
+              {!isAuthenticated ? (
+                <Link to="/login">
+                  <Button 
+                    className="bg-digibuz-navy hover:bg-digibuz-navy/90 text-white dark:bg-digibuz-yellow dark:text-digibuz-navy dark:hover:bg-digibuz-yellow/90"
+                  >
+                    Se connecter
+                  </Button>
+                </Link>
+              ) : (
+                <div className="md:block hidden">
+                  {/* Espace pour futur contenu desktop quand connecté */}
+                </div>
+              )}
             </div>
           </div>
         </div>

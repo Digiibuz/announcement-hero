@@ -1,14 +1,16 @@
 
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Menu, X, Home, Info, Phone, Settings } from "lucide-react";
+import { Menu, X, Home, Info, Phone, Settings, FileText, Users, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
+import { useAuth } from "@/context/AuthContext";
 
 const MobileNav = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { isAuthenticated, logout, isAdmin } = useAuth();
 
-  const navItems = [
+  const publicNavItems = [
     {
       title: "Accueil",
       href: "/",
@@ -30,6 +32,43 @@ const MobileNav = () => {
       icon: Settings,
     },
   ];
+
+  const authenticatedNavItems = [
+    {
+      title: "Dashboard",
+      href: "/dashboard",
+      icon: Home,
+    },
+    {
+      title: "Annonces",
+      href: "/announcements",
+      icon: FileText,
+    },
+    {
+      title: "Créer",
+      href: "/create",
+      icon: Settings,
+    },
+    ...(isAdmin ? [
+      {
+        title: "Utilisateurs",
+        href: "/users",
+        icon: Users,
+      },
+      {
+        title: "WordPress",
+        href: "/wordpress",
+        icon: Settings,
+      }
+    ] : []),
+  ];
+
+  const navItems = isAuthenticated ? authenticatedNavItems : publicNavItems;
+
+  const handleLogout = () => {
+    logout();
+    setIsOpen(false);
+  };
 
   return (
     <Drawer open={isOpen} onOpenChange={setIsOpen}>
@@ -85,13 +124,24 @@ const MobileNav = () => {
 
           {/* Footer du drawer */}
           <div className="p-6 border-t border-gray-200/30">
-            <Link to="/login" onClick={() => setIsOpen(false)}>
+            {!isAuthenticated ? (
+              <Link to="/login" onClick={() => setIsOpen(false)}>
+                <Button 
+                  className="w-full bg-digibuz-navy hover:bg-digibuz-navy/90 text-white"
+                >
+                  Se connecter
+                </Button>
+              </Link>
+            ) : (
               <Button 
-                className="w-full bg-digibuz-navy hover:bg-digibuz-navy/90 text-white"
+                onClick={handleLogout}
+                variant="outline"
+                className="w-full flex items-center gap-2"
               >
-                Se connecter
+                <LogOut className="h-4 w-4" />
+                Se déconnecter
               </Button>
-            </Link>
+            )}
           </div>
         </div>
       </DrawerContent>
