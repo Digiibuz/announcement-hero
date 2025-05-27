@@ -30,7 +30,7 @@ const MediaUploader = ({
     return /iPhone|iPad|iPod/.test(navigator.userAgent);
   };
 
-  // Check WebP support more reliably
+  // Check WebP support
   const checkWebPSupport = (): Promise<boolean> => {
     return new Promise((resolve) => {
       const webP = new Image();
@@ -41,7 +41,7 @@ const MediaUploader = ({
     });
   };
 
-  // Convert HEIC to JPEG before processing
+  // Convert HEIC to JPEG
   const convertHeicToJpeg = async (file: File): Promise<File> => {
     try {
       console.log("🔄 Converting HEIC file:", file.name);
@@ -59,11 +59,7 @@ const MediaUploader = ({
         { type: 'image/jpeg' }
       );
       
-      console.log("✅ HEIC converted successfully:", {
-        originalSize: file.size,
-        convertedSize: convertedFile.size
-      });
-      
+      console.log("✅ HEIC converted successfully");
       return convertedFile;
     } catch (error) {
       console.error("❌ HEIC conversion failed:", error);
@@ -71,7 +67,7 @@ const MediaUploader = ({
     }
   };
 
-  // Detect if file is HEIC format
+  // Detect file types
   const isHeicFile = (file: File): boolean => {
     return file.type === 'image/heic' || 
            file.type === 'image/heif' || 
@@ -79,7 +75,6 @@ const MediaUploader = ({
            file.name.toLowerCase().endsWith('.heif');
   };
 
-  // Detect if file is video
   const isVideoFile = (file: File): boolean => {
     return file.type.startsWith('video/') || 
            file.name.toLowerCase().endsWith('.mov') ||
@@ -88,25 +83,19 @@ const MediaUploader = ({
            file.name.toLowerCase().endsWith('.mkv');
   };
 
-  // Improved WebP conversion with proper fallback
-  const compressAndConvertToWebp = async (file: File): Promise<File> => {
+  // NOUVELLE FONCTION : Conversion optimisée vers WebP (lors de l'upload)
+  const convertToWebP = async (file: File): Promise<File> => {
     return new Promise(async (resolve, reject) => {
-      setProcessingStatus("Compression et conversion WebP...");
-      console.log("🔄 Starting WebP conversion for file:", {
-        name: file.name,
-        type: file.type,
-        size: file.size
-      });
+      setProcessingStatus("Conversion vers WebP...");
+      console.log("🔄 Converting to WebP:", file.name);
 
-      // Check WebP support first
       const webpSupported = await checkWebPSupport();
-      console.log("🌐 WebP support detected:", webpSupported);
+      console.log("🌐 WebP support:", webpSupported);
 
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       
       if (!ctx) {
-        console.error("❌ Cannot create canvas context");
         reject(new Error("Impossible de créer le contexte canvas"));
         return;
       }
@@ -119,18 +108,13 @@ const MediaUploader = ({
         
         img.onload = () => {
           try {
-            console.log("🖼️ Image loaded:", {
-              width: img.width,
-              height: img.height
-            });
-            
-            // Enhanced compression for iPhone and mobile
-            const MAX_WIDTH = isAppleDevice() ? 1200 : 1600;
-            const MAX_HEIGHT = isAppleDevice() ? 1200 : 1600;
+            // Dimensions optimales pour le stockage (pas trop grandes)
+            const MAX_WIDTH = 1920;
+            const MAX_HEIGHT = 1920;
             let width = img.width;
             let height = img.height;
             
-            // Resize if needed
+            // Redimensionner si nécessaire
             if (width > height) {
               if (width > MAX_WIDTH) {
                 height *= MAX_WIDTH / width;
@@ -146,194 +130,118 @@ const MediaUploader = ({
             canvas.width = width;
             canvas.height = height;
             
-            // Enhanced quality settings
+            // Dessiner l'image
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
-            ctx.clearRect(0, 0, width, height);
             ctx.drawImage(img, 0, 0, width, height);
             
-            console.log("✅ Image drawn on canvas, dimensions:", { width, height });
+            // Convertir selon le support WebP
+            const targetFormat = webpSupported ? 'image/webp' : 'image/jpeg';
+            const quality = 0.85; // Qualité élevée pour le stockage
+            const extension = webpSupported ? '.webp' : '.jpg';
             
-            // Quality settings
-            const compressionQuality = isAppleDevice() ? 0.6 : 0.7;
-            console.log("🗜️ Compression quality:", compressionQuality);
-            
-            // Try WebP first if supported, otherwise use JPEG
-            const convertToFormat = (format: string, quality: number) => {
-              return new Promise<File>((resolveFormat, rejectFormat) => {
-                canvas.toBlob(blob => {
-                  if (!blob) {
-                    rejectFormat(new Error(`Conversion ${format} failed`));
-                    return;
-                  }
-                  
-                  const extension = format === 'image/webp' ? '.webp' : '.jpg';
-                  const fileName = file.name.split('.')[0] + extension;
-                  const newFile = new File([blob], fileName, { type: format });
-                  
-                  console.log(`✅ ${format} file created:`, {
-                    originalSize: file.size,
-                    compressedSize: newFile.size,
-                    compressionRatio: ((file.size - newFile.size) / file.size * 100).toFixed(1) + '%',
-                    actualType: blob.type
-                  });
-                  
-                  resolveFormat(newFile);
-                }, format, quality);
+            canvas.toBlob(blob => {
+              if (!blob) {
+                reject(new Error("Conversion failed"));
+                return;
+              }
+              
+              const fileName = file.name.split('.')[0] + extension;
+              const convertedFile = new File([blob], fileName, { type: targetFormat });
+              
+              console.log("✅ WebP conversion successful:", {
+                originalSize: file.size,
+                convertedSize: convertedFile.size,
+                format: targetFormat,
+                compressionRatio: ((file.size - convertedFile.size) / file.size * 100).toFixed(1) + '%'
               });
-            };
-
-            // Try WebP conversion if supported
-            if (webpSupported) {
-              console.log("🔄 Attempting WebP conversion...");
-              convertToFormat('image/webp', compressionQuality)
-                .then(webpFile => {
-                  // Verify the blob was actually created as WebP
-                  if (webpFile.type === 'image/webp') {
-                    console.log("🎉 WebP conversion successful");
-                    resolve(webpFile);
-                  } else {
-                    console.log("⚠️ WebP conversion failed, falling back to JPEG");
-                    return convertToFormat('image/jpeg', compressionQuality);
-                  }
-                })
-                .then(jpegFile => {
-                  if (jpegFile) {
-                    console.log("✅ JPEG fallback successful");
-                    resolve(jpegFile);
-                  }
-                })
-                .catch(error => {
-                  console.error("❌ Both WebP and JPEG conversion failed:", error);
-                  reject(error);
-                });
-            } else {
-              console.log("🔄 WebP not supported, using JPEG compression...");
-              convertToFormat('image/jpeg', compressionQuality)
-                .then(jpegFile => {
-                  console.log("✅ JPEG compression successful");
-                  resolve(jpegFile);
-                })
-                .catch(error => {
-                  console.error("❌ JPEG conversion failed:", error);
-                  reject(error);
-                });
-            }
+              
+              resolve(convertedFile);
+            }, targetFormat, quality);
           } catch (error) {
-            console.error("❌ Error during canvas conversion:", error);
             reject(error);
           }
         };
         
-        img.onerror = () => {
-          console.error("❌ Image load error");
-          reject(new Error("Erreur lors du chargement de l'image"));
-        };
+        img.onerror = () => reject(new Error("Erreur lors du chargement de l'image"));
       };
       
-      reader.onerror = () => {
-        console.error("❌ FileReader error");
-        reject(new Error("Erreur lors de la lecture du fichier"));
-      };
-      
+      reader.onerror = () => reject(new Error("Erreur lors de la lecture du fichier"));
       reader.readAsDataURL(file);
     });
   };
 
-  // Convert and compress video to MP4 (simplified for iPhone)
-  const convertAndCompressVideo = async (file: File): Promise<File> => {
-    return new Promise((resolve) => {
-      setProcessingStatus("Conversion et compression vidéo...");
-      console.log("🔄 Processing video file:", file.name);
-      
-      // For iPhone, we'll do basic file rename and size optimization
-      // In a real implementation, you'd use FFmpeg.js or similar
-      const fileName = file.name.split('.')[0] + '.mp4';
-      
-      // Create a new file with MP4 extension
-      const compressedFile = new File([file], fileName, {
-        type: 'video/mp4'
-      });
-      
-      console.log("📹 Video processed:", {
-        originalName: file.name,
-        newName: fileName,
-        size: file.size
-      });
-      
-      resolve(compressedFile);
-    });
+  // Process video files (simplified for mobile)
+  const processVideo = async (file: File): Promise<File> => {
+    setProcessingStatus("Traitement vidéo...");
+    console.log("🎥 Processing video:", file.name);
+    
+    // Pour l'instant, on garde le fichier tel quel
+    // Dans une version future, on pourrait ajouter une compression vidéo
+    const fileName = file.name.split('.')[0] + '.mp4';
+    return new File([file], fileName, { type: 'video/mp4' });
   };
 
+  // Main file upload handler
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
     
-    console.log("📁 Files selected:", files.length, "files");
+    console.log("📁 Files selected:", files.length);
     
     try {
       setError(null);
       setIsUploading(true);
       setUploadProgress(5);
-      setProcessingStatus("Traitement des fichiers...");
+      setProcessingStatus("Préparation...");
       
       if (isAppleDevice()) {
-        toast.info("Optimisation iPhone détectée - Compression avancée activée");
+        toast.info("Optimisation iPhone détectée");
       }
       
       const maxFiles = isMobile ? 3 : 10;
       const filesToProcess = Array.from(files).slice(0, maxFiles);
       
       if (files.length > maxFiles) {
-        toast.warning(`Maximum ${maxFiles} fichiers peuvent être téléversés à la fois`);
+        toast.warning(`Maximum ${maxFiles} fichiers à la fois`);
       }
       
       const uploadedMediaUrls: string[] = [];
       
       for (let i = 0; i < filesToProcess.length; i++) {
         try {
-          setUploadProgress(10 + Math.floor((i / filesToProcess.length) * 70));
+          setUploadProgress(10 + Math.floor((i / filesToProcess.length) * 80));
           let fileToProcess = filesToProcess[i];
           
           console.log(`🔄 Processing file ${i + 1}/${filesToProcess.length}:`, fileToProcess.name);
           
-          // Step 1: Handle HEIC conversion for images
+          // ÉTAPE 1: Conversion HEIC si nécessaire
           if (isHeicFile(fileToProcess)) {
-            console.log("📱 HEIC file detected, converting...");
             toast.info(`Conversion HEIC... (${i + 1}/${filesToProcess.length})`);
             fileToProcess = await convertHeicToJpeg(fileToProcess);
           }
           
-          // Step 2: Process based on file type
+          // ÉTAPE 2: Traitement selon le type
           if (isVideoFile(fileToProcess)) {
-            // Video processing
-            console.log("🎥 Video file detected, processing...");
             toast.info(`Traitement vidéo... (${i + 1}/${filesToProcess.length})`);
-            fileToProcess = await convertAndCompressVideo(fileToProcess);
+            fileToProcess = await processVideo(fileToProcess);
           } else {
-            // Image processing
-            console.log("🖼️ Image file detected, compressing...");
-            toast.info(`Compression d'image... (${i + 1}/${filesToProcess.length})`);
-            fileToProcess = await compressAndConvertToWebp(fileToProcess);
+            // NOUVELLE LOGIQUE: Conversion vers WebP immédiate
+            toast.info(`Conversion WebP... (${i + 1}/${filesToProcess.length})`);
+            fileToProcess = await convertToWebP(fileToProcess);
           }
           
-          console.log("✅ File processed successfully:", {
-            name: fileToProcess.name,
-            type: fileToProcess.type,
-            size: fileToProcess.size
-          });
-          
-          // Step 3: Upload to storage
-          setProcessingStatus(`Téléversement... (${i + 1}/${filesToProcess.length})`);
+          // ÉTAPE 3: Upload vers Supabase
+          setProcessingStatus(`Upload... (${i + 1}/${filesToProcess.length})`);
           const mediaUrl = await uploadSingleFile(fileToProcess);
           
           if (mediaUrl) {
             uploadedMediaUrls.push(mediaUrl);
-            console.log("📤 File uploaded successfully:", mediaUrl);
+            console.log("📤 File uploaded:", mediaUrl);
           }
         } catch (error) {
           console.error(`❌ Error processing file ${i + 1}:`, error);
-          toast.error(`Erreur traitement fichier ${i + 1}: ${filesToProcess[i].name}`);
+          toast.error(`Erreur fichier ${i + 1}: ${filesToProcess[i].name}`);
         }
       }
       
@@ -341,16 +249,14 @@ const MediaUploader = ({
         setUploadedMedia(prev => [...prev, ...uploadedMediaUrls]);
         form.setValue('images', [...(form.getValues('images') || []), ...uploadedMediaUrls]);
         
-        const successMessage = `${uploadedMediaUrls.length} fichier(s) optimisé(s) et téléversé(s) avec succès`;
-        toast.success(successMessage);
-        
-        console.log("🎉 All files processed and uploaded successfully");
+        toast.success(`${uploadedMediaUrls.length} fichier(s) traité(s) et téléversé(s)`);
+        console.log("🎉 All files processed successfully");
       } else {
         setError("Aucun fichier n'a pu être téléversé");
-        toast.error("Aucun fichier n'a pu être téléversé");
+        toast.error("Aucun fichier téléversé");
       }
     } catch (error: any) {
-      console.error("❌ General upload error:", error);
+      console.error("❌ Upload error:", error);
       setError(error.message || "Erreur lors du téléversement");
       toast.error("Erreur: " + error.message);
     } finally {
@@ -362,7 +268,7 @@ const MediaUploader = ({
     }
   };
 
-  // Upload a single file and handle retries
+  // Upload single file to Supabase
   const uploadSingleFile = async (file: File, retries = 2): Promise<string | null> => {
     try {
       const fileExt = file.name.split('.').pop();
@@ -394,12 +300,14 @@ const MediaUploader = ({
     }
   };
 
+  // Remove media
   const removeMedia = (indexToRemove: number) => {
     const newMedia = uploadedMedia.filter((_, index) => index !== indexToRemove);
     setUploadedMedia(newMedia);
     form.setValue('images', newMedia);
   };
 
+  // UI event handlers
   const triggerFileUpload = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
@@ -454,7 +362,7 @@ const MediaUploader = ({
             <span className="text-sm font-medium">Optimisation iPhone activée</span>
           </div>
           <p className="text-xs text-blue-600 mt-1">
-            Compression automatique et conversion optimale pour une meilleure performance
+            Conversion automatique HEIC → WebP pour une meilleure compatibilité
           </p>
         </div>
       )}

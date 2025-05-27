@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Announcement } from "@/types/announcement";
 import { toast } from "sonner";
+import { useImageCompression } from "./useImageCompression";
 
 export type PublishingStatus = "idle" | "loading" | "success" | "error";
 
@@ -20,7 +21,7 @@ const initialPublishingState: PublishingState = {
   currentStep: null,
   steps: {
     prepare: { status: "idle" },
-    image: { status: "idle" },
+    compress: { status: "idle" },
     wordpress: { status: "idle" },
     database: { status: "idle" }
   },
@@ -30,6 +31,7 @@ const initialPublishingState: PublishingState = {
 export const useWordPressPublishing = () => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishingState, setPublishingState] = useState<PublishingState>(initialPublishingState);
+  const { compressImage } = useImageCompression();
   
   const updatePublishingStep = (stepId: string, status: PublishingStatus, message?: string, progress?: number) => {
     setPublishingState(prev => ({
@@ -55,11 +57,10 @@ export const useWordPressPublishing = () => {
     setIsPublishing(true);
     resetPublishingState();
     
-    // Check if this is an update or new post
     const isUpdate = announcement.wordpress_post_id && announcement.wordpress_post_id > 0;
     const actionText = isUpdate ? "Mise à jour" : "Publication";
     
-    // Start with preparation step
+    // Start with preparation
     updatePublishingStep("prepare", "loading", `${actionText} - Préparation`, 10);
     
     try {
@@ -99,25 +100,95 @@ export const useWordPressPublishing = () => {
       
       updatePublishingStep("prepare", "success", "Préparation terminée", 25);
       
-      // Ensure site_url has proper format
-      const siteUrl = wpConfig.site_url.endsWith('/')
-        ? wpConfig.site_url.slice(0, -1)
-        : wpConfig.site_url;
+      // NOUVELLE ÉTAPE: Compression légère pour la publication
+      let featuredMediaId = null;
+      
+      if (announcement.images && announcement.images.length > 0) {
+        try {
+          updatePublishingStep("compress", "loading", "Compression optimisée de l'image", 40);
+          
+          // Compression légère pour WordPress (les images sont déjà en WebP)
+          const compressedImageUrl = await compressImage(announcement.images[0], {
+            maxWidth: 1200,
+            maxHeight: 1200,
+            quality: 0.9,
+            format: 'jpeg' // WordPress préfère JPEG pour la compatibilité
+          });
+          
+          updatePublishingStep("compress", "success", "Image compressée", 50);
+          
+          // Convert blob URL to file for WordPress upload
+          const response = await fetch(compressedImageUrl);
+          const blob = await response.blob();
+          const imageFile = new File([blob], `${announcement.title}-compressed.jpg`, { 
+            type: 'image/jpeg' 
+          });
+          
+          // Upload to WordPress media library
+          console.log("Uploading compressed image to WordPress");
+          const mediaFormData = new FormData();
+          mediaFormData.append('file', imageFile);
+          mediaFormData.append('title', `${announcement.title} - ${Date.now()}`);
+          mediaFormData.append('alt_text', announcement.title);
+          
+          const siteUrl = wpConfig.site_url.endsWith('/')
+            ? wpConfig.site_url.slice(0, -1)
+            : wpConfig.site_url;
+          
+          const mediaEndpoint = `${siteUrl}/wp-json/wp/v2/media`;
+          
+          const mediaHeaders = new Headers();
+          if (wpConfig.app_username && wpConfig.app_password) {
+            const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
+            mediaHeaders.append('Authorization', `Basic ${basicAuth}`);
+          }
+          
+          const mediaResponse = await fetch(mediaEndpoint, {
+            method: 'POST',
+            headers: mediaHeaders,
+            body: mediaFormData
+          });
+          
+          if (mediaResponse.ok) {
+            const mediaData = await mediaResponse.json();
+            if (mediaData && mediaData.id) {
+              featuredMediaId = mediaData.id;
+              updatePublishingStep("compress", "success", "Image téléversée", 60);
+            }
+          } else {
+            console.error("Media upload failed");
+            updatePublishingStep("compress", "error", "Échec du téléversement de l'image");
+          }
+          
+          // Clean up blob URL
+          URL.revokeObjectURL(compressedImageUrl);
+          
+        } catch (error) {
+          console.error("Error compressing image:", error);
+          updatePublishingStep("compress", "error", "Erreur lors de la compression");
+          toast.warning("Erreur lors du traitement de l'image");
+        }
+      } else if (isUpdate) {
+        updatePublishingStep("compress", "success", "Image supprimée", 60);
+        featuredMediaId = 0;
+      } else {
+        updatePublishingStep("compress", "success", "Aucune image à traiter", 60);
+      }
+      
+      // WordPress publication
+      updatePublishingStep("wordpress", "loading", `${actionText} sur WordPress`, 70);
       
       // Determine endpoints
       let useCustomTaxonomy = false;
-      let postEndpoint = `${siteUrl}/wp-json/wp/v2/pages`; // Default to pages
+      let postEndpoint = `${siteUrl}/wp-json/wp/v2/pages`;
       
       try {
-        // First try to access the dipi_cpt_category endpoint with a timeout
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
         
         const response = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt_category`, {
           method: 'HEAD',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           signal: controller.signal
         }).catch(() => ({ status: 404 }));
         
@@ -126,15 +197,12 @@ export const useWordPressPublishing = () => {
         if (response && response.status !== 404) {
           useCustomTaxonomy = true;
           
-          // Now check if dipi_cpt endpoint exists (with timeout)
           const dipiController = new AbortController();
           const dipiTimeoutId = setTimeout(() => dipiController.abort(), 5000);
           
           const dipiResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt`, {
             method: 'HEAD',
-            headers: {
-              'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             signal: dipiController.signal
           }).catch(() => ({ status: 404 }));
           
@@ -143,15 +211,12 @@ export const useWordPressPublishing = () => {
           if (dipiResponse && dipiResponse.status !== 404) {
             postEndpoint = `${siteUrl}/wp-json/wp/v2/dipi_cpt`;
           } else {
-            // Try alternative endpoint (with timeout)
             const altController = new AbortController();
             const altTimeoutId = setTimeout(() => altController.abort(), 5000);
             
             const altResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipicpt`, {
               method: 'HEAD',
-              headers: {
-                'Content-Type': 'application/json'
-              },
+              headers: { 'Content-Type': 'application/json' },
               signal: altController.signal
             }).catch(() => ({ status: 404 }));
             
@@ -164,12 +229,10 @@ export const useWordPressPublishing = () => {
         }
       } catch (error) {
         console.log("Error checking endpoints:", error);
-        console.log("Falling back to standard pages endpoint");
       }
       
       console.log("Using WordPress endpoint:", postEndpoint, "with custom taxonomy:", useCustomTaxonomy);
       
-      // For updates, append the post ID to the endpoint
       if (isUpdate) {
         postEndpoint = `${postEndpoint}/${announcement.wordpress_post_id}`;
       }
@@ -185,87 +248,13 @@ export const useWordPressPublishing = () => {
         const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
         headers['Authorization'] = `Basic ${basicAuth}`;
       } else {
-        updatePublishingStep("prepare", "error", "Aucune méthode d'authentification disponible");
+        updatePublishingStep("wordpress", "error", "Aucune méthode d'authentification disponible");
         return { 
           success: false, 
           message: "Aucune méthode d'authentification disponible", 
           wordpressPostId: null 
         };
       }
-      
-      // IMPROVED: Handle featured image for both new posts and updates
-      let featuredMediaId = null;
-      
-      // For updates, we always update the featured image if images are present
-      if (announcement.images && announcement.images.length > 0) {
-        try {
-          updatePublishingStep("image", "loading", "Traitement de l'image principale", 40);
-          
-          // 1. Download image from URL
-          const imageUrl = announcement.images[0];
-          const imageResponse = await fetch(imageUrl);
-          
-          if (!imageResponse.ok) {
-            console.error("Failed to fetch image from URL:", imageUrl);
-            updatePublishingStep("image", "error", "Échec de récupération de l'image");
-            toast.warning("L'image principale n'a pas pu être préparée");
-          } else {
-            const imageBlob = await imageResponse.blob();
-            const fileName = imageUrl.split('/').pop() || `image-${Date.now()}.jpg`;
-            const imageFile = new File([imageBlob], fileName, { 
-              type: imageBlob.type || 'image/jpeg' 
-            });
-            
-            // 2. Upload to WordPress media library
-            console.log("Uploading image to WordPress media library");
-            const mediaFormData = new FormData();
-            mediaFormData.append('file', imageFile);
-            // Use a unique title to avoid slug conflicts
-            mediaFormData.append('title', `${announcement.title} - ${Date.now()}`);
-            mediaFormData.append('alt_text', announcement.title);
-            
-            const mediaEndpoint = `${postEndpoint.split('/wp-json/')[0]}/wp-json/wp/v2/media`;
-            
-            const mediaHeaders = new Headers();
-            if (headers.Authorization) {
-              mediaHeaders.append('Authorization', headers.Authorization);
-            }
-            
-            const mediaResponse = await fetch(mediaEndpoint, {
-              method: 'POST',
-              headers: mediaHeaders,
-              body: mediaFormData
-            });
-            
-            if (!mediaResponse.ok) {
-              const mediaErrorText = await mediaResponse.text();
-              console.error("Error uploading media:", mediaErrorText);
-              updatePublishingStep("image", "error", "Échec du téléversement de l'image");
-              toast.warning("L'image principale n'a pas pu être téléversée");
-            } else {
-              const mediaData = await mediaResponse.json();
-              
-              if (mediaData && mediaData.id) {
-                featuredMediaId = mediaData.id;
-                updatePublishingStep("image", "success", "Image mise à jour avec succès", 60);
-              }
-            }
-          }
-        } catch (error) {
-          console.error("Error processing featured image:", error);
-          updatePublishingStep("image", "error", "Erreur lors du traitement de l'image");
-          toast.warning("Erreur lors du traitement de l'image principale");
-        }
-      } else if (isUpdate) {
-        // If it's an update and no images, we'll remove the featured image
-        updatePublishingStep("image", "success", "Image supprimée", 60);
-        featuredMediaId = 0; // Setting to 0 removes the featured image in WordPress
-      } else {
-        updatePublishingStep("image", "success", "Aucune image à téléverser", 60);
-      }
-      
-      // Update WordPress step status
-      updatePublishingStep("wordpress", "loading", `${actionText} sur WordPress`, 70);
       
       // Prepare post data
       const wpPostData: any = {
@@ -357,7 +346,7 @@ export const useWordPressPublishing = () => {
           if (updateError) {
             console.error("Error updating announcement with WordPress post ID:", updateError);
             updatePublishingStep("database", "error", "Erreur de mise à jour de la base de données");
-            toast.error("L'annonce a été publiée sur WordPress mais l'ID n'a pas pu être enregistré dans la base de données");
+            toast.error("L'annonce a été publiée sur WordPress mais l'ID n'a pas pu être enregistré");
           } else {
             updatePublishingStep("database", "success", "Mise à jour finalisée", 100);
           }
@@ -367,11 +356,11 @@ export const useWordPressPublishing = () => {
         
         return { 
           success: true, 
-          message: `${actionText} avec succès sur WordPress` + (featuredMediaId ? " avec image principale" : ""), 
+          message: `${actionText} avec succès sur WordPress` + (featuredMediaId ? " avec image optimisée" : ""), 
           wordpressPostId 
         };
       } else {
-        console.error("WordPress response does not contain post ID or ID is not a number", wpResponseData);
+        console.error("WordPress response does not contain post ID", wpResponseData);
         updatePublishingStep("database", "error", "Données incomplètes");
         return { 
           success: false, 
@@ -381,7 +370,6 @@ export const useWordPressPublishing = () => {
       }
     } catch (error: any) {
       console.error("Error publishing to WordPress:", error);
-      // Update the current step with error status
       if (publishingState.currentStep) {
         updatePublishingStep(publishingState.currentStep, "error", `Erreur: ${error.message}`);
       }

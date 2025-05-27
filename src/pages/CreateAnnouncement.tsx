@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -77,10 +76,8 @@ const CreateAnnouncement = () => {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const { categories } = useWordPressCategories();
 
-  // Get current step config
   const currentStep = stepConfigs[currentStepIndex];
 
-  // Initializing the form
   const form = useForm<AnnouncementFormData>({
     defaultValues: {
       title: "",
@@ -95,7 +92,7 @@ const CreateAnnouncement = () => {
     }
   });
 
-  // Clear form data when the component mounts
+  // Clear form data when component mounts
   useEffect(() => {
     localStorage.removeItem(FORM_STORAGE_KEY);
     form.reset({
@@ -111,14 +108,13 @@ const CreateAnnouncement = () => {
     });
   }, [form]);
 
-  // Use the form persistence hook
   const {
     clearSavedData,
     hasSavedData,
     saveData
   } = useFormPersistence(form, FORM_STORAGE_KEY);
 
-  // Define the publishing steps
+  // Define publishing steps (updated for new flow)
   const publishingSteps: PublishingStepType[] = [
     {
       id: "prepare",
@@ -127,9 +123,9 @@ const CreateAnnouncement = () => {
       icon: <div className="h-5 w-5 text-muted-foreground"></div>
     },
     {
-      id: "image",
-      label: "Téléversement de l'image principale",
-      status: publishingState.steps.image?.status || "idle",
+      id: "compress",
+      label: "Compression optimisée de l'image",
+      status: publishingState.steps.compress?.status || "idle",
       icon: <div className="h-5 w-5 text-muted-foreground"></div>
     },
     {
@@ -194,7 +190,6 @@ const CreateAnnouncement = () => {
 
       const formData = form.getValues();
 
-      // Vérifier si le formulaire est vide
       if (!formData.title && !formData.description && (!formData.images || formData.images.length === 0)) {
         toast({
           title: "Formulaire vide",
@@ -205,7 +200,6 @@ const CreateAnnouncement = () => {
         return;
       }
 
-      // Ensure draft status for this save operation
       const announcementData = {
         user_id: user.id,
         title: formData.title || "Brouillon sans titre",
@@ -232,10 +226,8 @@ const CreateAnnouncement = () => {
         description: "Brouillon enregistré avec succès"
       });
 
-      // Clear the form data from localStorage since it's now saved in the database
       clearSavedData();
       
-      // Reset the form to clear all fields
       form.reset({
         title: "",
         description: "",
@@ -248,7 +240,6 @@ const CreateAnnouncement = () => {
         seoSlug: ""
       });
       
-      // Navigate to announcements page to see the draft
       navigate("/announcements");
     } catch (error: any) {
       console.error("Error saving draft:", error);
@@ -263,7 +254,6 @@ const CreateAnnouncement = () => {
   };
 
   const handleSubmit = async () => {
-    // Check publication limits before submitting
     const formData = form.getValues();
     if ((formData.status === 'published' || formData.status === 'scheduled') && !canPublish()) {
       toast({
@@ -272,7 +262,6 @@ const CreateAnnouncement = () => {
         variant: "destructive"
       });
       
-      // Force the status to draft if limit is reached
       form.setValue('status', 'draft');
       formData.status = 'draft';
     }
@@ -309,7 +298,6 @@ const CreateAnnouncement = () => {
       } = await supabase.from("announcements").insert(announcementData).select().single();
       if (error) throw error;
 
-      // Increment publication count only for published/scheduled announcements
       if ((formData.status === 'published' || formData.status === 'scheduled') && canPublish()) {
         await incrementPublicationCount();
       }
@@ -324,6 +312,8 @@ const CreateAnnouncement = () => {
         message: "",
         wordpressPostId: null as number | null
       };
+      
+      // WordPress publishing with new optimized flow
       if ((formData.status === 'published' || formData.status === 'scheduled') && formData.wordpressCategory && user?.id) {
         if (!isMobile) {
           toast({
@@ -348,7 +338,6 @@ const CreateAnnouncement = () => {
         }
       }
 
-      // Reset the form to clear all fields
       form.reset({
         title: "",
         description: "",
@@ -361,13 +350,11 @@ const CreateAnnouncement = () => {
         seoSlug: ""
       });
 
-      // Navigation améliorée pour éviter les pages blanches
       setTimeout(() => {
         setShowPublishingOverlay(false);
         resetPublishingState();
-        // Navigation avec replace pour éviter les retours en arrière problématiques
         navigate("/announcements", { replace: true });
-      }, 2000); // Délai augmenté pour s'assurer que tout est bien chargé
+      }, 2000);
     } catch (error: any) {
       console.error("Error saving announcement:", error);
       toast({
@@ -426,7 +413,6 @@ const CreateAnnouncement = () => {
         isSavingDraft={isSavingDraft}
       />
 
-      {/* Publication limit warning */}
       {!canPublish() && (
         <div className="pt-16 px-4">
           <div className="max-w-3xl mx-auto mb-4">

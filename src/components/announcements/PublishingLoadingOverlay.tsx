@@ -1,9 +1,8 @@
 
 import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Check, X, FileImage, Server, Database } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { CheckCircle, Clock, AlertCircle, Loader2 } from "lucide-react";
 
 export interface PublishingStep {
   id: string;
@@ -17,71 +16,79 @@ interface PublishingLoadingOverlayProps {
   steps: PublishingStep[];
   currentStepId: string | null;
   progress: number;
-  onClose?: () => void;
 }
 
-const PublishingLoadingOverlay: React.FC<PublishingLoadingOverlayProps> = ({
+const PublishingLoadingOverlay = ({
   isOpen,
   steps,
   currentStepId,
-  progress,
-  onClose,
-}) => {
+  progress
+}: PublishingLoadingOverlayProps) => {
   if (!isOpen) return null;
 
+  const getStepIcon = (step: PublishingStep) => {
+    switch (step.status) {
+      case "loading":
+        return <Loader2 className="h-5 w-5 animate-spin text-blue-600" />;
+      case "success":
+        return <CheckCircle className="h-5 w-5 text-green-600" />;
+      case "error":
+        return <AlertCircle className="h-5 w-5 text-red-600" />;
+      default:
+        return <Clock className="h-5 w-5 text-gray-400" />;
+    }
+  };
+
+  const getStepTextColor = (step: PublishingStep) => {
+    switch (step.status) {
+      case "loading":
+        return "text-blue-700 font-medium";
+      case "success":
+        return "text-green-700";
+      case "error":
+        return "text-red-700";
+      default:
+        return "text-gray-500";
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-lg border-foreground/10">
-        <CardContent className="p-6">
-          <div className="flex flex-col items-center mb-6">
-            <img 
-              src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
-              alt="Logo" 
-              className="h-16 mb-4"
-            />
-            <h2 className="text-2xl font-bold text-center">Publication en cours</h2>
-            <p className="text-muted-foreground text-center mt-2">
-              Veuillez patienter pendant que nous publions votre annonce
-            </p>
-          </div>
-
-          <Progress value={progress} className="h-2 mb-6" />
-
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle className="text-center text-lg">Publication en cours</CardTitle>
+          <Progress value={progress} className="w-full" />
+          <p className="text-center text-sm text-muted-foreground">
+            {progress}% terminé
+          </p>
+        </CardHeader>
+        <CardContent>
           <div className="space-y-4">
             {steps.map((step) => (
-              <div 
-                key={step.id} 
-                className={cn(
-                  "flex items-center p-3 rounded-md border transition-colors",
-                  currentStepId === step.id 
-                    ? "border-primary bg-primary/5"
-                    : "border-border",
-                  step.status === "success" && "border-green-500 bg-green-500/5",
-                  step.status === "error" && "border-destructive bg-destructive/5"
-                )}
+              <div
+                key={step.id}
+                className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                  step.id === currentStepId
+                    ? "bg-blue-50 border border-blue-200"
+                    : step.status === "success"
+                    ? "bg-green-50"
+                    : step.status === "error"
+                    ? "bg-red-50"
+                    : "bg-gray-50"
+                }`}
               >
-                <div className="flex-shrink-0 mr-3">
-                  {step.status === "loading" ? (
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  ) : step.status === "success" ? (
-                    <Check className="h-5 w-5 text-green-500" />
-                  ) : step.status === "error" ? (
-                    <X className="h-5 w-5 text-destructive" />
-                  ) : (
-                    step.icon
-                  )}
-                </div>
-                <div className="flex-grow">
-                  <p className={cn(
-                    "font-medium",
-                    step.status === "success" && "text-green-500",
-                    step.status === "error" && "text-destructive"
-                  )}>
-                    {step.label}
-                  </p>
-                </div>
+                {getStepIcon(step)}
+                <span className={`flex-1 ${getStepTextColor(step)}`}>
+                  {step.label}
+                </span>
               </div>
             ))}
+          </div>
+          
+          <div className="mt-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              Veuillez patienter pendant la publication...
+            </p>
           </div>
         </CardContent>
       </Card>
