@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Trash2, Send, Archive, ExternalLink } from "lucide-react";
@@ -128,10 +129,10 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
     const wordpressConfig = configs[0];
     const siteUrl = wordpressConfig.site_url.replace(/\/+$/, ''); // Remove trailing slashes
     
-    // Build the URL: if we have a seoSlug, use it, otherwise use the post ID
+    // Build the URL: use seoSlug directly without /annonces/ prefix
     let postUrl;
     if (seoSlug) {
-      postUrl = `${siteUrl}/annonces/${seoSlug}`;
+      postUrl = `${siteUrl}/${seoSlug}`;
     } else {
       postUrl = `${siteUrl}/?p=${wordpressPostId}`;
     }
