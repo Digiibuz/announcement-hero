@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import AnnouncementList from "@/components/announcements/AnnouncementList";
 import AnnouncementFilter from "@/components/announcements/AnnouncementFilter";
@@ -25,6 +26,7 @@ const stripHtmlTags = (html: string): string => {
 const Announcements = () => {
   const { isAdmin, user } = useAuth();
   const isMobile = useIsMobile();
+  const { toast } = useToast();
   const [filter, setFilter] = useState({
     search: "",
     status: "all",
@@ -56,7 +58,11 @@ const Announcements = () => {
       const { data, error } = await query;
       
       if (error) {
-        toast.error("Error fetching announcements: " + error.message);
+        toast({
+          title: "Erreur",
+          description: "Erreur lors du chargement des annonces: " + error.message,
+          variant: "destructive",
+        });
         return [];
       }
       
@@ -112,16 +118,28 @@ const Announcements = () => {
   const handleDelete = async (id: string) => {
     try {
       if (!user?.id) {
-        toast.error("Utilisateur non identifié");
+        toast({
+          title: "Erreur",
+          description: "Utilisateur non identifié",
+          variant: "destructive",
+        });
         return;
       }
 
       await apiDeleteAnnouncement(id, user.id);
       
-      toast.success("Annonce supprimée avec succès");
+      toast({
+        title: "Succès",
+        description: "Annonce supprimée avec succès",
+        variant: "default",
+      });
       refetch();
     } catch (error: any) {
-      toast.error("Erreur lors de la suppression: " + error.message);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la suppression: " + error.message,
+        variant: "destructive",
+      });
     }
   };
 
