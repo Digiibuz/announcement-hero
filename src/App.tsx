@@ -7,6 +7,7 @@ import { Toaster as UIToaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import AppRoutes from "@/components/routing/Routes";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
+import DynamicBackground from "@/components/ui/DynamicBackground";
 
 // Configuration React Query sans refetch automatique
 const queryClient = new QueryClient({
@@ -26,8 +27,10 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <TooltipProvider>
-            <ImpersonationBanner />
-            <AppRoutes />
+            <DynamicBackground className="min-h-screen">
+              <ImpersonationBanner />
+              <AppRoutes />
+            </DynamicBackground>
             <SonnerToaster />
             <UIToaster />
           </TooltipProvider>

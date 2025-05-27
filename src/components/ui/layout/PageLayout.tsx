@@ -78,7 +78,7 @@ const PageLayout = ({
   console.log('PageLayout - Rendering content');
 
   return (
-    <div className="min-h-screen bg-digibuz-light">
+    <div className="min-h-screen">
       {/* Only render Sidebar for authenticated users */}
       {isAuthenticated && <Sidebar />}
 
