@@ -194,21 +194,21 @@ const Sidebar = () => {
   if (isMobile) {
     return (
       <>
-        <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between h-16 px-4 bg-white/10 backdrop-blur-md border-b border-white/20">
+        <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between h-16 px-4 bg-white/80 backdrop-blur-md border-b border-gray-200/50">
           <Link to="/dashboard" className="flex items-center gap-2">
             <img 
               src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
               alt="Digiibuz" 
               className="h-7 w-auto" 
             />
-            <span className="text-lg font-bold text-white">
+            <span className="text-lg font-bold text-gray-800">
               Digiibuz
             </span>
           </Link>
           
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-white hover:bg-white/20">
+              <Button variant="ghost" size="icon" className="text-gray-700">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
