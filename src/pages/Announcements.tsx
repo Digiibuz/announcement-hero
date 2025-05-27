@@ -14,6 +14,8 @@ import { Link } from "react-router-dom";
 import { Announcement } from "@/types/announcement";
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
 import { deleteAnnouncement as apiDeleteAnnouncement } from "@/api/announcementApi";
+import FloatingActionButton from "@/components/ui/FloatingActionButton";
+import { useIsMobile } from "@/hooks/use-media-query";
 
 // Helper function to strip HTML tags
 const stripHtmlTags = (html: string): string => {
@@ -23,6 +25,7 @@ const stripHtmlTags = (html: string): string => {
 
 const Announcements = () => {
   const { isAdmin, user } = useAuth();
+  const isMobile = useIsMobile();
   const [filter, setFilter] = useState({
     search: "",
     status: "all",
@@ -123,14 +126,14 @@ const Announcements = () => {
     }
   };
 
-  const titleAction = (
+  const titleAction = !isMobile ? (
     <Link to="/create">
       <Button>
         <Plus className="h-4 w-4 mr-2" />
         Créer une annonce
       </Button>
     </Link>
-  );
+  ) : null;
 
   return (
     <PageLayout title="Annonces" titleAction={titleAction}>
@@ -149,6 +152,20 @@ const Announcements = () => {
           viewMode={viewMode}
         />
       </AnimatedContainer>
+
+      {/* Floating Action Button for mobile with same style as Dashboard */}
+      <FloatingActionButton 
+        position="bottom-right" 
+        asChild
+        showOnMobile={true}
+        hideOnDesktop={true}
+        className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-bold transform transition-all duration-300 hover:scale-110 hover:shadow-xl active:scale-95 group relative overflow-hidden"
+      >
+        <Link to="/create">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+          <span className="text-2xl">✨</span>
+        </Link>
+      </FloatingActionButton>
     </PageLayout>
   );
 };
