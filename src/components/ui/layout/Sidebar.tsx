@@ -1,7 +1,6 @@
-
 "use client"
 
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useIsMobile } from "@/hooks/use-media-query";
@@ -26,6 +25,20 @@ const Sidebar = () => {
   const { pathname } = useLocation();
   const { user, logout, isLoading, isAuthenticated, isAdmin, isClient } = useAuth();
   const [isOpen, setIsOpen] = React.useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // Detect scroll for mobile header background
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      setIsScrolled(scrollTop > 20);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isMobile]);
 
   // Memoize navigation items to prevent unnecessary re-renders
   const navItems = useMemo(() => {
@@ -194,16 +207,26 @@ const Sidebar = () => {
   if (isMobile) {
     return (
       <>
-        <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between h-16 px-4 bg-transparent">
+        <div className={cn(
+          "fixed top-0 left-0 right-0 z-40 flex items-center justify-between h-16 px-4 transition-all duration-300",
+          isScrolled 
+            ? "bg-white/90 backdrop-blur-md border-b border-gray-200/50 shadow-sm" 
+            : "bg-transparent"
+        )}>
           {/* Menu hamburger à gauche */}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
               <Button 
                 variant="ghost" 
                 size="icon"
-                className="h-12 w-12 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-all duration-200 shadow-lg"
+                className={cn(
+                  "h-12 w-12 rounded-xl border transition-all duration-200 shadow-lg",
+                  isScrolled
+                    ? "bg-white/80 border-gray-200/50 hover:bg-white/90 text-gray-800"
+                    : "bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/20 text-gray-800"
+                )}
               >
-                <Menu className="h-6 w-6 text-gray-800" />
+                <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-72 bg-white/95 backdrop-blur-xl border-gray-200/50">
