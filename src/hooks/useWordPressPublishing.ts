@@ -98,16 +98,21 @@ export const useWordPressPublishing = () => {
         };
       }
       
+      // Define siteUrl here for use throughout the function
+      const siteUrl = wpConfig.site_url.endsWith('/')
+        ? wpConfig.site_url.slice(0, -1)
+        : wpConfig.site_url;
+      
       updatePublishingStep("prepare", "success", "Préparation terminée", 25);
       
-      // NOUVELLE ÉTAPE: Compression légère pour la publication
+      // NOUVELLE ÉTAPE: Compression légère pour la publication (les images sont déjà en WebP)
       let featuredMediaId = null;
       
       if (announcement.images && announcement.images.length > 0) {
         try {
-          updatePublishingStep("compress", "loading", "Compression optimisée de l'image", 40);
+          updatePublishingStep("compress", "loading", "Compression légère pour WordPress", 40);
           
-          // Compression légère pour WordPress (les images sont déjà en WebP)
+          // Compression légère WebP vers JPEG pour WordPress
           const compressedImageUrl = await compressImage(announcement.images[0], {
             maxWidth: 1200,
             maxHeight: 1200,
@@ -130,10 +135,6 @@ export const useWordPressPublishing = () => {
           mediaFormData.append('file', imageFile);
           mediaFormData.append('title', `${announcement.title} - ${Date.now()}`);
           mediaFormData.append('alt_text', announcement.title);
-          
-          const siteUrl = wpConfig.site_url.endsWith('/')
-            ? wpConfig.site_url.slice(0, -1)
-            : wpConfig.site_url;
           
           const mediaEndpoint = `${siteUrl}/wp-json/wp/v2/media`;
           
