@@ -128,9 +128,10 @@ const Announcements = () => {
 
   const titleAction = !isMobile ? (
     <Link to="/create">
-      <Button>
-        <Plus className="h-4 w-4 mr-2" />
-        Créer une annonce
+      <Button className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-bold transform transition-all duration-300 hover:scale-110 hover:shadow-xl active:scale-95 group relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+        <Plus className="h-4 w-4 mr-2 relative z-10" />
+        <span className="relative z-10">Créer une annonce</span>
       </Button>
     </Link>
   ) : null;
