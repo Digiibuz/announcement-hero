@@ -19,20 +19,20 @@ const navItems: NavItem[] = [
   {
     id: "home",
     label: "Accueil",
-    icon: <Home className="h-5 w-5" />,
+    icon: <Home className="h-4 w-4" />,
     path: "/dashboard"
   },
   {
     id: "create",
     label: "",
-    icon: <Plus className="h-6 w-6" />,
+    icon: <Plus className="h-5 w-5" />,
     path: "/create",
     isCreate: true
   },
   {
     id: "projects",
     label: "Projets",
-    icon: <FolderOpen className="h-5 w-5" />,
+    icon: <FolderOpen className="h-4 w-4" />,
     path: "/announcements"
   }
 ];
@@ -59,22 +59,22 @@ const MobileBottomNav = () => {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 safe-area-pb">
-      <div className="flex items-center justify-around px-2 py-2">
+      <div className="flex items-center justify-around px-1 py-1">
         {navItems.map((item) => (
           <Button
             key={item.id}
             variant="ghost"
             className={cn(
-              "flex flex-col items-center justify-center h-16 w-16 rounded-full transition-all duration-200",
+              "flex flex-col items-center justify-center h-12 w-12 rounded-lg transition-all duration-200",
               item.isCreate
-                ? "bg-purple-600 hover:bg-purple-700 text-white shadow-lg scale-110"
+                ? "bg-purple-600 hover:bg-purple-700 text-white shadow-lg scale-105"
                 : isActive(item.path)
                 ? "text-purple-600 bg-purple-50"
                 : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
             )}
             onClick={() => handleNavigation(item.path)}
           >
-            <div className="flex flex-col items-center gap-1">
+            <div className="flex flex-col items-center gap-0.5">
               {item.icon}
               {!item.isCreate && (
                 <span className="text-xs font-medium leading-none">
