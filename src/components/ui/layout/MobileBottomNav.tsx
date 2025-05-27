@@ -43,8 +43,8 @@ const MobileBottomNav = () => {
   const isMobile = useMediaQuery("(max-width: 767px)");
   const { isAuthenticated } = useAuth();
 
-  // Don't show navigation if not mobile, not authenticated, or on public pages
-  if (!isMobile || !isAuthenticated) return null;
+  // Don't show navigation if not mobile, not authenticated, on public pages, or on create page
+  if (!isMobile || !isAuthenticated || location.pathname === "/create") return null;
 
   const handleNavigation = (path: string) => {
     navigate(path);
