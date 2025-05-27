@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from "react";
 import { ImageIcon, Camera, UploadCloud, Loader2, XCircle, AlertCircle, Video, FileImage } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,11 +24,6 @@ const MediaUploader = ({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useMediaQuery("(max-width: 767px)");
 
-  // Detect if device is iPhone/iPad
-  const isAppleDevice = () => {
-    return /iPhone|iPad|iPod/.test(navigator.userAgent);
-  };
-
   // Check WebP support
   const checkWebPSupport = (): Promise<boolean> => {
     return new Promise((resolve) => {
@@ -41,29 +35,40 @@ const MediaUploader = ({
     });
   };
 
-  // Convert HEIC to JPEG
-  const convertHeicToJpeg = async (file: File): Promise<File> => {
+  // Convert HEIC directly to WebP
+  const convertHeicToWebP = async (file: File): Promise<File> => {
     try {
-      console.log("🔄 Converting HEIC file:", file.name);
-      setProcessingStatus("Conversion HEIC vers JPEG...");
+      console.log("🔄 Converting HEIC to WebP:", file.name);
+      setProcessingStatus("Conversion HEIC vers WebP...");
+      
+      const webpSupported = await checkWebPSupport();
+      const targetFormat = webpSupported ? 'image/webp' : 'image/jpeg';
+      const extension = webpSupported ? '.webp' : '.jpg';
       
       const convertedBlob = await heic2any({
         blob: file,
-        toType: "image/jpeg",
-        quality: 0.9
+        toType: targetFormat,
+        quality: 0.85
       }) as Blob;
       
+      const fileName = file.name.replace(/\.heic$/i, extension);
       const convertedFile = new File(
         [convertedBlob], 
-        file.name.replace(/\.heic$/i, '.jpg'), 
-        { type: 'image/jpeg' }
+        fileName, 
+        { type: targetFormat }
       );
       
-      console.log("✅ HEIC converted successfully");
+      console.log("✅ HEIC to WebP conversion successful:", {
+        originalSize: file.size,
+        convertedSize: convertedFile.size,
+        format: targetFormat,
+        compressionRatio: ((file.size - convertedFile.size) / file.size * 100).toFixed(1) + '%'
+      });
+      
       return convertedFile;
     } catch (error) {
-      console.error("❌ HEIC conversion failed:", error);
-      throw new Error("Échec de la conversion HEIC");
+      console.error("❌ HEIC to WebP conversion failed:", error);
+      throw new Error("Échec de la conversion HEIC vers WebP");
     }
   };
 
@@ -83,7 +88,7 @@ const MediaUploader = ({
            file.name.toLowerCase().endsWith('.mkv');
   };
 
-  // NOUVELLE FONCTION : Conversion optimisée vers WebP (lors de l'upload)
+  // Convert regular images to WebP
   const convertToWebP = async (file: File): Promise<File> => {
     return new Promise(async (resolve, reject) => {
       setProcessingStatus("Conversion vers WebP...");
@@ -108,7 +113,7 @@ const MediaUploader = ({
         
         img.onload = () => {
           try {
-            // Dimensions optimales pour le stockage (pas trop grandes)
+            // Dimensions optimales pour le stockage
             const MAX_WIDTH = 1920;
             const MAX_HEIGHT = 1920;
             let width = img.width;
@@ -137,7 +142,7 @@ const MediaUploader = ({
             
             // Convertir selon le support WebP
             const targetFormat = webpSupported ? 'image/webp' : 'image/jpeg';
-            const quality = 0.85; // Qualité élevée pour le stockage
+            const quality = 0.85;
             const extension = webpSupported ? '.webp' : '.jpg';
             
             canvas.toBlob(blob => {
@@ -171,13 +176,11 @@ const MediaUploader = ({
     });
   };
 
-  // Process video files (simplified for mobile)
+  // Process video files
   const processVideo = async (file: File): Promise<File> => {
     setProcessingStatus("Traitement vidéo...");
     console.log("🎥 Processing video:", file.name);
     
-    // Pour l'instant, on garde le fichier tel quel
-    // Dans une version future, on pourrait ajouter une compression vidéo
     const fileName = file.name.split('.')[0] + '.mp4';
     return new File([file], fileName, { type: 'video/mp4' });
   };
@@ -195,10 +198,6 @@ const MediaUploader = ({
       setUploadProgress(5);
       setProcessingStatus("Préparation...");
       
-      if (isAppleDevice()) {
-        toast.info("Optimisation iPhone détectée");
-      }
-      
       const maxFiles = isMobile ? 3 : 10;
       const filesToProcess = Array.from(files).slice(0, maxFiles);
       
@@ -215,23 +214,19 @@ const MediaUploader = ({
           
           console.log(`🔄 Processing file ${i + 1}/${filesToProcess.length}:`, fileToProcess.name);
           
-          // ÉTAPE 1: Conversion HEIC si nécessaire
+          // Traitement selon le type de fichier
           if (isHeicFile(fileToProcess)) {
-            toast.info(`Conversion HEIC... (${i + 1}/${filesToProcess.length})`);
-            fileToProcess = await convertHeicToJpeg(fileToProcess);
-          }
-          
-          // ÉTAPE 2: Traitement selon le type
-          if (isVideoFile(fileToProcess)) {
+            toast.info(`Conversion HEIC → WebP... (${i + 1}/${filesToProcess.length})`);
+            fileToProcess = await convertHeicToWebP(fileToProcess);
+          } else if (isVideoFile(fileToProcess)) {
             toast.info(`Traitement vidéo... (${i + 1}/${filesToProcess.length})`);
             fileToProcess = await processVideo(fileToProcess);
           } else {
-            // NOUVELLE LOGIQUE: Conversion vers WebP immédiate
             toast.info(`Conversion WebP... (${i + 1}/${filesToProcess.length})`);
             fileToProcess = await convertToWebP(fileToProcess);
           }
           
-          // ÉTAPE 3: Upload vers Supabase
+          // Upload vers Supabase
           setProcessingStatus(`Upload... (${i + 1}/${filesToProcess.length})`);
           const mediaUrl = await uploadSingleFile(fileToProcess);
           
