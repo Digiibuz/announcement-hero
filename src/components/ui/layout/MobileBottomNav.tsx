@@ -3,7 +3,7 @@ import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Button } from "@/components/ui/button";
-import { Home, FileText, Plus, LayoutTemplate, Users } from "lucide-react";
+import { Home, FileText, Plus, FolderOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -35,16 +35,16 @@ const navItems: NavItem[] = [
     isCreate: true
   },
   {
-    id: "templates",
-    label: "Modèles",
-    icon: <LayoutTemplate className="h-5 w-5" />,
-    path: "/templates"
+    id: "projects1",
+    label: "Projets",
+    icon: <FolderOpen className="h-5 w-5" />,
+    path: "/announcements"
   },
   {
-    id: "team",
-    label: "Équipe",
-    icon: <Users className="h-5 w-5" />,
-    path: "/profile"
+    id: "projects2",
+    label: "Projets",
+    icon: <FolderOpen className="h-5 w-5" />,
+    path: "/announcements"
   }
 ];
 
