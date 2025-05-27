@@ -19,7 +19,7 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { isPublishing } = useWordPressPublishing();
+  const { isPublishing, publishToWordPress } = useWordPressPublishing();
   const { canPublish, stats } = usePublicationLimits();
   const [activeTab, setActiveTab] = useState("preview");
   const [formData, setFormData] = useState<any>(null);
@@ -114,7 +114,40 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
         
       if (error) throw error;
       
-      toast.success("Annonce mise à jour avec succès");
+      // If the announcement is published and has a WordPress post ID, update WordPress automatically
+      if (announcement?.status === 'published' && announcement?.wordpress_post_id && formData.status === 'published') {
+        try {
+          // Get the updated announcement data
+          const { data: updatedAnnouncement, error: fetchError } = await supabase
+            .from("announcements")
+            .select("*")
+            .eq("id", id)
+            .single();
+
+          if (fetchError) throw fetchError;
+
+          if (updatedAnnouncement && updatedAnnouncement.wordpress_category_id) {
+            const result = await publishToWordPress(
+              updatedAnnouncement,
+              updatedAnnouncement.wordpress_category_id,
+              userId
+            );
+
+            if (result.success) {
+              toast.success("Annonce mise à jour avec succès et synchronisée avec WordPress");
+            } else {
+              toast.success("Annonce mise à jour localement, mais erreur de synchronisation WordPress");
+              console.error("WordPress sync error:", result.message);
+            }
+          }
+        } catch (wordpressError: any) {
+          console.error("Error syncing with WordPress:", wordpressError);
+          toast.success("Annonce mise à jour localement, mais erreur de synchronisation WordPress");
+        }
+      } else {
+        toast.success("Annonce mise à jour avec succès");
+      }
+      
       await fetchAnnouncement();
       setIsEditing(false);
       setActiveTab("preview");

@@ -1,8 +1,9 @@
 
 import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Pencil, FileEdit } from "lucide-react";
+import { Pencil, FileEdit, Edit } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import AnnouncementPreview from "@/components/announcements/AnnouncementPreview";
 import AnnouncementForm from "@/components/announcements/AnnouncementForm";
 import { Announcement } from "@/types/announcement";
@@ -29,6 +30,7 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
   formData
 }) => {
   const isDraft = announcement?.status === 'draft';
+  const isPublished = announcement?.status === 'published';
   
   // Utilisez une fonction pour changer d'onglet qui empêche le comportement par défaut
   const handleTabChange = (value: string) => {
@@ -50,6 +52,15 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
       }
     }
   }, [announcement?.id, isEditing, setActiveTab]);
+
+  const startEditing = () => {
+    setIsEditing(true);
+    setActiveTab("edit");
+    // Mettre à jour sessionStorage
+    if (announcement?.id) {
+      sessionStorage.setItem(`announcementTab-${announcement.id}`, 'edit');
+    }
+  };
   
   return (
     <Tabs value={activeTab} onValueChange={handleTabChange}>
@@ -73,6 +84,16 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
                 </AlertDescription>
               </Alert>
             )}
+            
+            {isPublished && !isEditing && (
+              <div className="mb-4 flex justify-end">
+                <Button onClick={startEditing} variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100">
+                  <Edit className="h-4 w-4 mr-2" />
+                  Modifier cette annonce
+                </Button>
+              </div>
+            )}
+            
             <AnnouncementPreview data={{
               title: announcement.title,
               description: announcement.description || "",
@@ -89,23 +110,35 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
       </TabsContent>
       <TabsContent value="edit">
         {isEditing && announcement ? (
-          <AnnouncementForm
-            onSubmit={handleSubmit}
-            isSubmitting={isSubmitting}
-            initialValues={formData}
-            onCancel={() => {
-              setIsEditing(false);
-              setActiveTab("preview");
-              // Mettre à jour sessionStorage
-              if (announcement?.id) {
-                sessionStorage.setItem(`announcementTab-${announcement.id}`, 'preview');
-              }
-            }}
-          />
+          <>
+            {isPublished && (
+              <Alert className="mb-4 bg-blue-50 border-blue-200">
+                <AlertDescription className="flex items-center gap-2">
+                  <Edit className="h-4 w-4" />
+                  <span>
+                    Vous modifiez une annonce publiée. Les modifications seront automatiquement synchronisées avec WordPress.
+                  </span>
+                </AlertDescription>
+              </Alert>
+            )}
+            <AnnouncementForm
+              onSubmit={handleSubmit}
+              isSubmitting={isSubmitting}
+              initialValues={formData}
+              onCancel={() => {
+                setIsEditing(false);
+                setActiveTab("preview");
+                // Mettre à jour sessionStorage
+                if (announcement?.id) {
+                  sessionStorage.setItem(`announcementTab-${announcement.id}`, 'preview');
+                }
+              }}
+            />
+          </>
         ) : (
           <Alert>
             <AlertDescription>
-              Cliquez sur le bouton "Modifier" pour modifier cette annonce.
+              Cliquez sur le bouton "Modifier cette annonce" pour modifier cette annonce.
             </AlertDescription>
           </Alert>
         )}

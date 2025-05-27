@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Announcement } from "@/types/announcement";
@@ -55,8 +56,12 @@ export const useWordPressPublishing = () => {
     setIsPublishing(true);
     resetPublishingState();
     
+    // Check if this is an update or new post
+    const isUpdate = announcement.wordpress_post_id && announcement.wordpress_post_id > 0;
+    const actionText = isUpdate ? "Mise à jour" : "Publication";
+    
     // Start with preparation step
-    updatePublishingStep("prepare", "loading", "Préparation de la publication", 10);
+    updatePublishingStep("prepare", "loading", `${actionText} - Préparation`, 10);
     
     try {
       // Get user's WordPress config
@@ -165,6 +170,11 @@ export const useWordPressPublishing = () => {
       
       console.log("Using WordPress endpoint:", postEndpoint, "with custom taxonomy:", useCustomTaxonomy);
       
+      // For updates, append the post ID to the endpoint
+      if (isUpdate) {
+        postEndpoint = `${postEndpoint}/${announcement.wordpress_post_id}`;
+      }
+      
       // Prepare headers with authentication
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -253,7 +263,7 @@ export const useWordPressPublishing = () => {
       }
       
       // Update WordPress step status
-      updatePublishingStep("wordpress", "loading", "Publication sur WordPress", 70);
+      updatePublishingStep("wordpress", "loading", `${actionText} sur WordPress`, 70);
       
       // Prepare post data - toujours utiliser "publish" pour publier immédiatement
       const wpPostData: any = {
@@ -286,10 +296,11 @@ export const useWordPressPublishing = () => {
         };
       }
       
-      // Create post with image (if available)
-      console.log("Sending POST request to WordPress:", postEndpoint);
+      // Create or update post
+      const httpMethod = isUpdate ? 'PUT' : 'POST';
+      console.log(`Sending ${httpMethod} request to WordPress:`, postEndpoint);
       const postResponse = await fetch(postEndpoint, {
-        method: 'POST',
+        method: httpMethod,
         headers: headers,
         body: JSON.stringify(wpPostData)
       });
@@ -297,10 +308,10 @@ export const useWordPressPublishing = () => {
       if (!postResponse.ok) {
         let errorText = await postResponse.text();
         console.error("WordPress API error:", errorText);
-        updatePublishingStep("wordpress", "error", "Erreur lors de la publication");
+        updatePublishingStep("wordpress", "error", `Erreur lors du ${actionText.toLowerCase()}`);
         return { 
           success: false, 
-          message: `Erreur lors de la publication WordPress (${postResponse.status}): ${errorText}`, 
+          message: `Erreur lors du ${actionText.toLowerCase()} WordPress (${postResponse.status}): ${errorText}`, 
           wordpressPostId: null 
         };
       }
@@ -310,7 +321,7 @@ export const useWordPressPublishing = () => {
       try {
         wpResponseData = await postResponse.json();
         console.log("WordPress response data:", wpResponseData);
-        updatePublishingStep("wordpress", "success", "Publication WordPress réussie", 85);
+        updatePublishingStep("wordpress", "success", `${actionText} WordPress réussie`, 85);
       } catch (error) {
         console.error("Error parsing WordPress response:", error);
         updatePublishingStep("wordpress", "error", "Erreur d'analyse de la réponse");
@@ -329,26 +340,30 @@ export const useWordPressPublishing = () => {
         const wordpressPostId = wpResponseData.id;
         console.log("WordPress post ID received:", wordpressPostId);
         
-        // Update the announcement in Supabase with the WordPress post ID
-        const { error: updateError } = await supabase
-          .from("announcements")
-          .update({ 
-            wordpress_post_id: wordpressPostId,
-            is_divipixel: useCustomTaxonomy 
-          })
-          .eq("id", announcement.id);
-          
-        if (updateError) {
-          console.error("Error updating announcement with WordPress post ID:", updateError);
-          updatePublishingStep("database", "error", "Erreur de mise à jour de la base de données");
-          toast.error("L'annonce a été publiée sur WordPress mais l'ID n'a pas pu être enregistré dans la base de données");
+        // Update the announcement in Supabase with the WordPress post ID (only if it's a new post)
+        if (!isUpdate) {
+          const { error: updateError } = await supabase
+            .from("announcements")
+            .update({ 
+              wordpress_post_id: wordpressPostId,
+              is_divipixel: useCustomTaxonomy 
+            })
+            .eq("id", announcement.id);
+            
+          if (updateError) {
+            console.error("Error updating announcement with WordPress post ID:", updateError);
+            updatePublishingStep("database", "error", "Erreur de mise à jour de la base de données");
+            toast.error("L'annonce a été publiée sur WordPress mais l'ID n'a pas pu être enregistré dans la base de données");
+          } else {
+            updatePublishingStep("database", "success", "Mise à jour finalisée", 100);
+          }
         } else {
           updatePublishingStep("database", "success", "Mise à jour finalisée", 100);
         }
         
         return { 
           success: true, 
-          message: "Publié avec succès sur WordPress" + (featuredMediaId ? " avec image principale" : ""), 
+          message: `${actionText} avec succès sur WordPress` + (featuredMediaId ? " avec image principale" : ""), 
           wordpressPostId 
         };
       } else {
@@ -368,7 +383,7 @@ export const useWordPressPublishing = () => {
       }
       return { 
         success: false, 
-        message: `Erreur lors de la publication: ${error.message}`, 
+        message: `Erreur lors du ${isUpdate ? 'mise à jour' : 'publication'}: ${error.message}`, 
         wordpressPostId: null 
       };
     } finally {
