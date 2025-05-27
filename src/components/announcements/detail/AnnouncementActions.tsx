@@ -1,7 +1,6 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Trash2, Send, Archive, ExternalLink } from "lucide-react";
+import { Trash2, Send, Archive, ExternalLink, RefreshCw } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +23,8 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
 import { usePublicationLimits } from "@/hooks/usePublicationLimits";
+import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AnnouncementActionsProps {
   id: string;
@@ -40,12 +41,14 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
 }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
   const { configs } = useWordPressConfigs();
   const { canPublish, stats } = usePublicationLimits();
+  const { publishToWordPress } = useWordPressPublishing();
 
   const deleteAnnouncement = async () => {
     try {
@@ -115,6 +118,64 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
     }
   };
 
+  const updateOnWordPress = async () => {
+    if (!wordpressPostId || !user?.id) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour : annonce non publiée sur WordPress.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      
+      // Get the current announcement data
+      const { data: announcement, error } = await supabase
+        .from("announcements")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error || !announcement) {
+        throw new Error("Impossible de récupérer les données de l'annonce");
+      }
+
+      // Get WordPress category ID
+      const wordpressCategoryId = announcement.wordpress_category_id;
+      if (!wordpressCategoryId) {
+        throw new Error("Catégorie WordPress manquante");
+      }
+
+      // Use the publishing hook to update the WordPress post
+      const result = await publishToWordPress(
+        announcement,
+        wordpressCategoryId,
+        user.id
+      );
+
+      if (result.success) {
+        toast({
+          title: "Mise à jour réussie",
+          description: "L'annonce a été mise à jour sur WordPress avec succès.",
+        });
+        queryClient.invalidateQueries({ queryKey: ["announcement", id] });
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error: any) {
+      console.error("Error updating on WordPress:", error);
+      toast({
+        title: "Erreur de mise à jour",
+        description: `Impossible de mettre à jour sur WordPress: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const viewOnWordPress = () => {
     if (!wordpressPostId || !configs || configs.length === 0) {
       toast({
@@ -151,6 +212,28 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
         >
           <ExternalLink className="mr-2 h-4 w-4" />
           Voir sur le site
+        </Button>
+      )}
+
+      {/* Update on WordPress button - only show if published and has WordPress post ID */}
+      {status === "published" && wordpressPostId && (
+        <Button 
+          onClick={updateOnWordPress}
+          disabled={isUpdating}
+          variant="outline"
+          className="bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100 hover:border-orange-300"
+        >
+          {isUpdating ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Mise à jour...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Mettre à jour sur WordPress
+            </>
+          )}
         </Button>
       )}
 
