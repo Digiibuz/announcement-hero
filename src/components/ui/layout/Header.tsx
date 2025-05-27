@@ -10,12 +10,12 @@ const Header = () => {
 
   return (
     <>
-      {/* Header transparent pour mobile */}
-      <header className="fixed top-0 left-0 right-0 z-40 md:bg-background/70 md:backdrop-blur-xl md:border-b md:border-border">
+      {/* Header transparent pour mobile et desktop */}
+      <header className="fixed top-0 left-0 right-0 z-40 bg-transparent">
         <div className="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-            {/* Menu hamburger pour mobile uniquement */}
-            <div className="md:hidden">
+            {/* Menu hamburger à gauche pour mobile uniquement */}
+            <div className="md:hidden flex items-center">
               <MobileNav />
             </div>
 
@@ -33,10 +33,10 @@ const Header = () => {
               </Link>
             </div>
 
-            {/* Bouton de connexion ou profil */}
+            {/* Bouton de connexion ou espace vide sur mobile */}
             <div className="flex items-center gap-4">
               {!isAuthenticated ? (
-                <Link to="/login">
+                <Link to="/login" className="hidden md:block">
                   <Button 
                     className="bg-digibuz-navy hover:bg-digibuz-navy/90 text-white dark:bg-digibuz-yellow dark:text-digibuz-navy dark:hover:bg-digibuz-yellow/90"
                   >
@@ -48,13 +48,12 @@ const Header = () => {
                   {/* Espace pour futur contenu desktop quand connecté */}
                 </div>
               )}
+              {/* Espace vide sur mobile pour équilibrer le layout */}
+              <div className="md:hidden w-10"></div>
             </div>
           </div>
         </div>
       </header>
-
-      {/* Header transparent pour mobile avec arrière-plan gradient */}
-      <div className="fixed top-0 left-0 right-0 z-30 h-20 bg-gradient-to-b from-white/10 to-transparent backdrop-blur-sm md:hidden pointer-events-none" />
     </>
   );
 };

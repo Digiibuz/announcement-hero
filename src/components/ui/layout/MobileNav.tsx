@@ -76,9 +76,9 @@ const MobileNav = () => {
         <Button 
           variant="ghost" 
           size="icon"
-          className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30 transition-all duration-200"
+          className="h-12 w-12 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-all duration-200 shadow-lg"
         >
-          <Menu className="h-5 w-5 text-gray-800" />
+          <Menu className="h-6 w-6 text-gray-800" />
         </Button>
       </DrawerTrigger>
       <DrawerContent className="h-[400px] bg-white/95 backdrop-blur-xl border-t border-gray-200/50">
