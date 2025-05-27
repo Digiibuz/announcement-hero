@@ -211,7 +211,8 @@ export const useWordPressPublishing = () => {
             console.log("Téléversement de l'image vers la bibliothèque média WordPress");
             const mediaFormData = new FormData();
             mediaFormData.append('file', imageFile);
-            mediaFormData.append('title', announcement.title);
+            // Solution 1: Préfixer le titre de l'image pour éviter les conflits de slug
+            mediaFormData.append('title', `Photo - ${announcement.title}`);
             mediaFormData.append('alt_text', announcement.title);
             
             const mediaEndpoint = `${postEndpoint.split('/wp-json/')[0]}/wp-json/wp/v2/media`;
