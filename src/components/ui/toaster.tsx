@@ -26,7 +26,7 @@ export function Toaster() {
               )}
             </div>
             {action}
-            <ToastClose />
+            <ToastClose className="opacity-100" />
           </Toast>
         )
       })}
