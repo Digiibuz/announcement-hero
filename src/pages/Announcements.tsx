@@ -45,7 +45,8 @@ const Announcements = () => {
     queryFn: async () => {
       let query = supabase
         .from("announcements")
-        .select("*");
+        .select("*")
+        .order('created_at', { ascending: false }); // Tri des plus récentes aux plus anciennes
       
       if (!isAdmin) {
         query = query.filter("user_id", "eq", user?.id);
