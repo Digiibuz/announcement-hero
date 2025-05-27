@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from "react";
 import { ImageIcon, Camera, UploadCloud, Loader2, XCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,16 +22,37 @@ const ImageUploader = ({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useMediaQuery("(max-width: 767px)");
 
-  // Optimized image compression for mobile
+  // Optimized image compression for mobile with detailed logging
   const compressAndConvertToWebp = async (file: File): Promise<File> => {
     return new Promise((resolve, reject) => {
+      console.log("🔄 Starting conversion for file:", {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        lastModified: file.lastModified
+      });
+
+      // Check if browser supports WebP
+      const canvas = document.createElement('canvas');
+      const webpSupported = canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0;
+      console.log("🌐 WebP support:", webpSupported);
+
       const reader = new FileReader();
-      reader.readAsDataURL(file);
+      
       reader.onload = event => {
+        console.log("📖 FileReader loaded successfully");
         const img = new Image();
         img.src = event.target?.result as string;
+        
         img.onload = () => {
           try {
+            console.log("🖼️ Image loaded:", {
+              width: img.width,
+              height: img.height,
+              naturalWidth: img.naturalWidth,
+              naturalHeight: img.naturalHeight
+            });
+            
             // Lower max dimensions for mobile to improve performance
             const MAX_WIDTH = isMobile ? 1200 : 1600;
             const MAX_HEIGHT = isMobile ? 1200 : 1600;
@@ -51,51 +71,90 @@ const ImageUploader = ({
               }
             }
             
+            console.log("📏 Resized dimensions:", { width, height });
+            
             const canvas = document.createElement('canvas');
             canvas.width = width;
             canvas.height = height;
             const ctx = canvas.getContext('2d');
             
             if (!ctx) {
+              console.error("❌ Cannot create canvas context");
               reject(new Error("Impossible de créer le contexte canvas"));
               return;
             }
             
+            console.log("🎨 Canvas context created successfully");
+            
+            // Clear canvas and draw image
+            ctx.clearRect(0, 0, width, height);
             ctx.drawImage(img, 0, 0, width, height);
+            
+            console.log("✅ Image drawn on canvas");
             
             // Lower compression quality on mobile
             const compressionQuality = isMobile ? 0.65 : 0.7;
+            console.log("🗜️ Compression quality:", compressionQuality);
             
             canvas.toBlob(blob => {
               if (!blob) {
-                reject(new Error("La conversion a échoué"));
+                console.error("❌ Canvas toBlob failed - no blob returned");
+                reject(new Error("La conversion en WebP a échoué"));
                 return;
               }
+              
+              console.log("✅ WebP blob created:", {
+                size: blob.size,
+                type: blob.type,
+                originalSize: file.size,
+                compressionRatio: ((file.size - blob.size) / file.size * 100).toFixed(1) + '%'
+              });
               
               const fileName = file.name.split('.')[0] + '.webp';
               const newFile = new File([blob], fileName, {
                 type: 'image/webp'
               });
+              
+              console.log("🎉 WebP file created successfully:", {
+                name: newFile.name,
+                size: newFile.size,
+                type: newFile.type
+              });
+              
               resolve(newFile);
             }, 'image/webp', compressionQuality);
           } catch (error) {
-            console.error("Erreur lors de la compression:", error);
+            console.error("❌ Error during canvas conversion:", error);
             reject(error);
           }
         };
-        img.onerror = () => {
+        
+        img.onerror = (errorEvent) => {
+          console.error("❌ Image load error:", errorEvent);
           reject(new Error("Erreur lors du chargement de l'image"));
         };
       };
-      reader.onerror = () => {
+      
+      reader.onerror = (errorEvent) => {
+        console.error("❌ FileReader error:", errorEvent);
         reject(new Error("Erreur lors de la lecture du fichier"));
       };
+      
+      try {
+        reader.readAsDataURL(file);
+        console.log("📖 Starting FileReader.readAsDataURL");
+      } catch (error) {
+        console.error("❌ Error starting FileReader:", error);
+        reject(error);
+      }
     });
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
+    
+    console.log("📁 Files selected:", files.length, "files");
     
     try {
       setError(null);
@@ -107,6 +166,8 @@ const ImageUploader = ({
       const maxFiles = isMobile ? 3 : 10;
       const filesToProcess = Array.from(files).slice(0, maxFiles);
       
+      console.log("🔢 Processing", filesToProcess.length, "files (max:", maxFiles, ")");
+      
       if (files.length > maxFiles) {
         toast.warning(`Maximum ${maxFiles} images peuvent être téléversées à la fois sur mobile`);
       }
@@ -116,18 +177,36 @@ const ImageUploader = ({
       
       for (let i = 0; i < filesToProcess.length; i++) {
         try {
+          console.log(`🔄 Processing file ${i + 1}/${filesToProcess.length}:`, filesToProcess[i].name);
           setUploadProgress(10 + Math.floor((i / filesToProcess.length) * 40));
+          
           const processedFile = await compressAndConvertToWebp(filesToProcess[i]);
+          console.log("✅ File processed successfully:", processedFile.name);
           
           setUploadProgress(50 + Math.floor((i / filesToProcess.length) * 40));
           const imageUrl = await uploadSingleImage(processedFile);
           
           if (imageUrl) {
             uploadedImageUrls.push(imageUrl);
+            console.log("📤 File uploaded successfully:", imageUrl);
+          } else {
+            console.warn("⚠️ Upload returned null for file:", processedFile.name);
           }
         } catch (error) {
-          console.error("Erreur de traitement pour l'image", i, error);
-          // On continue avec les autres images si une échoue
+          console.error(`❌ Error processing file ${i + 1}:`, filesToProcess[i].name, error);
+          
+          // Essayer l'upload sans conversion en cas d'erreur
+          try {
+            console.log("🔄 Trying to upload original file without conversion...");
+            const imageUrl = await uploadSingleImage(filesToProcess[i]);
+            if (imageUrl) {
+              uploadedImageUrls.push(imageUrl);
+              console.log("✅ Original file uploaded successfully:", imageUrl);
+              toast.warning(`Image ${i + 1} uploadée sans conversion WebP`);
+            }
+          } catch (uploadError) {
+            console.error("❌ Failed to upload original file:", uploadError);
+          }
         }
       }
       
@@ -140,7 +219,7 @@ const ImageUploader = ({
         toast.error("Aucune image n'a pu être téléversée");
       }
     } catch (error: any) {
-      console.error("Error uploading images:", error);
+      console.error("❌ General upload error:", error);
       setError(error.message || "Erreur lors du téléversement");
       toast.error("Erreur lors du téléversement des images: " + error.message);
     } finally {
@@ -158,7 +237,7 @@ const ImageUploader = ({
       const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       const filePath = `announcements/${fileName}`;
       
-      console.log(`Uploading file ${file.name} to path ${filePath}`);
+      console.log(`📤 Uploading file ${file.name} to path ${filePath}`);
       
       const { data, error } = await supabase.storage.from('images').upload(filePath, file, {
         cacheControl: '3600',
@@ -166,9 +245,9 @@ const ImageUploader = ({
       });
       
       if (error) {
-        console.error("Storage upload error:", error);
+        console.error("❌ Storage upload error:", error);
         if (retries > 0) {
-          console.log(`Retrying upload... (${retries} attempts left)`);
+          console.log(`🔄 Retrying upload... (${retries} attempts left)`);
           // Wait a moment before retrying
           await new Promise(resolve => setTimeout(resolve, 1000));
           return uploadSingleImage(file, retries - 1);
@@ -176,12 +255,12 @@ const ImageUploader = ({
         throw error;
       }
       
-      console.log("Upload successful, getting public URL");
+      console.log("✅ Upload successful, getting public URL");
       const { data: urlData } = supabase.storage.from('images').getPublicUrl(filePath);
-      console.log("Public URL obtained:", urlData.publicUrl);
+      console.log("🔗 Public URL obtained:", urlData.publicUrl);
       return urlData.publicUrl;
     } catch (error) {
-      console.error("Upload failed after retries:", error);
+      console.error("❌ Upload failed after retries:", error);
       return null;
     }
   };
