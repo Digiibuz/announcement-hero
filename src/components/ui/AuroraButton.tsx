@@ -2,7 +2,7 @@
 import React from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import Aurora from "@/components/ui/Aurora";
+import Iridescence from "@/components/ui/Iridescence";
 import { cn } from "@/lib/utils";
 
 interface AuroraButtonProps {
@@ -20,12 +20,12 @@ const AuroraButton = ({ onClick, className }: AuroraButtonProps) => {
       )}
       onClick={onClick}
     >
-      {/* Aurora background effect */}
-      <Aurora
-        colorStops={["#9333ea", "#7c3aed", "#a855f7"]}
-        amplitude={0.8}
-        blend={0.6}
+      {/* Iridescence background effect */}
+      <Iridescence
+        color={[0.58, 0.23, 0.91]} // Purple color
         speed={0.5}
+        amplitude={0.3}
+        mouseReact={true}
         className="rounded-lg"
       />
       
