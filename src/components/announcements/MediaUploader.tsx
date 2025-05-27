@@ -355,17 +355,6 @@ const MediaUploader = ({
   return (
     <div>
       <Label>Images et Vidéos</Label>
-      {isAppleDevice() && (
-        <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-center gap-2 text-blue-700">
-            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-            <span className="text-sm font-medium">Optimisation iPhone activée</span>
-          </div>
-          <p className="text-xs text-blue-600 mt-1">
-            Conversion automatique HEIC → WebP pour une meilleure compatibilité
-          </p>
-        </div>
-      )}
       
       <div
         className="mt-2 border-2 border-dashed rounded-lg p-6"
@@ -397,7 +386,7 @@ const MediaUploader = ({
           </div>
           <p className="mb-4 text-gray-950">
             {isMobile ? 
-              "Ajoutez des photos et vidéos (HEIC/MOV/MP4 supportés)" : 
+              "Ajoutez votre image ou photo" : 
               "Glissez-déposez vos fichiers ici, ou sélectionnez une option ci-dessous"
             }
           </p>
