@@ -33,54 +33,59 @@ const CategoryStep = ({
     loadForm();
   }, [loadForm]);
 
-  const getCardStyles = () => {
-    if (isMobile) {
-      return "border-0 border-b border-border shadow-none rounded-none bg-transparent mb-3 last:border-b-0 last:mb-0";
-    }
-    return "border shadow-sm";
-  };
-
-  return <div className="max-w-3xl mx-auto">
-      <Card className={getCardStyles()}>
-        <CardContent className={`${isMobile ? "px-0 py-4" : "p-6"}`}>
-          <FormField 
-            control={form.control} 
-            name="wordpressCategory" 
-            render={({field}) => (
-              <FormItem className="mb-0">
-                <FormLabel>Sélectionner une catégorie</FormLabel>
-                
-                <Select 
-                  onValueChange={field.onChange} 
-                  defaultValue={field.value} 
-                  value={field.value}
-                  disabled={isCategoriesLoading}
-                >
-                  <FormControl>
-                    <SelectTrigger className="h-12" id="category-select">
-                      <SelectValue placeholder="Sélectionnez une catégorie" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {isCategoriesLoading ? <div className="flex items-center justify-center p-4">
-                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                        <span>Chargement des catégories...</span>
-                      </div> : categoriesError ? <div className="p-2 text-center text-sm text-muted-foreground">
-                        Erreur: {categoriesError}
-                      </div> : hasCategories ? categories.map(category => <SelectItem key={category.id} value={String(category.id)}>
-                          {category.name}
-                        </SelectItem>) : <div className="p-2 text-center text-sm text-muted-foreground">
-                        Aucune catégorie disponible
-                      </div>}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )} 
-          />
-        </CardContent>
-      </Card>
-    </div>;
+  return (
+    <div className="space-y-6">
+      <FormField 
+        control={form.control} 
+        name="wordpressCategory" 
+        render={({field}) => (
+          <FormItem>
+            <FormLabel className="text-base font-medium text-gray-700">Sélectionner une catégorie</FormLabel>
+            
+            <Select 
+              onValueChange={field.onChange} 
+              defaultValue={field.value} 
+              value={field.value}
+              disabled={isCategoriesLoading}
+            >
+              <FormControl>
+                <SelectTrigger className="h-14 text-base border-2 border-gray-200 focus:border-brand-orange rounded-xl bg-gray-50 hover:bg-white transition-all duration-200" id="category-select">
+                  <SelectValue placeholder="Sélectionnez une catégorie" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent className="bg-white border-2 border-gray-200 rounded-xl shadow-xl">
+                {isCategoriesLoading ? (
+                  <div className="flex items-center justify-center p-4">
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    <span>Chargement des catégories...</span>
+                  </div>
+                ) : categoriesError ? (
+                  <div className="p-2 text-center text-sm text-muted-foreground">
+                    Erreur: {categoriesError}
+                  </div>
+                ) : hasCategories ? (
+                  categories.map(category => (
+                    <SelectItem 
+                      key={category.id} 
+                      value={String(category.id)}
+                      className="py-3 px-4 hover:bg-gray-50 focus:bg-brand-orange/10 text-base"
+                    >
+                      {category.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div className="p-2 text-center text-sm text-muted-foreground">
+                    Aucune catégorie disponible
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )} 
+      />
+    </div>
+  );
 };
 
 export default CategoryStep;

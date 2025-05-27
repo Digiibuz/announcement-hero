@@ -417,7 +417,7 @@ const CreateAnnouncement = () => {
   };
 
   return (
-    <div className="min-h-screen bg-digibuz-light">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       <CreateAnnouncementHeader 
         currentStep={currentStepIndex} 
         totalSteps={stepConfigs.length} 
@@ -429,7 +429,7 @@ const CreateAnnouncement = () => {
       {!canPublish() && (
         <div className="pt-16 px-4">
           <div className="max-w-3xl mx-auto mb-4">
-            <Card className="border-orange-200 bg-orange-50">
+            <Card className="border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 shadow-lg">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-5 w-5 text-orange-600" />
@@ -450,27 +450,31 @@ const CreateAnnouncement = () => {
         </div>
       )}
     
-      <div className="pt-16 pb-20 px-4 md:max-w-3xl md:mx-auto">
+      <div className="pt-16 pb-20 px-4 md:max-w-4xl md:mx-auto">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="h-full">
-            <div className="max-w-3xl mx-auto">
-              <div className="my-6">
-                <h2 className="text-xl font-semibold mb-1">{currentStep.title}</h2>
-                <p className="text-muted-foreground text-sm">{currentStep.description}</p>
+            <div className="max-w-4xl mx-auto">
+              <div className="my-8 text-center">
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">{currentStep.title}</h2>
+                <p className="text-gray-600 text-base max-w-2xl mx-auto">{currentStep.description}</p>
               </div>
               
-              {currentStep.id === "category" && <CategoryStep form={form} isMobile={isMobile} />}
-              
-              {currentStep.id === "description" && <DescriptionStep form={form} isMobile={isMobile} />}
-              
-              {currentStep.id === "images" && <ImagesStep form={form} isMobile={isMobile} />}
-              
-              {currentStep.id === "publishing" && <PublishingStep form={form} isMobile={isMobile} />}
-              
-              {currentStep.id === "summary" && <AnnouncementSummary data={form.getValues()} isMobile={isMobile} categoryName={getCategoryName()} />}
+              <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                <div className="p-6 md:p-8">
+                  {currentStep.id === "category" && <CategoryStep form={form} isMobile={isMobile} />}
+                  
+                  {currentStep.id === "description" && <DescriptionStep form={form} isMobile={isMobile} />}
+                  
+                  {currentStep.id === "images" && <ImagesStep form={form} isMobile={isMobile} />}
+                  
+                  {currentStep.id === "publishing" && <PublishingStep form={form} isMobile={isMobile} />}
+                  
+                  {currentStep.id === "summary" && <AnnouncementSummary data={form.getValues()} isMobile={isMobile} categoryName={getCategoryName()} />}
+                </div>
+              </div>
             </div>
             
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-digibuz-light border-t">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-gray-200">
               <StepNavigation 
                 currentStep={currentStepIndex} 
                 totalSteps={stepConfigs.length} 
@@ -482,7 +486,7 @@ const CreateAnnouncement = () => {
                 isFirstStep={currentStepIndex === 0} 
                 isSubmitting={isSubmitting || isPublishing || isSavingDraft} 
                 isMobile={isMobile} 
-                className="bg-transparent border-none max-w-3xl mx-auto" 
+                className="bg-transparent border-none max-w-4xl mx-auto" 
               />
             </div>
           </form>

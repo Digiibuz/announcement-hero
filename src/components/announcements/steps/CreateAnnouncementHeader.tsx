@@ -14,7 +14,7 @@ interface SaveDraftDialogProps {
 
 const SaveDraftDialog = ({ onSaveDraft, onDiscard, isSaving }: SaveDraftDialogProps) => {
   return (
-    <SheetContent side="bottom" className="p-6 rounded-t-xl">
+    <SheetContent side="bottom" className="p-6 rounded-t-xl bg-white">
       <div className="space-y-6">
         <div className="text-center">
           <h3 className="text-lg font-semibold">Sauvegarder en brouillon ?</h3>
@@ -73,12 +73,12 @@ const CreateAnnouncementHeader = ({
   const progressPercentage = (currentStep / (totalSteps - 1)) * 100;
   
   return (
-    <div className="fixed top-0 left-0 right-0 z-40 bg-background">
-      <div className="flex items-center justify-between px-4 py-3 border-b">
-        <h1 className="text-lg font-medium">Déposer une annonce</h1>
+    <div className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-200">
+      <div className="flex items-center justify-between px-4 py-3">
+        <h1 className="text-lg font-semibold text-gray-800">Déposer une annonce</h1>
         <Sheet>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
+            <Button variant="ghost" size="sm" className="h-9 w-9 p-0 hover:bg-gray-100">
               <X className="h-5 w-5" />
             </Button>
           </SheetTrigger>
@@ -91,7 +91,7 @@ const CreateAnnouncementHeader = ({
       </div>
       <div className="h-1 bg-gray-200">
         <div 
-          className="h-full bg-brand-orange transition-all duration-300" 
+          className="h-full bg-gradient-to-r from-brand-orange to-amber-400 transition-all duration-300" 
           style={{ width: `${progressPercentage}%` }}
         ></div>
       </div>
