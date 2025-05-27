@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
@@ -153,20 +152,6 @@ const Announcements = () => {
           viewMode={viewMode}
         />
       </AnimatedContainer>
-
-      {/* Floating Action Button for mobile with same style as Dashboard */}
-      <FloatingActionButton 
-        position="bottom-right" 
-        asChild
-        showOnMobile={true}
-        hideOnDesktop={true}
-        className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-bold transform transition-all duration-300 hover:scale-110 hover:shadow-xl active:scale-95 group relative overflow-hidden"
-      >
-        <Link to="/create">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-          <span className="text-2xl">✨</span>
-        </Link>
-      </FloatingActionButton>
     </PageLayout>
   );
 };
