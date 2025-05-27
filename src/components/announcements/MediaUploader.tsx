@@ -216,13 +216,10 @@ const MediaUploader = ({
           
           // Traitement selon le type de fichier
           if (isHeicFile(fileToProcess)) {
-            toast.info(`Conversion HEIC → WebP... (${i + 1}/${filesToProcess.length})`);
             fileToProcess = await convertHeicToWebP(fileToProcess);
           } else if (isVideoFile(fileToProcess)) {
-            toast.info(`Traitement vidéo... (${i + 1}/${filesToProcess.length})`);
             fileToProcess = await processVideo(fileToProcess);
           } else {
-            toast.info(`Conversion WebP... (${i + 1}/${filesToProcess.length})`);
             fileToProcess = await convertToWebP(fileToProcess);
           }
           

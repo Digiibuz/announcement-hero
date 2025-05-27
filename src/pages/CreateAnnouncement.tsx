@@ -272,13 +272,6 @@ const CreateAnnouncement = () => {
 
       clearSavedData();
 
-      if (isMobile) {
-        toast({
-          title: "Traitement en cours",
-          description: "Enregistrement de votre annonce..."
-        });
-      }
-
       const announcementData = {
         user_id: user?.id,
         title: formData.title,
@@ -302,40 +295,34 @@ const CreateAnnouncement = () => {
         await incrementPublicationCount();
       }
 
-      toast({
-        title: "Succès",
-        description: "Annonce enregistrée avec succès" + (isMobile ? ", publication en cours..." : "")
-      });
-
       let wordpressResult = {
         success: true,
         message: "",
         wordpressPostId: null as number | null
       };
       
-      // WordPress publishing with new optimized flow
+      // WordPress publishing with reduced notifications
       if ((formData.status === 'published' || formData.status === 'scheduled') && formData.wordpressCategory && user?.id) {
-        if (!isMobile) {
-          toast({
-            title: "WordPress",
-            description: "Publication de l'annonce sur WordPress en cours..."
-          });
-        }
         wordpressResult = await publishToWordPress(newAnnouncement as Announcement, formData.wordpressCategory, user.id);
+        
+        // Only show final result notification
         if (wordpressResult.success) {
-          if (wordpressResult.wordpressPostId) {
-            toast({
-              title: "WordPress",
-              description: `Publication réussie (ID: ${wordpressResult.wordpressPostId})`
-            });
-          }
+          toast({
+            title: "Succès",
+            description: "Annonce publiée avec succès"
+          });
         } else {
           toast({
             title: "Attention",
-            description: "Annonce enregistrée dans la base de données, mais la publication WordPress a échoué: " + (wordpressResult.message || "Erreur inconnue"),
+            description: "Annonce enregistrée, mais la publication WordPress a échoué",
             variant: "destructive"
           });
         }
+      } else {
+        toast({
+          title: "Succès",
+          description: "Annonce enregistrée avec succès"
+        });
       }
 
       form.reset({
