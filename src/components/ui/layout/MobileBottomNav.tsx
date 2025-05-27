@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -66,7 +67,7 @@ const MobileBottomNav = () => {
             className={cn(
               "flex flex-col items-center justify-center h-12 w-12 rounded-lg transition-all duration-200",
               item.isCreate
-                ? "organic-button text-white shadow-lg border-0 hover:shadow-xl"
+                ? "bg-purple-600 hover:bg-purple-700 text-white shadow-lg scale-105"
                 : isActive(item.path)
                 ? "text-purple-600 bg-purple-50"
                 : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
