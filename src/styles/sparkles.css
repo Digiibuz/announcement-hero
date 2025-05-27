@@ -1,4 +1,3 @@
-
 @keyframes sparkle {
   0%, 100% { 
     opacity: 0; 
@@ -145,6 +144,78 @@
     transform: scale(1.2);
     opacity: 1;
   }
+}
+
+/* Organic Button Animations */
+@keyframes organic-gradient {
+  0%, 100% {
+    background: linear-gradient(135deg, #9333ea 0%, #a855f7 25%, #8b5cf6 50%, #7c3aed 75%, #9333ea 100%);
+    background-size: 300% 300%;
+    background-position: 0% 50%;
+  }
+  25% {
+    background: linear-gradient(135deg, #a855f7 0%, #8b5cf6 25%, #7c3aed 50%, #6d28d9 75%, #a855f7 100%);
+    background-size: 300% 300%;
+    background-position: 100% 50%;
+  }
+  50% {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 25%, #6d28d9 50%, #5b21b6 75%, #8b5cf6 100%);
+    background-size: 300% 300%;
+    background-position: 50% 100%;
+  }
+  75% {
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 25%, #5b21b6 50%, #4c1d95 75%, #7c3aed 100%);
+    background-size: 300% 300%;
+    background-position: 50% 0%;
+  }
+}
+
+@keyframes organic-pulse {
+  0%, 100% {
+    transform: scale(1.05);
+    box-shadow: 0 4px 20px rgba(147, 51, 234, 0.4);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 6px 25px rgba(147, 51, 234, 0.6);
+  }
+}
+
+@keyframes organic-float {
+  0%, 100% {
+    transform: translateY(0px) scale(1.05);
+  }
+  33% {
+    transform: translateY(-2px) scale(1.06);
+  }
+  66% {
+    transform: translateY(-1px) scale(1.07);
+  }
+}
+
+.organic-gradient {
+  animation: organic-gradient 8s ease-in-out infinite;
+}
+
+.organic-pulse {
+  animation: organic-pulse 3s ease-in-out infinite;
+}
+
+.organic-float {
+  animation: organic-float 4s ease-in-out infinite;
+}
+
+.organic-button {
+  background: linear-gradient(135deg, #9333ea, #a855f7, #8b5cf6, #7c3aed);
+  background-size: 300% 300%;
+  animation: 
+    organic-gradient 8s ease-in-out infinite,
+    organic-pulse 3s ease-in-out infinite,
+    organic-float 4s ease-in-out infinite;
+}
+
+.organic-button:hover {
+  animation-duration: 4s, 1.5s, 2s;
 }
 
 /* Existing animations */
