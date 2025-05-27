@@ -17,6 +17,7 @@ import UserManagement from "@/pages/UserManagement";
 import UserProfile from "@/pages/UserProfile";
 import GoogleBusinessPage from "@/pages/GoogleBusinessPage";
 import WebsiteManagement from "@/pages/WebsiteManagement";
+import Templates from "@/pages/Templates";
 
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
@@ -72,6 +73,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <CreateAnnouncement />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/templates" 
+        element={
+          <ProtectedRoute>
+            <Templates />
           </ProtectedRoute>
         } 
       />
