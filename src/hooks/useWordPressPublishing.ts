@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Announcement } from "@/types/announcement";
@@ -194,22 +193,22 @@ export const useWordPressPublishing = () => {
         };
       }
       
-      // AMÉLIORATION: Traitement de l'image principale avant la création du post
+      // IMPROVED: Handle featured image for both new posts and updates
       let featuredMediaId = null;
       
-      // Si des images sont disponibles, traiter l'image principale d'abord
+      // For updates, we always update the featured image if images are present
       if (announcement.images && announcement.images.length > 0) {
         try {
-          updatePublishingStep("image", "loading", "Téléversement de l'image principale", 40);
+          updatePublishingStep("image", "loading", "Traitement de l'image principale", 40);
           
-          // 1. Télécharger l'image depuis l'URL
+          // 1. Download image from URL
           const imageUrl = announcement.images[0];
           const imageResponse = await fetch(imageUrl);
           
           if (!imageResponse.ok) {
-            console.error("Échec de la récupération de l'image depuis l'URL:", imageUrl);
+            console.error("Failed to fetch image from URL:", imageUrl);
             updatePublishingStep("image", "error", "Échec de récupération de l'image");
-            toast.warning("L'image principale n'a pas pu être préparée, publication sans image");
+            toast.warning("L'image principale n'a pas pu être préparée");
           } else {
             const imageBlob = await imageResponse.blob();
             const fileName = imageUrl.split('/').pop() || `image-${Date.now()}.jpg`;
@@ -217,17 +216,16 @@ export const useWordPressPublishing = () => {
               type: imageBlob.type || 'image/jpeg' 
             });
             
-            // 2. Téléverser vers la bibliothèque média WordPress
-            console.log("Téléversement de l'image vers la bibliothèque média WordPress");
+            // 2. Upload to WordPress media library
+            console.log("Uploading image to WordPress media library");
             const mediaFormData = new FormData();
             mediaFormData.append('file', imageFile);
-            // Solution 1: Préfixer le titre de l'image pour éviter les conflits de slug
-            mediaFormData.append('title', `Photo - ${announcement.title}`);
+            // Use a unique title to avoid slug conflicts
+            mediaFormData.append('title', `${announcement.title} - ${Date.now()}`);
             mediaFormData.append('alt_text', announcement.title);
             
             const mediaEndpoint = `${postEndpoint.split('/wp-json/')[0]}/wp-json/wp/v2/media`;
             
-            // Créer des en-têtes pour le téléversement des médias sans Content-Type
             const mediaHeaders = new Headers();
             if (headers.Authorization) {
               mediaHeaders.append('Authorization', headers.Authorization);
@@ -241,23 +239,27 @@ export const useWordPressPublishing = () => {
             
             if (!mediaResponse.ok) {
               const mediaErrorText = await mediaResponse.text();
-              console.error("Erreur lors du téléversement du média:", mediaErrorText);
+              console.error("Error uploading media:", mediaErrorText);
               updatePublishingStep("image", "error", "Échec du téléversement de l'image");
-              toast.warning("L'image principale n'a pas pu être téléversée, publication sans image");
+              toast.warning("L'image principale n'a pas pu être téléversée");
             } else {
               const mediaData = await mediaResponse.json();
               
               if (mediaData && mediaData.id) {
                 featuredMediaId = mediaData.id;
-                updatePublishingStep("image", "success", "Image téléversée avec succès", 60);
+                updatePublishingStep("image", "success", "Image mise à jour avec succès", 60);
               }
             }
           }
         } catch (error) {
-          console.error("Erreur lors du traitement de l'image principale:", error);
+          console.error("Error processing featured image:", error);
           updatePublishingStep("image", "error", "Erreur lors du traitement de l'image");
-          toast.warning("Erreur lors du traitement de l'image principale, publication sans image");
+          toast.warning("Erreur lors du traitement de l'image principale");
         }
+      } else if (isUpdate) {
+        // If it's an update and no images, we'll remove the featured image
+        updatePublishingStep("image", "success", "Image supprimée", 60);
+        featuredMediaId = 0; // Setting to 0 removes the featured image in WordPress
       } else {
         updatePublishingStep("image", "success", "Aucune image à téléverser", 60);
       }
@@ -265,15 +267,15 @@ export const useWordPressPublishing = () => {
       // Update WordPress step status
       updatePublishingStep("wordpress", "loading", `${actionText} sur WordPress`, 70);
       
-      // Prepare post data - toujours utiliser "publish" pour publier immédiatement
+      // Prepare post data
       const wpPostData: any = {
         title: announcement.title,
         content: announcement.description || "",
-        status: announcement.status === 'scheduled' ? 'future' : 'publish', // Passer directement à "publish" sans étape draft/ready
+        status: announcement.status === 'scheduled' ? 'future' : 'publish',
       };
       
-      // Set featured image if available
-      if (featuredMediaId) {
+      // Set featured image (including removal for updates)
+      if (featuredMediaId !== null) {
         wpPostData.featured_media = featuredMediaId;
       }
       
@@ -288,7 +290,7 @@ export const useWordPressPublishing = () => {
         wpPostData.dipi_cpt_category = [parseInt(wordpressCategoryId)];
       }
       
-      // Add SEO metadata if available - simplified
+      // Add SEO metadata if available
       if (announcement.seo_title || announcement.seo_description) {
         wpPostData.meta = {
           _yoast_wpseo_title: announcement.seo_title || "",
@@ -299,6 +301,8 @@ export const useWordPressPublishing = () => {
       // Create or update post
       const httpMethod = isUpdate ? 'PUT' : 'POST';
       console.log(`Sending ${httpMethod} request to WordPress:`, postEndpoint);
+      console.log("WordPress post data:", wpPostData);
+      
       const postResponse = await fetch(postEndpoint, {
         method: httpMethod,
         headers: headers,

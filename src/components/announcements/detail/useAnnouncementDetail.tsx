@@ -114,9 +114,15 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
         
       if (error) throw error;
       
-      // If the announcement is published and has a WordPress post ID, update WordPress automatically
-      if (announcement?.status === 'published' && announcement?.wordpress_post_id && formData.status === 'published') {
+      // Improved WordPress synchronization logic
+      const shouldSyncWithWordPress = announcement?.wordpress_post_id && 
+                                     announcement?.wordpress_category_id &&
+                                     (announcement.status === 'published' || formData.status === 'published');
+      
+      if (shouldSyncWithWordPress) {
         try {
+          console.log("Synchronizing changes with WordPress...");
+          
           // Get the updated announcement data
           const { data: updatedAnnouncement, error: fetchError } = await supabase
             .from("announcements")
@@ -126,7 +132,7 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
 
           if (fetchError) throw fetchError;
 
-          if (updatedAnnouncement && updatedAnnouncement.wordpress_category_id) {
+          if (updatedAnnouncement) {
             const result = await publishToWordPress(
               updatedAnnouncement,
               updatedAnnouncement.wordpress_category_id,
@@ -136,13 +142,13 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
             if (result.success) {
               toast.success("Annonce mise à jour avec succès et synchronisée avec WordPress");
             } else {
-              toast.success("Annonce mise à jour localement, mais erreur de synchronisation WordPress");
+              toast.warning("Annonce mise à jour localement, mais erreur de synchronisation WordPress");
               console.error("WordPress sync error:", result.message);
             }
           }
         } catch (wordpressError: any) {
           console.error("Error syncing with WordPress:", wordpressError);
-          toast.success("Annonce mise à jour localement, mais erreur de synchronisation WordPress");
+          toast.warning("Annonce mise à jour localement, mais erreur de synchronisation WordPress");
         }
       } else {
         toast.success("Annonce mise à jour avec succès");
