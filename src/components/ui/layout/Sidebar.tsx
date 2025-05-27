@@ -96,14 +96,14 @@ const Sidebar = () => {
 
   const SidebarContent = React.memo(() => (
     <>
-      <div className="flex h-16 items-center px-6 border-b border-white/10">
+      <div className="flex h-16 items-center px-6 border-b border-gray-200/30">
         <Link to="/dashboard" className="flex items-center gap-2">
           <img 
             src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
             alt="Digiibuz" 
             className="h-8 w-auto" 
           />
-          <span className="text-lg font-bold text-white">
+          <span className="text-lg font-bold text-gray-800">
             Digiibuz
           </span>
         </Link>
@@ -119,8 +119,8 @@ const Sidebar = () => {
                   <Button
                     variant="ghost"
                     className={cn(
-                      "w-full justify-start text-white/80 hover:bg-white/10 hover:text-white",
-                      item.isActive && "bg-white/20 text-white border-r-2 border-digibuz-yellow"
+                      "w-full justify-start text-gray-600 hover:bg-blue-50 hover:text-blue-700",
+                      item.isActive && "bg-blue-100 text-blue-700 border-r-2 border-blue-500"
                     )}
                   >
                     {item.icon}
@@ -133,7 +133,7 @@ const Sidebar = () => {
             {(isAdmin || isClient) && (
               <>
                 <li className="pt-5">
-                  <h3 className="px-3 text-xs font-semibold uppercase text-white/60 tracking-wider">
+                  <h3 className="px-3 text-xs font-semibold uppercase text-gray-500 tracking-wider">
                     Administration
                   </h3>
                 </li>
@@ -145,8 +145,8 @@ const Sidebar = () => {
                         <Button
                           variant="ghost"
                           className={cn(
-                            "w-full justify-start text-white/80 hover:bg-white/10 hover:text-white",
-                            item.isActive && "bg-white/20 text-white border-r-2 border-digibuz-yellow"
+                            "w-full justify-start text-gray-600 hover:bg-blue-50 hover:text-blue-700",
+                            item.isActive && "bg-blue-100 text-blue-700 border-r-2 border-blue-500"
                           )}
                         >
                           {item.icon}
@@ -161,14 +161,14 @@ const Sidebar = () => {
         </div>
 
         {/* Profile and logout items - always at the bottom */}
-        <div className="mt-auto border-t border-white/10 pt-4">
+        <div className="mt-auto border-t border-gray-200/30 pt-4">
           {profileItems.map((item) => (
             <Link key={item.href} to={item.href} onClick={() => isMobile && setIsOpen(false)}>
               <Button
                 variant="ghost"
                 className={cn(
-                  "w-full justify-start mb-2 text-white/80 hover:bg-white/10 hover:text-white",
-                  item.isActive && "bg-white/20 text-white border-r-2 border-digibuz-yellow"
+                  "w-full justify-start mb-2 text-gray-600 hover:bg-blue-50 hover:text-blue-700",
+                  item.isActive && "bg-blue-100 text-blue-700 border-r-2 border-blue-500"
                 )}
               >
                 {item.icon}
@@ -179,10 +179,10 @@ const Sidebar = () => {
           
           <div className="flex items-center justify-between mt-2">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate text-white">{user?.name}</p>
-              <p className="text-xs text-white/60 truncate">{user?.email}</p>
+              <p className="text-sm font-medium truncate text-gray-800">{user?.name}</p>
+              <p className="text-xs text-gray-500 truncate">{user?.email}</p>
             </div>
-            <Button onClick={logout} variant="ghost" size="icon" aria-label="Déconnexion" className="text-white/60 hover:text-white">
+            <Button onClick={logout} variant="ghost" size="icon" aria-label="Déconnexion" className="text-gray-500 hover:text-gray-700">
               {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5" />}
             </Button>
           </div>
@@ -194,25 +194,25 @@ const Sidebar = () => {
   if (isMobile) {
     return (
       <>
-        <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between h-16 px-4 bg-black/20 backdrop-blur-md border-b border-white/10">
+        <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between h-16 px-4 bg-white/80 backdrop-blur-md border-b border-gray-200/50">
           <Link to="/dashboard" className="flex items-center gap-2">
             <img 
               src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
               alt="Digiibuz" 
               className="h-7 w-auto" 
             />
-            <span className="text-lg font-bold text-white">
+            <span className="text-lg font-bold text-gray-800">
               Digiibuz
             </span>
           </Link>
           
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-white">
+              <Button variant="ghost" size="icon" className="text-gray-700">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-72 bg-black/20 backdrop-blur-xl border-white/10">
+            <SheetContent side="left" className="p-0 w-72 bg-white/95 backdrop-blur-xl border-gray-200/50">
               <SidebarContent />
             </SheetContent>
           </Sheet>
@@ -225,7 +225,7 @@ const Sidebar = () => {
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 transform transition-transform md:translate-x-0">
-      <div className="h-[calc(100vh-2rem)] m-4 bg-black/20 backdrop-blur-xl rounded-r-2xl border border-white/10">
+      <div className="h-[calc(100vh-2rem)] m-4 bg-white/90 backdrop-blur-xl rounded-r-2xl border border-gray-200/30 shadow-lg">
         <SidebarContent />
       </div>
     </aside>
