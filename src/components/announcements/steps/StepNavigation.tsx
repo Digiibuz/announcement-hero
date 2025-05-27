@@ -33,7 +33,7 @@ const StepNavigation = ({
 }: StepNavigationProps) => {
   if (isMobile) {
     return (
-      <div className={cn("flex justify-between items-center w-full relative z-[70]", className)}>
+      <div className={cn("flex justify-between items-center w-full", className)}>
         <Button 
           type="button" 
           variant="outline" 
@@ -49,7 +49,7 @@ const StepNavigation = ({
             type="button" 
             onClick={onSubmit}
             disabled={isSubmitting}
-            className="w-[130px] mobile-nav-button bg-brand-orange hover:bg-brand-orange/90 text-black relative z-[70]"
+            className="w-[130px] mobile-nav-button bg-brand-orange hover:bg-brand-orange/90 text-black"
           >
             {isSubmitting ? "Envoi..." : "Publier l'annonce"}
           </Button>
@@ -58,7 +58,7 @@ const StepNavigation = ({
             type="button" 
             onClick={onNext}
             disabled={isSubmitting}
-            className="w-[130px] mobile-nav-button bg-brand-orange hover:bg-brand-orange/90 text-black relative z-[70]"
+            className="w-[130px] mobile-nav-button bg-brand-orange hover:bg-brand-orange/90 text-black"
           >
             Continuer
           </Button>
