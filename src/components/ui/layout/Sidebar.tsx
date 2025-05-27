@@ -194,28 +194,39 @@ const Sidebar = () => {
   if (isMobile) {
     return (
       <>
-        <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between h-16 px-4 bg-white/80 backdrop-blur-md border-b border-gray-200/50">
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <img 
-              src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
-              alt="Digiibuz" 
-              className="h-7 w-auto" 
-            />
-            <span className="text-lg font-bold text-gray-800">
-              Digiibuz
-            </span>
-          </Link>
-          
+        <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between h-16 px-4 bg-transparent">
+          {/* Menu hamburger à gauche */}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-gray-700">
-                <Menu className="h-5 w-5" />
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="h-12 w-12 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-all duration-200 shadow-lg"
+              >
+                <Menu className="h-6 w-6 text-gray-800" />
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-72 bg-white/95 backdrop-blur-xl border-gray-200/50">
               <SidebarContent />
             </SheetContent>
           </Sheet>
+          
+          {/* Logo centré */}
+          <div className="absolute left-1/2 transform -translate-x-1/2">
+            <Link to="/dashboard" className="flex items-center gap-2">
+              <img 
+                src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
+                alt="Digiibuz" 
+                className="h-7 w-auto" 
+              />
+              <span className="text-lg font-bold text-gray-800">
+                Digiibuz
+              </span>
+            </Link>
+          </div>
+          
+          {/* Espace vide à droite pour équilibrer */}
+          <div className="w-12"></div>
         </div>
         
         <div className="h-16" />
