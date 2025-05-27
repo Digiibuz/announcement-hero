@@ -1,9 +1,8 @@
 
 import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Pencil, FileEdit, Edit } from "lucide-react";
+import { Pencil, FileEdit } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import AnnouncementPreview from "@/components/announcements/AnnouncementPreview";
 import AnnouncementForm from "@/components/announcements/AnnouncementForm";
 import { Announcement } from "@/types/announcement";
@@ -32,14 +31,28 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
   const isDraft = announcement?.status === 'draft';
   const isPublished = announcement?.status === 'published';
   
-  // Utilisez une fonction pour changer d'onglet qui empêche le comportement par défaut
-  const handleTabChange = (value: string) => {
-    // On empêche tout comportement de rechargement en utilisant preventDefault
-    setActiveTab(value);
-    
-    // On mémorise l'onglet actif dans le sessionStorage pour le restaurer
+  // Fonction pour gérer le clic sur l'onglet "Modifier"
+  const handleEditTabClick = () => {
+    if (!isEditing) {
+      setIsEditing(true);
+    }
+    setActiveTab("edit");
+    // Mettre à jour sessionStorage
     if (announcement?.id) {
-      sessionStorage.setItem(`announcementTab-${announcement.id}`, value);
+      sessionStorage.setItem(`announcementTab-${announcement.id}`, 'edit');
+    }
+  };
+
+  // Fonction pour changer d'onglet
+  const handleTabChange = (value: string) => {
+    if (value === "edit") {
+      handleEditTabClick();
+    } else {
+      setActiveTab(value);
+      // Mettre à jour sessionStorage
+      if (announcement?.id) {
+        sessionStorage.setItem(`announcementTab-${announcement.id}`, value);
+      }
     }
   };
   
@@ -52,21 +65,12 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
       }
     }
   }, [announcement?.id, isEditing, setActiveTab]);
-
-  const startEditing = () => {
-    setIsEditing(true);
-    setActiveTab("edit");
-    // Mettre à jour sessionStorage
-    if (announcement?.id) {
-      sessionStorage.setItem(`announcementTab-${announcement.id}`, 'edit');
-    }
-  };
   
   return (
     <Tabs value={activeTab} onValueChange={handleTabChange}>
       <TabsList>
         <TabsTrigger value="preview">Aperçu</TabsTrigger>
-        <TabsTrigger value="edit" disabled={!isEditing}>
+        <TabsTrigger value="edit">
           Modifier
           {isEditing && <Pencil className="h-4 w-4 ml-2" />}
         </TabsTrigger>
@@ -83,15 +87,6 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
                   </span>
                 </AlertDescription>
               </Alert>
-            )}
-            
-            {isPublished && !isEditing && (
-              <div className="mb-4 flex justify-end">
-                <Button onClick={startEditing} variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100">
-                  <Edit className="h-4 w-4 mr-2" />
-                  Modifier cette annonce
-                </Button>
-              </div>
             )}
             
             <AnnouncementPreview data={{
@@ -114,7 +109,7 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
             {isPublished && (
               <Alert className="mb-4 bg-blue-50 border-blue-200">
                 <AlertDescription className="flex items-center gap-2">
-                  <Edit className="h-4 w-4" />
+                  <Pencil className="h-4 w-4" />
                   <span>
                     Vous modifiez une annonce publiée. Les modifications seront automatiquement synchronisées avec WordPress.
                   </span>
@@ -138,7 +133,7 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
         ) : (
           <Alert>
             <AlertDescription>
-              Cliquez sur le bouton "Modifier cette annonce" pour modifier cette annonce.
+              Mode édition activé. Le formulaire se charge...
             </AlertDescription>
           </Alert>
         )}
