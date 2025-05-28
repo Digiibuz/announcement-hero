@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -183,22 +184,26 @@ const CreateAnnouncement = () => {
       setIsSavingDraft(true);
       
       if (!user?.id) {
-        toast({
-          title: "Erreur",
-          description: "Vous devez être connecté pour enregistrer un brouillon",
-          variant: "destructive"
-        });
+        if (!isMobile) {
+          toast({
+            title: "Erreur",
+            description: "Vous devez être connecté pour enregistrer un brouillon",
+            variant: "destructive"
+          });
+        }
         return;
       }
 
       const formData = form.getValues();
 
       if (!formData.title && !formData.description && (!formData.images || formData.images.length === 0)) {
-        toast({
-          title: "Formulaire vide",
-          description: "Veuillez remplir au moins un champ avant d'enregistrer un brouillon",
-          variant: "destructive"
-        });
+        if (!isMobile) {
+          toast({
+            title: "Formulaire vide",
+            description: "Veuillez remplir au moins un champ avant d'enregistrer un brouillon",
+            variant: "destructive"
+          });
+        }
         setIsSavingDraft(false);
         return;
       }
@@ -224,10 +229,12 @@ const CreateAnnouncement = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Succès",
-        description: "Brouillon enregistré avec succès"
-      });
+      if (!isMobile) {
+        toast({
+          title: "Succès",
+          description: "Brouillon enregistré avec succès"
+        });
+      }
 
       clearSavedData();
       
@@ -246,11 +253,13 @@ const CreateAnnouncement = () => {
       navigate("/announcements");
     } catch (error: any) {
       console.error("Error saving draft:", error);
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de l'enregistrement du brouillon: " + error.message,
-        variant: "destructive"
-      });
+      if (!isMobile) {
+        toast({
+          title: "Erreur",
+          description: "Erreur lors de l'enregistrement du brouillon: " + error.message,
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsSavingDraft(false);
     }
@@ -259,11 +268,13 @@ const CreateAnnouncement = () => {
   const handleSubmit = async () => {
     const formData = form.getValues();
     if ((formData.status === 'published' || formData.status === 'scheduled') && !canPublish()) {
-      toast({
-        title: "Limite atteinte",
-        description: `Vous avez atteint votre limite de ${stats.maxLimit} publications ce mois-ci. Votre annonce sera sauvegardée en brouillon.`,
-        variant: "destructive"
-      });
+      if (!isMobile) {
+        toast({
+          title: "Limite atteinte",
+          description: `Vous avez atteint votre limite de ${stats.maxLimit} publications ce mois-ci. Votre annonce sera sauvegardée en brouillon.`,
+          variant: "destructive"
+        });
+      }
       
       form.setValue('status', 'draft');
       formData.status = 'draft';
@@ -308,24 +319,28 @@ const CreateAnnouncement = () => {
       if ((formData.status === 'published' || formData.status === 'scheduled') && formData.wordpressCategory && user?.id) {
         wordpressResult = await publishToWordPress(newAnnouncement as Announcement, formData.wordpressCategory, user.id);
         
-        // Only show final result notification
-        if (wordpressResult.success) {
-          toast({
-            title: "Succès",
-            description: "Annonce publiée avec succès"
-          });
-        } else {
-          toast({
-            title: "Attention",
-            description: "Annonce enregistrée, mais la publication WordPress a échoué",
-            variant: "destructive"
-          });
+        // Only show final result notification on desktop
+        if (!isMobile) {
+          if (wordpressResult.success) {
+            toast({
+              title: "Succès",
+              description: "Annonce publiée avec succès"
+            });
+          } else {
+            toast({
+              title: "Attention",
+              description: "Annonce enregistrée, mais la publication WordPress a échoué",
+              variant: "destructive"
+            });
+          }
         }
       } else {
-        toast({
-          title: "Succès",
-          description: "Annonce enregistrée avec succès"
-        });
+        if (!isMobile) {
+          toast({
+            title: "Succès",
+            description: "Annonce enregistrée avec succès"
+          });
+        }
       }
 
       form.reset({
@@ -347,11 +362,13 @@ const CreateAnnouncement = () => {
       }, 2000);
     } catch (error: any) {
       console.error("Error saving announcement:", error);
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de l'enregistrement: " + error.message,
-        variant: "destructive"
-      });
+      if (!isMobile) {
+        toast({
+          title: "Erreur",
+          description: "Erreur lors de l'enregistrement: " + error.message,
+          variant: "destructive"
+        });
+      }
       setShowPublishingOverlay(false);
       resetPublishingState();
     } finally {
@@ -367,19 +384,23 @@ const CreateAnnouncement = () => {
 
   const handleNext = () => {
     if (currentStepIndex === 0 && !form.getValues().wordpressCategory) {
-      toast({
-        title: "Champ requis",
-        description: "Veuillez sélectionner une catégorie avant de continuer.",
-        variant: "destructive"
-      });
+      if (!isMobile) {
+        toast({
+          title: "Champ requis",
+          description: "Veuillez sélectionner une catégorie avant de continuer.",
+          variant: "destructive"
+        });
+      }
       return;
     }
     if (currentStepIndex === 1 && !form.getValues().title) {
-      toast({
-        title: "Champ requis",
-        description: "Veuillez saisir un titre avant de continuer.",
-        variant: "destructive"
-      });
+      if (!isMobile) {
+        toast({
+          title: "Champ requis",
+          description: "Veuillez saisir un titre avant de continuer.",
+          variant: "destructive"
+        });
+      }
       return;
     }
     if (currentStepIndex < stepConfigs.length - 1) {

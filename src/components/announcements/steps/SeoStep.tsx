@@ -121,7 +121,7 @@ const SeoStep = ({ form, isMobile, isPublished }: SeoStepProps) => {
                 <FormLabel className="flex items-center gap-2">
                   URL Slug
                   {isPublished && (
-                    <Lock className="h-4 w-4 text-amber-500" title="L'URL ne peut pas être modifiée après publication" />
+                    <Lock className="h-4 w-4 text-amber-500" />
                   )}
                 </FormLabel>
                 <FormControl>
