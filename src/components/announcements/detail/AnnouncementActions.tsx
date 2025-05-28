@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Trash2, Send, Archive, ExternalLink } from "lucide-react";
@@ -24,6 +23,7 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
 import { usePublicationLimits } from "@/hooks/usePublicationLimits";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AnnouncementActionsProps {
   id: string;
@@ -115,8 +115,8 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
     }
   };
 
-  const viewOnWordPress = () => {
-    if (!wordpressPostId || !configs || configs.length === 0) {
+  const viewOnWordPress = async () => {
+    if (!wordpressPostId) {
       toast({
         title: "Erreur",
         description: "Impossible de trouver le lien vers l'annonce.",
@@ -125,19 +125,72 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
       return;
     }
 
-    // Get the WordPress site URL from the first config (assuming single config for now)
-    const wordpressConfig = configs[0];
-    const siteUrl = wordpressConfig.site_url.replace(/\/+$/, ''); // Remove trailing slashes
-    
-    // Build the URL: use seoSlug directly without /annonces/ prefix
-    let postUrl;
-    if (seoSlug) {
-      postUrl = `${siteUrl}/${seoSlug}`;
-    } else {
-      postUrl = `${siteUrl}/?p=${wordpressPostId}`;
+    try {
+      // Récupérer les informations de l'annonce pour obtenir l'user_id
+      const { data: announcement, error } = await supabase
+        .from("announcements")
+        .select("user_id")
+        .eq("id", id)
+        .single();
+
+      if (error || !announcement) {
+        toast({
+          title: "Erreur",
+          description: "Impossible de récupérer les informations de l'annonce.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Récupérer le profil de l'utilisateur qui a créé l'annonce
+      const { data: userProfile, error: profileError } = await supabase
+        .from("profiles")
+        .select("wordpress_config_id")
+        .eq("id", announcement.user_id)
+        .single();
+
+      if (profileError || !userProfile?.wordpress_config_id) {
+        toast({
+          title: "Erreur",
+          description: "Impossible de trouver la configuration WordPress de l'utilisateur.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Trouver la configuration WordPress correspondante
+      const wordpressConfig = configs.find(
+        config => config.id === userProfile.wordpress_config_id
+      );
+
+      if (!wordpressConfig) {
+        toast({
+          title: "Erreur",
+          description: "Configuration WordPress introuvable.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const siteUrl = wordpressConfig.site_url.replace(/\/+$/, ''); // Remove trailing slashes
+      
+      // Build the URL: use seoSlug directly without /annonces/ prefix
+      let postUrl;
+      if (seoSlug) {
+        postUrl = `${siteUrl}/${seoSlug}`;
+      } else {
+        postUrl = `${siteUrl}/?p=${wordpressPostId}`;
+      }
+      
+      window.open(postUrl, '_blank');
+    } catch (error) {
+      console.error("Error getting WordPress config:", error);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la récupération de la configuration WordPress.",
+        variant: "destructive",
+      });
     }
-    
-    window.open(postUrl, '_blank');
   };
 
   return (
