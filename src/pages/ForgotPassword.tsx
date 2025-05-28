@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Send, Loader2, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import DynamicBackground from "@/components/ui/DynamicBackground";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -87,106 +87,108 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
-      <AnimatedContainer direction="up" className="w-full max-w-md">
-        <Card className="glass-panel shadow-lg border-white/20">
-          <div className="flex justify-center pt-6">
-            <div className="flex flex-col items-center">
-              <img 
-                src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
-                alt="DigiiBuz" 
-                className="h-16 w-auto mb-2"
-                onError={(e) => {
-                  console.error("Erreur de chargement de l'image:", e);
-                  e.currentTarget.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzMzM2E0NSIgLz48dGV4dCB4PSI1MCIgeT0iNTAiIGZvbnQtc2l6ZT0iMTgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGFsaWdubWVudC1iYXNlbGluZT0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSI+RGlnaWlCdXo8L3RleHQ+PC9zdmc+";
-                }}
-              />
-              <span className="text-xl font-bold text-digibuz-navy dark:text-digibuz-yellow">
-                DigiiBuz
-              </span>
+    <DynamicBackground className="min-h-screen">
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <AnimatedContainer direction="up" className="w-full max-w-md">
+          <Card className="glass-panel shadow-lg border-white/20">
+            <div className="flex justify-center pt-6">
+              <div className="flex flex-col items-center">
+                <img 
+                  src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
+                  alt="DigiiBuz" 
+                  className="h-16 w-auto mb-2"
+                  onError={(e) => {
+                    console.error("Erreur de chargement de l'image:", e);
+                    e.currentTarget.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzMzM2E0NSIgLz48dGV4dCB4PSI1MCIgeT0iNTAiIGZvbnQtc2l6ZT0iMTgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGFsaWdubWVudC1iYXNlbGluZT0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSI+RGlnaWlCdXo8L3RleHQ+PC9zdmc+";
+                  }}
+                />
+                <span className="text-xl font-bold text-digibuz-navy dark:text-digibuz-yellow">
+                  DigiiBuz
+                </span>
+              </div>
             </div>
-          </div>
-          
-          <CardHeader className="space-y-1 text-center">
-            <CardTitle className="text-2xl">Mot de passe oublié</CardTitle>
-            <CardDescription>
-              Saisissez votre adresse email pour réinitialiser votre mot de passe
-            </CardDescription>
-          </CardHeader>
-          
-          <CardContent>
-            {isSubmitted ? (
-              <Alert className="bg-primary/10 border-primary/20">
-                <AlertDescription>
-                  Si un compte est associé à cette adresse, vous recevrez un email pour réinitialiser votre mot de passe.
-                  Veuillez vérifier votre boîte de réception et vos spams.
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <>
-                {rateLimitSeconds > 0 && (
-                  <Alert className="mb-4 bg-orange-50 border-orange-200">
-                    <Clock className="h-4 w-4" />
-                    <AlertDescription>
-                      Trop de demandes d'envoi. Veuillez attendre <strong>{rateLimitSeconds}</strong> secondes avant de réessayer.
-                    </AlertDescription>
-                  </Alert>
-                )}
-                
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="email@example.com"
-                      required
-                      disabled={isLoading || rateLimitSeconds > 0}
-                    />
-                  </div>
+            
+            <CardHeader className="space-y-1 text-center">
+              <CardTitle className="text-2xl">Mot de passe oublié</CardTitle>
+              <CardDescription>
+                Saisissez votre adresse email pour réinitialiser votre mot de passe
+              </CardDescription>
+            </CardHeader>
+            
+            <CardContent>
+              {isSubmitted ? (
+                <Alert className="bg-primary/10 border-primary/20">
+                  <AlertDescription>
+                    Si un compte est associé à cette adresse, vous recevrez un email pour réinitialiser votre mot de passe.
+                    Veuillez vérifier votre boîte de réception et vos spams.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <>
+                  {rateLimitSeconds > 0 && (
+                    <Alert className="mb-4 bg-orange-50 border-orange-200">
+                      <Clock className="h-4 w-4" />
+                      <AlertDescription>
+                        Trop de demandes d'envoi. Veuillez attendre <strong>{rateLimitSeconds}</strong> secondes avant de réessayer.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                   
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
-                    disabled={isLoading || rateLimitSeconds > 0}
-                  >
-                    {isLoading ? (
-                      <div className="flex items-center">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Envoi en cours...
-                      </div>
-                    ) : rateLimitSeconds > 0 ? (
-                      <div className="flex items-center">
-                        <Clock className="mr-2 h-4 w-4" />
-                        Attendre {rateLimitSeconds}s
-                      </div>
-                    ) : (
-                      <>
-                        <Send className="mr-2 h-4 w-4" />
-                        Envoyer le lien
-                      </>
-                    )}
-                  </Button>
-                </form>
-              </>
-            )}
-          </CardContent>
-          
-          <CardFooter>
-            <Button 
-              variant="ghost" 
-              className="w-full" 
-              onClick={() => navigate("/login")}
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Retour à la connexion
-            </Button>
-          </CardFooter>
-        </Card>
-      </AnimatedContainer>
-    </div>
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="email@example.com"
+                        required
+                        disabled={isLoading || rateLimitSeconds > 0}
+                      />
+                    </div>
+                    
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      disabled={isLoading || rateLimitSeconds > 0}
+                    >
+                      {isLoading ? (
+                        <div className="flex items-center">
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Envoi en cours...
+                        </div>
+                      ) : rateLimitSeconds > 0 ? (
+                        <div className="flex items-center">
+                          <Clock className="mr-2 h-4 w-4" />
+                          Attendre {rateLimitSeconds}s
+                        </div>
+                      ) : (
+                        <>
+                          <Send className="mr-2 h-4 w-4" />
+                          Envoyer le lien
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                </>
+              )}
+            </CardContent>
+            
+            <CardFooter>
+              <Button 
+                variant="ghost" 
+                className="w-full" 
+                onClick={() => navigate("/login")}
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Retour à la connexion
+              </Button>
+            </CardFooter>
+          </Card>
+        </AnimatedContainer>
+      </div>
+    </DynamicBackground>
   );
 };
 

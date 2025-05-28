@@ -21,6 +21,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import DynamicBackground from "@/components/ui/DynamicBackground";
 
 // Schema de validation pour le formulaire
 const passwordSchema = z.object({
@@ -255,55 +256,57 @@ const ResetPassword = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted/30">
-      <AnimatedContainer direction="up" className="w-full max-w-md">
-        <Card className="glass-panel shadow-lg border-white/20">
-          <div className="flex justify-center pt-6">
-            <div className="flex flex-col items-center">
-              <img 
-                src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
-                alt="DigiiBuz" 
-                className="h-16 w-auto mb-2"
-                onError={(e) => {
-                  console.error("Erreur de chargement de l'image:", e);
-                  e.currentTarget.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzMzM2E0NSIgLz48dGV4dCB4PSI1MCIgeT0iNTAiIGZvbnQtc2l6ZT0iMTgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGFsaWdubWVudC1iYXNlbGluZT0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSI+RGlnaWlCdXo8L3RleHQ+PC9zdmc+";
-                }}
-              />
-              <span className="text-xl font-bold text-digibuz-navy dark:text-digibuz-yellow">
-                DigiiBuz
-              </span>
+    <DynamicBackground className="min-h-screen">
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <AnimatedContainer direction="up" className="w-full max-w-md">
+          <Card className="glass-panel shadow-lg border-white/20">
+            <div className="flex justify-center pt-6">
+              <div className="flex flex-col items-center">
+                <img 
+                  src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
+                  alt="DigiiBuz" 
+                  className="h-16 w-auto mb-2"
+                  onError={(e) => {
+                    console.error("Erreur de chargement de l'image:", e);
+                    e.currentTarget.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzMzM2E0NSIgLz48dGV4dCB4PSI1MCIgeT0iNTAiIGZvbnQtc2l6ZT0iMTgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGFsaWdubWVudC1iYXNlbGluZT0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSI+RGlnaWlCdXo8L3RleHQ+PC9zdmc+";
+                  }}
+                />
+                <span className="text-xl font-bold text-digibuz-navy dark:text-digibuz-yellow">
+                  DigiiBuz
+                </span>
+              </div>
             </div>
-          </div>
-          
-          <CardHeader className="space-y-1 text-center">
-            <CardTitle className="text-2xl flex items-center justify-center gap-2">
-              <LockKeyhole className="h-6 w-6" />
-              Réinitialiser le mot de passe
-            </CardTitle>
-            <CardDescription>
-              Créez un nouveau mot de passe pour votre compte
-            </CardDescription>
-          </CardHeader>
-          
-          <CardContent>
-            {renderContent()}
-          </CardContent>
-          
-          <CardFooter>
-            {!isSubmitted && (
-              <Button 
-                variant="ghost" 
-                className="w-full" 
-                onClick={() => navigate("/login")}
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Retour à la connexion
-              </Button>
-            )}
-          </CardFooter>
-        </Card>
-      </AnimatedContainer>
-    </div>
+            
+            <CardHeader className="space-y-1 text-center">
+              <CardTitle className="text-2xl flex items-center justify-center gap-2">
+                <LockKeyhole className="h-6 w-6" />
+                Réinitialiser le mot de passe
+              </CardTitle>
+              <CardDescription>
+                Créez un nouveau mot de passe pour votre compte
+              </CardDescription>
+            </CardHeader>
+            
+            <CardContent>
+              {renderContent()}
+            </CardContent>
+            
+            <CardFooter>
+              {!isSubmitted && (
+                <Button 
+                  variant="ghost" 
+                  className="w-full" 
+                  onClick={() => navigate("/login")}
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Retour à la connexion
+                </Button>
+              )}
+            </CardFooter>
+          </Card>
+        </AnimatedContainer>
+      </div>
+    </DynamicBackground>
   );
 };
 
