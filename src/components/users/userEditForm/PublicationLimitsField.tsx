@@ -81,7 +81,7 @@ const PublicationLimitsField: React.FC<PublicationLimitsFieldProps> = ({
         <CardHeader>
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
-            Limites de publication
+            Objectif de publication
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -101,7 +101,7 @@ const PublicationLimitsField: React.FC<PublicationLimitsFieldProps> = ({
       <CardHeader>
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <TrendingUp className="h-4 w-4" />
-          Limites de publication mensuelle
+          Objectif de publication mensuelle
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -122,7 +122,7 @@ const PublicationLimitsField: React.FC<PublicationLimitsFieldProps> = ({
         {/* Admin controls */}
         <div className="space-y-3 pt-2 border-t">
           <Label htmlFor="publication-limit" className="text-sm font-medium">
-            Limite mensuelle
+            Objectif mensuel
           </Label>
           <div className="flex gap-2">
             <Input
@@ -145,7 +145,7 @@ const PublicationLimitsField: React.FC<PublicationLimitsFieldProps> = ({
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Définit le nombre maximum de publications autorisées par mois
+            Définit l'objectif de publications à atteindre par mois
           </p>
 
           {/* Reset counter button - Always visible for testing */}
