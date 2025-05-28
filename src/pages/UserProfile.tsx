@@ -304,7 +304,7 @@ const UserProfile = () => {
                       variant="ghost" 
                       onClick={handleResetPassword}
                       disabled={isChangingPassword || isResettingPassword}
-                      className="text-sm text-muted-foreground hover:text-primary"
+                      className="text-sm text-muted-foreground hover:bg-transparent hover:text-muted-foreground"
                     >
                       {isResettingPassword ? "Envoi en cours..." : "Mot de passe oublié ? Recevoir un email de réinitialisation"}
                     </Button>
