@@ -114,7 +114,7 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
         
       if (error) throw error;
       
-      // Improved WordPress synchronization logic
+      // Improved WordPress synchronization logic - use the announcement owner's user_id
       const shouldSyncWithWordPress = announcement?.wordpress_post_id && 
                                      announcement?.wordpress_category_id &&
                                      (announcement.status === 'published' || formData.status === 'published');
@@ -133,10 +133,13 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
           if (fetchError) throw fetchError;
 
           if (updatedAnnouncement) {
+            // IMPORTANT: Use the announcement owner's user_id for WordPress sync, not the current user's ID
+            const announcementOwnerId = updatedAnnouncement.user_id;
+            
             const result = await publishToWordPress(
               updatedAnnouncement,
               updatedAnnouncement.wordpress_category_id,
-              userId
+              announcementOwnerId // Use the original owner's ID for WordPress config
             );
 
             if (result.success) {
