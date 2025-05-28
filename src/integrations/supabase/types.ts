@@ -63,35 +63,6 @@ export type Database = {
         }
         Relationships: []
       }
-      client_wordpress_configs: {
-        Row: {
-          client_id: string
-          created_at: string
-          id: string
-          wordpress_config_id: string
-        }
-        Insert: {
-          client_id: string
-          created_at?: string
-          id?: string
-          wordpress_config_id: string
-        }
-        Update: {
-          client_id?: string
-          created_at?: string
-          id?: string
-          wordpress_config_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "client_wordpress_configs_wordpress_config_id_fkey"
-            columns: ["wordpress_config_id"]
-            isOneToOne: false
-            referencedRelation: "wordpress_configs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       monthly_publication_limits: {
         Row: {
           created_at: string

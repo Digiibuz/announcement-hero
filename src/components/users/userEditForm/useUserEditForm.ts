@@ -23,7 +23,7 @@ export const useUserEditForm = (
 ) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const { configs, clientConfigs, isLoading: isLoadingConfigs } = useWordPressConfigs();
+  const { configs, isLoading: isLoadingConfigs } = useWordPressConfigs();
 
   const form = useForm<UserEditFormData>({
     resolver: zodResolver(userEditSchema),
@@ -36,38 +36,25 @@ export const useUserEditForm = (
     },
   });
 
-  // Get associated WordPress configurations for this client
-  const selectedConfigIds = user.role === "client" && user.clientId 
-    ? clientConfigs
-        .filter(cc => cc.client_id === user.clientId)
-        .map(cc => cc.wordpress_config_id)
+  // Pour les clients, on utilise directement le wordpressConfigId du profil
+  const selectedConfigIds = user.role === "client" && user.wordpressConfigId
+    ? [user.wordpressConfigId]
     : [];
 
   useEffect(() => {
     console.log("useUserEditForm - Setting up wpConfigIds:", {
       userRole: user.role,
       userWordpressConfigId: user.wordpressConfigId,
-      selectedConfigIds,
-      clientId: user.clientId
+      selectedConfigIds
     });
 
-    // Pour les clients, on utilise soit l'association client-config, soit le wordpressConfigId direct
-    if (user.role === "client") {
-      let configIds: string[] = [];
-      
-      // Priorité aux associations client-config
-      if (selectedConfigIds.length > 0) {
-        configIds = selectedConfigIds;
-      } 
-      // Sinon utiliser le wordpressConfigId direct
-      else if (user.wordpressConfigId) {
-        configIds = [user.wordpressConfigId];
-      }
-      
-      console.log("useUserEditForm - Final configIds for client:", configIds);
-      form.setValue("wpConfigIds", configIds);
+    // Pour les clients, on utilise le wordpressConfigId direct du profil
+    if (user.role === "client" && user.wordpressConfigId) {
+      form.setValue("wpConfigIds", [user.wordpressConfigId]);
+    } else {
+      form.setValue("wpConfigIds", []);
     }
-  }, [selectedConfigIds, user.role, user.wordpressConfigId, user.clientId, form]);
+  }, [user.role, user.wordpressConfigId, form]);
 
   const handleSubmit = async (data: UserEditFormData) => {
     try {

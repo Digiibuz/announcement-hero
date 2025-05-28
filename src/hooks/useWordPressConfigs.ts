@@ -2,7 +2,6 @@
 import { useState, useCallback } from "react";
 import { useWordPressConfigsList } from "./wordpress/useWordPressConfigsList";
 import { useWordPressConfigCrud } from "./wordpress/useWordPressConfigCrud";
-import { useClientConfigAssociations } from "./wordpress/useClientConfigAssociations";
 import { WordPressConfig } from "@/types/wordpress";
 
 /**
@@ -21,11 +20,8 @@ export const useWordPressConfigs = () => {
   // Get the list data with refresh capability
   const { 
     configs, 
-    clientConfigs, 
     isLoading, 
-    fetchConfigs, 
-    fetchClientConfigs, 
-    getConfigsForClient 
+    fetchConfigs
   } = useWordPressConfigsList();
 
   // Setup CRUD operations with refresh callback
@@ -36,15 +32,8 @@ export const useWordPressConfigs = () => {
     deleteConfig: deleteConfigBase 
   } = useWordPressConfigCrud(refreshData);
 
-  // Setup client associations with refresh callback
-  const {
-    isSubmitting: isAssociationSubmitting,
-    associateClientToConfig: associateClientToConfigBase,
-    removeClientConfigAssociation: removeClientConfigAssociationBase
-  } = useClientConfigAssociations(refreshData);
-
   // Combined submit state
-  const isSubmitting = isCrudSubmitting || isAssociationSubmitting;
+  const isSubmitting = isCrudSubmitting;
 
   // Wrapped functions to ensure data refreshes
   const createConfig = async (config: Omit<WordPressConfig, 'id' | 'created_at' | 'updated_at'>) => {
@@ -64,29 +53,13 @@ export const useWordPressConfigs = () => {
     await fetchConfigs();
   };
 
-  const associateClientToConfig = async (clientId: string, configId: string) => {
-    const result = await associateClientToConfigBase(clientId, configId);
-    await fetchClientConfigs();
-    return result;
-  };
-
-  const removeClientConfigAssociation = async (id: string) => {
-    await removeClientConfigAssociationBase(id);
-    await fetchClientConfigs();
-  };
-
   return {
     configs,
-    clientConfigs,
     isLoading,
     isSubmitting,
     fetchConfigs,
-    fetchClientConfigs,
     createConfig,
     updateConfig,
-    deleteConfig,
-    associateClientToConfig,
-    removeClientConfigAssociation,
-    getConfigsForClient
+    deleteConfig
   };
 };
