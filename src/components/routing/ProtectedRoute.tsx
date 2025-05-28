@@ -22,15 +22,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // Permettre l'accès à la page de reset password avec un token de récupération, même si connecté
-  if (location.pathname === '/reset-password') {
-    const hasRecoveryToken = window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token');
-    if (hasRecoveryToken) {
-      console.log('ProtectedRoute - Allowing reset password with recovery token');
-      return <>{children}</>;
-    }
-  }
-
   if (!isAuthenticated) {
     console.log('ProtectedRoute - Redirecting to login');
     return <Navigate to="/login" replace />;

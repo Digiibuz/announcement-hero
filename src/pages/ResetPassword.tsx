@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Save, Loader2, Eye, EyeOff, LockKeyhole } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useAuth } from "@/context/AuthContext";
 import { 
   Form, 
   FormField, 
@@ -46,6 +47,7 @@ const ResetPassword = () => {
   const [isChecking, setIsChecking] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
   
   const form = useForm<PasswordForm>({
     resolver: zodResolver(passwordSchema),
@@ -71,7 +73,8 @@ const ResetPassword = () => {
           hasAccessToken: !!accessToken, 
           hasRefreshToken: !!refreshToken, 
           type,
-          fullHash: location.hash
+          fullHash: location.hash,
+          isAuthenticated
         });
         
         if (accessToken && type === 'recovery') {
@@ -90,20 +93,15 @@ const ResetPassword = () => {
             console.log("Session set successfully for password reset");
             setIsTokenValid(true);
           }
+        } else if (isAuthenticated) {
+          // Si l'utilisateur est connecté mais n'a pas de token de récupération, rediriger vers le profil
+          console.log("User is authenticated but no recovery token found, redirecting to profile");
+          navigate("/profile", { replace: true });
+          return;
         } else {
-          // Vérifier si l'utilisateur a déjà une session valide (cas où il revient sur la page)
-          const { data, error } = await supabase.auth.getSession();
-          
-          if (error) {
-            console.error("Error checking session:", error);
-            setIsTokenValid(false);
-          } else if (data?.session?.user) {
-            console.log("Existing session found");
-            setIsTokenValid(true);
-          } else {
-            console.log("No valid session or recovery token found");
-            setIsTokenValid(false);
-          }
+          // Pas d'utilisateur connecté et pas de token de récupération
+          console.log("No authentication and no recovery token found");
+          setIsTokenValid(false);
         }
       } catch (error) {
         console.error("Error checking recovery token:", error);
@@ -114,7 +112,7 @@ const ResetPassword = () => {
     };
 
     checkRecoveryToken();
-  }, [location]);
+  }, [location, isAuthenticated, navigate]);
 
   const onSubmit = async (data: PasswordForm) => {
     setIsLoading(true);
