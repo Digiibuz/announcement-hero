@@ -1,19 +1,62 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, Globe, KeyRound } from "lucide-react";
+import { User, Globe, KeyRound, Lock, Eye, EyeOff } from "lucide-react";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { 
+  Form, 
+  FormField, 
+  FormItem, 
+  FormLabel, 
+  FormControl, 
+  FormMessage 
+} from "@/components/ui/form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+
+// Schema de validation pour le changement de mot de passe
+const passwordSchema = z.object({
+  currentPassword: z.string().min(1, "Le mot de passe actuel est requis"),
+  newPassword: z.string()
+    .min(8, "Le nouveau mot de passe doit contenir au moins 8 caractères")
+    .regex(/[A-Z]/, "Le mot de passe doit contenir au moins une majuscule")
+    .regex(/[a-z]/, "Le mot de passe doit contenir au moins une minuscule")
+    .regex(/[0-9]/, "Le mot de passe doit contenir au moins un chiffre"),
+  confirmPassword: z.string()
+}).refine(data => data.newPassword === data.confirmPassword, {
+  message: "Les mots de passe ne correspondent pas",
+  path: ["confirmPassword"]
+});
+
+type PasswordForm = z.infer<typeof passwordSchema>;
 
 const UserProfile = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
+
+  const form = useForm<PasswordForm>({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: ""
+    }
+  });
 
   if (!user) {
     return (
@@ -49,11 +92,52 @@ const UserProfile = () => {
     }
   };
 
+  const handlePasswordChange = async (data: PasswordForm) => {
+    setIsChangingPassword(true);
+    
+    try {
+      // Vérifier d'abord le mot de passe actuel en tentant de se reconnecter
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: data.currentPassword
+      });
+
+      if (signInError) {
+        toast.error("Le mot de passe actuel est incorrect");
+        return;
+      }
+
+      // Mettre à jour le mot de passe
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: data.newPassword
+      });
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      toast.success("Votre mot de passe a été modifié avec succès");
+      form.reset();
+    } catch (error: any) {
+      console.error("Error changing password:", error);
+      toast.error("Erreur lors de la modification du mot de passe");
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const togglePasswordVisibility = (field: 'current' | 'new' | 'confirm') => {
+    setShowPasswords(prev => ({
+      ...prev,
+      [field]: !prev[field]
+    }));
+  };
+
   return (
     <PageLayout title="Mon Profil">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-3xl mx-auto space-y-6">
         <AnimatedContainer delay={100}>
-          <Card className="mb-6">
+          <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-2xl font-bold flex items-center gap-2">
                 <User className="h-6 w-6" />
@@ -100,7 +184,124 @@ const UserProfile = () => {
         <AnimatedContainer delay={200}>
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-2xl font-bold">Actions</CardTitle>
+              <CardTitle className="text-2xl font-bold flex items-center gap-2">
+                <Lock className="h-6 w-6" />
+                Changer le mot de passe
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(handlePasswordChange)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="currentPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Mot de passe actuel</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input
+                              type={showPasswords.current ? "text" : "password"}
+                              placeholder="••••••••"
+                              disabled={isChangingPassword}
+                              {...field}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-0 top-0 h-full px-3"
+                              onClick={() => togglePasswordVisibility('current')}
+                              disabled={isChangingPassword}
+                            >
+                              {showPasswords.current ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="newPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nouveau mot de passe</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input
+                              type={showPasswords.new ? "text" : "password"}
+                              placeholder="••••••••"
+                              disabled={isChangingPassword}
+                              {...field}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-0 top-0 h-full px-3"
+                              onClick={() => togglePasswordVisibility('new')}
+                              disabled={isChangingPassword}
+                            >
+                              {showPasswords.new ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Confirmer le nouveau mot de passe</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input
+                              type={showPasswords.confirm ? "text" : "password"}
+                              placeholder="••••••••"
+                              disabled={isChangingPassword}
+                              {...field}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-0 top-0 h-full px-3"
+                              onClick={() => togglePasswordVisibility('confirm')}
+                              disabled={isChangingPassword}
+                            >
+                              {showPasswords.confirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    disabled={isChangingPassword}
+                  >
+                    {isChangingPassword ? "Modification en cours..." : "Changer le mot de passe"}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        </AnimatedContainer>
+
+        <AnimatedContainer delay={300}>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-2xl font-bold">Autres actions</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col gap-3">
@@ -110,7 +311,7 @@ const UserProfile = () => {
                   className="flex items-center gap-2"
                 >
                   <KeyRound className="h-4 w-4" />
-                  Réinitialiser le mot de passe
+                  Réinitialiser par email
                 </Button>
                 <Button variant="destructive" onClick={handleLogout}>
                   Se déconnecter
