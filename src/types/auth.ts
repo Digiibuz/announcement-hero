@@ -1,4 +1,3 @@
-
 import { Provider } from '@supabase/supabase-js';
 
 export type Role = 'admin' | 'editor' | 'client';
@@ -43,7 +42,6 @@ export interface AuthContextType {
   stopImpersonating: () => void;
   originalUser: UserProfile | null;
   isImpersonating: boolean;
-  isOnResetPasswordPage: boolean;
 }
 
 export interface LoginFormValues {
