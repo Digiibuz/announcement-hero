@@ -1,110 +1,189 @@
 
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { useUserProfile, createProfileFromMetadata } from "@/hooks/useUserProfile";
-import { useImpersonation } from "@/hooks/useImpersonation";
-import { UserProfile, AuthContextType } from "@/types/auth";
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { Session, User } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Profile {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  wordpress_config_id: string | null;
+  client_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface AuthUser extends User {
+  wordpressConfigId?: string | null;
+  role?: string;
+  profile?: Profile;
+}
+
+interface AuthContextType {
+  user: AuthUser | null;
+  session: Session | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { userProfile, setUserProfile, fetchFullProfile } = useUserProfile();
-  const { originalUser, isImpersonating, impersonateUser: hookImpersonateUser, stopImpersonating: hookStopImpersonating } = useImpersonation(userProfile);
 
-  // Gestion d'auth - pas de détection de changement de fenêtre
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.email);
+  const refreshUser = async () => {
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      
+      if (authUser) {
+        console.log('🔍 Refreshing user data for:', authUser.id);
         
-        if (session?.user) {
-          const initialProfile = createProfileFromMetadata(session.user);
-          setUserProfile(initialProfile);
-          fetchFullProfile(session.user.id);
-        } else {
-          setUserProfile(null);
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authUser.id)
+          .single();
+
+        if (error) {
+          console.error('❌ Error fetching profile:', error);
+          return;
         }
+
+        if (profile) {
+          console.log('📊 Profile fetched from database:', {
+            id: profile.id,
+            name: profile.name,
+            wordpress_config_id: profile.wordpress_config_id,
+            role: profile.role
+          });
+
+          const updatedUser: AuthUser = {
+            ...authUser,
+            wordpressConfigId: profile.wordpress_config_id,
+            role: profile.role,
+            profile
+          };
+
+          console.log('✅ Updated user object:', {
+            id: updatedUser.id,
+            wordpressConfigId: updatedUser.wordpressConfigId,
+            role: updatedUser.role
+          });
+
+          setUser(updatedUser);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing user:', error);
+    }
+  };
+
+  useEffect(() => {
+    const getSession = async () => {
+      try {
+        console.log('🔄 Getting initial session...');
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        
+        if (currentSession) {
+          console.log('📱 Initial session found:', currentSession.user.id);
+          setSession(currentSession);
+          await refreshUser();
+        } else {
+          console.log('❌ No initial session found');
+        }
+      } catch (error) {
+        console.error('❌ Error getting session:', error);
+      } finally {
         setIsLoading(false);
       }
-    );
+    };
 
-    // Get initial session - une seule fois
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        const initialProfile = createProfileFromMetadata(session.user);
-        setUserProfile(initialProfile);
-        fetchFullProfile(session.user.id);
+    getSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔄 Auth state change:', event, session?.user?.email);
+      
+      setSession(session);
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        console.log('✅ User signed in:', session.user.id);
+        // Defer profile loading to avoid potential deadlocks
+        setTimeout(async () => {
+          await refreshUser();
+        }, 0);
+      } else if (event === 'SIGNED_OUT') {
+        console.log('👋 User signed out');
+        setUser(null);
+      } else if (event === 'INITIAL_SESSION' && session?.user) {
+        console.log('🎯 Initial session established:', session.user.id);
+        setTimeout(async () => {
+          await refreshUser();
+        }, 0);
       }
+      
       setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const login = async (email: string, password: string) => {
-    setIsLoading(true);
-    
+  const signOut = async () => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
+      console.log('👋 Signing out...');
+      
+      // Clear localStorage
+      console.log('🧹 Clearing localStorage...');
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('supabase.') || key.includes('announcement') || key.includes('form')) {
+          console.log('🗑️ Removing localStorage key:', key);
+          localStorage.removeItem(key);
+        }
       });
       
-      if (error) {
-        throw error;
-      }
-    } catch (error: any) {
-      setIsLoading(false);
-      throw new Error(error.message || "Login error");
-    }
-  };
-
-  const logout = async () => {
-    try {
+      // Clear sessionStorage
+      console.log('🧹 Clearing sessionStorage...');
+      Object.keys(sessionStorage || {}).forEach(key => {
+        if (key.startsWith('supabase.') || key.includes('announcement') || key.includes('form')) {
+          console.log('🗑️ Removing sessionStorage key:', key);
+          sessionStorage.removeItem(key);
+        }
+      });
+      
       await supabase.auth.signOut();
-      setUserProfile(null);
+      setUser(null);
+      setSession(null);
     } catch (error) {
-      console.error("Error during logout:", error);
+      console.error('❌ Error signing out:', error);
     }
   };
 
-  const impersonateUser = (userToImpersonate: UserProfile) => {
-    const impersonatedUser = hookImpersonateUser(userToImpersonate);
-    if (impersonatedUser) {
-      setUserProfile(impersonatedUser);
-    }
-  };
-
-  const stopImpersonating = () => {
-    const originalUserData = hookStopImpersonating();
-    if (originalUserData) {
-      setUserProfile(originalUserData);
-    }
-  };
-
-  const value: AuthContextType = {
-    user: userProfile,
+  const value = {
+    user,
+    session,
     isLoading,
-    login,
-    logout,
-    isAuthenticated: !!userProfile,
-    isAdmin: userProfile?.role === "admin",
-    isClient: userProfile?.role === "client",
-    impersonateUser,
-    stopImpersonating,
-    originalUser,
-    isImpersonating,
+    isAuthenticated: !!session,
+    signOut,
+    refreshUser,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };

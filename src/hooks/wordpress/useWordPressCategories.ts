@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,9 +21,21 @@ export const useWordPressCategories = () => {
       return;
     }
 
+    console.log('🔍 DEBUG: fetchCategories called with:', {
+      userId: user.id,
+      wordpressConfigId: user.wordpressConfigId,
+      lastConfigId: lastConfigIdRef.current,
+      userObjectKeys: Object.keys(user),
+      userProfile: user.profile
+    });
+
     // Éviter les appels avec des IDs de configuration différents en succession rapide
     if (lastConfigIdRef.current && lastConfigIdRef.current !== user.wordpressConfigId) {
       console.log("WordPress config ID changed, waiting for stabilization...");
+      console.log('🔍 DEBUG: Config change detected:', {
+        from: lastConfigIdRef.current,
+        to: user.wordpressConfigId
+      });
       // Attendre un peu pour que l'ID se stabilise
       await new Promise(resolve => setTimeout(resolve, 200));
       // Vérifier si l'ID a encore changé
@@ -72,8 +83,19 @@ export const useWordPressCategories = () => {
         throw new Error("Erreur lors de la vérification du profil utilisateur");
       }
 
+      console.log('🔍 DEBUG: Fresh profile data from DB:', {
+        profileWordpressConfigId: profile?.wordpress_config_id,
+        userWordpressConfigId: user.wordpressConfigId,
+        match: profile?.wordpress_config_id === user.wordpressConfigId
+      });
+
       if (!profile || profile.wordpress_config_id !== user.wordpressConfigId) {
         console.error("Security violation: user trying to access unauthorized WordPress config");
+        console.log('🔍 DEBUG: Security check failed:', {
+          profileConfigId: profile?.wordpress_config_id,
+          userConfigId: user.wordpressConfigId,
+          profileExists: !!profile
+        });
         throw new Error("Accès non autorisé à cette configuration WordPress");
       }
 
@@ -89,11 +111,16 @@ export const useWordPressCategories = () => {
 
       if (wpConfigError) {
         console.error("Error fetching WordPress config:", wpConfigError);
+        console.log('🔍 DEBUG: WordPress config error details:', {
+          error: wpConfigError,
+          configId: user.wordpressConfigId
+        });
         throw wpConfigError;
       }
       
       if (!wpConfig) {
         console.error("WordPress configuration not found");
+        console.log('🔍 DEBUG: No WordPress config found for ID:', user.wordpressConfigId);
         throw new Error("Configuration WordPress non trouvée");
       }
 
@@ -252,6 +279,27 @@ export const useWordPressCategories = () => {
 
   useEffect(() => {
     console.log("useWordPressCategories effect running, user:", user?.id, "wordpressConfigId:", user?.wordpressConfigId);
+    console.log('🔍 DEBUG: useWordPressCategories effect - full user object:', {
+      user: user ? {
+        id: user.id,
+        email: user.email,
+        wordpressConfigId: user.wordpressConfigId,
+        role: user.role,
+        profile: user.profile
+      } : null
+    });
+    
+    // Vérifier le localStorage pour des traces de cette valeur fantôme
+    console.log('🔍 DEBUG: Checking localStorage for phantom values...');
+    Object.keys(localStorage).forEach(key => {
+      const value = localStorage.getItem(key);
+      if (value && value.includes('c1467516-7b3c-4955-96a0-90db1084b047')) {
+        console.log('🚨 FOUND PHANTOM VALUE IN LOCALSTORAGE:', {
+          key,
+          value: value.substring(0, 200) + '...' // Limiter la taille du log
+        });
+      }
+    });
     
     // Annuler toute requête en cours lors du changement des dépendances
     if (abortControllerRef.current) {
