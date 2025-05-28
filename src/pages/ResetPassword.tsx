@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -93,14 +92,9 @@ const ResetPassword = () => {
             console.log("Session set successfully for password reset");
             setIsTokenValid(true);
           }
-        } else if (isAuthenticated) {
-          // Si l'utilisateur est connecté mais n'a pas de token de récupération, rediriger vers le profil
-          console.log("User is authenticated but no recovery token found, redirecting to profile");
-          navigate("/profile", { replace: true });
-          return;
         } else {
-          // Pas d'utilisateur connecté et pas de token de récupération
-          console.log("No authentication and no recovery token found");
+          // Pas de token de récupération dans l'URL
+          console.log("No recovery token found in URL");
           setIsTokenValid(false);
         }
       } catch (error) {
@@ -112,7 +106,7 @@ const ResetPassword = () => {
     };
 
     checkRecoveryToken();
-  }, [location, isAuthenticated, navigate]);
+  }, [location, navigate]);
 
   const onSubmit = async (data: PasswordForm) => {
     setIsLoading(true);
