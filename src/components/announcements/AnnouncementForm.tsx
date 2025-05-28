@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -123,12 +122,26 @@ const AnnouncementForm = ({
   useEffect(() => {
     if (title) {
       const normalizedTitle = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
-      setValue("seoSlug", normalizedTitle);
+      
+      // Ne régénérer le slug automatiquement que si :
+      // 1. Il n'y a pas de valeurs initiales (nouvelle annonce)
+      // 2. OU si le slug actuel est vide
+      // 3. OU si l'annonce est encore en draft
+      const currentSlug = form.getValues("seoSlug");
+      const currentStatus = form.getValues("status");
+      const isNewAnnouncement = !initialValues;
+      const isSlugEmpty = !currentSlug || currentSlug === "";
+      const isDraft = currentStatus === "draft";
+      
+      if (isNewAnnouncement || isSlugEmpty || isDraft) {
+        setValue("seoSlug", normalizedTitle);
+      }
+      
       if (!form.getValues("seoTitle") || form.getValues("seoTitle") === "") {
         setValue("seoTitle", title);
       }
     }
-  }, [title, setValue, form]);
+  }, [title, setValue, form, initialValues]);
   
   const handleCancel = () => {
     if (window.confirm("Êtes-vous sûr de vouloir quitter ? Votre brouillon sera conservé pour plus tard.")) {

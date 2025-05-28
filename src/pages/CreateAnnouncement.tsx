@@ -159,7 +159,7 @@ const CreateAnnouncement = () => {
     };
   }, [form]);
 
-  // Handle title changes to update SEO slug only (not SEO title automatically)
+  // Handle title changes to update SEO slug only for new announcements
   useEffect(() => {
     const subscription = form.watch((value, {
       name
@@ -168,6 +168,9 @@ const CreateAnnouncement = () => {
         const title = value.title as string;
         if (title) {
           const normalizedTitle = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
+          
+          // Pour les nouvelles annonces, toujours mettre à jour le slug
+          // (pas de valeurs initiales = nouvelle annonce)
           form.setValue("seoSlug", normalizedTitle);
         }
       }

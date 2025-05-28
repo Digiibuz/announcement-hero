@@ -4,16 +4,17 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescripti
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search } from "lucide-react";
+import { Search, Lock } from "lucide-react";
 import { AnnouncementFormData } from "../AnnouncementForm";
 import { UseFormReturn } from "react-hook-form";
 
 interface SeoStepProps {
   form: UseFormReturn<AnnouncementFormData>;
   isMobile?: boolean;
+  isPublished?: boolean;
 }
 
-const SeoStep = ({ form, isMobile }: SeoStepProps) => {
+const SeoStep = ({ form, isMobile, isPublished }: SeoStepProps) => {
   const [seoTitleLength, setSeoTitleLength] = useState(0);
   const [seoDescriptionLength, setSeoDescriptionLength] = useState(0);
   
@@ -117,7 +118,12 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
             name="seoSlug" 
             render={({ field }) => (
               <FormItem>
-                <FormLabel>URL Slug</FormLabel>
+                <FormLabel className="flex items-center gap-2">
+                  URL Slug
+                  {isPublished && (
+                    <Lock className="h-4 w-4 text-amber-500" title="L'URL ne peut pas être modifiée après publication" />
+                  )}
+                </FormLabel>
                 <FormControl>
                   <div className="flex items-center">
                     <span className="text-sm text-muted-foreground mr-2 hidden sm:inline">yoursite.com/annonces/</span>
@@ -125,11 +131,16 @@ const SeoStep = ({ form, isMobile }: SeoStepProps) => {
                       placeholder="slug-de-url" 
                       {...field} 
                       value={field.value || ""}
+                      disabled={isPublished}
+                      className={isPublished ? "bg-gray-100 cursor-not-allowed" : ""}
                     />
                   </div>
                 </FormControl>
                 <FormDescription>
-                  L'URL qui sera utilisée pour accéder à cette annonce.
+                  {isPublished 
+                    ? "L'URL ne peut pas être modifiée après publication pour éviter les erreurs 404."
+                    : "L'URL qui sera utilisée pour accéder à cette annonce."
+                  }
                 </FormDescription>
                 <FormMessage />
               </FormItem>
