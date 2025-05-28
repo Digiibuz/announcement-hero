@@ -22,6 +22,11 @@ import Templates from "@/pages/Templates";
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
 
+  // Fonction pour vérifier si nous avons un token de récupération
+  const hasRecoveryToken = () => {
+    return window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token');
+  };
+
   return (
     <RouterRoutes>
       {/* Public routes */}
@@ -33,7 +38,18 @@ const AppRoutes = () => {
         path="/forgot-password" 
         element={!isAuthenticated ? <ForgotPassword /> : <Navigate to="/dashboard" replace />} 
       />
-      <Route path="/reset-password" element={<ResetPassword />} />
+      
+      {/* Route spéciale pour reset-password - accessible même si connecté avec token de récupération */}
+      <Route 
+        path="/reset-password" 
+        element={
+          (!isAuthenticated || hasRecoveryToken()) ? (
+            <ResetPassword />
+          ) : (
+            <Navigate to="/dashboard" replace />
+          )
+        } 
+      />
       
       {/* Protected routes */}
       <Route 

@@ -13,29 +13,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { userProfile, setUserProfile, fetchFullProfile } = useUserProfile();
   const { originalUser, isImpersonating, impersonateUser: hookImpersonateUser, stopImpersonating: hookStopImpersonating } = useImpersonation(userProfile);
 
-  // Détection si nous sommes sur la page de réinitialisation avec token
-  const isOnResetPasswordPage = window.location.pathname === '/reset-password' && 
-    (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token'));
-
   // Gestion d'auth - pas de détection de changement de fenêtre
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state change:', event, session?.user?.email);
         
-        // Si nous sommes sur la page de reset password avec un token de récupération,
-        // on ne met pas à jour le profil utilisateur normal
-        if (isOnResetPasswordPage && event === 'SIGNED_IN') {
-          console.log('On reset password page with recovery token, skipping profile update');
-          setIsLoading(false);
-          return;
-        }
-
-        if (session?.user && !isOnResetPasswordPage) {
+        if (session?.user) {
           const initialProfile = createProfileFromMetadata(session.user);
           setUserProfile(initialProfile);
           fetchFullProfile(session.user.id);
-        } else if (!isOnResetPasswordPage) {
+        } else {
           setUserProfile(null);
         }
         setIsLoading(false);
@@ -44,7 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Get initial session - une seule fois
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user && !isOnResetPasswordPage) {
+      if (session?.user) {
         const initialProfile = createProfileFromMetadata(session.user);
         setUserProfile(initialProfile);
         fetchFullProfile(session.user.id);
@@ -108,7 +96,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     stopImpersonating,
     originalUser,
     isImpersonating,
-    isOnResetPasswordPage,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

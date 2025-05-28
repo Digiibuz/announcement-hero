@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { LoadingIndicator } from "@/components/ui/loading-indicator";
 
 const AdminRoute = ({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) => {
-  const { isAuthenticated, isLoading, isAdmin, isClient, isOnResetPasswordPage } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin, isClient } = useAuth();
   const location = useLocation();
 
   console.log('AdminRoute - State:', {
@@ -13,7 +13,6 @@ const AdminRoute = ({ children, adminOnly = false }: { children: React.ReactNode
     isAdmin,
     isClient,
     adminOnly,
-    isOnResetPasswordPage,
     pathname: location.pathname
   });
 
@@ -26,21 +25,21 @@ const AdminRoute = ({ children, adminOnly = false }: { children: React.ReactNode
     );
   }
 
-  // Permettre l'accès à la page de reset password avec un token de récupération
+  // Permettre l'accès à la page de reset password avec un token de récupération, même si connecté
   if (location.pathname === '/reset-password') {
     const hasRecoveryToken = window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token');
-    if (hasRecoveryToken || isOnResetPasswordPage) {
+    if (hasRecoveryToken) {
       console.log('AdminRoute - Allowing reset password with recovery token');
       return <>{children}</>;
     }
   }
 
-  if (!isAuthenticated && !isOnResetPasswordPage) {
+  if (!isAuthenticated) {
     console.log('AdminRoute - Redirecting to login');
     return <Navigate to="/login" replace />;
   }
 
-  if (!isAdmin && !isClient && !isOnResetPasswordPage) {
+  if (!isAdmin && !isClient) {
     console.log('AdminRoute - User not admin or client, redirecting to dashboard');
     return <Navigate to="/dashboard" replace />;
   }
