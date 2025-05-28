@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -84,7 +83,7 @@ const Login = () => {
             {/* Header with logo */}
             <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-center">
               <div className="flex flex-col items-center">
-                <div className="bg-white rounded-2xl p-3 mb-3 shadow-lg">
+                <div className="mb-3">
                   <img 
                     src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
                     alt="DigiiBuz" 
