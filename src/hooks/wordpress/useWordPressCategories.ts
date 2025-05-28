@@ -12,6 +12,7 @@ export const useWordPressCategories = () => {
   const { user } = useAuth();
   const abortControllerRef = useRef<AbortController | null>(null);
   const isLoadingRef = useRef(false);
+  const lastConfigIdRef = useRef<string | null>(null);
 
   const fetchCategories = useCallback(async () => {
     if (!user?.wordpressConfigId || !user?.id) {
@@ -20,6 +21,20 @@ export const useWordPressCategories = () => {
       setCategories([]);
       return;
     }
+
+    // Éviter les appels avec des IDs de configuration différents en succession rapide
+    if (lastConfigIdRef.current && lastConfigIdRef.current !== user.wordpressConfigId) {
+      console.log("WordPress config ID changed, waiting for stabilization...");
+      // Attendre un peu pour que l'ID se stabilise
+      await new Promise(resolve => setTimeout(resolve, 200));
+      // Vérifier si l'ID a encore changé
+      if (lastConfigIdRef.current && lastConfigIdRef.current !== user.wordpressConfigId) {
+        console.log("Configuration still changing, skipping fetch");
+        return;
+      }
+    }
+
+    lastConfigIdRef.current = user.wordpressConfigId;
 
     // Éviter les appels multiples simultanés
     if (isLoadingRef.current) {
@@ -248,7 +263,7 @@ export const useWordPressCategories = () => {
       // Ajouter un délai pour éviter les appels simultanés lors du rechargement
       const timer = setTimeout(() => {
         fetchCategories();
-      }, 150); // Augmenté à 150ms pour plus de stabilité
+      }, 200); // Augmenté à 200ms pour plus de stabilité
       
       return () => {
         clearTimeout(timer);
@@ -261,6 +276,7 @@ export const useWordPressCategories = () => {
       setError(null);
       setIsLoading(false);
       isLoadingRef.current = false;
+      lastConfigIdRef.current = null;
     }
   }, [user?.wordpressConfigId, user?.id, fetchCategories]);
 
