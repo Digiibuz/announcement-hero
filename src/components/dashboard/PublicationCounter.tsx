@@ -249,12 +249,12 @@ const PublicationCounter = ({ className }: PublicationCounterProps) => {
           </div>
         </div>
 
-        {/* Status text */}
+        {/* Status text - MODIFIED HERE */}
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">
             {stats.remaining > 0 
-              ? `${stats.remaining} publication${stats.remaining > 1 ? 's' : ''} restante${stats.remaining > 1 ? 's' : ''}`
-              : "Limite atteinte ce mois-ci"
+              ? `Objectif : ${stats.remaining} publication${stats.remaining > 1 ? 's' : ''} restante${stats.remaining > 1 ? 's' : ''}`
+              : "Objectif atteint ce mois-ci"
             }
           </span>
           {percentage >= 90 && stats.remaining > 0 && (
