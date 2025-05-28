@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -10,17 +10,35 @@ export const useWordPressCategories = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const isLoadingRef = useRef(false);
 
   const fetchCategories = useCallback(async () => {
-    if (!user?.wordpressConfigId) {
-      console.warn("No WordPress configuration ID found for user", user);
+    if (!user?.wordpressConfigId || !user?.id) {
+      console.warn("No WordPress configuration ID or user ID found");
       setError("Aucune configuration WordPress trouvée pour cet utilisateur");
       setCategories([]);
       return;
     }
 
+    // Éviter les appels multiples simultanés
+    if (isLoadingRef.current) {
+      console.log("Fetch already in progress, skipping...");
+      return;
+    }
+
+    // Annuler toute requête en cours
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Créer un nouveau contrôleur d'abort
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
     try {
       setIsLoading(true);
+      isLoadingRef.current = true;
       setError(null);
       console.log("Fetching categories for WordPress config ID:", user.wordpressConfigId);
 
@@ -29,7 +47,10 @@ export const useWordPressCategories = () => {
         .from('profiles')
         .select('wordpress_config_id')
         .eq('id', user.id)
+        .abortSignal(signal)
         .single();
+
+      if (signal.aborted) return;
 
       if (profileError) {
         console.error("Error fetching user profile:", profileError);
@@ -46,7 +67,10 @@ export const useWordPressCategories = () => {
         .from('wordpress_configs')
         .select('site_url, rest_api_key, app_username, app_password, name')
         .eq('id', user.wordpressConfigId)
+        .abortSignal(signal)
         .single();
+
+      if (signal.aborted) return;
 
       if (wpConfigError) {
         console.error("Error fetching WordPress config:", wpConfigError);
@@ -90,8 +114,11 @@ export const useWordPressCategories = () => {
       }
       
       // Ajouter un délai d'expiration à la requête
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // Augmenter le timeout à 15 secondes
+      const timeoutId = setTimeout(() => {
+        if (!signal.aborted) {
+          abortControllerRef.current?.abort();
+        }
+      }, 15000); // 15 secondes de timeout
       
       try {
         console.log("Fetching DipiPixel categories from:", apiUrl);
@@ -99,10 +126,12 @@ export const useWordPressCategories = () => {
         const response = await fetch(apiUrl, {
           method: 'GET',
           headers: headers,
-          signal: controller.signal
+          signal: signal
         });
-  
+
         clearTimeout(timeoutId);
+
+        if (signal.aborted) return;
   
         if (response.status === 404) {
           console.log("DipiPixel category endpoint not found, falling back to standard categories");
@@ -111,17 +140,22 @@ export const useWordPressCategories = () => {
           const standardApiUrl = `${siteUrl}/wp-json/wp/v2/categories`;
           console.log("Fetching standard WordPress categories from:", standardApiUrl);
           
-          const standardController = new AbortController();
-          const standardTimeoutId = setTimeout(() => standardController.abort(), 15000);
+          const standardTimeoutId = setTimeout(() => {
+            if (!signal.aborted) {
+              abortControllerRef.current?.abort();
+            }
+          }, 15000);
           
           try {
             const standardResponse = await fetch(standardApiUrl, {
               method: 'GET',
               headers: headers,
-              signal: standardController.signal
+              signal: signal
             });
             
             clearTimeout(standardTimeoutId);
+
+            if (signal.aborted) return;
             
             if (!standardResponse.ok) {
               const errorText = await standardResponse.text();
@@ -130,13 +164,14 @@ export const useWordPressCategories = () => {
             }
             
             const standardCategoriesData = await standardResponse.json();
-            console.log("Standard WordPress categories fetched successfully:", standardCategoriesData.length, "for", wpConfig.name);
-            setCategories(standardCategoriesData);
+            
+            if (!signal.aborted) {
+              console.log("Standard WordPress categories fetched successfully:", standardCategoriesData.length, "for", wpConfig.name);
+              setCategories(standardCategoriesData);
+            }
             return;
           } catch (standardError: any) {
-            if (standardError.name === 'AbortError') {
-              throw new Error("Le délai d'attente a expiré lors de la récupération des catégories standards");
-            }
+            if (standardError.name === 'AbortError' || signal.aborted) return;
             throw standardError;
           }
         }
@@ -153,15 +188,20 @@ export const useWordPressCategories = () => {
         }
   
         const categoriesData = await response.json();
-        console.log("DipiPixel categories fetched successfully:", categoriesData.length, "for", wpConfig.name);
-        setCategories(categoriesData);
-      } catch (fetchError: any) {
-        if (fetchError.name === 'AbortError') {
-          throw new Error("Le délai d'attente a expiré lors de la récupération des catégories");
+        
+        if (!signal.aborted) {
+          console.log("DipiPixel categories fetched successfully:", categoriesData.length, "for", wpConfig.name);
+          setCategories(categoriesData);
         }
+      } catch (fetchError: any) {
+        if (fetchError.name === 'AbortError' || signal.aborted) return;
         throw fetchError;
+      } finally {
+        clearTimeout(timeoutId);
       }
     } catch (err: any) {
+      if (signal.aborted) return;
+      
       console.error("Error fetching WordPress categories:", err);
       
       let errorMessage = err.message || "Échec de récupération des catégories WordPress";
@@ -177,12 +217,15 @@ export const useWordPressCategories = () => {
       
       setError(errorMessage);
       // Ne pas afficher de toast lors du rechargement pour éviter le spam
-      if (!window.location.pathname.includes('/create-announcement')) {
+      if (!window.location.pathname.includes('/create')) {
         toast.error("Erreur lors de la récupération des catégories");
       }
       setCategories([]);
     } finally {
-      setIsLoading(false);
+      if (!signal.aborted) {
+        setIsLoading(false);
+        isLoadingRef.current = false;
+      }
     }
   }, [user?.wordpressConfigId, user?.id]);
 
@@ -194,18 +237,41 @@ export const useWordPressCategories = () => {
 
   useEffect(() => {
     console.log("useWordPressCategories effect running, user:", user?.id, "wordpressConfigId:", user?.wordpressConfigId);
+    
+    // Annuler toute requête en cours lors du changement des dépendances
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    
     if (user?.wordpressConfigId && user?.id) {
-      // Ajouter un petit délai pour éviter les appels simultanés lors du rechargement
+      // Ajouter un délai pour éviter les appels simultanés lors du rechargement
       const timer = setTimeout(() => {
         fetchCategories();
-      }, 100);
+      }, 150); // Augmenté à 150ms pour plus de stabilité
       
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+      };
     } else {
       setCategories([]);
       setError(null);
+      setIsLoading(false);
+      isLoadingRef.current = false;
     }
   }, [user?.wordpressConfigId, user?.id, fetchCategories]);
+
+  // Nettoyer les requêtes en cours lors du démontage du composant
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   return { 
     categories, 
