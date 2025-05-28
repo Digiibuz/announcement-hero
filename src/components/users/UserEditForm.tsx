@@ -1,3 +1,4 @@
+
 import React from "react";
 import { UserCog } from "lucide-react";
 import { UserProfile } from "@/types/auth";
@@ -31,12 +32,7 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
   isDialogOpen: externalIsDialogOpen,
   setIsDialogOpen: externalSetIsDialogOpen
 }) => {
-  const {
-    configs,
-    clientConfigs,
-    associateClientToConfig,
-    removeClientConfigAssociation
-  } = useWordPressConfigs();
+  const { configs } = useWordPressConfigs();
 
   const {
     form,
@@ -48,22 +44,7 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
     selectedConfigIds,
     handleSubmit,
     handleDeleteUser
-  } = useUserEditForm(user, async (userId, userData) => {
-    await onUserUpdated(userId, userData);
-    if (userData.role === "client" && userData.clientId) {
-      const newConfigIds = form.getValues("wpConfigIds") || [];
-      const associationsToRemove = clientConfigs.filter(cc => cc.client_id === userData.clientId && !newConfigIds.includes(cc.wordpress_config_id));
-      for (const assoc of associationsToRemove) {
-        await removeClientConfigAssociation(assoc.id);
-      }
-      for (const configId of newConfigIds) {
-        const existingAssoc = clientConfigs.find(cc => cc.client_id === userData.clientId && cc.wordpress_config_id === configId);
-        if (!existingAssoc) {
-          await associateClientToConfig(userData.clientId, configId);
-        }
-      }
-    }
-  }, onDeleteUser);
+  } = useUserEditForm(user, onUserUpdated, onDeleteUser);
 
   // Use external state if provided, otherwise use internal state
   const isDialogOpen = externalIsDialogOpen !== undefined ? externalIsDialogOpen : internalIsDialogOpen;
