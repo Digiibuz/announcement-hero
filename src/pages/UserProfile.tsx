@@ -43,6 +43,7 @@ const UserProfile = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,
@@ -76,6 +77,8 @@ const UserProfile = () => {
   };
 
   const handleResetPassword = async () => {
+    setIsResettingPassword(true);
+    
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
         redirectTo: `${window.location.origin}/reset-password`,
@@ -89,6 +92,8 @@ const UserProfile = () => {
     } catch (error: any) {
       console.error("Error resetting password:", error);
       toast.error("Erreur lors de l'envoi de l'email de réinitialisation");
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
@@ -285,13 +290,25 @@ const UserProfile = () => {
                     )}
                   />
 
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
-                    disabled={isChangingPassword}
-                  >
-                    {isChangingPassword ? "Modification en cours..." : "Changer le mot de passe"}
-                  </Button>
+                  <div className="flex flex-col gap-2">
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      disabled={isChangingPassword || isResettingPassword}
+                    >
+                      {isChangingPassword ? "Modification en cours..." : "Changer le mot de passe"}
+                    </Button>
+                    
+                    <Button 
+                      type="button"
+                      variant="ghost" 
+                      onClick={handleResetPassword}
+                      disabled={isChangingPassword || isResettingPassword}
+                      className="text-sm text-muted-foreground hover:text-primary"
+                    >
+                      {isResettingPassword ? "Envoi en cours..." : "Mot de passe oublié ? Recevoir un email de réinitialisation"}
+                    </Button>
+                  </div>
                 </form>
               </Form>
             </CardContent>
@@ -305,14 +322,6 @@ const UserProfile = () => {
             </CardHeader>
             <CardContent>
               <div className="flex flex-col gap-3">
-                <Button 
-                  variant="outline" 
-                  onClick={handleResetPassword}
-                  className="flex items-center gap-2"
-                >
-                  <KeyRound className="h-4 w-4" />
-                  Réinitialiser par email
-                </Button>
                 <Button variant="destructive" onClick={handleLogout}>
                   Se déconnecter
                 </Button>
