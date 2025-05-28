@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import BasicInfoTab from "./userEditForm/BasicInfoTab";
 import WordPressConfigTab from "./userEditForm/WordPressConfigTab";
 import PublicationLimitsTab from "./userEditForm/PublicationLimitsTab";
+import AILimitsTab from "./userEditForm/AILimitsTab";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface UserEditFormProps {
@@ -77,13 +78,16 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
         
         <ScrollArea className="flex-1 pr-4">
           <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
+            <TabsList className="grid w-full grid-cols-4 flex-shrink-0">
               <TabsTrigger value="basic">Informations</TabsTrigger>
               <TabsTrigger value="wordpress" disabled={role !== "client"}>
                 WordPress
               </TabsTrigger>
-              <TabsTrigger value="limits" disabled={role !== "client"}>
-                Limites
+              <TabsTrigger value="objectives" disabled={role !== "client"}>
+                Objectifs
+              </TabsTrigger>
+              <TabsTrigger value="ai-limits" disabled={role !== "client"}>
+                Limites IA
               </TabsTrigger>
             </TabsList>
             
@@ -116,13 +120,21 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
                 />
               </TabsContent>
               
-              <TabsContent value="limits" className="mt-0">
+              <TabsContent value="objectives" className="mt-0">
                 <PublicationLimitsTab 
                   user={user}
                   isUpdating={isUpdating}
                   onCancel={() => setIsDialogOpen(false)}
                   onSubmit={handleSubmit}
                   form={form}
+                />
+              </TabsContent>
+              
+              <TabsContent value="ai-limits" className="mt-0">
+                <AILimitsTab 
+                  user={user}
+                  isUpdating={isUpdating}
+                  onCancel={() => setIsDialogOpen(false)}
                 />
               </TabsContent>
             </div>

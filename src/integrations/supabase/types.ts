@@ -63,6 +63,39 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_ai_limits: {
+        Row: {
+          created_at: string
+          generation_count: number | null
+          id: string
+          max_limit: number | null
+          month: number
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          generation_count?: number | null
+          id?: string
+          max_limit?: number | null
+          month: number
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          generation_count?: number | null
+          id?: string
+          max_limit?: number | null
+          month?: number
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       monthly_publication_limits: {
         Row: {
           created_at: string
@@ -223,6 +256,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_monthly_ai_count: {
+        Args: { p_user_id: string }
+        Returns: {
+          generation_count: number
+          max_limit: number
+          remaining: number
+        }[]
+      }
       get_monthly_publication_count: {
         Args: { p_user_id: string }
         Returns: {
@@ -230,6 +271,10 @@ export type Database = {
           max_limit: number
           remaining: number
         }[]
+      }
+      increment_monthly_ai_count: {
+        Args: { p_user_id: string }
+        Returns: undefined
       }
       increment_monthly_publication_count: {
         Args: { p_user_id: string }

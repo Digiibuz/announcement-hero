@@ -2,11 +2,16 @@
 import { useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
+import { useAILimits } from "@/hooks/useAILimits";
 import { AIGenerationSettings } from "@/components/announcements/AIGenerationOptions";
 
 export type OptimizationType = "generateDescription";
 
 export const useContentOptimization = () => {
+  const { user } = useAuth();
+  const { canGenerate, incrementGeneration, stats } = useAILimits(user?.id);
+  
   const [isOptimizing, setIsOptimizing] = useState<Record<OptimizationType, boolean>>({
     generateDescription: false,
   });
@@ -17,6 +22,12 @@ export const useContentOptimization = () => {
     description: string,
     aiSettings?: AIGenerationSettings
   ): Promise<string | null> => {
+    // Vérifier les limites IA avant de commencer
+    if (!canGenerate()) {
+      toast.error(`Limite de ${stats.maxLimit} générations IA atteinte ce mois-ci. Contactez votre administrateur pour augmenter votre quota.`);
+      return null;
+    }
+
     setIsOptimizing(prev => ({ ...prev, [type]: true }));
     
     try {
@@ -58,7 +69,11 @@ export const useContentOptimization = () => {
         throw new Error(data?.error || "La génération a échoué pour une raison inconnue");
       }
       
-      // Notification de succès retirée
+      // Incrémenter le compteur IA après une génération réussie
+      const incremented = await incrementGeneration();
+      if (!incremented) {
+        console.warn("Échec de l'incrémentation du compteur IA");
+      }
       
       return data.content;
     } catch (error: any) {
@@ -80,10 +95,12 @@ export const useContentOptimization = () => {
     } finally {
       setIsOptimizing(prev => ({ ...prev, [type]: false }));
     }
-  }, []);
+  }, [canGenerate, incrementGeneration, stats.maxLimit]);
 
   return {
     optimizeContent,
     isOptimizing,
+    aiStats: stats,
+    canGenerate
   };
 };
