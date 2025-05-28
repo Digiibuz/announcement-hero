@@ -22,6 +22,8 @@ export const useWordPressConfigsList = () => {
       if (isClient) {
         // Si le client a un wordpressConfigId, on récupère cette configuration
         if (user?.wordpressConfigId) {
+          console.log("Fetching WordPress config for client:", user.wordpressConfigId);
+          
           const { data, error } = await supabase
             .from('wordpress_configs')
             .select('*')
@@ -29,12 +31,15 @@ export const useWordPressConfigsList = () => {
             .single();
           
           if (error) {
+            console.error("Error fetching client WordPress config:", error);
             throw error;
           }
           
+          console.log("WordPress config found for client:", data?.name);
           setConfigs(data ? [data as WordPressConfig] : []);
         } else {
           // Si le client n'a pas de wordpressConfigId, on renvoie un tableau vide
+          console.log("Client has no WordPress config assigned");
           setConfigs([]);
         }
       } 
@@ -83,6 +88,7 @@ export const useWordPressConfigsList = () => {
   };
 
   useEffect(() => {
+    console.log("useWordPressConfigsList effect running, isClient:", isClient, "user.wordpressConfigId:", user?.wordpressConfigId);
     fetchConfigs();
     fetchClientConfigs();
   }, [isClient, user?.wordpressConfigId]);

@@ -13,8 +13,9 @@ export const useWordPressCategories = () => {
 
   const fetchCategories = useCallback(async () => {
     if (!user?.wordpressConfigId) {
-      console.error("No WordPress configuration ID found for user", user);
-      setError("No WordPress configuration found for this user");
+      console.warn("No WordPress configuration ID found for user", user);
+      setError("Aucune configuration WordPress trouvée pour cet utilisateur");
+      setCategories([]);
       return;
     }
 
@@ -23,10 +24,27 @@ export const useWordPressCategories = () => {
       setError(null);
       console.log("Fetching categories for WordPress config ID:", user.wordpressConfigId);
 
-      // First get the WordPress config for the user
+      // Vérifier d'abord que l'utilisateur a bien accès à cette configuration
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('wordpress_config_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) {
+        console.error("Error fetching user profile:", profileError);
+        throw new Error("Erreur lors de la vérification du profil utilisateur");
+      }
+
+      if (!profile || profile.wordpress_config_id !== user.wordpressConfigId) {
+        console.error("Security violation: user trying to access unauthorized WordPress config");
+        throw new Error("Accès non autorisé à cette configuration WordPress");
+      }
+
+      // Récupérer la configuration WordPress
       const { data: wpConfig, error: wpConfigError } = await supabase
         .from('wordpress_configs')
-        .select('site_url, rest_api_key, app_username, app_password')
+        .select('site_url, rest_api_key, app_username, app_password, name')
         .eq('id', user.wordpressConfigId)
         .single();
 
@@ -37,10 +55,11 @@ export const useWordPressCategories = () => {
       
       if (!wpConfig) {
         console.error("WordPress configuration not found");
-        throw new Error("WordPress configuration not found");
+        throw new Error("Configuration WordPress non trouvée");
       }
 
       console.log("WordPress config found:", {
+        name: wpConfig.name,
         site_url: wpConfig.site_url,
         hasRestApiKey: !!wpConfig.rest_api_key,
         hasAppUsername: !!wpConfig.app_username,
@@ -49,26 +68,25 @@ export const useWordPressCategories = () => {
 
       // Normaliser l'URL (supprimer les doubles slashes)
       const siteUrl = wpConfig.site_url.replace(/([^:]\/)\/+/g, "$1");
-
-      // Utiliser la taxonomie personnalisée dipi_cpt_category au lieu des catégories standards
-      const apiUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt_category`;
-      console.log("Fetching DipiPixel categories from:", apiUrl);
       
-      // Prepare headers
+      // Utiliser la taxonomie personnalisée dipi_cpt_category
+      const apiUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt_category`;
+      
+      // Préparer les headers d'authentification
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       };
       
-      // Prioritize Application Password authentication
+      // Priorité à l'authentification par Application Password
       if (wpConfig.app_username && wpConfig.app_password) {
-        console.log("Using Application Password authentication");
+        console.log("Using Application Password authentication for", wpConfig.name);
         const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
         headers['Authorization'] = `Basic ${basicAuth}`;
       } else if (wpConfig.rest_api_key) {
-        console.log("Using REST API Key authentication");
+        console.log("Using REST API Key authentication for", wpConfig.name);
         headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
       } else {
-        console.log("No authentication credentials provided");
+        console.log("No authentication credentials provided for", wpConfig.name);
       }
       
       // Ajouter un délai d'expiration à la requête
@@ -76,6 +94,8 @@ export const useWordPressCategories = () => {
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes de timeout
       
       try {
+        console.log("Fetching DipiPixel categories from:", apiUrl);
+        
         const response = await fetch(apiUrl, {
           method: 'GET',
           headers: headers,
@@ -84,6 +104,30 @@ export const useWordPressCategories = () => {
   
         clearTimeout(timeoutId);
   
+        if (response.status === 404) {
+          console.log("DipiPixel category endpoint not found, falling back to standard categories");
+          
+          // Si l'endpoint DipiPixel n'est pas trouvé, utiliser les catégories standards
+          const standardApiUrl = `${siteUrl}/wp-json/wp/v2/categories`;
+          console.log("Fetching standard WordPress categories from:", standardApiUrl);
+          
+          const standardResponse = await fetch(standardApiUrl, {
+            method: 'GET',
+            headers: headers
+          });
+          
+          if (!standardResponse.ok) {
+            const errorText = await standardResponse.text();
+            console.error("WordPress API error:", standardResponse.status, errorText);
+            throw new Error(`Échec de récupération des catégories: ${standardResponse.statusText}`);
+          }
+          
+          const standardCategoriesData = await standardResponse.json();
+          console.log("Standard WordPress categories fetched successfully:", standardCategoriesData.length, "for", wpConfig.name);
+          setCategories(standardCategoriesData);
+          return;
+        }
+        
         if (!response.ok) {
           const errorText = await response.text();
           console.error("WordPress API error:", response.status, errorText);
@@ -92,11 +136,11 @@ export const useWordPressCategories = () => {
             throw new Error("Identifiants incorrects ou autorisations insuffisantes");
           }
           
-          throw new Error(`Failed to fetch categories: ${response.statusText}`);
+          throw new Error(`Échec de récupération des catégories: ${response.statusText}`);
         }
   
         const categoriesData = await response.json();
-        console.log("DipiPixel categories fetched successfully:", categoriesData.length);
+        console.log("DipiPixel categories fetched successfully:", categoriesData.length, "for", wpConfig.name);
         setCategories(categoriesData);
       } catch (fetchError: any) {
         if (fetchError.name === 'AbortError') {
@@ -107,7 +151,7 @@ export const useWordPressCategories = () => {
     } catch (err: any) {
       console.error("Error fetching WordPress categories:", err);
       
-      let errorMessage = err.message || "Failed to fetch WordPress categories";
+      let errorMessage = err.message || "Échec de récupération des catégories WordPress";
       
       // Améliorer les messages d'erreur
       if (err.message.includes("Failed to fetch")) {
@@ -119,18 +163,22 @@ export const useWordPressCategories = () => {
       }
       
       setError(errorMessage);
-      toast.error("Erreur lors de la récupération des catégories DipiPixel");
+      toast.error("Erreur lors de la récupération des catégories");
+      setCategories([]);
     } finally {
       setIsLoading(false);
     }
-  }, [user?.wordpressConfigId]);
+  }, [user?.wordpressConfigId, user?.id]);
 
   useEffect(() => {
     console.log("useWordPressCategories effect running, user:", user?.id, "wordpressConfigId:", user?.wordpressConfigId);
-    if (user?.wordpressConfigId) {
+    if (user?.wordpressConfigId && user?.id) {
       fetchCategories();
+    } else {
+      setCategories([]);
+      setError(null);
     }
-  }, [user?.wordpressConfigId, fetchCategories]);
+  }, [user?.wordpressConfigId, user?.id, fetchCategories]);
 
   return { 
     categories, 
