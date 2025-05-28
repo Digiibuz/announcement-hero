@@ -8,7 +8,7 @@ export const useRecentAnnouncements = (limit: number = 5) => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { user, isImpersonating } = useAuth();
 
   useEffect(() => {
     const fetchRecentAnnouncements = async () => {
@@ -39,7 +39,7 @@ export const useRecentAnnouncements = (limit: number = 5) => {
     };
 
     fetchRecentAnnouncements();
-  }, [user, limit]);
+  }, [user?.id, limit, isImpersonating]); // Ajout de isImpersonating pour recharger lors des changements
 
   return { announcements, isLoading, error };
 };

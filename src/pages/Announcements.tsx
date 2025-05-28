@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -24,9 +24,10 @@ const stripHtmlTags = (html: string): string => {
 };
 
 const Announcements = () => {
-  const { isAdmin, user } = useAuth();
+  const { isAdmin, user, isImpersonating } = useAuth();
   const isMobile = useIsMobile();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState({
     search: "",
     status: "all",
@@ -42,17 +43,31 @@ const Announcements = () => {
     }
   }, [user?.wordpressConfigId, refetchCategories]);
 
+  // Invalidate cache when user changes (impersonation start/stop)
+  useEffect(() => {
+    console.log('🔄 User changed, invalidating announcements cache', {
+      userId: user?.id,
+      isAdmin,
+      isImpersonating
+    });
+    queryClient.invalidateQueries({ queryKey: ["announcements"] });
+  }, [user?.id, isImpersonating, queryClient]);
+
   // Fetch announcements - réactivation partielle des refetch pour éviter les pages blanches
   const { data: announcements, isLoading, refetch } = useQuery({
-    queryKey: ["announcements"],
+    queryKey: ["announcements", user?.id, isAdmin],
     queryFn: async () => {
       let query = supabase
         .from("announcements")
         .select("*")
         .order('created_at', { ascending: false }); // Tri des plus récentes aux plus anciennes
       
-      if (!isAdmin) {
+      // Si on n'est pas admin OU si on est en mode impersonation, filtrer par user_id
+      if (!isAdmin || isImpersonating) {
+        console.log('🔍 Filtering announcements for user:', user?.id);
         query = query.filter("user_id", "eq", user?.id);
+      } else {
+        console.log('👑 Admin mode: showing all announcements');
       }
       
       const { data, error } = await query;
