@@ -58,7 +58,7 @@ export const useContentOptimization = () => {
         throw new Error(data?.error || "La génération a échoué pour une raison inconnue");
       }
       
-      toast.success("Contenu généré avec succès");
+      // Notification de succès retirée
       
       return data.content;
     } catch (error: any) {
