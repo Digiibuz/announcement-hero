@@ -91,7 +91,7 @@ export const useWordPressCategories = () => {
       
       // Ajouter un délai d'expiration à la requête
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes de timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // Augmenter le timeout à 15 secondes
       
       try {
         console.log("Fetching DipiPixel categories from:", apiUrl);
@@ -111,21 +111,34 @@ export const useWordPressCategories = () => {
           const standardApiUrl = `${siteUrl}/wp-json/wp/v2/categories`;
           console.log("Fetching standard WordPress categories from:", standardApiUrl);
           
-          const standardResponse = await fetch(standardApiUrl, {
-            method: 'GET',
-            headers: headers
-          });
+          const standardController = new AbortController();
+          const standardTimeoutId = setTimeout(() => standardController.abort(), 15000);
           
-          if (!standardResponse.ok) {
-            const errorText = await standardResponse.text();
-            console.error("WordPress API error:", standardResponse.status, errorText);
-            throw new Error(`Échec de récupération des catégories: ${standardResponse.statusText}`);
+          try {
+            const standardResponse = await fetch(standardApiUrl, {
+              method: 'GET',
+              headers: headers,
+              signal: standardController.signal
+            });
+            
+            clearTimeout(standardTimeoutId);
+            
+            if (!standardResponse.ok) {
+              const errorText = await standardResponse.text();
+              console.error("WordPress API error:", standardResponse.status, errorText);
+              throw new Error(`Échec de récupération des catégories: ${standardResponse.statusText}`);
+            }
+            
+            const standardCategoriesData = await standardResponse.json();
+            console.log("Standard WordPress categories fetched successfully:", standardCategoriesData.length, "for", wpConfig.name);
+            setCategories(standardCategoriesData);
+            return;
+          } catch (standardError: any) {
+            if (standardError.name === 'AbortError') {
+              throw new Error("Le délai d'attente a expiré lors de la récupération des catégories standards");
+            }
+            throw standardError;
           }
-          
-          const standardCategoriesData = await standardResponse.json();
-          console.log("Standard WordPress categories fetched successfully:", standardCategoriesData.length, "for", wpConfig.name);
-          setCategories(standardCategoriesData);
-          return;
         }
         
         if (!response.ok) {
@@ -163,17 +176,31 @@ export const useWordPressCategories = () => {
       }
       
       setError(errorMessage);
-      toast.error("Erreur lors de la récupération des catégories");
+      // Ne pas afficher de toast lors du rechargement pour éviter le spam
+      if (!window.location.pathname.includes('/create-announcement')) {
+        toast.error("Erreur lors de la récupération des catégories");
+      }
       setCategories([]);
     } finally {
       setIsLoading(false);
     }
   }, [user?.wordpressConfigId, user?.id]);
 
+  const refetch = useCallback(() => {
+    if (user?.wordpressConfigId && user?.id) {
+      fetchCategories();
+    }
+  }, [fetchCategories, user?.wordpressConfigId, user?.id]);
+
   useEffect(() => {
     console.log("useWordPressCategories effect running, user:", user?.id, "wordpressConfigId:", user?.wordpressConfigId);
     if (user?.wordpressConfigId && user?.id) {
-      fetchCategories();
+      // Ajouter un petit délai pour éviter les appels simultanés lors du rechargement
+      const timer = setTimeout(() => {
+        fetchCategories();
+      }, 100);
+      
+      return () => clearTimeout(timer);
     } else {
       setCategories([]);
       setError(null);
@@ -184,7 +211,7 @@ export const useWordPressCategories = () => {
     categories, 
     isLoading, 
     error, 
-    refetch: fetchCategories,
+    refetch,
     hasCategories: categories.length > 0
   };
 };

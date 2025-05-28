@@ -18,20 +18,32 @@ const CategoryStep = ({
   form,
   isMobile
 }: CategoryStepProps) => {
-  // Utiliser le hook de persistance pour sauvegarder/restaurer les données du formulaire
   const { loadForm } = useFormPersistence(form, 'announcement_category', undefined, 500);
 
   const {
     categories,
     isLoading: isCategoriesLoading,
     error: categoriesError,
-    hasCategories
+    hasCategories,
+    refetch
   } = useWordPressCategories();
 
   // Restaurer l'état du formulaire au chargement
   useEffect(() => {
     loadForm();
   }, [loadForm]);
+
+  // Retry logic si erreur de récupération
+  useEffect(() => {
+    if (categoriesError && !isCategoriesLoading) {
+      const timer = setTimeout(() => {
+        console.log("Tentative de récupération des catégories après erreur...");
+        refetch();
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [categoriesError, isCategoriesLoading, refetch]);
 
   return (
     <div className="space-y-6">
@@ -60,8 +72,16 @@ const CategoryStep = ({
                     <span>Chargement des catégories...</span>
                   </div>
                 ) : categoriesError ? (
-                  <div className="p-2 text-center text-sm text-muted-foreground">
-                    Erreur: {categoriesError}
+                  <div className="p-4 text-center">
+                    <div className="text-sm text-red-600 mb-2">
+                      Erreur: {categoriesError}
+                    </div>
+                    <button 
+                      onClick={() => refetch()}
+                      className="text-xs text-blue-600 hover:text-blue-800 underline"
+                    >
+                      Réessayer
+                    </button>
                   </div>
                 ) : hasCategories ? (
                   categories.map(category => (
