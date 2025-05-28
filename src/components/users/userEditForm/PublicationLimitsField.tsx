@@ -21,7 +21,7 @@ const PublicationLimitsField: React.FC<PublicationLimitsFieldProps> = ({
   user,
   isUpdating
 }) => {
-  const { stats, isLoading, updateMaxLimit, getProgressPercentage, refetch } = usePublicationLimits(user.id);
+  const { stats, isLoading, updateMaxLimit, getProgressPercentage, refreshStats } = usePublicationLimits(user.id);
   const [newLimit, setNewLimit] = useState(stats.maxLimit);
   const [isSaving, setIsSaving] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -61,7 +61,7 @@ const PublicationLimitsField: React.FC<PublicationLimitsFieldProps> = ({
       if (error) throw error;
 
       // Actualiser les statistiques
-      await refetch();
+      await refreshStats();
       toast.success("Compteur de publications remis à zéro");
     } catch (error) {
       console.error('Error resetting publication count:', error);

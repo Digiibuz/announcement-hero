@@ -11,8 +11,10 @@ export interface PublicationStats {
   percentage: number;
 }
 
-export const usePublicationLimits = () => {
+export const usePublicationLimits = (userId?: string) => {
   const { user } = useAuth();
+  const targetUserId = userId || user?.id;
+  
   const [stats, setStats] = useState<PublicationStats>({
     publishedCount: 0,
     maxLimit: 20,
@@ -22,7 +24,7 @@ export const usePublicationLimits = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchStats = useCallback(async () => {
-    if (!user?.id) return;
+    if (!targetUserId) return;
     
     try {
       setIsLoading(true);
@@ -34,19 +36,19 @@ export const usePublicationLimits = () => {
       const { data: limitsData, error: limitsError } = await supabase
         .from('monthly_publication_limits')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', targetUserId)
         .eq('year', currentYear)
         .eq('month', currentMonth)
-        .single();
+        .maybeSingle();
       
       let currentLimits = limitsData;
       
-      if (limitsError && limitsError.code === 'PGRST116') {
+      if (!currentLimits) {
         // Créer un nouvel enregistrement si il n'existe pas
         const { data: newLimits, error: insertError } = await supabase
           .from('monthly_publication_limits')
           .insert({
-            user_id: user.id,
+            user_id: targetUserId,
             year: currentYear,
             month: currentMonth,
             published_count: 0,
@@ -80,17 +82,94 @@ export const usePublicationLimits = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id]);
+  }, [targetUserId]);
 
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
 
+  // Fonctions utilitaires pour la compatibilité
+  const getProgressPercentage = useCallback(() => {
+    return stats.percentage;
+  }, [stats.percentage]);
+
+  const getStatusColor = useCallback(() => {
+    if (stats.percentage >= 90) return "red";
+    if (stats.percentage >= 70) return "orange";
+    return "green";
+  }, [stats.percentage]);
+
+  const getBadgeText = useCallback(() => {
+    if (stats.percentage >= 100) return "Objectif atteint";
+    if (stats.percentage >= 90) return "Expert";
+    if (stats.percentage >= 70) return "Actif";
+    return "";
+  }, [stats.percentage]);
+
   // Note: Plus de fonction canPublish car maintenant ce sont des objectifs, pas des limites
+  const canPublish = useCallback(() => {
+    return true; // Toujours autorisé maintenant que ce sont des objectifs
+  }, []);
+
+  const incrementPublicationCount = useCallback(async (): Promise<boolean> => {
+    if (!targetUserId) return false;
+
+    try {
+      const { error } = await supabase
+        .rpc('increment_monthly_publication_count', { p_user_id: targetUserId });
+      
+      if (error) throw error;
+      
+      // Refresh stats after increment
+      await fetchStats();
+      return true;
+    } catch (error: any) {
+      console.error('Error incrementing publication count:', error);
+      toast.error("Erreur lors de l'incrémentation du compteur");
+      return false;
+    }
+  }, [targetUserId, fetchStats]);
+
+  const updateMaxLimit = useCallback(async (newLimit: number): Promise<boolean> => {
+    if (!targetUserId) return false;
+
+    try {
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth() + 1;
+
+      const { error } = await supabase
+        .from('monthly_publication_limits')
+        .upsert({
+          user_id: targetUserId,
+          year: currentYear,
+          month: currentMonth,
+          max_limit: newLimit
+        }, {
+          onConflict: 'user_id,year,month'
+        });
+
+      if (error) throw error;
+
+      await fetchStats();
+      return true;
+    } catch (error: any) {
+      console.error('Error updating publication limit:', error);
+      toast.error("Erreur lors de la mise à jour de la limite");
+      return false;
+    }
+  }, [targetUserId, fetchStats]);
   
   return {
     stats,
     isLoading,
-    refreshStats: fetchStats
+    refreshStats: fetchStats,
+    // Fonctions de compatibilité
+    canPublish,
+    getProgressPercentage,
+    getStatusColor,
+    getBadgeText,
+    incrementPublicationCount,
+    updateMaxLimit,
+    refetch: fetchStats
   };
 };
