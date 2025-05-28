@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
@@ -64,7 +63,13 @@ const Announcements = () => {
     queryFn: async () => {
       let query = supabase
         .from("announcements")
-        .select("*")
+        .select(`
+          *,
+          profiles (
+            wordpress_config_id,
+            name
+          )
+        `)
         .order('created_at', { ascending: false });
       
       // Si on n'est pas admin OU si on est en mode impersonation, filtrer par user_id
@@ -88,15 +93,6 @@ const Announcements = () => {
 
       if (!announcementsData) return [];
 
-      // Récupérer les profils des utilisateurs pour les annonces
-      const userIds = [...new Set(announcementsData.map(ann => ann.user_id))];
-      const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("id, wordpress_config_id, name")
-        .in("id", userIds);
-
-      const profilesMap = new Map(profilesData?.map(profile => [profile.id, profile]) || []);
-      
       return announcementsData.map(announcement => {
         const processed: Announcement & { 
           wordpress_site_name?: string;
@@ -108,13 +104,11 @@ const Announcements = () => {
           processed.description = stripHtmlTags(processed.description);
         }
         
-        const userProfile = profilesMap.get(announcement.user_id);
-        
         // Ajouter les informations du site WordPress depuis le profil utilisateur
-        if (userProfile?.wordpress_config_id) {
-          processed.user_wordpress_config_id = userProfile.wordpress_config_id;
+        if (announcement.profiles?.wordpress_config_id) {
+          processed.user_wordpress_config_id = announcement.profiles.wordpress_config_id;
           const wordpressConfig = wordpressConfigs.find(
-            config => config.id === userProfile.wordpress_config_id
+            config => config.id === announcement.profiles.wordpress_config_id
           );
           if (wordpressConfig) {
             processed.wordpress_site_name = wordpressConfig.name;
@@ -122,8 +116,8 @@ const Announcements = () => {
         }
         
         // Ajouter le nom de l'utilisateur
-        if (userProfile?.name) {
-          processed.user_name = userProfile.name;
+        if (announcement.profiles?.name) {
+          processed.user_name = announcement.profiles.name;
         }
         
         // Traitement des catégories WordPress existant
