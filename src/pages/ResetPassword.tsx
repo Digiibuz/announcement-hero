@@ -21,7 +21,6 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useAuth } from "@/context/AuthContext";
 
 // Schema de validation pour le formulaire
 const passwordSchema = z.object({
@@ -45,8 +44,6 @@ const ResetPassword = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isTokenValid, setIsTokenValid] = useState<boolean | null>(null);
   const [isChecking, setIsChecking] = useState(true);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -58,89 +55,72 @@ const ResetPassword = () => {
     }
   });
 
-  // Vérifier si le token est valide au chargement de la page et configuration immédiate de la session
+  // Vérifier si nous avons un token de récupération dans l'URL
   useEffect(() => {
-    const checkSession = async () => {
+    const checkRecoveryToken = async () => {
       try {
         setIsChecking(true);
         
-        // Obtenir tous les paramètres depuis le hash de l'URL
+        // Vérifier si nous avons des paramètres de récupération dans l'URL
         const hashParams = new URLSearchParams(location.hash.substring(1));
-        const token = hashParams.get('access_token');
-        const refresh = hashParams.get('refresh_token');
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
         const type = hashParams.get('type');
         
-        // Log pour debug
-        console.log("URL hash params:", { 
-          accessToken: !!token, 
-          refreshToken: !!refresh, 
+        console.log("Checking recovery token:", { 
+          hasAccessToken: !!accessToken, 
+          hasRefreshToken: !!refreshToken, 
           type,
           fullHash: location.hash
         });
         
-        if (token && type === 'recovery') {
-          console.log("Token de récupération trouvé, configuration de la session...");
-          setAccessToken(token);
-          if (refresh) setRefreshToken(refresh);
+        if (accessToken && type === 'recovery') {
+          console.log("Recovery token found, setting session...");
           
-          // Si nous avons un token de récupération dans l'URL hash, nous le configurons dans la session
+          // Configurer la session avec le token de récupération
           const { data, error } = await supabase.auth.setSession({
-            access_token: token,
-            refresh_token: refresh || '',
+            access_token: accessToken,
+            refresh_token: refreshToken || '',
           });
           
           if (error) {
-            console.error("Erreur lors de la configuration de la session:", error);
+            console.error("Error setting session:", error);
             setIsTokenValid(false);
           } else {
-            console.log("Session configurée avec succès:", data);
+            console.log("Session set successfully for password reset");
             setIsTokenValid(true);
           }
         } else {
-          // Sinon, nous vérifions si l'utilisateur a une session valide
-          console.log("Pas de token dans le hash, vérification d'une session existante...");
+          // Vérifier si l'utilisateur a déjà une session valide (cas où il revient sur la page)
           const { data, error } = await supabase.auth.getSession();
           
           if (error) {
-            console.error("Erreur lors de la vérification de la session:", error);
+            console.error("Error checking session:", error);
             setIsTokenValid(false);
           } else if (data?.session?.user) {
-            console.log("Session utilisateur trouvée:", data.session.user);
+            console.log("Existing session found");
             setIsTokenValid(true);
           } else {
-            console.log("Aucune session trouvée et pas de token dans l'URL");
+            console.log("No valid session or recovery token found");
             setIsTokenValid(false);
           }
         }
       } catch (error) {
-        console.error("Erreur lors de la vérification du token:", error);
+        console.error("Error checking recovery token:", error);
         setIsTokenValid(false);
       } finally {
         setIsChecking(false);
       }
     };
 
-    // Exécuter immédiatement pour éviter tout délai
-    checkSession();
-    
-    // Ajout d'un nettoyage pour éviter les fuites de mémoire
-    return () => {
-      // Nettoyage si nécessaire
-    };
+    checkRecoveryToken();
   }, [location]);
 
   const onSubmit = async (data: PasswordForm) => {
     setIsLoading(true);
     
     try {
-      // Si nous avons stocké les tokens directement, on peut les utiliser pour s'assurer que la session est correcte
-      if (accessToken && refreshToken) {
-        console.log("Utilisation des tokens stockés pour la session avant mise à jour du mot de passe");
-        await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-      }
+      console.log("Updating password...");
       
       // Mettre à jour le mot de passe
       const { error } = await supabase.auth.updateUser({ 
@@ -151,15 +131,17 @@ const ResetPassword = () => {
         throw error;
       }
       
+      console.log("Password updated successfully");
       setIsSubmitted(true);
       toast.success("Votre mot de passe a été réinitialisé avec succès");
       
-      // Rediriger vers la page de connexion après un court délai
-      setTimeout(() => {
+      // Déconnecter l'utilisateur et rediriger vers la page de connexion
+      setTimeout(async () => {
+        await supabase.auth.signOut();
         navigate("/login");
       }, 3000);
     } catch (error: any) {
-      console.error("Erreur lors de la réinitialisation du mot de passe:", error);
+      console.error("Error updating password:", error);
       toast.error(error.message || "Une erreur s'est produite lors de la réinitialisation du mot de passe");
     } finally {
       setIsLoading(false);

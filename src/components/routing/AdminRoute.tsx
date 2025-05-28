@@ -26,12 +26,16 @@ const AdminRoute = ({ children, adminOnly = false }: { children: React.ReactNode
     );
   }
 
-  if (!isAuthenticated && !isOnResetPasswordPage) {
-    const hasRecoveryToken = window.location.hash.includes('type=recovery');
-    if (location.pathname === '/reset-password' && hasRecoveryToken) {
+  // Permettre l'accès à la page de reset password avec un token de récupération
+  if (location.pathname === '/reset-password') {
+    const hasRecoveryToken = window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token');
+    if (hasRecoveryToken || isOnResetPasswordPage) {
       console.log('AdminRoute - Allowing reset password with recovery token');
       return <>{children}</>;
     }
+  }
+
+  if (!isAuthenticated && !isOnResetPasswordPage) {
     console.log('AdminRoute - Redirecting to login');
     return <Navigate to="/login" replace />;
   }
