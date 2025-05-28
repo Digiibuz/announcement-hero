@@ -1,15 +1,11 @@
 
-import React, { useState } from "react";
-import { Label } from "@/components/ui/label";
+import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Save, TrendingUp, RotateCcw } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { usePublicationLimits } from "@/hooks/usePublicationLimits";
 import { UserProfile } from "@/types/auth";
-import { supabase } from "@/integrations/supabase/client";
+import { Loader2, Target } from "lucide-react";
 import { toast } from "sonner";
 
 interface PublicationLimitsFieldProps {
@@ -17,59 +13,29 @@ interface PublicationLimitsFieldProps {
   isUpdating: boolean;
 }
 
-const PublicationLimitsField: React.FC<PublicationLimitsFieldProps> = ({
-  user,
-  isUpdating
-}) => {
-  const { stats, isLoading, updateMaxLimit, getProgressPercentage, refreshStats } = usePublicationLimits(user.id);
-  const [newLimit, setNewLimit] = useState(stats.maxLimit);
+const PublicationLimitsField: React.FC<PublicationLimitsFieldProps> = ({ user, isUpdating }) => {
+  const { stats, isLoading, updateMaxLimit } = usePublicationLimits(user.id);
+  const [localLimit, setLocalLimit] = useState(stats.maxLimit);
   const [isSaving, setIsSaving] = useState(false);
-  const [isResetting, setIsResetting] = useState(false);
 
-  const handleUpdateLimit = async () => {
-    if (newLimit < 1 || newLimit > 100) {
-      return;
-    }
+  useEffect(() => {
+    setLocalLimit(stats.maxLimit);
+  }, [stats.maxLimit]);
 
+  const handleSaveLimit = async () => {
+    if (localLimit === stats.maxLimit) return;
+    
     setIsSaving(true);
-    const success = await updateMaxLimit(newLimit);
+    const success = await updateMaxLimit(localLimit);
+    
     if (success) {
-      setNewLimit(stats.maxLimit);
+      toast.success("Objectif de publication mis à jour avec succès");
     }
+    
     setIsSaving(false);
   };
 
-  const handleResetCount = async () => {
-    setIsResetting(true);
-    try {
-      const currentYear = new Date().getFullYear();
-      const currentMonth = new Date().getMonth() + 1;
-
-      // Remettre le compteur à 0 pour le mois actuel
-      const { error } = await supabase
-        .from('monthly_publication_limits')
-        .upsert({
-          user_id: user.id,
-          year: currentYear,
-          month: currentMonth,
-          max_limit: stats.maxLimit,
-          published_count: 0,
-        }, {
-          onConflict: 'user_id,year,month'
-        });
-
-      if (error) throw error;
-
-      // Actualiser les statistiques
-      await refreshStats();
-      toast.success("Compteur de publications remis à zéro");
-    } catch (error) {
-      console.error('Error resetting publication count:', error);
-      toast.error("Erreur lors de la remise à zéro");
-    } finally {
-      setIsResetting(false);
-    }
-  };
+  const hasChanges = localLimit !== stats.maxLimit;
 
   if (user.role !== 'client') {
     return null;
@@ -79,94 +45,90 @@ const PublicationLimitsField: React.FC<PublicationLimitsFieldProps> = ({
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Objectif de publication
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5" />
+            Objectifs de publication
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-            <div className="h-2 bg-gray-200 rounded w-full"></div>
+          <div className="flex items-center justify-center p-4">
+            <Loader2 className="h-6 w-6 animate-spin" />
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  const percentage = getProgressPercentage();
-
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <TrendingUp className="h-4 w-4" />
-          Objectif de publication mensuelle
+        <CardTitle className="flex items-center gap-2">
+          <Target className="h-5 w-5" />
+          Objectifs de publication
         </CardTitle>
+        <CardDescription>
+          Suivez les objectifs mensuels de publication pour cet utilisateur
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Current stats */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span>Publications ce mois-ci:</span>
-            <Badge variant="outline">
-              {stats.publishedCount}/{stats.maxLimit}
-            </Badge>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="text-center p-3 bg-blue-50 rounded-lg">
+            <div className="text-2xl font-bold text-blue-600">{stats.publishedCount}</div>
+            <div className="text-sm text-blue-600">Publications ce mois</div>
           </div>
-          <Progress value={percentage} className="h-2" />
-          <div className="text-xs text-muted-foreground">
-            {stats.remaining} publication{stats.remaining > 1 ? 's' : ''} restante{stats.remaining > 1 ? 's' : ''}
+          <div className="text-center p-3 bg-green-50 rounded-lg">
+            <div className="text-2xl font-bold text-green-600">{stats.remaining}</div>
+            <div className="text-sm text-green-600">Restantes</div>
+          </div>
+          <div className="text-center p-3 bg-purple-50 rounded-lg">
+            <div className="text-2xl font-bold text-purple-600">{stats.maxLimit}</div>
+            <div className="text-sm text-purple-600">Objectif actuel</div>
           </div>
         </div>
 
-        {/* Admin controls */}
-        <div className="space-y-3 pt-2 border-t">
-          <Label htmlFor="publication-limit" className="text-sm font-medium">
-            Objectif mensuel
-          </Label>
+        <div className="space-y-2">
+          <label htmlFor="publicationLimit" className="text-sm font-medium">
+            Objectif mensuel de publications
+          </label>
           <div className="flex gap-2">
             <Input
-              id="publication-limit"
+              id="publicationLimit"
               type="number"
               min="1"
               max="100"
-              value={newLimit}
-              onChange={(e) => setNewLimit(Number(e.target.value))}
+              value={localLimit}
+              onChange={(e) => setLocalLimit(Number(e.target.value))}
               className="flex-1"
             />
-            <Button
-              onClick={handleUpdateLimit}
-              disabled={isSaving || isUpdating || newLimit === stats.maxLimit}
-              size="sm"
-              variant="outline"
+            <Button 
+              onClick={handleSaveLimit}
+              disabled={!hasChanges || isSaving || isUpdating}
+              variant={hasChanges ? "default" : "outline"}
             >
-              <Save className="h-4 w-4 mr-1" />
-              {isSaving ? "..." : "Sauver"}
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sauvegarde...
+                </>
+              ) : (
+                "Sauvegarder"
+              )}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Définit l'objectif de publications à atteindre par mois
-          </p>
-
-          {/* Reset counter button - Always visible for testing */}
-          <div className="pt-2 border-t">
-            <Label className="text-sm font-medium mb-2 block">
-              Actions
-            </Label>
-            <Button
-              onClick={handleResetCount}
-              disabled={isResetting || isUpdating}
-              size="sm"
-              variant="outline"
-              className="w-full"
-            >
-              <RotateCcw className="h-4 w-4 mr-2" />
-              {isResetting ? "Remise à zéro..." : "Remettre le compteur à 0"}
-            </Button>
-            <p className="text-xs text-muted-foreground mt-2">
-              Remet le compteur de publications du mois actuel à zéro
+          {hasChanges && (
+            <p className="text-sm text-orange-600">
+              Modifications non sauvegardées
             </p>
-          </div>
+          )}
+        </div>
+
+        <div className="bg-gray-50 p-3 rounded-lg">
+          <h4 className="text-sm font-medium mb-2">Informations</h4>
+          <ul className="text-sm text-gray-600 space-y-1">
+            <li>• Les objectifs sont indicatifs et n'empêchent pas la publication</li>
+            <li>• Ils aident à suivre la performance mensuelle</li>
+            <li>• Le compteur se remet à zéro chaque mois</li>
+          </ul>
         </div>
       </CardContent>
     </Card>
