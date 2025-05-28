@@ -10,8 +10,8 @@ const Header = () => {
 
   return (
     <>
-      {/* Header transparent pour mobile et desktop */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-transparent">
+      {/* Header avec fond semi-transparent stable pour éviter le scintillement */}
+      <header className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-100 dark:bg-gray-900/95 dark:border-gray-800">
         <div className="mx-auto max-w-screen-xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             {/* Menu hamburger à gauche pour mobile uniquement */}
