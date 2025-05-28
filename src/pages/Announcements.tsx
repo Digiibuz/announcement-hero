@@ -13,6 +13,7 @@ import { Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Announcement } from "@/types/announcement";
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
+import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
 import { deleteAnnouncement as apiDeleteAnnouncement } from "@/api/announcementApi";
 import FloatingActionButton from "@/components/ui/FloatingActionButton";
 import { useIsMobile } from "@/hooks/use-media-query";
@@ -31,11 +32,15 @@ const Announcements = () => {
   const [filter, setFilter] = useState({
     search: "",
     status: "all",
+    wordpressSite: "all",
   });
   const viewMode = "grid";
   
-  // Get WordPress categories - réactivation du refetch
+  // Get WordPress categories
   const { categories, refetch: refetchCategories } = useWordPressCategories();
+  
+  // Get WordPress configs for site info
+  const { configs: wordpressConfigs } = useWordPressConfigs();
 
   useEffect(() => {
     if (user?.wordpressConfigId) {
@@ -53,14 +58,20 @@ const Announcements = () => {
     queryClient.invalidateQueries({ queryKey: ["announcements"] });
   }, [user?.id, isImpersonating, queryClient]);
 
-  // Fetch announcements - réactivation partielle des refetch pour éviter les pages blanches
+  // Fetch announcements
   const { data: announcements, isLoading, refetch } = useQuery({
     queryKey: ["announcements", user?.id, isAdmin],
     queryFn: async () => {
       let query = supabase
         .from("announcements")
-        .select("*")
-        .order('created_at', { ascending: false }); // Tri des plus récentes aux plus anciennes
+        .select(`
+          *,
+          profiles!announcements_user_id_fkey (
+            wordpress_config_id,
+            name
+          )
+        `)
+        .order('created_at', { ascending: false });
       
       // Si on n'est pas admin OU si on est en mode impersonation, filtrer par user_id
       if (!isAdmin || isImpersonating) {
@@ -82,12 +93,33 @@ const Announcements = () => {
       }
       
       return data.map(announcement => {
-        const processed: Announcement = { ...announcement } as Announcement;
+        const processed: Announcement & { 
+          wordpress_site_name?: string;
+          user_wordpress_config_id?: string;
+          user_name?: string;
+        } = { ...announcement } as any;
         
         if (processed.description) {
           processed.description = stripHtmlTags(processed.description);
         }
         
+        // Ajouter les informations du site WordPress depuis le profil utilisateur
+        if (announcement.profiles?.wordpress_config_id) {
+          processed.user_wordpress_config_id = announcement.profiles.wordpress_config_id;
+          const wordpressConfig = wordpressConfigs.find(
+            config => config.id === announcement.profiles.wordpress_config_id
+          );
+          if (wordpressConfig) {
+            processed.wordpress_site_name = wordpressConfig.name;
+          }
+        }
+        
+        // Ajouter le nom de l'utilisateur
+        if (announcement.profiles?.name) {
+          processed.user_name = announcement.profiles.name;
+        }
+        
+        // Traitement des catégories WordPress existant
         if (announcement.wordpress_category_id && categories) {
           const category = categories.find(
             c => c.id.toString() === announcement.wordpress_category_id
@@ -102,11 +134,11 @@ const Announcements = () => {
       });
     },
     enabled: !!user,
-    refetchOnWindowFocus: true, // Réactivé pour éviter les pages blanches
-    refetchOnMount: true,       // Réactivé pour assurer le chargement
-    refetchOnReconnect: false,  // Gardé désactivé pour éviter les refetch excessifs
-    staleTime: 30000,          // Cache pendant 30 secondes
-    gcTime: 5 * 60 * 1000,     // Garde en cache pendant 5 minutes
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    refetchOnReconnect: false,
+    staleTime: 30000,
+    gcTime: 5 * 60 * 1000,
   });
 
   // Filter announcements
@@ -115,13 +147,19 @@ const Announcements = () => {
       filter.search === "" || 
       announcement.title.toLowerCase().includes(filter.search.toLowerCase()) ||
       (announcement.description && announcement.description.toLowerCase().includes(filter.search.toLowerCase())) ||
-      (announcement.wordpress_category_name && announcement.wordpress_category_name.toLowerCase().includes(filter.search.toLowerCase()));
+      (announcement.wordpress_category_name && announcement.wordpress_category_name.toLowerCase().includes(filter.search.toLowerCase())) ||
+      ((announcement as any).wordpress_site_name && (announcement as any).wordpress_site_name.toLowerCase().includes(filter.search.toLowerCase())) ||
+      ((announcement as any).user_name && (announcement as any).user_name.toLowerCase().includes(filter.search.toLowerCase()));
     
     const matchesStatus = 
       filter.status === "all" || 
       announcement.status === filter.status;
     
-    return matchesSearch && matchesStatus;
+    const matchesSite = 
+      filter.wordpressSite === "all" || 
+      (announcement as any).user_wordpress_config_id === filter.wordpressSite;
+    
+    return matchesSearch && matchesStatus && matchesSite;
   });
 
   useEffect(() => {

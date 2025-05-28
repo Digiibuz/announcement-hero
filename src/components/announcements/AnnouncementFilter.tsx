@@ -9,10 +9,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import WordPressSiteFilter from "./WordPressSiteFilter";
 
 interface FilterState {
   search: string;
   status: string;
+  wordpressSite?: string;
 }
 
 interface AnnouncementFilterProps {
@@ -21,6 +24,11 @@ interface AnnouncementFilterProps {
 }
 
 const AnnouncementFilter = ({ filter, setFilter }: AnnouncementFilterProps) => {
+  const { isAdmin, isImpersonating } = useAuth();
+  
+  // Afficher le filtre par site seulement si on est admin et pas en mode impersonation
+  const showSiteFilter = isAdmin && !isImpersonating;
+
   return (
     <div className="flex flex-col md:flex-row gap-4 mb-6">
       <div className="flex-1 relative">
@@ -32,6 +40,14 @@ const AnnouncementFilter = ({ filter, setFilter }: AnnouncementFilterProps) => {
           className="pl-9"
         />
       </div>
+      
+      {showSiteFilter && (
+        <WordPressSiteFilter
+          selectedSite={filter.wordpressSite || "all"}
+          onSiteChange={(siteId) => setFilter({ ...filter, wordpressSite: siteId })}
+        />
+      )}
+      
       <div className="w-full md:w-[180px]">
         <Select
           value={filter.status}
