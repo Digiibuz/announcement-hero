@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { ArrowLeft, Send, Loader2 } from "lucide-react";
+import { ArrowLeft, Send, Loader2, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -15,13 +15,36 @@ const ForgotPassword = () => {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [rateLimitSeconds, setRateLimitSeconds] = useState(0);
   const navigate = useNavigate();
+
+  // Décompte pour la limitation de taux
+  useEffect(() => {
+    if (rateLimitSeconds > 0) {
+      const timer = setInterval(() => {
+        setRateLimitSeconds(prev => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [rateLimitSeconds]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!email.trim()) {
       toast.error("Veuillez saisir une adresse email");
+      return;
+    }
+
+    if (rateLimitSeconds > 0) {
+      toast.error(`Veuillez attendre ${rateLimitSeconds} secondes avant de réessayer`);
       return;
     }
     
@@ -39,6 +62,14 @@ const ForgotPassword = () => {
       });
       
       if (error) {
+        // Gérer spécifiquement l'erreur de limitation de taux
+        if (error.message.includes("For security purposes, you can only request this after")) {
+          const match = error.message.match(/after (\d+) seconds/);
+          const seconds = match ? parseInt(match[1]) : 60;
+          setRateLimitSeconds(seconds);
+          toast.error(`Trop de demandes. Veuillez attendre ${seconds} secondes.`);
+          return;
+        }
         throw error;
       }
       
@@ -92,34 +123,54 @@ const ForgotPassword = () => {
                 </AlertDescription>
               </Alert>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="email@example.com"
-                    required
-                    disabled={isLoading}
-                  />
-                </div>
+              <>
+                {rateLimitSeconds > 0 && (
+                  <Alert className="mb-4 bg-orange-50 border-orange-200">
+                    <Clock className="h-4 w-4" />
+                    <AlertDescription>
+                      Trop de demandes d'envoi. Veuillez attendre <strong>{rateLimitSeconds}</strong> secondes avant de réessayer.
+                    </AlertDescription>
+                  </Alert>
+                )}
                 
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? (
-                    <div className="flex items-center">
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Envoi en cours...
-                    </div>
-                  ) : (
-                    <>
-                      <Send className="mr-2 h-4 w-4" />
-                      Envoyer le lien
-                    </>
-                  )}
-                </Button>
-              </form>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="email@example.com"
+                      required
+                      disabled={isLoading || rateLimitSeconds > 0}
+                    />
+                  </div>
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    disabled={isLoading || rateLimitSeconds > 0}
+                  >
+                    {isLoading ? (
+                      <div className="flex items-center">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Envoi en cours...
+                      </div>
+                    ) : rateLimitSeconds > 0 ? (
+                      <div className="flex items-center">
+                        <Clock className="mr-2 h-4 w-4" />
+                        Attendre {rateLimitSeconds}s
+                      </div>
+                    ) : (
+                      <>
+                        <Send className="mr-2 h-4 w-4" />
+                        Envoyer le lien
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </>
             )}
           </CardContent>
           
