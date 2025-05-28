@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -34,16 +33,31 @@ const PublicationCounter = ({ className }: PublicationCounterProps) => {
   } = usePublicationLimits();
 
   const percentage = getProgressPercentage();
-  const statusColor = getStatusColor();
-  const badgeText = getBadgeText();
-
-  const getCardBorderClass = () => {
-    if (percentage >= 90) return "border-red-200 shadow-red-100/50";
-    if (percentage >= 70) return "border-orange-200 shadow-orange-100/50";
-    return "border-green-200 shadow-green-100/50";
+  
+  // Nouvelle logique inversée pour les couleurs
+  const getInvertedStatusColor = () => {
+    if (percentage >= 80) return "green"; // Proche ou atteint l'objectif = vert
+    if (percentage >= 40) return "orange"; // Progression moyenne = orange
+    return "red"; // Peu de publications = rouge
   };
 
-  const shouldShowSparkles = percentage >= 80 || badgeText === "Expert";
+  const getInvertedBadgeText = () => {
+    if (percentage >= 100) return "Objectif atteint";
+    if (percentage >= 80) return "Excellent";
+    if (percentage >= 40) return "En progression";
+    return "À améliorer";
+  };
+
+  const statusColor = getInvertedStatusColor();
+  const badgeText = getInvertedBadgeText();
+
+  const getCardBorderClass = () => {
+    if (percentage >= 80) return "border-green-200 shadow-green-100/50";
+    if (percentage >= 40) return "border-orange-200 shadow-orange-100/50";
+    return "border-red-200 shadow-red-100/50";
+  };
+
+  const shouldShowSparkles = percentage >= 80 || badgeText === "Excellent";
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current || !isHovering) return;
@@ -225,7 +239,7 @@ const PublicationCounter = ({ className }: PublicationCounterProps) => {
               />
               
               {/* Pulse dots on high progress */}
-              {percentage >= 70 && (
+              {percentage >= 80 && (
                 <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
                   <div className="w-2 h-2 bg-white/80 rounded-full animate-ping" />
                 </div>
@@ -249,7 +263,7 @@ const PublicationCounter = ({ className }: PublicationCounterProps) => {
           </div>
         </div>
 
-        {/* Status text - MODIFIED HERE */}
+        {/* Status text */}
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">
             {stats.remaining > 0 
@@ -257,22 +271,22 @@ const PublicationCounter = ({ className }: PublicationCounterProps) => {
               : "Objectif atteint ce mois-ci"
             }
           </span>
-          {percentage >= 90 && stats.remaining > 0 && (
-            <div className="flex items-center gap-1 text-orange-600 animate-pulse">
+          {percentage >= 80 && stats.remaining > 0 && (
+            <div className="flex items-center gap-1 text-green-600 animate-pulse">
               <Sparkles className="h-4 w-4" />
-              <span className="font-medium">Presque fini !</span>
+              <span className="font-medium">Excellent travail !</span>
             </div>
           )}
         </div>
 
         {/* Achievement message */}
         {percentage === 100 && (
-          <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-3 text-center">
-            <div className="flex items-center justify-center gap-2 text-purple-700 font-medium">
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-3 text-center">
+            <div className="flex items-center justify-center gap-2 text-green-700 font-medium">
               <Award className="h-4 w-4" />
               Objectif mensuel atteint ! 🎉
             </div>
-            <p className="text-xs text-purple-600 mt-1">
+            <p className="text-xs text-green-600 mt-1">
               Nouveau quota disponible le mois prochain
             </p>
           </div>
