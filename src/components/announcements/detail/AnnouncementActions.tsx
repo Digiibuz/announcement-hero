@@ -184,12 +184,8 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
         postUrl = `${siteUrl}/?p=${wordpressPostId}`;
       }
       
-      // Sur mobile, utiliser location.href pour éviter les blocages de popup
-      if (isMobile) {
-        window.location.href = postUrl;
-      } else {
-        window.open(postUrl, '_blank');
-      }
+      // Ouvrir dans une nouvelle fenêtre pour tous les appareils
+      window.open(postUrl, '_blank', 'noopener,noreferrer');
     } catch (error) {
       console.error("Error getting WordPress config:", error);
       toast({
