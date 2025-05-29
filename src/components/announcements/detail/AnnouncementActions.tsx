@@ -24,6 +24,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
 import { usePublicationLimits } from "@/hooks/usePublicationLimits";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface AnnouncementActionsProps {
   id: string;
@@ -46,6 +47,7 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
   const { user } = useAuth();
   const { configs } = useWordPressConfigs();
   const { canPublish, stats } = usePublicationLimits();
+  const isMobile = useIsMobile();
 
   const deleteAnnouncement = async () => {
     try {
@@ -182,7 +184,12 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
         postUrl = `${siteUrl}/?p=${wordpressPostId}`;
       }
       
-      window.open(postUrl, '_blank');
+      // Sur mobile, utiliser location.href pour éviter les blocages de popup
+      if (isMobile) {
+        window.location.href = postUrl;
+      } else {
+        window.open(postUrl, '_blank');
+      }
     } catch (error) {
       console.error("Error getting WordPress config:", error);
       toast({
