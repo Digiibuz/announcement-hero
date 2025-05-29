@@ -1,4 +1,5 @@
 
+
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Trash2, Send, Archive, ExternalLink } from "lucide-react";
@@ -131,7 +132,7 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
     // Sur mobile, ouvrir immédiatement une nouvelle fenêtre vide pour contourner les restrictions
     let newWindow = null;
     if (isMobile) {
-      newWindow = window.open('about:blank', '_blank', 'noopener,noreferrer');
+      newWindow = window.open('', '_blank', 'noopener,noreferrer');
       
       if (!newWindow) {
         toast({
@@ -205,8 +206,46 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
       
       // Ouvrir selon le contexte (mobile vs desktop)
       if (isMobile && newWindow) {
-        // Sur mobile, rediriger la fenêtre déjà ouverte
-        newWindow.location.href = postUrl;
+        // Sur mobile, écrire du HTML avec redirection automatique
+        newWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <title>Redirection...</title>
+              <meta http-equiv="refresh" content="0;url=${postUrl}">
+              <style>
+                body { 
+                  font-family: Arial, sans-serif; 
+                  text-align: center; 
+                  padding: 50px; 
+                  background: #f5f5f5;
+                }
+                .loader { 
+                  border: 4px solid #f3f3f3; 
+                  border-top: 4px solid #3498db; 
+                  border-radius: 50%; 
+                  width: 50px; 
+                  height: 50px; 
+                  animation: spin 1s linear infinite; 
+                  margin: 20px auto;
+                }
+                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+              </style>
+            </head>
+            <body>
+              <div class="loader"></div>
+              <h2>Redirection en cours...</h2>
+              <p>Si la redirection ne fonctionne pas, <a href="${postUrl}">cliquez ici</a></p>
+              <script>
+                setTimeout(function() {
+                  window.location.href = "${postUrl}";
+                }, 100);
+              </script>
+            </body>
+          </html>
+        `);
+        newWindow.document.close();
       } else {
         // Sur desktop, ouvrir normalement
         window.open(postUrl, '_blank', 'noopener,noreferrer');
