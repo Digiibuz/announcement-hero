@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Trash2, Send, Archive, ExternalLink } from "lucide-react";
@@ -127,16 +128,19 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
       return;
     }
 
-    // Ouvrir immédiatement une nouvelle fenêtre vide pour contourner les restrictions mobiles
-    const newWindow = window.open('about:blank', '_blank', 'noopener,noreferrer');
-    
-    if (!newWindow) {
-      toast({
-        title: "Erreur",
-        description: "Impossible d'ouvrir une nouvelle fenêtre. Vérifiez que les popups ne sont pas bloqués.",
-        variant: "destructive",
-      });
-      return;
+    // Sur mobile, ouvrir immédiatement une nouvelle fenêtre vide pour contourner les restrictions
+    let newWindow = null;
+    if (isMobile) {
+      newWindow = window.open('about:blank', '_blank', 'noopener,noreferrer');
+      
+      if (!newWindow) {
+        toast({
+          title: "Erreur",
+          description: "Impossible d'ouvrir une nouvelle fenêtre. Vérifiez que les popups ne sont pas bloqués.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     try {
@@ -148,7 +152,7 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
         .single();
 
       if (error || !announcement) {
-        newWindow.close();
+        if (newWindow) newWindow.close();
         toast({
           title: "Erreur",
           description: "Impossible de récupérer les informations de l'annonce.",
@@ -165,7 +169,7 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
         .single();
 
       if (profileError || !userProfile?.wordpress_config_id) {
-        newWindow.close();
+        if (newWindow) newWindow.close();
         toast({
           title: "Erreur",
           description: "Impossible de trouver la configuration WordPress de l'utilisateur.",
@@ -180,7 +184,7 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
       );
 
       if (!wordpressConfig) {
-        newWindow.close();
+        if (newWindow) newWindow.close();
         toast({
           title: "Erreur",
           description: "Configuration WordPress introuvable.",
@@ -199,11 +203,17 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
         postUrl = `${siteUrl}/?p=${wordpressPostId}`;
       }
       
-      // Rediriger la fenêtre vers l'URL calculée
-      newWindow.location.href = postUrl;
+      // Ouvrir selon le contexte (mobile vs desktop)
+      if (isMobile && newWindow) {
+        // Sur mobile, rediriger la fenêtre déjà ouverte
+        newWindow.location.href = postUrl;
+      } else {
+        // Sur desktop, ouvrir normalement
+        window.open(postUrl, '_blank', 'noopener,noreferrer');
+      }
     } catch (error) {
       console.error("Error getting WordPress config:", error);
-      newWindow.close();
+      if (newWindow) newWindow.close();
       toast({
         title: "Erreur",
         description: "Erreur lors de la récupération de la configuration WordPress.",
