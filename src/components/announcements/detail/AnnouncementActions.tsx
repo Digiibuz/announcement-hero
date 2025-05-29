@@ -127,6 +127,18 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
       return;
     }
 
+    // Ouvrir immédiatement une nouvelle fenêtre vide pour contourner les restrictions mobiles
+    const newWindow = window.open('about:blank', '_blank', 'noopener,noreferrer');
+    
+    if (!newWindow) {
+      toast({
+        title: "Erreur",
+        description: "Impossible d'ouvrir une nouvelle fenêtre. Vérifiez que les popups ne sont pas bloqués.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       // Récupérer les informations de l'annonce pour obtenir l'user_id
       const { data: announcement, error } = await supabase
@@ -136,6 +148,7 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
         .single();
 
       if (error || !announcement) {
+        newWindow.close();
         toast({
           title: "Erreur",
           description: "Impossible de récupérer les informations de l'annonce.",
@@ -152,6 +165,7 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
         .single();
 
       if (profileError || !userProfile?.wordpress_config_id) {
+        newWindow.close();
         toast({
           title: "Erreur",
           description: "Impossible de trouver la configuration WordPress de l'utilisateur.",
@@ -166,6 +180,7 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
       );
 
       if (!wordpressConfig) {
+        newWindow.close();
         toast({
           title: "Erreur",
           description: "Configuration WordPress introuvable.",
@@ -184,10 +199,11 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
         postUrl = `${siteUrl}/?p=${wordpressPostId}`;
       }
       
-      // Ouvrir dans une nouvelle fenêtre pour tous les appareils
-      window.open(postUrl, '_blank', 'noopener,noreferrer');
+      // Rediriger la fenêtre vers l'URL calculée
+      newWindow.location.href = postUrl;
     } catch (error) {
       console.error("Error getting WordPress config:", error);
+      newWindow.close();
       toast({
         title: "Erreur",
         description: "Erreur lors de la récupération de la configuration WordPress.",
