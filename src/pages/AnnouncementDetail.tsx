@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import PageLayout from "@/components/ui/layout/PageLayout";
@@ -36,6 +35,7 @@ const AnnouncementDetail = () => {
       status={announcement.status}
       wordpressPostId={announcement.wordpress_post_id}
       seoSlug={announcement.seo_slug}
+      wordpressUrl={announcement.wordpress_url}
     />
   ) : null;
 

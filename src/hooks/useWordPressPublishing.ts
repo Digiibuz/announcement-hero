@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Announcement } from "@/types/announcement";
@@ -334,23 +335,34 @@ export const useWordPressPublishing = () => {
         const wordpressPostId = wpResponseData.id;
         console.log("WordPress post ID received:", wordpressPostId);
         
-        // Update the announcement in Supabase with the WordPress post ID (only if it's a new post)
+        // Calculate the WordPress URL
+        let wordpressUrl;
+        if (announcement.seo_slug) {
+          wordpressUrl = `${siteUrl}/${announcement.seo_slug}`;
+        } else {
+          wordpressUrl = `${siteUrl}/?p=${wordpressPostId}`;
+        }
+        
+        // Update the announcement in Supabase with the WordPress post ID and URL
+        const updateData: any = {
+          is_divipixel: useCustomTaxonomy,
+          wordpress_url: wordpressUrl
+        };
+        
+        // Only update wordpress_post_id for new posts
         if (!isUpdate) {
-          const { error: updateError } = await supabase
-            .from("announcements")
-            .update({ 
-              wordpress_post_id: wordpressPostId,
-              is_divipixel: useCustomTaxonomy 
-            })
-            .eq("id", announcement.id);
-            
-          if (updateError) {
-            console.error("Error updating announcement with WordPress post ID:", updateError);
-            updatePublishingStep("database", "error", "Erreur de mise à jour de la base de données");
-            toast.error("L'annonce a été publiée sur WordPress mais l'ID n'a pas pu être enregistré");
-          } else {
-            updatePublishingStep("database", "success", "Mise à jour finalisée", 100);
-          }
+          updateData.wordpress_post_id = wordpressPostId;
+        }
+        
+        const { error: updateError } = await supabase
+          .from("announcements")
+          .update(updateData)
+          .eq("id", announcement.id);
+          
+        if (updateError) {
+          console.error("Error updating announcement with WordPress data:", updateError);
+          updatePublishingStep("database", "error", "Erreur de mise à jour de la base de données");
+          toast.error("L'annonce a été publiée sur WordPress mais les données n'ont pas pu être enregistrées");
         } else {
           updatePublishingStep("database", "success", "Mise à jour finalisée", 100);
         }

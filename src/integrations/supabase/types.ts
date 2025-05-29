@@ -26,6 +26,7 @@ export type Database = {
           user_id: string
           wordpress_category_id: string | null
           wordpress_post_id: number | null
+          wordpress_url: string | null
         }
         Insert: {
           created_at?: string
@@ -43,6 +44,7 @@ export type Database = {
           user_id: string
           wordpress_category_id?: string | null
           wordpress_post_id?: number | null
+          wordpress_url?: string | null
         }
         Update: {
           created_at?: string
@@ -60,6 +62,7 @@ export type Database = {
           user_id?: string
           wordpress_category_id?: string | null
           wordpress_post_id?: number | null
+          wordpress_url?: string | null
         }
         Relationships: []
       }

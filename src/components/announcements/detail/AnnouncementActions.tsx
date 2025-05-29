@@ -1,8 +1,6 @@
-
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Trash2, Send, Archive, ExternalLink } from "lucide-react";
+import { Trash2, Send, ExternalLink } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,23 +21,22 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
 import { usePublicationLimits } from "@/hooks/usePublicationLimits";
-import { supabase } from "@/integrations/supabase/client";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 interface AnnouncementActionsProps {
   id: string;
   status: string;
   wordpressPostId?: number | null;
   seoSlug?: string;
+  wordpressUrl?: string; // Nouvelle prop pour l'URL stockée
 }
 
 const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({ 
   id, 
   status, 
   wordpressPostId, 
-  seoSlug 
+  seoSlug,
+  wordpressUrl
 }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -47,9 +44,7 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { configs } = useWordPressConfigs();
   const { canPublish, stats } = usePublicationLimits();
-  const isMobile = useIsMobile();
 
   const deleteAnnouncement = async () => {
     try {
@@ -119,8 +114,8 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
     }
   };
 
-  const viewOnWordPress = async () => {
-    if (!wordpressPostId) {
+  const viewOnWordPress = () => {
+    if (!wordpressUrl) {
       toast({
         title: "Erreur",
         description: "Impossible de trouver le lien vers l'annonce.",
@@ -129,142 +124,14 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
       return;
     }
 
-    // Sur mobile, ouvrir immédiatement une nouvelle fenêtre vide pour contourner les restrictions
-    let newWindow = null;
-    if (isMobile) {
-      newWindow = window.open('', '_blank', 'noopener,noreferrer');
-      
-      if (!newWindow) {
-        toast({
-          title: "Erreur",
-          description: "Impossible d'ouvrir une nouvelle fenêtre. Vérifiez que les popups ne sont pas bloqués.",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-
-    try {
-      // Récupérer les informations de l'annonce pour obtenir l'user_id
-      const { data: announcement, error } = await supabase
-        .from("announcements")
-        .select("user_id")
-        .eq("id", id)
-        .single();
-
-      if (error || !announcement) {
-        if (newWindow) newWindow.close();
-        toast({
-          title: "Erreur",
-          description: "Impossible de récupérer les informations de l'annonce.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Récupérer le profil de l'utilisateur qui a créé l'annonce
-      const { data: userProfile, error: profileError } = await supabase
-        .from("profiles")
-        .select("wordpress_config_id")
-        .eq("id", announcement.user_id)
-        .single();
-
-      if (profileError || !userProfile?.wordpress_config_id) {
-        if (newWindow) newWindow.close();
-        toast({
-          title: "Erreur",
-          description: "Impossible de trouver la configuration WordPress de l'utilisateur.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Trouver la configuration WordPress correspondante
-      const wordpressConfig = configs.find(
-        config => config.id === userProfile.wordpress_config_id
-      );
-
-      if (!wordpressConfig) {
-        if (newWindow) newWindow.close();
-        toast({
-          title: "Erreur",
-          description: "Configuration WordPress introuvable.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const siteUrl = wordpressConfig.site_url.replace(/\/+$/, ''); // Remove trailing slashes
-      
-      // Build the URL: use seoSlug directly without /annonces/ prefix
-      let postUrl;
-      if (seoSlug) {
-        postUrl = `${siteUrl}/${seoSlug}`;
-      } else {
-        postUrl = `${siteUrl}/?p=${wordpressPostId}`;
-      }
-      
-      // Ouvrir selon le contexte (mobile vs desktop)
-      if (isMobile && newWindow) {
-        // Sur mobile, écrire du HTML avec redirection automatique
-        newWindow.document.write(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <meta charset="utf-8">
-              <title>Redirection...</title>
-              <meta http-equiv="refresh" content="0;url=${postUrl}">
-              <style>
-                body { 
-                  font-family: Arial, sans-serif; 
-                  text-align: center; 
-                  padding: 50px; 
-                  background: #f5f5f5;
-                }
-                .loader { 
-                  border: 4px solid #f3f3f3; 
-                  border-top: 4px solid #3498db; 
-                  border-radius: 50%; 
-                  width: 50px; 
-                  height: 50px; 
-                  animation: spin 1s linear infinite; 
-                  margin: 20px auto;
-                }
-                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-              </style>
-            </head>
-            <body>
-              <div class="loader"></div>
-              <h2>Redirection en cours...</h2>
-              <p>Si la redirection ne fonctionne pas, <a href="${postUrl}">cliquez ici</a></p>
-              <script>
-                setTimeout(function() {
-                  window.location.href = "${postUrl}";
-                }, 100);
-              </script>
-            </body>
-          </html>
-        `);
-        newWindow.document.close();
-      } else {
-        // Sur desktop, ouvrir normalement
-        window.open(postUrl, '_blank', 'noopener,noreferrer');
-      }
-    } catch (error) {
-      console.error("Error getting WordPress config:", error);
-      if (newWindow) newWindow.close();
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de la récupération de la configuration WordPress.",
-        variant: "destructive",
-      });
-    }
+    // Ouvrir directement l'URL stockée - simple et efficace !
+    window.open(wordpressUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
     <div className="flex flex-wrap gap-2 items-center">
-      {/* View on WordPress button - only show if the post is published and has a WordPress post ID */}
-      {status === "published" && wordpressPostId && (
+      {/* View on WordPress button - only show if the post is published and has a WordPress URL */}
+      {status === "published" && wordpressUrl && (
         <Button 
           onClick={viewOnWordPress}
           variant="outline"

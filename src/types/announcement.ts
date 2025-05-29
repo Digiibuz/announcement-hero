@@ -12,6 +12,7 @@ export type Announcement = {
   wordpress_category_id?: string;
   wordpress_category_name?: string;
   wordpress_post_id?: number; // Ajout de l'ID du post WordPress
+  wordpress_url?: string; // Ajout de l'URL du post WordPress
   publish_date?: string;
   seo_title?: string;
   seo_description?: string;
