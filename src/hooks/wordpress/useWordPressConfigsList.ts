@@ -61,6 +61,8 @@ export const useWordPressConfigsList = () => {
         console.log('🔍 Commercial clients IDs:', clientIds);
         
         if (clientIds.length > 0) {
+          console.log('🔍 About to fetch profiles for client IDs:', clientIds);
+          
           // Récupérer TOUS les profils clients, puis filtrer côté client
           const { data: clientProfiles, error: profilesError } = await supabase
             .from('profiles')
@@ -73,6 +75,7 @@ export const useWordPressConfigsList = () => {
           }
           
           console.log('🔍 Raw client profiles:', clientProfiles);
+          console.log('🔍 Number of profiles returned:', clientProfiles?.length || 0);
           
           // Debug: vérifier chaque profil individuellement
           clientProfiles?.forEach((profile, index) => {
@@ -101,6 +104,8 @@ export const useWordPressConfigsList = () => {
           console.log('🔍 WordPress config IDs for clients:', wordpressConfigIds);
           
           if (wordpressConfigIds.length > 0) {
+            console.log('🔍 About to fetch WordPress configs for IDs:', wordpressConfigIds);
+            
             // Récupérer les configurations WordPress
             const { data, error } = await supabase
               .from('wordpress_configs')
