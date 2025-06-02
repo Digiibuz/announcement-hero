@@ -39,7 +39,7 @@ serve(async (req) => {
       );
     }
     
-    const { email, password, name, role, wordpressConfigId } = requestData;
+    const { email, password, name, role, wordpressConfigId, commercialId } = requestData;
     
     // Validate required fields
     if (!email || !password || !name || !role) {
@@ -52,12 +52,28 @@ serve(async (req) => {
       );
     }
 
-    // Sanitize wordpressConfigId - if empty string or not provided, set to null
+    // Validate role
+    const validRoles = ['admin', 'editor', 'client', 'commercial'];
+    if (!validRoles.includes(role)) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Rôle invalide",
+          details: `Le rôle doit être l'un des suivants: ${validRoles.join(', ')}` 
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
+
+    // Sanitize wordpressConfigId and commercialId - if empty string or not provided, set to null
     const sanitizedWordpressConfigId = wordpressConfigId && wordpressConfigId.trim() !== "" 
       ? wordpressConfigId 
       : null;
     
-    console.log(`Processing user creation: Email: ${email}, Name: ${name}, Role: ${role}, WordPress Config ID: ${sanitizedWordpressConfigId}`);
+    const sanitizedCommercialId = commercialId && commercialId.trim() !== "" 
+      ? commercialId 
+      : null;
+    
+    console.log(`Processing user creation: Email: ${email}, Name: ${name}, Role: ${role}, WordPress Config ID: ${sanitizedWordpressConfigId}, Commercial ID: ${sanitizedCommercialId}`);
 
     // Step 1: Check if email already exists in auth.users
     try {
@@ -138,6 +154,7 @@ serve(async (req) => {
           name,
           role,
           wordpressConfigId: sanitizedWordpressConfigId,
+          commercialId: sanitizedCommercialId,
         }
       });
 
@@ -172,7 +189,8 @@ serve(async (req) => {
             email: email,
             name: name,
             role: role,
-            wordpress_config_id: sanitizedWordpressConfigId
+            wordpress_config_id: sanitizedWordpressConfigId,
+            commercial_id: sanitizedCommercialId
           })
           .eq('id', userId);
 
@@ -196,7 +214,8 @@ serve(async (req) => {
             email: email,
             name: name,
             role: role,
-            wordpress_config_id: sanitizedWordpressConfigId
+            wordpress_config_id: sanitizedWordpressConfigId,
+            commercial_id: sanitizedCommercialId
           });
 
         if (profileError) {
