@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
@@ -76,15 +75,20 @@ const Announcements = () => {
         console.log('💼 Commercial mode: showing own announcements + clients announcements');
         
         // Récupérer les IDs des clients assignés à ce commercial via la table commercial_clients
-        const { data: commercialClients } = await supabase
+        const { data: commercialClients, error: clientsError } = await supabase
           .from('commercial_clients')
           .select('client_id')
           .eq('commercial_id', user?.id);
+        
+        if (clientsError) {
+          console.error('❌ Error fetching commercial clients:', clientsError);
+        }
         
         const clientIds = commercialClients?.map(relation => relation.client_id) || [];
         const allUserIds = [user?.id, ...clientIds];
         
         console.log('🔍 Commercial filtering for user IDs:', allUserIds);
+        console.log('📊 Commercial clients found:', commercialClients?.length || 0);
         query = query.in("user_id", allUserIds);
       }
       // Sinon (client ou mode impersonation), filtrer par user_id
@@ -105,6 +109,8 @@ const Announcements = () => {
       }
 
       if (!announcementsData) return [];
+
+      console.log('📊 Raw announcements fetched:', announcementsData.length);
 
       // Manually fetch profiles for the announcements
       const userIds = [...new Set(announcementsData.map(ann => ann.user_id))];
@@ -187,6 +193,12 @@ const Announcements = () => {
       (announcement as any).user_wordpress_config_id === filter.wordpressSite;
     
     return matchesSearch && matchesStatus && matchesSite;
+  });
+
+  console.log('📊 Announcements after filtering:', {
+    total: announcements?.length || 0,
+    filtered: filteredAnnouncements?.length || 0,
+    filter: filter
   });
 
   useEffect(() => {
