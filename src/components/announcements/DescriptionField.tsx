@@ -9,11 +9,13 @@ import { toast } from "sonner";
 import { AnnouncementFormData } from "./AnnouncementForm";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
 import useVoiceRecognition from "@/hooks/useVoiceRecognition";
 import SparklingStars from "@/components/ui/SparklingStars";
 import AILoadingOverlay from "@/components/ui/AILoadingOverlay";
 import AIGenerationOptions, { AIGenerationSettings } from "./AIGenerationOptions";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import "@/styles/editor.css";
 import "@/styles/sparkles.css";
 
@@ -36,6 +38,7 @@ const DescriptionField = ({
   const editorRef = useRef<HTMLDivElement>(null);
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const initialRenderRef = useRef(true);
+  const isMobile = useMediaQuery("(max-width: 767px)");
   
   // Add voice recognition integration
   const { isRecording, isListening, toggleVoiceRecording, isSupported } = useVoiceRecognition({
@@ -170,6 +173,19 @@ const DescriptionField = ({
     return () => subscription.unsubscribe();
   }, [form]);
 
+  const AIOptionsContent = () => (
+    <div className="space-y-3">
+      <h4 className="font-medium leading-none">Personnaliser la génération IA</h4>
+      <p className="text-sm text-muted-foreground">
+        Ajustez le ton et la longueur du contenu généré selon vos besoins.
+      </p>
+      <AIGenerationOptions 
+        settings={aiSettings}
+        onSettingsChange={setAISettings}
+      />
+    </div>
+  );
+
   return (
     <div className="space-y-2">
       {/* AI Loading Overlay */}
@@ -209,39 +225,69 @@ const DescriptionField = ({
             </Button>
           </div>
 
-          <Popover open={showAIOptions} onOpenChange={setShowAIOptions}>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <PopoverTrigger asChild>
-                    <Button 
-                      type="button" 
-                      size="sm" 
-                      variant="outline"
-                      className="flex items-center gap-1"
-                    >
-                      <Settings size={16} />
-                    </Button>
-                  </PopoverTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Options de génération IA</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <PopoverContent className="w-[500px]" align="end">
-              <div className="space-y-3">
-                <h4 className="font-medium leading-none">Personnaliser la génération IA</h4>
-                <p className="text-sm text-muted-foreground">
-                  Ajustez le ton et la longueur du contenu généré selon vos besoins.
-                </p>
-                <AIGenerationOptions 
-                  settings={aiSettings}
-                  onSettingsChange={setAISettings}
-                />
-              </div>
-            </PopoverContent>
-          </Popover>
+          {/* Responsive AI Options - Popover for desktop, Sheet for mobile */}
+          {isMobile ? (
+            <Sheet open={showAIOptions} onOpenChange={setShowAIOptions}>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <SheetTrigger asChild>
+                      <Button 
+                        type="button" 
+                        size="sm" 
+                        variant="outline"
+                        className="flex items-center gap-1"
+                      >
+                        <Settings size={16} />
+                      </Button>
+                    </SheetTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Options de génération IA</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <SheetContent side="bottom" className="h-auto max-h-[80vh]">
+                <SheetHeader className="text-left">
+                  <SheetTitle>Personnaliser la génération IA</SheetTitle>
+                  <SheetDescription>
+                    Ajustez le ton et la longueur du contenu généré selon vos besoins.
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="mt-6">
+                  <AIGenerationOptions 
+                    settings={aiSettings}
+                    onSettingsChange={setAISettings}
+                  />
+                </div>
+              </SheetContent>
+            </Sheet>
+          ) : (
+            <Popover open={showAIOptions} onOpenChange={setShowAIOptions}>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <PopoverTrigger asChild>
+                      <Button 
+                        type="button" 
+                        size="sm" 
+                        variant="outline"
+                        className="flex items-center gap-1"
+                      >
+                        <Settings size={16} />
+                      </Button>
+                    </PopoverTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Options de génération IA</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <PopoverContent className="w-[500px]" align="end">
+                <AIOptionsContent />
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
       </div>
       
