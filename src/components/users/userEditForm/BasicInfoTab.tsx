@@ -106,7 +106,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
                   <SelectContent>
                     <SelectItem value="none">Aucun commercial</SelectItem>
                     {isLoadingCommercials ? (
-                      <SelectItem value="" disabled>Chargement...</SelectItem>
+                      <SelectItem value="loading" disabled>Chargement...</SelectItem>
                     ) : (
                       commercials.map((commercial) => (
                         <SelectItem key={commercial.id} value={commercial.id}>
