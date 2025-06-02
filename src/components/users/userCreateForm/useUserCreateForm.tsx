@@ -6,14 +6,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formSchema, FormSchema } from "./UserCreateFormFields";
 import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
-import { useCommercials } from "@/hooks/useCommercials";
 
 export const useUserCreateForm = (onUserCreated: () => void) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { configs } = useWordPressConfigs();
-  const { commercials } = useCommercials();
 
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
@@ -23,7 +21,6 @@ export const useUserCreateForm = (onUserCreated: () => void) => {
       password: "",
       role: "client",
       wordpressConfigId: "",
-      commercialId: "",
     },
   });
 
@@ -33,14 +30,13 @@ export const useUserCreateForm = (onUserCreated: () => void) => {
       setErrorMessage(null);
       const toastId = toast.loading("Création de l'utilisateur en cours...");
       
-      // Préparer les données à envoyer
+      // Préparer les données à envoyer (sans commercialId)
       const userData = {
         email: values.email,
         name: values.name,
         password: values.password,
         role: values.role,
         wordpressConfigId: values.role === "client" && values.wordpressConfigId ? values.wordpressConfigId : "",
-        commercialId: values.role === "client" && values.commercialId ? values.commercialId : "",
       };
       
       console.log("Données envoyées pour création:", userData);
@@ -93,7 +89,6 @@ export const useUserCreateForm = (onUserCreated: () => void) => {
     isSubmitting,
     errorMessage,
     configs,
-    commercials,
     onSubmit,
   };
 };

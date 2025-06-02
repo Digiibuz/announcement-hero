@@ -15,12 +15,10 @@ import { UseFormReturn } from "react-hook-form";
 import { FormSchema } from "./UserCreateFormFields";
 import UserCreateFormFields from "./UserCreateFormFields";
 import { WordPressConfig } from "@/types/wordpress";
-import { UserProfile } from "@/types/auth";
 
 interface UserCreateFormDialogProps {
   form: UseFormReturn<FormSchema>;
   configs: WordPressConfig[];
-  commercials: UserProfile[];
   errorMessage: string | null;
   isSubmitting: boolean;
   onSubmit: (values: FormSchema) => Promise<void>;
@@ -29,7 +27,6 @@ interface UserCreateFormDialogProps {
 const UserCreateFormDialog: React.FC<UserCreateFormDialogProps> = ({
   form,
   configs,
-  commercials,
   errorMessage,
   isSubmitting,
   onSubmit
@@ -55,7 +52,6 @@ const UserCreateFormDialog: React.FC<UserCreateFormDialogProps> = ({
           <UserCreateFormFields 
             form={form} 
             configs={configs} 
-            commercials={commercials}
           />
           
           <DialogFooter>

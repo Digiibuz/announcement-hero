@@ -21,7 +21,6 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
     isSubmitting,
     errorMessage,
     configs,
-    commercials,
     onSubmit,
   } = useUserCreateForm(onUserCreated);
 
@@ -36,7 +35,6 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated }) => {
       <UserCreateFormDialog
         form={form}
         configs={configs}
-        commercials={commercials}
         errorMessage={errorMessage}
         isSubmitting={isSubmitting}
         onSubmit={onSubmit}
