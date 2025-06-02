@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
@@ -24,7 +25,7 @@ const stripHtmlTags = (html: string): string => {
 };
 
 const Announcements = () => {
-  const { isAdmin, user, isImpersonating, isCommercial } = useAuth();
+  const { isAdmin, user, isImpersonating } = useAuth();
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -59,7 +60,7 @@ const Announcements = () => {
 
   // Fetch announcements
   const { data: announcements, isLoading, refetch } = useQuery({
-    queryKey: ["announcements", user?.id, isAdmin, isCommercial],
+    queryKey: ["announcements", user?.id, isAdmin],
     queryFn: async () => {
       let query = supabase
         .from("announcements")
@@ -70,28 +71,7 @@ const Announcements = () => {
       if (isAdmin && !isImpersonating) {
         console.log('👑 Admin mode: showing all announcements');
       } 
-      // Si on est commercial, montrer ses annonces + celles de ses clients
-      else if (isCommercial && !isImpersonating) {
-        console.log('💼 Commercial mode: showing own announcements + clients announcements');
-        
-        // Récupérer les IDs des clients assignés à ce commercial via la table commercial_clients
-        const { data: commercialClients, error: clientsError } = await supabase
-          .from('commercial_clients')
-          .select('client_id')
-          .eq('commercial_id', user?.id);
-        
-        if (clientsError) {
-          console.error('❌ Error fetching commercial clients:', clientsError);
-        }
-        
-        const clientIds = commercialClients?.map(relation => relation.client_id) || [];
-        const allUserIds = [user?.id, ...clientIds];
-        
-        console.log('🔍 Commercial filtering for user IDs:', allUserIds);
-        console.log('📊 Commercial clients found:', commercialClients?.length || 0);
-        query = query.in("user_id", allUserIds);
-      }
-      // Sinon (client ou mode impersonation), filtrer par user_id
+      // Sinon filtrer par user_id
       else {
         console.log('🔍 Filtering announcements for user:', user?.id);
         query = query.filter("user_id", "eq", user?.id);
