@@ -74,10 +74,26 @@ export const useWordPressConfigsList = () => {
           
           console.log('🔍 Raw client profiles:', clientProfiles);
           
+          // Debug: vérifier chaque profil individuellement
+          clientProfiles?.forEach((profile, index) => {
+            console.log(`🔍 Profile ${index}:`, {
+              id: profile.id,
+              wordpress_config_id: profile.wordpress_config_id,
+              type: typeof profile.wordpress_config_id,
+              hasValue: !!profile.wordpress_config_id,
+              trimmed: profile.wordpress_config_id?.trim?.() || 'NO_TRIM_METHOD'
+            });
+          });
+          
           // Filtrer côté client pour exclure les profils sans wordpress_config_id
-          const validProfiles = clientProfiles?.filter(profile => 
-            profile.wordpress_config_id && profile.wordpress_config_id.trim() !== ''
-          ) || [];
+          const validProfiles = clientProfiles?.filter(profile => {
+            const hasConfig = profile.wordpress_config_id && 
+                             profile.wordpress_config_id !== null && 
+                             profile.wordpress_config_id !== '' &&
+                             profile.wordpress_config_id.toString().trim() !== '';
+            console.log(`🔍 Profile ${profile.id} has valid config:`, hasConfig, profile.wordpress_config_id);
+            return hasConfig;
+          }) || [];
           
           console.log('🔍 Valid client profiles with WordPress config:', validProfiles);
           
@@ -98,6 +114,7 @@ export const useWordPressConfigsList = () => {
             }
             
             console.log('📊 WordPress configs found for commercial:', data?.length || 0);
+            console.log('📊 WordPress configs details:', data);
             setConfigs(data as WordPressConfig[]);
           } else {
             console.log("No WordPress configs found for commercial's clients");
