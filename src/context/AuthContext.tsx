@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase, cleanupAuthState } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
@@ -18,6 +17,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Fonction pour récupérer le profil utilisateur
   const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
+      console.log('Fetching user profile for:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*, wordpress_configs(name, site_url)')
@@ -29,7 +29,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       }
 
-      return {
+      const profile: UserProfile = {
         id: data.id,
         email: data.email,
         name: data.name,
@@ -41,6 +41,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           site_url: data.wordpress_configs.site_url
         } : null
       };
+
+      console.log('User profile fetched successfully:', profile);
+      return profile;
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
       return null;
@@ -66,18 +69,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
+        console.log('Initial session:', session ? 'found' : 'not found');
+
         if (session?.user && mounted) {
           console.log('Session found, fetching profile...');
           const profile = await fetchUserProfile(session.user.id);
           if (mounted) {
             setUser(profile);
+            console.log('Profile set, stopping loading');
+            setIsLoading(false);
+          }
+        } else {
+          // Pas de session, arrêter le chargement
+          if (mounted) {
+            console.log('No session found, stopping loading');
+            setIsLoading(false);
           }
         }
       } catch (error) {
         console.error('Error in initializeAuth:', error);
-      } finally {
         if (mounted) {
-          console.log('Auth initialization complete');
           setIsLoading(false);
         }
       }
@@ -95,10 +106,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (event === 'SIGNED_IN' && session?.user) {
           console.log('User signed in, fetching profile...');
-          const profile = await fetchUserProfile(session.user.id);
-          if (mounted) {
-            setUser(profile);
-            setIsLoading(false);
+          try {
+            const profile = await fetchUserProfile(session.user.id);
+            if (mounted) {
+              setUser(profile);
+              setIsLoading(false);
+            }
+          } catch (error) {
+            console.error('Error fetching profile on sign in:', error);
+            if (mounted) {
+              setIsLoading(false);
+            }
           }
         } else if (event === 'SIGNED_OUT') {
           console.log('User signed out');
@@ -109,6 +127,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setIsImpersonating(false);
             setIsLoading(false);
           }
+        } else if (event === 'TOKEN_REFRESHED') {
+          console.log('Token refreshed');
+          // Ne pas changer isLoading pour le refresh de token
         }
       }
     );
