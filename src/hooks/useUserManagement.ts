@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -92,14 +91,16 @@ export const useUserManagement = () => {
           name: userData.name,
           email: userData.email,
           role: userData.role,
-          // Attribuer la configuration WordPress pour les clients ET commerciaux
-          wordpress_config_id: (userData.role === 'client' || userData.role === 'commercial') ? userData.wordpressConfigId : null
+          wordpress_config_id: userData.role === 'client' ? userData.wordpressConfigId : null
         })
         .eq('id', userId);
       
       if (profileError) {
         throw profileError;
       }
+      
+      // Fallback si la fonction Edge ne fonctionne pas
+      // Cette approche ne modifie pas l'email dans auth mais met à jour uniquement le profil
       
       toast.success("Profil utilisateur mis à jour avec succès");
       await fetchUsers(); // Recharger la liste des utilisateurs

@@ -67,14 +67,12 @@ const Announcements = () => {
         .select("*")
         .order('created_at', { ascending: false });
       
-      // Si on est admin ET pas en mode impersonation, montrer toutes les annonces
-      if (isAdmin && !isImpersonating) {
-        console.log('👑 Admin mode: showing all announcements');
-      } 
-      // Sinon filtrer par user_id
-      else {
+      // Si on n'est pas admin OU si on est en mode impersonation, filtrer par user_id
+      if (!isAdmin || isImpersonating) {
         console.log('🔍 Filtering announcements for user:', user?.id);
         query = query.filter("user_id", "eq", user?.id);
+      } else {
+        console.log('👑 Admin mode: showing all announcements');
       }
       
       const { data: announcementsData, error } = await query;
@@ -89,8 +87,6 @@ const Announcements = () => {
       }
 
       if (!announcementsData) return [];
-
-      console.log('📊 Raw announcements fetched:', announcementsData.length);
 
       // Manually fetch profiles for the announcements
       const userIds = [...new Set(announcementsData.map(ann => ann.user_id))];
@@ -173,12 +169,6 @@ const Announcements = () => {
       (announcement as any).user_wordpress_config_id === filter.wordpressSite;
     
     return matchesSearch && matchesStatus && matchesSite;
-  });
-
-  console.log('📊 Announcements after filtering:', {
-    total: announcements?.length || 0,
-    filtered: filteredAnnouncements?.length || 0,
-    filter: filter
   });
 
   useEffect(() => {

@@ -24,16 +24,10 @@ interface AnnouncementFilterProps {
 }
 
 const AnnouncementFilter = ({ filter, setFilter }: AnnouncementFilterProps) => {
-  const { isAdmin, isCommercial, isImpersonating } = useAuth();
+  const { isAdmin, isImpersonating } = useAuth();
   
-  // Afficher le filtre par site pour les admins et commerciaux (pas en mode impersonation)
-  const showSiteFilter = (isAdmin || isCommercial) && !isImpersonating;
-
-  console.log('🔍 AnnouncementFilter - showSiteFilter:', showSiteFilter, {
-    isAdmin,
-    isCommercial,
-    isImpersonating
-  });
+  // Afficher le filtre par site seulement si on est admin et pas en mode impersonation
+  const showSiteFilter = isAdmin && !isImpersonating;
 
   return (
     <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -50,10 +44,7 @@ const AnnouncementFilter = ({ filter, setFilter }: AnnouncementFilterProps) => {
       {showSiteFilter && (
         <WordPressSiteFilter
           selectedSite={filter.wordpressSite || "all"}
-          onSiteChange={(siteId) => {
-            console.log('🔍 Site filter changed to:', siteId);
-            setFilter({ ...filter, wordpressSite: siteId });
-          }}
+          onSiteChange={(siteId) => setFilter({ ...filter, wordpressSite: siteId })}
         />
       )}
       

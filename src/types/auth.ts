@@ -1,7 +1,6 @@
-
 import { Provider } from '@supabase/supabase-js';
 
-export type Role = 'admin' | 'editor' | 'client' | 'commercial';
+export type Role = 'admin' | 'editor' | 'client';
 
 export interface UserProfile {
   id: string;
@@ -39,7 +38,6 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
   isClient: boolean;
-  isCommercial: boolean;
   impersonateUser: (userToImpersonate: UserProfile) => void;
   stopImpersonating: () => void;
   originalUser: UserProfile | null;
@@ -70,7 +68,7 @@ export interface ResetPasswordValues {
 export interface UserFormValues {
   email: string;
   name?: string;
-  role: 'admin' | 'editor' | 'client' | 'commercial';
+  role: 'admin' | 'editor' | 'client';
   wordpress_config_id?: string;
   password?: string;
   password_confirmation?: string;

@@ -10,7 +10,7 @@ const userEditSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Le nom est requis"),
   email: z.string().email("Email invalide"),
-  role: z.enum(["admin", "client", "editor", "commercial"]),
+  role: z.enum(["admin", "client", "editor"]),
   wpConfigIds: z.array(z.string()).optional(),
 });
 
@@ -36,8 +36,8 @@ export const useUserEditForm = (
     },
   });
 
-  // Pour les clients et commerciaux, on utilise directement le wordpressConfigId du profil
-  const selectedConfigIds = (user.role === "client" || user.role === "commercial") && user.wordpressConfigId
+  // Pour les clients, on utilise directement le wordpressConfigId du profil
+  const selectedConfigIds = user.role === "client" && user.wordpressConfigId
     ? [user.wordpressConfigId]
     : [];
 
@@ -48,8 +48,8 @@ export const useUserEditForm = (
       selectedConfigIds
     });
 
-    // Pour les clients et commerciaux, on utilise le wordpressConfigId direct du profil
-    if ((user.role === "client" || user.role === "commercial") && user.wordpressConfigId) {
+    // Pour les clients, on utilise le wordpressConfigId direct du profil
+    if (user.role === "client" && user.wordpressConfigId) {
       form.setValue("wpConfigIds", [user.wordpressConfigId]);
     } else {
       form.setValue("wpConfigIds", []);
@@ -63,8 +63,7 @@ export const useUserEditForm = (
         email: data.email,
         role: data.role,
         clientId: user.clientId,
-        // Attribuer la configuration WordPress pour les clients ET commerciaux
-        wordpressConfigId: (data.role === "client" || data.role === "commercial") ? data.wpConfigIds?.[0] : null,
+        wordpressConfigId: data.role === "client" ? data.wpConfigIds?.[0] : null,
       });
       setIsDialogOpen(false);
     } catch (error) {
