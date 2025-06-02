@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { CalendarIcon, Loader2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { UseFormReturn } from "react-hook-form";
@@ -19,7 +19,7 @@ interface PublishingOptionsProps {
 }
 
 const PublishingOptions = ({ form }: PublishingOptionsProps) => {
-  const { categories, isLoading: isCategoriesLoading, error: categoriesError, hasCategories } = useWordPressCategories();
+  const { categories, isLoading: isCategoriesLoading, error: categoriesError, hasCategories, refetch } = useWordPressCategories();
   const { canPublish, stats } = usePublicationLimits();
   
   // Calculer la date de remise à zéro (1er du mois suivant)
@@ -54,8 +54,20 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
                     <span>Chargement...</span>
                   </div>
                 ) : categoriesError ? (
-                  <div className="p-2 text-center text-sm text-muted-foreground">
-                    Erreur: {categoriesError}
+                  <div className="p-2 text-center">
+                    <div className="text-sm text-red-600 mb-2">
+                      Erreur: {categoriesError}
+                    </div>
+                    <button 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        refetch();
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center justify-center gap-1"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      Réessayer
+                    </button>
                   </div>
                 ) : hasCategories ? (
                   categories.map(category => (

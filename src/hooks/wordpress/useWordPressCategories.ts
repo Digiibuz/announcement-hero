@@ -14,19 +14,47 @@ export const useWordPressCategories = () => {
   const isLoadingRef = useRef(false);
   const lastConfigIdRef = useRef<string | null>(null);
   const hasRefreshedRef = useRef(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 2;
 
   const fetchCategories = useCallback(async () => {
-    if (!user?.wordpressConfigId || !user?.id) {
-      // Si l'utilisateur est un client ou commercial mais n'a pas de config WordPress, 
-      // essayer de rafraîchir le profil une seule fois
-      if ((user?.role === 'client' || user?.role === 'commercial') && !hasRefreshedRef.current) {
-        console.log("Commercial/Client without WordPress config, refreshing profile...");
-        hasRefreshedRef.current = true;
+    // Si l'utilisateur n'a pas d'ID ou n'est pas connecté, ne rien faire
+    if (!user?.id) {
+      console.warn("No user ID found, cannot fetch categories");
+      setError("Utilisateur non connecté");
+      setCategories([]);
+      return;
+    }
+    
+    // Si l'utilisateur n'a pas de configuration WordPress et est commercial/client,
+    // essayer de rafraîchir le profil une fois
+    if (!user?.wordpressConfigId && (user?.role === 'client' || user?.role === 'commercial') && !hasRefreshedRef.current) {
+      console.log("Commercial/Client without WordPress config, refreshing profile...");
+      hasRefreshedRef.current = true;
+      try {
         await refreshUser();
+        
+        // Si après rafraîchissement, il n'y a toujours pas de configuration WordPress
+        if (!user.wordpressConfigId && retryCount < maxRetries) {
+          console.log(`Still no WordPress config after refresh. Retry ${retryCount + 1}/${maxRetries}`);
+          setRetryCount(prev => prev + 1);
+          setTimeout(() => fetchCategories(), 1000); // Réessayer après 1 seconde
+          return;
+        } else if (retryCount >= maxRetries) {
+          console.warn("Max retries reached, giving up on fetching WordPress config");
+          setError("Configuration WordPress non trouvée après plusieurs tentatives");
+          return;
+        }
         return; // Le useEffect se déclenchera à nouveau après le refresh
+      } catch (refreshError) {
+        console.error("Error refreshing user profile:", refreshError);
+        setError("Erreur lors de la récupération du profil utilisateur");
+        return;
       }
-      
-      console.warn("No WordPress configuration ID or user ID found");
+    }
+
+    if (!user?.wordpressConfigId) {
+      console.warn("No WordPress configuration ID found for user:", user?.id);
       setError("Aucune configuration WordPress trouvée pour cet utilisateur");
       setCategories([]);
       return;
@@ -36,17 +64,12 @@ export const useWordPressCategories = () => {
       userId: user.id,
       wordpressConfigId: user.wordpressConfigId,
       lastConfigId: lastConfigIdRef.current,
-      userObjectKeys: Object.keys(user),
-      userProfile: user.profile
+      userRole: user.role
     });
 
     // Éviter les appels avec des IDs de configuration différents en succession rapide
     if (lastConfigIdRef.current && lastConfigIdRef.current !== user.wordpressConfigId) {
       console.log("WordPress config ID changed, waiting for stabilization...");
-      console.log('🔍 DEBUG: Config change detected:', {
-        from: lastConfigIdRef.current,
-        to: user.wordpressConfigId
-      });
       // Attendre un peu pour que l'ID se stabilise
       await new Promise(resolve => setTimeout(resolve, 200));
       // Vérifier si l'ID a encore changé
@@ -85,7 +108,7 @@ export const useWordPressCategories = () => {
         .select('wordpress_config_id')
         .eq('id', user.id)
         .abortSignal(signal)
-        .maybeSingle(); // Changé de .single() à .maybeSingle()
+        .maybeSingle(); // Utiliser maybeSingle au lieu de single
 
       if (signal.aborted) return;
 
@@ -94,19 +117,34 @@ export const useWordPressCategories = () => {
         throw new Error("Erreur lors de la vérification du profil utilisateur");
       }
 
+      if (!profile) {
+        console.error("Profile not found for user ID:", user.id);
+        throw new Error("Profil utilisateur introuvable");
+      }
+
       console.log('🔍 DEBUG: Fresh profile data from DB:', {
-        profileWordpressConfigId: profile?.wordpress_config_id,
+        profileWordpressConfigId: profile.wordpress_config_id,
         userWordpressConfigId: user.wordpressConfigId,
-        match: profile?.wordpress_config_id === user.wordpressConfigId
+        match: profile.wordpress_config_id === user.wordpressConfigId
       });
 
-      if (!profile || profile.wordpress_config_id !== user.wordpressConfigId) {
-        console.error("Security violation: user trying to access unauthorized WordPress config");
+      if (profile.wordpress_config_id !== user.wordpressConfigId) {
+        console.error("Security check failed: WordPress config ID mismatch");
         console.log('🔍 DEBUG: Security check failed:', {
-          profileConfigId: profile?.wordpress_config_id,
-          userConfigId: user.wordpressConfigId,
-          profileExists: !!profile
+          profileConfigId: profile.wordpress_config_id,
+          userConfigId: user.wordpressConfigId
         });
+        
+        // Si l'ID dans le profil ne correspond pas à celui dans l'objet user,
+        // mettre à jour l'objet user et réessayer
+        if (profile.wordpress_config_id && !hasRefreshedRef.current) {
+          console.log("Refreshing user with DB config ID:", profile.wordpress_config_id);
+          hasRefreshedRef.current = true;
+          await refreshUser();
+          setTimeout(() => fetchCategories(), 100); // Réessayer rapidement
+          return;
+        }
+        
         throw new Error("Accès non autorisé à cette configuration WordPress");
       }
 
@@ -116,7 +154,7 @@ export const useWordPressCategories = () => {
         .select('site_url, rest_api_key, app_username, app_password, name')
         .eq('id', user.wordpressConfigId)
         .abortSignal(signal)
-        .maybeSingle(); // Changé de .single() à .maybeSingle()
+        .maybeSingle(); // Utiliser maybeSingle au lieu de single
 
       if (signal.aborted) return;
 
@@ -130,9 +168,8 @@ export const useWordPressCategories = () => {
       }
       
       if (!wpConfig) {
-        console.error("WordPress configuration not found");
-        console.log('🔍 DEBUG: No WordPress config found for ID:', user.wordpressConfigId);
-        throw new Error("Configuration WordPress non trouvée");
+        console.error("WordPress configuration not found for ID:", user.wordpressConfigId);
+        throw new Error("Configuration WordPress introuvable");
       }
 
       console.log("WordPress config found:", {
@@ -280,37 +317,18 @@ export const useWordPressCategories = () => {
         isLoadingRef.current = false;
       }
     }
-  }, [user?.wordpressConfigId, user?.id, user?.role, refreshUser]);
+  }, [user?.wordpressConfigId, user?.id, user?.role, refreshUser, retryCount]);
 
   const refetch = useCallback(() => {
-    if (user?.wordpressConfigId && user?.id) {
+    setRetryCount(0);
+    hasRefreshedRef.current = false;
+    if (user?.id) {
       fetchCategories();
     }
-  }, [fetchCategories, user?.wordpressConfigId, user?.id]);
+  }, [fetchCategories, user?.id]);
 
   useEffect(() => {
     console.log("useWordPressCategories effect running, user:", user?.id, "wordpressConfigId:", user?.wordpressConfigId);
-    console.log('🔍 DEBUG: useWordPressCategories effect - full user object:', {
-      user: user ? {
-        id: user.id,
-        email: user.email,
-        wordpressConfigId: user.wordpressConfigId,
-        role: user.role,
-        profile: user.profile
-      } : null
-    });
-    
-    // Vérifier le localStorage pour des traces de cette valeur fantôme
-    console.log('🔍 DEBUG: Checking localStorage for phantom values...');
-    Object.keys(localStorage).forEach(key => {
-      const value = localStorage.getItem(key);
-      if (value && value.includes('c1467516-7b3c-4955-96a0-90db1084b047')) {
-        console.log('🚨 FOUND PHANTOM VALUE IN LOCALSTORAGE:', {
-          key,
-          value: value.substring(0, 200) + '...' // Limiter la taille du log
-        });
-      }
-    });
     
     // Annuler toute requête en cours lors du changement des dépendances
     if (abortControllerRef.current) {

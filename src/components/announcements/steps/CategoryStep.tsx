@@ -3,7 +3,7 @@ import React, { useEffect } from "react";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { AnnouncementFormData } from "../AnnouncementForm";
 import { UseFormReturn } from "react-hook-form";
 import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
@@ -78,8 +78,9 @@ const CategoryStep = ({
                     </div>
                     <button 
                       onClick={() => refetch()}
-                      className="text-xs text-blue-600 hover:text-blue-800 underline"
+                      className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center justify-center gap-1 mx-auto"
                     >
+                      <RefreshCw className="h-3 w-3" />
                       Réessayer
                     </button>
                   </div>
@@ -94,8 +95,15 @@ const CategoryStep = ({
                     </SelectItem>
                   ))
                 ) : (
-                  <div className="p-2 text-center text-sm text-muted-foreground">
-                    Aucune catégorie disponible
+                  <div className="p-4 text-center text-sm">
+                    <p className="text-muted-foreground mb-2">Aucune catégorie disponible</p>
+                    <button 
+                      onClick={() => refetch()}
+                      className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center justify-center gap-1 mx-auto"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      Rafraîchir
+                    </button>
                   </div>
                 )}
               </SelectContent>
