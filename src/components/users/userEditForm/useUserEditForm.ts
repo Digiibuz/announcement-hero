@@ -36,8 +36,8 @@ export const useUserEditForm = (
     },
   });
 
-  // Pour les clients, on utilise directement le wordpressConfigId du profil
-  const selectedConfigIds = user.role === "client" && user.wordpressConfigId
+  // Pour les clients et commerciaux, on utilise directement le wordpressConfigId du profil
+  const selectedConfigIds = (user.role === "client" || user.role === "commercial") && user.wordpressConfigId
     ? [user.wordpressConfigId]
     : [];
 
@@ -48,8 +48,8 @@ export const useUserEditForm = (
       selectedConfigIds
     });
 
-    // Pour les clients, on utilise le wordpressConfigId direct du profil
-    if (user.role === "client" && user.wordpressConfigId) {
+    // Pour les clients et commerciaux, on utilise le wordpressConfigId direct du profil
+    if ((user.role === "client" || user.role === "commercial") && user.wordpressConfigId) {
       form.setValue("wpConfigIds", [user.wordpressConfigId]);
     } else {
       form.setValue("wpConfigIds", []);
@@ -63,7 +63,7 @@ export const useUserEditForm = (
         email: data.email,
         role: data.role,
         clientId: user.clientId,
-        wordpressConfigId: data.role === "client" ? data.wpConfigIds?.[0] : null,
+        wordpressConfigId: (data.role === "client" || data.role === "commercial") ? data.wpConfigIds?.[0] : null,
       });
       setIsDialogOpen(false);
     } catch (error) {

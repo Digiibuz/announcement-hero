@@ -20,7 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// Schema simplifié sans commercialId
 export const formSchema = z.object({
   email: z.string().email({ message: "Email invalide" }),
   name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères" }),
@@ -114,8 +113,8 @@ const UserCreateFormFields: React.FC<UserCreateFormFieldsProps> = ({
         )}
       />
       
-      {/* WordPress config selection only for clients */}
-      {selectedRole === "client" && (
+      {/* WordPress config selection for clients and commercials */}
+      {(selectedRole === "client" || selectedRole === "commercial") && (
         <FormField
           control={form.control}
           name="wordpressConfigId"
@@ -141,7 +140,7 @@ const UserCreateFormFields: React.FC<UserCreateFormFieldsProps> = ({
                 </SelectContent>
               </Select>
               <FormDescription>
-                Site WordPress associé à ce client
+                Site WordPress associé à ce {selectedRole === "client" ? "client" : "commercial"}
               </FormDescription>
               <FormMessage />
             </FormItem>

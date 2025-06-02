@@ -30,13 +30,13 @@ export const useUserCreateForm = (onUserCreated: () => void) => {
       setErrorMessage(null);
       const toastId = toast.loading("Création de l'utilisateur en cours...");
       
-      // Préparer les données à envoyer (sans commercialId)
+      // Préparer les données à envoyer
       const userData = {
         email: values.email,
         name: values.name,
         password: values.password,
         role: values.role,
-        wordpressConfigId: values.role === "client" && values.wordpressConfigId ? values.wordpressConfigId : "",
+        wordpressConfigId: (values.role === "client" || values.role === "commercial") && values.wordpressConfigId ? values.wordpressConfigId : "",
       };
       
       console.log("Données envoyées pour création:", userData);
