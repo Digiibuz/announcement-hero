@@ -40,7 +40,55 @@ serve(async (req) => {
       );
     }
 
-    // 1. Supprimer d'abord l'entrée dans la table profiles
+    // 1. Supprimer les limites mensuelles de publication
+    console.log("Suppression des limites de publication pour l'utilisateur:", userId);
+    const { error: publicationLimitsError } = await supabaseAdmin
+      .from('monthly_publication_limits')
+      .delete()
+      .eq('user_id', userId);
+
+    if (publicationLimitsError) {
+      console.log("Erreur lors de la suppression des limites de publication:", publicationLimitsError.message);
+      throw publicationLimitsError;
+    }
+
+    // 2. Supprimer les limites mensuelles d'IA
+    console.log("Suppression des limites d'IA pour l'utilisateur:", userId);
+    const { error: aiLimitsError } = await supabaseAdmin
+      .from('monthly_ai_limits')
+      .delete()
+      .eq('user_id', userId);
+
+    if (aiLimitsError) {
+      console.log("Erreur lors de la suppression des limites d'IA:", aiLimitsError.message);
+      throw aiLimitsError;
+    }
+
+    // 3. Supprimer les annonces de l'utilisateur
+    console.log("Suppression des annonces pour l'utilisateur:", userId);
+    const { error: announcementsError } = await supabaseAdmin
+      .from('announcements')
+      .delete()
+      .eq('user_id', userId);
+
+    if (announcementsError) {
+      console.log("Erreur lors de la suppression des annonces:", announcementsError.message);
+      throw announcementsError;
+    }
+
+    // 4. Supprimer les profils Google Business de l'utilisateur
+    console.log("Suppression des profils Google Business pour l'utilisateur:", userId);
+    const { error: googleBusinessError } = await supabaseAdmin
+      .from('user_google_business_profiles')
+      .delete()
+      .eq('user_id', userId);
+
+    if (googleBusinessError) {
+      console.log("Erreur lors de la suppression des profils Google Business:", googleBusinessError.message);
+      throw googleBusinessError;
+    }
+
+    // 5. Supprimer l'entrée dans la table profiles
     console.log("Suppression du profil pour l'utilisateur:", userId);
     const { error: profileDeleteError } = await supabaseAdmin
       .from('profiles')
@@ -52,7 +100,7 @@ serve(async (req) => {
       throw profileDeleteError;
     }
 
-    // 2. Supprimer l'utilisateur de l'authentification Supabase
+    // 6. Enfin, supprimer l'utilisateur de l'authentification Supabase
     console.log("Suppression de l'utilisateur dans auth:", userId);
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(
       userId
