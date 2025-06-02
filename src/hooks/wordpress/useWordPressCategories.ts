@@ -8,13 +8,23 @@ export const useWordPressCategories = () => {
   const [categories, setCategories] = useState<DipiCptCategory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const abortControllerRef = useRef<AbortController | null>(null);
   const isLoadingRef = useRef(false);
   const lastConfigIdRef = useRef<string | null>(null);
+  const hasRefreshedRef = useRef(false);
 
   const fetchCategories = useCallback(async () => {
     if (!user?.wordpressConfigId || !user?.id) {
+      // Si l'utilisateur est un client ou commercial mais n'a pas de config WordPress, 
+      // essayer de rafraîchir le profil une seule fois
+      if ((user?.role === 'client' || user?.role === 'commercial') && !hasRefreshedRef.current) {
+        console.log("Commercial/Client without WordPress config, refreshing profile...");
+        hasRefreshedRef.current = true;
+        await refreshUser();
+        return; // Le useEffect se déclenchera à nouveau après le refresh
+      }
+      
       console.warn("No WordPress configuration ID or user ID found");
       setError("Aucune configuration WordPress trouvée pour cet utilisateur");
       setCategories([]);
@@ -269,7 +279,7 @@ export const useWordPressCategories = () => {
         isLoadingRef.current = false;
       }
     }
-  }, [user?.wordpressConfigId, user?.id]);
+  }, [user?.wordpressConfigId, user?.id, user?.role, refreshUser]);
 
   const refetch = useCallback(() => {
     if (user?.wordpressConfigId && user?.id) {
@@ -307,7 +317,8 @@ export const useWordPressCategories = () => {
       abortControllerRef.current = null;
     }
     
-    if (user?.wordpressConfigId && user?.id) {
+    if (user?.id) {
+      // Si l'utilisateur existe, essayer de récupérer les catégories
       // Ajouter un délai pour éviter les appels simultanés lors du rechargement
       const timer = setTimeout(() => {
         fetchCategories();
@@ -326,7 +337,7 @@ export const useWordPressCategories = () => {
       isLoadingRef.current = false;
       lastConfigIdRef.current = null;
     }
-  }, [user?.wordpressConfigId, user?.id, fetchCategories]);
+  }, [user?.wordpressConfigId, user?.id, user?.role, fetchCategories]);
 
   // Nettoyer les requêtes en cours lors du démontage du composant
   useEffect(() => {
