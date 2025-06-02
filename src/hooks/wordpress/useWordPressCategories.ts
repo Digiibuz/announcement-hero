@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -84,7 +85,7 @@ export const useWordPressCategories = () => {
         .select('wordpress_config_id')
         .eq('id', user.id)
         .abortSignal(signal)
-        .single();
+        .maybeSingle(); // Changé de .single() à .maybeSingle()
 
       if (signal.aborted) return;
 
@@ -115,7 +116,7 @@ export const useWordPressCategories = () => {
         .select('site_url, rest_api_key, app_username, app_password, name')
         .eq('id', user.wordpressConfigId)
         .abortSignal(signal)
-        .single();
+        .maybeSingle(); // Changé de .single() à .maybeSingle()
 
       if (signal.aborted) return;
 
