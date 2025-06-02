@@ -4,6 +4,7 @@ import { UseFormReturn } from "react-hook-form";
 import * as z from "zod";
 import { Input } from "@/components/ui/input";
 import { WordPressConfig } from "@/types/wordpress";
+import { UserProfile } from "@/types/auth";
 import {
   FormControl,
   FormDescription,
@@ -25,10 +26,11 @@ export const formSchema = z.object({
   email: z.string().email({ message: "Email invalide" }),
   name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères" }),
   password: z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères" }),
-  role: z.enum(["admin", "client"], {
+  role: z.enum(["admin", "client", "commercial"], {
     required_error: "Veuillez sélectionner un rôle",
   }),
   wordpressConfigId: z.string().optional(),
+  commercialId: z.string().optional(),
 });
 
 export type FormSchema = z.infer<typeof formSchema>;
@@ -36,12 +38,16 @@ export type FormSchema = z.infer<typeof formSchema>;
 interface UserCreateFormFieldsProps {
   form: UseFormReturn<FormSchema>;
   configs: WordPressConfig[];
+  commercials?: UserProfile[];
 }
 
 const UserCreateFormFields: React.FC<UserCreateFormFieldsProps> = ({ 
   form, 
-  configs 
+  configs,
+  commercials = []
 }) => {
+  const selectedRole = form.watch("role");
+
   return (
     <div className="space-y-4">
       <FormField
@@ -104,6 +110,7 @@ const UserCreateFormFields: React.FC<UserCreateFormFieldsProps> = ({
               <SelectContent>
                 <SelectItem value="admin">Administrateur</SelectItem>
                 <SelectItem value="client">Client</SelectItem>
+                <SelectItem value="commercial">Commercial</SelectItem>
               </SelectContent>
             </Select>
             <FormMessage />
@@ -112,7 +119,7 @@ const UserCreateFormFields: React.FC<UserCreateFormFieldsProps> = ({
       />
       
       {/* WordPress config selection only for clients */}
-      {form.watch("role") === "client" && (
+      {selectedRole === "client" && (
         <FormField
           control={form.control}
           name="wordpressConfigId"
@@ -139,6 +146,41 @@ const UserCreateFormFields: React.FC<UserCreateFormFieldsProps> = ({
               </Select>
               <FormDescription>
                 Site WordPress associé à ce client
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
+
+      {/* Commercial assignment for clients */}
+      {selectedRole === "client" && commercials.length > 0 && (
+        <FormField
+          control={form.control}
+          name="commercialId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Commercial assigné</FormLabel>
+              <Select 
+                onValueChange={field.onChange} 
+                value={field.value || "none"}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un commercial" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="none">Aucun commercial</SelectItem>
+                  {commercials.map((commercial) => (
+                    <SelectItem key={commercial.id} value={commercial.id}>
+                      {commercial.name} ({commercial.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormDescription>
+                Commercial responsable de ce client
               </FormDescription>
               <FormMessage />
             </FormItem>
