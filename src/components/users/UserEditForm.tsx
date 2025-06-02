@@ -80,13 +80,13 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
           <Tabs defaultValue="basic" className="w-full">
             <TabsList className="grid w-full grid-cols-4 flex-shrink-0">
               <TabsTrigger value="basic">Informations</TabsTrigger>
-              <TabsTrigger value="wordpress" disabled={role !== "client" && role !== "commercial"}>
+              <TabsTrigger value="wordpress" disabled={role !== "client"}>
                 WordPress
               </TabsTrigger>
-              <TabsTrigger value="objectives" disabled={role !== "client" && role !== "commercial"}>
+              <TabsTrigger value="objectives" disabled={role !== "client"}>
                 Objectifs
               </TabsTrigger>
-              <TabsTrigger value="ai-limits" disabled={role !== "client" && role !== "commercial"}>
+              <TabsTrigger value="ai-limits" disabled={role !== "client"}>
                 Limites IA
               </TabsTrigger>
             </TabsList>

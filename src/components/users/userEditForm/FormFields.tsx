@@ -80,7 +80,6 @@ const FormFields: React.FC<FormFieldsProps> = ({
                   <SelectItem value="admin">Administrateur</SelectItem>
                   <SelectItem value="client">Client</SelectItem>
                   <SelectItem value="editor">Éditeur</SelectItem>
-                  <SelectItem value="commercial">Commercial</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -88,8 +87,7 @@ const FormFields: React.FC<FormFieldsProps> = ({
           )}
         />
 
-        {/* Configuration WordPress pour clients ET commerciaux */}
-        {(role === "client" || role === "commercial") && (
+        {role === "client" && (
           <FormField
             control={form.control}
             name="wpConfigIds"

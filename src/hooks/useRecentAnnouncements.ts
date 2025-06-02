@@ -8,7 +8,7 @@ export const useRecentAnnouncements = (limit: number = 5) => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user, isImpersonating, isAdmin } = useAuth();
+  const { user, isImpersonating } = useAuth();
 
   useEffect(() => {
     const fetchRecentAnnouncements = async () => {
@@ -18,22 +18,12 @@ export const useRecentAnnouncements = (limit: number = 5) => {
         setIsLoading(true);
         setError(null);
 
-        let query = supabase
+        const { data, error: fetchError } = await supabase
           .from('announcements')
           .select('*')
+          .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(limit);
-
-        // Si on est admin ET pas en mode impersonation, montrer toutes les annonces
-        if (isAdmin && !isImpersonating) {
-          // Pas de filtre, toutes les annonces
-        } 
-        // Sinon (client, commercial ou mode impersonation), filtrer par user_id
-        else {
-          query = query.eq('user_id', user.id);
-        }
-
-        const { data, error: fetchError } = await query;
 
         if (fetchError) {
           throw fetchError;
@@ -49,7 +39,7 @@ export const useRecentAnnouncements = (limit: number = 5) => {
     };
 
     fetchRecentAnnouncements();
-  }, [user?.id, limit, isImpersonating, isAdmin]);
+  }, [user?.id, limit, isImpersonating]); // Ajout de isImpersonating pour recharger lors des changements
 
   return { announcements, isLoading, error };
 };

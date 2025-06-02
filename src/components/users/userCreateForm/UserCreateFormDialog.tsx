@@ -36,7 +36,7 @@ const UserCreateFormDialog: React.FC<UserCreateFormDialogProps> = ({
       <DialogHeader>
         <DialogTitle>Ajouter un nouvel utilisateur</DialogTitle>
         <DialogDescription>
-          Créez un compte pour un nouveau client, commercial ou administrateur.
+          Créez un compte pour un nouveau client ou administrateur.
         </DialogDescription>
       </DialogHeader>
       
@@ -49,10 +49,7 @@ const UserCreateFormDialog: React.FC<UserCreateFormDialogProps> = ({
       
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <UserCreateFormFields 
-            form={form} 
-            configs={configs} 
-          />
+          <UserCreateFormFields form={form} configs={configs} />
           
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>

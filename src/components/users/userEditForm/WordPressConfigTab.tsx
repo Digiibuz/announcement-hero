@@ -75,17 +75,6 @@ const WordPressConfigTab: React.FC<WordPressConfigTabProps> = ({
     }
   };
 
-  const getRoleDisplayName = (role?: string) => {
-    switch (role) {
-      case "client":
-        return "client";
-      case "commercial":
-        return "commercial";
-      default:
-        return "utilisateur";
-    }
-  };
-
   if (isLoadingConfigs) {
     return (
       <div className="space-y-4">

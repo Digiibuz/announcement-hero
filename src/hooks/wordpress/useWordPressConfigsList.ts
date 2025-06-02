@@ -11,17 +11,17 @@ import { useAuth } from "@/context/AuthContext";
 export const useWordPressConfigsList = () => {
   const [configs, setConfigs] = useState<WordPressConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user, isClient, isAdmin, isCommercial } = useAuth();
+  const { user, isClient } = useAuth();
 
   const fetchConfigs = async () => {
     try {
       setIsLoading(true);
       
-      // Pour les clients et commerciaux, on ne récupère que leur configuration WordPress attribuée
-      if (isClient || isCommercial) {
-        // Si l'utilisateur a un wordpressConfigId, on récupère cette configuration
+      // Pour les clients, on ne récupère que leur configuration WordPress attribuée
+      if (isClient) {
+        // Si le client a un wordpressConfigId, on récupère cette configuration
         if (user?.wordpressConfigId) {
-          console.log("Fetching WordPress config for user:", user.wordpressConfigId);
+          console.log("Fetching WordPress config for client:", user.wordpressConfigId);
           
           const { data, error } = await supabase
             .from('wordpress_configs')
@@ -30,20 +30,20 @@ export const useWordPressConfigsList = () => {
             .single();
           
           if (error) {
-            console.error("Error fetching user WordPress config:", error);
+            console.error("Error fetching client WordPress config:", error);
             throw error;
           }
           
-          console.log("WordPress config found for user:", data?.name);
+          console.log("WordPress config found for client:", data?.name);
           setConfigs(data ? [data as WordPressConfig] : []);
         } else {
-          // Si l'utilisateur n'a pas de wordpressConfigId, on renvoie un tableau vide
-          console.log("User has no WordPress config assigned");
+          // Si le client n'a pas de wordpressConfigId, on renvoie un tableau vide
+          console.log("Client has no WordPress config assigned");
           setConfigs([]);
         }
       } 
-      // Pour les admins, on récupère toutes les configurations
-      else if (isAdmin) {
+      // Pour les autres rôles, on récupère toutes les configurations
+      else {
         const { data, error } = await supabase
           .from('wordpress_configs')
           .select('*')
@@ -55,23 +55,18 @@ export const useWordPressConfigsList = () => {
         
         setConfigs(data as WordPressConfig[]);
       }
-      // Pour les autres rôles, tableau vide
-      else {
-        setConfigs([]);
-      }
     } catch (error) {
       console.error('Error fetching WordPress configs:', error);
       toast.error("Erreur lors de la récupération des configurations WordPress");
-      setConfigs([]);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    console.log("useWordPressConfigsList effect running, isClient:", isClient, "isCommercial:", isCommercial, "user.wordpressConfigId:", user?.wordpressConfigId);
+    console.log("useWordPressConfigsList effect running, isClient:", isClient, "user.wordpressConfigId:", user?.wordpressConfigId);
     fetchConfigs();
-  }, [isClient, isCommercial, isAdmin, user?.wordpressConfigId, user?.id]);
+  }, [isClient, user?.wordpressConfigId]);
 
   return {
     configs,

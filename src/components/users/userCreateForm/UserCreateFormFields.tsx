@@ -20,11 +20,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// Re-using the schema from the parent component
 export const formSchema = z.object({
   email: z.string().email({ message: "Email invalide" }),
   name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères" }),
   password: z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères" }),
-  role: z.enum(["admin", "client", "commercial"], {
+  role: z.enum(["admin", "client"], {
     required_error: "Veuillez sélectionner un rôle",
   }),
   wordpressConfigId: z.string().optional(),
@@ -39,10 +40,8 @@ interface UserCreateFormFieldsProps {
 
 const UserCreateFormFields: React.FC<UserCreateFormFieldsProps> = ({ 
   form, 
-  configs
+  configs 
 }) => {
-  const selectedRole = form.watch("role");
-
   return (
     <div className="space-y-4">
       <FormField
@@ -105,7 +104,6 @@ const UserCreateFormFields: React.FC<UserCreateFormFieldsProps> = ({
               <SelectContent>
                 <SelectItem value="admin">Administrateur</SelectItem>
                 <SelectItem value="client">Client</SelectItem>
-                <SelectItem value="commercial">Commercial</SelectItem>
               </SelectContent>
             </Select>
             <FormMessage />
@@ -113,8 +111,8 @@ const UserCreateFormFields: React.FC<UserCreateFormFieldsProps> = ({
         )}
       />
       
-      {/* WordPress config selection for clients and commercials */}
-      {(selectedRole === "client" || selectedRole === "commercial") && (
+      {/* WordPress config selection only for clients */}
+      {form.watch("role") === "client" && (
         <FormField
           control={form.control}
           name="wordpressConfigId"
@@ -140,7 +138,7 @@ const UserCreateFormFields: React.FC<UserCreateFormFieldsProps> = ({
                 </SelectContent>
               </Select>
               <FormDescription>
-                Site WordPress associé à ce {selectedRole === "client" ? "client" : "commercial"}
+                Site WordPress associé à ce client
               </FormDescription>
               <FormMessage />
             </FormItem>

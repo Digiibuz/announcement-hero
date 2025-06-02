@@ -36,7 +36,7 @@ export const useUserCreateForm = (onUserCreated: () => void) => {
         name: values.name,
         password: values.password,
         role: values.role,
-        wordpressConfigId: (values.role === "client" || values.role === "commercial") && values.wordpressConfigId ? values.wordpressConfigId : "",
+        wordpressConfigId: values.role === "client" && values.wordpressConfigId ? values.wordpressConfigId : "",
       };
       
       console.log("Données envoyées pour création:", userData);

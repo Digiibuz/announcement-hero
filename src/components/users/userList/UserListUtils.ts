@@ -15,7 +15,6 @@ export const UserListUtils = {
     switch (role) {
       case 'admin': return 'Administrateur';
       case 'client': return 'Client';
-      case 'commercial': return 'Commercial';
       default: return role;
     }
   },
@@ -24,7 +23,6 @@ export const UserListUtils = {
     switch (role) {
       case 'admin': return 'bg-primary/10 text-primary';
       case 'client': return 'bg-blue-100 text-blue-800 dark:bg-blue-800/20 dark:text-blue-400';
-      case 'commercial': return 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400';
       default: return '';
     }
   },

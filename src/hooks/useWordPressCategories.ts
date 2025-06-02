@@ -13,11 +13,7 @@ export const useWordPressCategories = () => {
 
   const fetchCategories = useCallback(async () => {
     if (!user?.wordpressConfigId) {
-      console.log("No WordPress configuration ID found for user", {
-        userId: user?.id,
-        role: user?.role,
-        wordpressConfigId: user?.wordpressConfigId
-      });
+      console.error("No WordPress configuration ID found for user", user);
       setError("No WordPress configuration found for this user");
       return;
     }
@@ -25,7 +21,7 @@ export const useWordPressCategories = () => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log("Fetching categories for WordPress config ID:", user.wordpressConfigId, "User role:", user.role);
+      console.log("Fetching categories for WordPress config ID:", user.wordpressConfigId);
 
       // First get the WordPress config for the user
       const { data: wpConfig, error: wpConfigError } = await supabase
@@ -155,13 +151,9 @@ export const useWordPressCategories = () => {
   }, [user?.wordpressConfigId]);
 
   useEffect(() => {
-    console.log("useWordPressCategories effect running, user:", user?.id, "role:", user?.role, "wordpressConfigId:", user?.wordpressConfigId);
+    console.log("useWordPressCategories effect running, user:", user?.id, "wordpressConfigId:", user?.wordpressConfigId);
     if (user?.wordpressConfigId) {
       fetchCategories();
-    } else {
-      // Clear categories if no config
-      setCategories([]);
-      setError(null);
     }
   }, [user?.wordpressConfigId, fetchCategories]);
 
