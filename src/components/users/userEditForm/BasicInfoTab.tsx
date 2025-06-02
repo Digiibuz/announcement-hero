@@ -13,7 +13,7 @@ interface BasicInfoTabProps {
   onCancel: () => void;
   onSubmit: (data: any) => void;
   onResetPassword?: () => void;
-  onDeleteUser?: () => void;
+  onDeleteUser?: () => Promise<void>;
   isDeleting?: boolean;
   confirmDeleteOpen: boolean;
   setConfirmDeleteOpen: (open: boolean) => void;
