@@ -79,8 +79,8 @@ const FormFields: React.FC<FormFieldsProps> = ({
                 <SelectContent>
                   <SelectItem value="admin">Administrateur</SelectItem>
                   <SelectItem value="client">Client</SelectItem>
-                  <SelectItem value="commercial">Commercial</SelectItem>
                   <SelectItem value="editor">Éditeur</SelectItem>
+                  <SelectItem value="commercial">Commercial</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -88,6 +88,7 @@ const FormFields: React.FC<FormFieldsProps> = ({
           )}
         />
 
+        {/* Configuration WordPress pour clients ET commerciaux */}
         {(role === "client" || role === "commercial") && (
           <FormField
             control={form.control}
@@ -142,8 +143,8 @@ const FormFields: React.FC<FormFieldsProps> = ({
           />
         )}
 
-        {/* Publication Limits Section for Client and Commercial Users */}
-        {user && (role === "client" || role === "commercial") && (
+        {/* Publication Limits Section for Client Users */}
+        {user && role === "client" && (
           <PublicationLimitsField 
             user={user} 
             isUpdating={isUpdating}

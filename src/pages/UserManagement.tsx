@@ -41,7 +41,7 @@ const UserManagement = () => {
   };
 
   const handleImpersonateUser = (user: UserProfile) => {
-    if (user.role === 'client' || user.role === 'commercial') {
+    if (user.role === 'client') {
       impersonateUser(user);
       toast.success(`Vous êtes maintenant connecté en tant que ${user.name}`);
     }

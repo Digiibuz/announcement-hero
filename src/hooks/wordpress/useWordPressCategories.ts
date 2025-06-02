@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,13 +25,19 @@ export const useWordPressCategories = () => {
       userId: user.id,
       wordpressConfigId: user.wordpressConfigId,
       lastConfigId: lastConfigIdRef.current,
-      userRole: user.role
+      userObjectKeys: Object.keys(user)
     });
 
     // Éviter les appels avec des IDs de configuration différents en succession rapide
     if (lastConfigIdRef.current && lastConfigIdRef.current !== user.wordpressConfigId) {
       console.log("WordPress config ID changed, waiting for stabilization...");
+      console.log('🔍 DEBUG: Config change detected:', {
+        from: lastConfigIdRef.current,
+        to: user.wordpressConfigId
+      });
+      // Attendre un peu pour que l'ID se stabilise
       await new Promise(resolve => setTimeout(resolve, 200));
+      // Vérifier si l'ID a encore changé
       if (lastConfigIdRef.current && lastConfigIdRef.current !== user.wordpressConfigId) {
         console.log("Configuration still changing, skipping fetch");
         return;
@@ -41,15 +46,18 @@ export const useWordPressCategories = () => {
 
     lastConfigIdRef.current = user.wordpressConfigId;
 
+    // Éviter les appels multiples simultanés
     if (isLoadingRef.current) {
       console.log("Fetch already in progress, skipping...");
       return;
     }
 
+    // Annuler toute requête en cours
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
 
+    // Créer un nouveau contrôleur d'abort
     abortControllerRef.current = new AbortController();
     const signal = abortControllerRef.current.signal;
 
@@ -62,10 +70,10 @@ export const useWordPressCategories = () => {
       // Vérifier d'abord que l'utilisateur a bien accès à cette configuration
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('wordpress_config_id, role')
+        .select('wordpress_config_id')
         .eq('id', user.id)
         .abortSignal(signal)
-        .maybeSingle(); // Utiliser maybeSingle au lieu de single
+        .single();
 
       if (signal.aborted) return;
 
@@ -74,25 +82,19 @@ export const useWordPressCategories = () => {
         throw new Error("Erreur lors de la vérification du profil utilisateur");
       }
 
-      if (!profile) {
-        console.error("User profile not found");
-        throw new Error("Profil utilisateur non trouvé");
-      }
-
       console.log('🔍 DEBUG: Fresh profile data from DB:', {
         profileWordpressConfigId: profile?.wordpress_config_id,
         userWordpressConfigId: user.wordpressConfigId,
-        userRole: profile?.role,
         match: profile?.wordpress_config_id === user.wordpressConfigId
       });
 
-      if (!profile.wordpress_config_id) {
-        console.error("No WordPress configuration assigned to user");
-        throw new Error("Aucune configuration WordPress assignée à cet utilisateur. Veuillez contacter votre administrateur.");
-      }
-
-      if (profile.wordpress_config_id !== user.wordpressConfigId) {
+      if (!profile || profile.wordpress_config_id !== user.wordpressConfigId) {
         console.error("Security violation: user trying to access unauthorized WordPress config");
+        console.log('🔍 DEBUG: Security check failed:', {
+          profileConfigId: profile?.wordpress_config_id,
+          userConfigId: user.wordpressConfigId,
+          profileExists: !!profile
+        });
         throw new Error("Accès non autorisé à cette configuration WordPress");
       }
 
@@ -102,18 +104,23 @@ export const useWordPressCategories = () => {
         .select('site_url, rest_api_key, app_username, app_password, name')
         .eq('id', user.wordpressConfigId)
         .abortSignal(signal)
-        .maybeSingle(); // Utiliser maybeSingle au lieu de single
+        .single();
 
       if (signal.aborted) return;
 
       if (wpConfigError) {
         console.error("Error fetching WordPress config:", wpConfigError);
-        throw new Error("Erreur lors de la récupération de la configuration WordPress");
+        console.log('🔍 DEBUG: WordPress config error details:', {
+          error: wpConfigError,
+          configId: user.wordpressConfigId
+        });
+        throw wpConfigError;
       }
       
       if (!wpConfig) {
-        console.error("WordPress configuration not found for ID:", user.wordpressConfigId);
-        throw new Error("Configuration WordPress non trouvée. Veuillez contacter votre administrateur.");
+        console.error("WordPress configuration not found");
+        console.log('🔍 DEBUG: No WordPress config found for ID:', user.wordpressConfigId);
+        throw new Error("Configuration WordPress non trouvée");
       }
 
       console.log("WordPress config found:", {
@@ -215,7 +222,7 @@ export const useWordPressCategories = () => {
           console.error("WordPress API error:", response.status, errorText);
           
           if (response.status === 401 || response.status === 403) {
-            throw new Error("Identifiants incorrects ou autorisations insuffisantes pour accéder au site WordPress");
+            throw new Error("Identifiants incorrects ou autorisations insuffisantes");
           }
           
           throw new Error(`Échec de récupération des catégories: ${response.statusText}`);
@@ -240,23 +247,19 @@ export const useWordPressCategories = () => {
       
       let errorMessage = err.message || "Échec de récupération des catégories WordPress";
       
-      // Améliorer les messages d'erreur pour les commerciaux
-      if (err.message.includes("Aucune configuration WordPress assignée")) {
-        errorMessage = "Votre compte commercial n'a pas de site WordPress assigné. Veuillez contacter votre administrateur pour qu'il vous assigne une configuration WordPress.";
-      } else if (err.message.includes("Configuration WordPress non trouvée")) {
-        errorMessage = "La configuration WordPress assignée n'existe plus. Veuillez contacter votre administrateur.";
-      } else if (err.message.includes("Failed to fetch") || err.message.includes("NetworkError")) {
-        errorMessage = "Erreur réseau: impossible d'accéder au site WordPress. Veuillez vérifier la configuration du site.";
+      // Améliorer les messages d'erreur
+      if (err.message.includes("Failed to fetch")) {
+        errorMessage = "Erreur réseau: impossible d'accéder au site WordPress";
+      } else if (err.message.includes("NetworkError")) {
+        errorMessage = "Erreur réseau: problème de connectivité";
       } else if (err.message.includes("CORS")) {
         errorMessage = "Erreur CORS: le site n'autorise pas les requêtes depuis cette origine";
-      } else if (err.message.includes("Identifiants incorrects")) {
-        errorMessage = "Les identifiants WordPress sont incorrects. Veuillez contacter votre administrateur.";
       }
       
       setError(errorMessage);
       // Ne pas afficher de toast lors du rechargement pour éviter le spam
       if (!window.location.pathname.includes('/create')) {
-        toast.error(errorMessage);
+        toast.error("Erreur lors de la récupération des catégories");
       }
       setCategories([]);
     } finally {
@@ -265,7 +268,7 @@ export const useWordPressCategories = () => {
         isLoadingRef.current = false;
       }
     }
-  }, [user?.wordpressConfigId, user?.id, user?.role]);
+  }, [user?.wordpressConfigId, user?.id]);
 
   const refetch = useCallback(() => {
     if (user?.wordpressConfigId && user?.id) {
@@ -274,7 +277,27 @@ export const useWordPressCategories = () => {
   }, [fetchCategories, user?.wordpressConfigId, user?.id]);
 
   useEffect(() => {
-    console.log("useWordPressCategories effect running, user:", user?.id, "wordpressConfigId:", user?.wordpressConfigId, "role:", user?.role);
+    console.log("useWordPressCategories effect running, user:", user?.id, "wordpressConfigId:", user?.wordpressConfigId);
+    console.log('🔍 DEBUG: useWordPressCategories effect - full user object:', {
+      user: user ? {
+        id: user.id,
+        email: user.email,
+        wordpressConfigId: user.wordpressConfigId,
+        role: user.role
+      } : null
+    });
+    
+    // Vérifier le localStorage pour des traces de cette valeur fantôme
+    console.log('🔍 DEBUG: Checking localStorage for phantom values...');
+    Object.keys(localStorage).forEach(key => {
+      const value = localStorage.getItem(key);
+      if (value && value.includes('c1467516-7b3c-4955-96a0-90db1084b047')) {
+        console.log('🚨 FOUND PHANTOM VALUE IN LOCALSTORAGE:', {
+          key,
+          value: value.substring(0, 200) + '...' // Limiter la taille du log
+        });
+      }
+    });
     
     // Annuler toute requête en cours lors du changement des dépendances
     if (abortControllerRef.current) {
@@ -286,7 +309,7 @@ export const useWordPressCategories = () => {
       // Ajouter un délai pour éviter les appels simultanés lors du rechargement
       const timer = setTimeout(() => {
         fetchCategories();
-      }, 300); // Augmenté à 300ms pour plus de stabilité
+      }, 200); // Augmenté à 200ms pour plus de stabilité
       
       return () => {
         clearTimeout(timer);
@@ -296,12 +319,12 @@ export const useWordPressCategories = () => {
       };
     } else {
       setCategories([]);
-      setError("Aucune configuration WordPress assignée");
+      setError(null);
       setIsLoading(false);
       isLoadingRef.current = false;
       lastConfigIdRef.current = null;
     }
-  }, [user?.wordpressConfigId, user?.id, user?.role, fetchCategories]);
+  }, [user?.wordpressConfigId, user?.id, fetchCategories]);
 
   // Nettoyer les requêtes en cours lors du démontage du composant
   useEffect(() => {

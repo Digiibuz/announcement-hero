@@ -20,7 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// Re-using the schema from the parent component
 export const formSchema = z.object({
   email: z.string().email({ message: "Email invalide" }),
   name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères" }),
@@ -40,10 +39,10 @@ interface UserCreateFormFieldsProps {
 
 const UserCreateFormFields: React.FC<UserCreateFormFieldsProps> = ({ 
   form, 
-  configs 
+  configs
 }) => {
   const selectedRole = form.watch("role");
-  
+
   return (
     <div className="space-y-4">
       <FormField
@@ -141,7 +140,7 @@ const UserCreateFormFields: React.FC<UserCreateFormFieldsProps> = ({
                 </SelectContent>
               </Select>
               <FormDescription>
-                Site WordPress associé à cet utilisateur
+                Site WordPress associé à ce {selectedRole === "client" ? "client" : "commercial"}
               </FormDescription>
               <FormMessage />
             </FormItem>

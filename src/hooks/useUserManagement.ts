@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -91,6 +92,7 @@ export const useUserManagement = () => {
           name: userData.name,
           email: userData.email,
           role: userData.role,
+          // Attribuer la configuration WordPress pour les clients ET commerciaux
           wordpress_config_id: (userData.role === 'client' || userData.role === 'commercial') ? userData.wordpressConfigId : null
         })
         .eq('id', userId);

@@ -31,9 +31,8 @@ const AdminRoute = ({ children, adminOnly = false }: { children: React.ReactNode
     return <Navigate to="/login" replace />;
   }
 
-  // Permettre l'accès aux commerciaux pour les routes non-adminOnly
   if (!isAdmin && !isClient && !isCommercial) {
-    console.log('AdminRoute - User not admin, client or commercial, redirecting to dashboard');
+    console.log('AdminRoute - User not admin, client, or commercial, redirecting to dashboard');
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -42,7 +41,7 @@ const AdminRoute = ({ children, adminOnly = false }: { children: React.ReactNode
     return <Navigate to="/dashboard" replace />;
   }
 
-  console.log('AdminRoute - Rendering content for user with role');
+  console.log('AdminRoute - Rendering content');
   return <>{children}</>;
 };
 

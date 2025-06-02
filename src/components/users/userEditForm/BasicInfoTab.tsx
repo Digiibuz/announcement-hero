@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Trash2, RotateCcw } from "lucide-react";
 import DeleteUserDialog from "./DeleteUserDialog";
 
 interface BasicInfoTabProps {
@@ -13,7 +14,7 @@ interface BasicInfoTabProps {
   onCancel: () => void;
   onSubmit: (data: any) => void;
   onResetPassword?: () => void;
-  onDeleteUser?: () => Promise<void>;
+  onDeleteUser?: () => void;
   isDeleting?: boolean;
   confirmDeleteOpen: boolean;
   setConfirmDeleteOpen: (open: boolean) => void;
@@ -76,8 +77,8 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
                 <SelectContent>
                   <SelectItem value="admin">Administrateur</SelectItem>
                   <SelectItem value="client">Client</SelectItem>
-                  <SelectItem value="commercial">Commercial</SelectItem>
                   <SelectItem value="editor">Éditeur</SelectItem>
+                  <SelectItem value="commercial">Commercial</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -85,32 +86,8 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
           )}
         />
 
-        <div className="flex justify-between items-center pt-4">
-          <div className="flex gap-2">
-            {onResetPassword && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onResetPassword}
-                size="sm"
-              >
-                Réinitialiser mot de passe
-              </Button>
-            )}
-            {onDeleteUser && (
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={() => setConfirmDeleteOpen(true)}
-                size="sm"
-                disabled={isDeleting}
-              >
-                {isDeleting ? "Suppression..." : "Supprimer"}
-              </Button>
-            )}
-          </div>
-          
-          <div className="flex gap-2">
+        <div className="flex flex-col gap-2 pt-4">
+          <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onCancel}>
               Annuler
             </Button>
@@ -118,17 +95,42 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
               {isUpdating ? "Mise à jour..." : "Mettre à jour"}
             </Button>
           </div>
+          
+          <div className="flex justify-between pt-2 border-t">
+            {onResetPassword && (
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={onResetPassword}
+                className="flex items-center gap-2"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Réinitialiser le mot de passe
+              </Button>
+            )}
+            
+            {onDeleteUser && (
+              <Button 
+                type="button" 
+                variant="destructive" 
+                onClick={() => setConfirmDeleteOpen(true)}
+                disabled={isDeleting}
+                className="flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                {isDeleting ? "Suppression..." : "Supprimer l'utilisateur"}
+              </Button>
+            )}
+          </div>
         </div>
       </form>
 
-      {onDeleteUser && (
-        <DeleteUserDialog
-          isOpen={confirmDeleteOpen}
-          onOpenChange={setConfirmDeleteOpen}
-          onDelete={onDeleteUser}
-          isDeleting={isDeleting}
-        />
-      )}
+      <DeleteUserDialog 
+        isOpen={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        onDelete={onDeleteUser ? async () => { onDeleteUser(); } : async () => { return Promise.resolve(); }}
+        isDeleting={isDeleting}
+      />
     </Form>
   );
 };

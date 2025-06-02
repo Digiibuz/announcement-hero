@@ -1,3 +1,4 @@
+
 import { Provider } from '@supabase/supabase-js';
 
 export type Role = 'admin' | 'editor' | 'client' | 'commercial';
