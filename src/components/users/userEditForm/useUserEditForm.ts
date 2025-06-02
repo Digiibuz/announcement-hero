@@ -10,7 +10,7 @@ const userEditSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Le nom est requis"),
   email: z.string().email("Email invalide"),
-  role: z.enum(["admin", "client", "editor"]),
+  role: z.enum(["admin", "client", "editor", "commercial"]),
   wpConfigIds: z.array(z.string()).optional(),
 });
 
