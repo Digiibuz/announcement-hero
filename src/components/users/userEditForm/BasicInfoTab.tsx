@@ -104,7 +104,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="">Aucun commercial</SelectItem>
+                    <SelectItem value="none">Aucun commercial</SelectItem>
                     {isLoadingCommercials ? (
                       <SelectItem value="" disabled>Chargement...</SelectItem>
                     ) : (
@@ -162,9 +162,9 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
       </form>
 
       <DeleteUserDialog 
-        open={confirmDeleteOpen}
+        isOpen={confirmDeleteOpen}
         onOpenChange={setConfirmDeleteOpen}
-        onConfirm={onDeleteUser}
+        onDelete={onDeleteUser || (() => {})}
         isDeleting={isDeleting}
       />
     </Form>
