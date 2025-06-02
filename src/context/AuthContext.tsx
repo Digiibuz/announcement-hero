@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase, cleanupAuthState } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
-import { AuthContextType, UserProfile, LoginFormValues } from '@/types/auth';
+import { AuthContextType, UserProfile, LoginFormValues, Role } from '@/types/auth';
 import { toast } from 'sonner';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,7 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: data.id,
         email: data.email,
         name: data.name,
-        role: data.role,
+        role: data.role as Role,
         clientId: data.client_id,
         wordpressConfigId: data.wordpress_config_id,
         wordpressConfig: data.wordpress_configs ? {

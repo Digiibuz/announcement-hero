@@ -25,8 +25,7 @@ export const useWordPressCategories = () => {
       userId: user.id,
       wordpressConfigId: user.wordpressConfigId,
       lastConfigId: lastConfigIdRef.current,
-      userObjectKeys: Object.keys(user),
-      userProfile: user.profile
+      userObjectKeys: Object.keys(user)
     });
 
     // Éviter les appels avec des IDs de configuration différents en succession rapide
@@ -284,8 +283,7 @@ export const useWordPressCategories = () => {
         id: user.id,
         email: user.email,
         wordpressConfigId: user.wordpressConfigId,
-        role: user.role,
-        profile: user.profile
+        role: user.role
       } : null
     });
     
