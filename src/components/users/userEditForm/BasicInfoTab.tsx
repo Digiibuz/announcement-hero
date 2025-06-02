@@ -164,7 +164,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
       <DeleteUserDialog 
         isOpen={confirmDeleteOpen}
         onOpenChange={setConfirmDeleteOpen}
-        onDelete={onDeleteUser || (async () => {})}
+        onDelete={onDeleteUser ? async () => { onDeleteUser(); } : async () => { return Promise.resolve(); }}
         isDeleting={isDeleting}
       />
     </Form>
