@@ -48,50 +48,75 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Récupérer la session initiale
-    const getInitialSession = async () => {
+    let mounted = true;
+
+    // Fonction pour gérer l'initialisation
+    const initializeAuth = async () => {
       try {
+        console.log('Initializing auth...');
+        
+        // Récupérer la session initiale
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Error getting session:', error);
-          setIsLoading(false);
+          if (mounted) {
+            setIsLoading(false);
+          }
           return;
         }
 
-        if (session?.user) {
+        if (session?.user && mounted) {
+          console.log('Session found, fetching profile...');
           const profile = await fetchUserProfile(session.user.id);
-          setUser(profile);
+          if (mounted) {
+            setUser(profile);
+          }
         }
       } catch (error) {
-        console.error('Error in getInitialSession:', error);
+        console.error('Error in initializeAuth:', error);
       } finally {
-        setIsLoading(false);
+        if (mounted) {
+          console.log('Auth initialization complete');
+          setIsLoading(false);
+        }
       }
     };
 
-    getInitialSession();
+    // Initialiser l'authentification
+    initializeAuth();
 
     // Écouter les changements d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.id);
         
-        if (event === 'SIGNED_IN' && session?.user) {
-          const profile = await fetchUserProfile(session.user.id);
-          setUser(profile);
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-          // Reset impersonation state on logout
-          setOriginalUser(null);
-          setIsImpersonating(false);
-        }
+        if (!mounted) return;
         
-        setIsLoading(false);
+        if (event === 'SIGNED_IN' && session?.user) {
+          console.log('User signed in, fetching profile...');
+          const profile = await fetchUserProfile(session.user.id);
+          if (mounted) {
+            setUser(profile);
+            setIsLoading(false);
+          }
+        } else if (event === 'SIGNED_OUT') {
+          console.log('User signed out');
+          if (mounted) {
+            setUser(null);
+            // Reset impersonation state on logout
+            setOriginalUser(null);
+            setIsImpersonating(false);
+            setIsLoading(false);
+          }
+        }
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
