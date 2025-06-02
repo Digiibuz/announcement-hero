@@ -4,14 +4,17 @@ import { useAuth } from "@/context/AuthContext";
 import { LoadingIndicator } from "@/components/ui/loading-indicator";
 
 const AdminRoute = ({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) => {
-  const { isAuthenticated, isLoading, isAdmin, isClient } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin, isClient, user } = useAuth();
   const location = useLocation();
+
+  const isCommercial = user?.role === 'commercial';
 
   console.log('AdminRoute - State:', {
     isAuthenticated,
     isLoading,
     isAdmin,
     isClient,
+    isCommercial,
     adminOnly,
     pathname: location.pathname
   });
@@ -30,8 +33,8 @@ const AdminRoute = ({ children, adminOnly = false }: { children: React.ReactNode
     return <Navigate to="/login" replace />;
   }
 
-  if (!isAdmin && !isClient) {
-    console.log('AdminRoute - User not admin or client, redirecting to dashboard');
+  if (!isAdmin && !isClient && !isCommercial) {
+    console.log('AdminRoute - User not admin, client or commercial, redirecting to dashboard');
     return <Navigate to="/dashboard" replace />;
   }
 

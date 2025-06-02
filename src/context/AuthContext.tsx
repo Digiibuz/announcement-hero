@@ -34,6 +34,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
   isClient: boolean;
+  isCommercial: boolean;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
@@ -43,8 +44,6 @@ interface AuthContextType {
   originalUser: UserProfile | null;
   isImpersonating: boolean;
 }
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -264,6 +263,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const isAdmin = user?.role === 'admin';
   const isClient = user?.role === 'client';
+  const isCommercial = user?.role === 'commercial';
 
   const value = {
     user,
@@ -272,6 +272,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isAuthenticated: !!session,
     isAdmin,
     isClient,
+    isCommercial,
     signOut,
     refreshUser,
     login,

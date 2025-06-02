@@ -69,7 +69,7 @@ const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
             Supprimer
           </DropdownMenuItem>
           
-          {user.role === 'client' && (
+          {(user.role === 'client' || user.role === 'commercial') && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem 

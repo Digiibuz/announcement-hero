@@ -92,6 +92,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
                         <SelectContent>
                           <SelectItem value="admin">Administrateur</SelectItem>
                           <SelectItem value="client">Client</SelectItem>
+                          <SelectItem value="commercial">Commercial</SelectItem>
                           <SelectItem value="editor">Éditeur</SelectItem>
                         </SelectContent>
                       </Select>

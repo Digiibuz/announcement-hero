@@ -1,6 +1,6 @@
 import { Provider } from '@supabase/supabase-js';
 
-export type Role = 'admin' | 'editor' | 'client';
+export type Role = 'admin' | 'editor' | 'client' | 'commercial';
 
 export interface UserProfile {
   id: string;
@@ -68,7 +68,7 @@ export interface ResetPasswordValues {
 export interface UserFormValues {
   email: string;
   name?: string;
-  role: 'admin' | 'editor' | 'client';
+  role: 'admin' | 'editor' | 'client' | 'commercial';
   wordpress_config_id?: string;
   password?: string;
   password_confirmation?: string;

@@ -11,7 +11,7 @@ import { UserProfile } from "@/types/auth";
 import { toast } from "sonner";
 
 const UserManagement = () => {
-  const { user, isAdmin, impersonateUser } = useAuth();
+  const { user, isAdmin, isCommercial, impersonateUser } = useAuth();
   const { 
     users, 
     isLoading, 
@@ -41,7 +41,7 @@ const UserManagement = () => {
   };
 
   const handleImpersonateUser = (user: UserProfile) => {
-    if (user.role === 'client') {
+    if (user.role === 'client' || user.role === 'commercial') {
       impersonateUser(user);
       toast.success(`Vous êtes maintenant connecté en tant que ${user.name}`);
     }
