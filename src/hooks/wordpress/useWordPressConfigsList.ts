@@ -11,7 +11,7 @@ import { useAuth } from "@/context/AuthContext";
 export const useWordPressConfigsList = () => {
   const [configs, setConfigs] = useState<WordPressConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user, isClient } = useAuth();
+  const { user, isClient, isCommercial, isAdmin } = useAuth();
 
   const fetchConfigs = async () => {
     try {
@@ -42,8 +42,66 @@ export const useWordPressConfigsList = () => {
           setConfigs([]);
         }
       } 
-      // Pour les autres rôles, on récupère toutes les configurations
-      else {
+      // Pour les commerciaux, on récupère les configurations de leurs clients
+      else if (isCommercial) {
+        console.log("🔍 Commercial mode: fetching WordPress configs for clients");
+        
+        // Récupérer les IDs des clients assignés à ce commercial
+        const { data: commercialClients, error: clientsError } = await supabase
+          .from('commercial_clients')
+          .select('client_id')
+          .eq('commercial_id', user?.id);
+        
+        if (clientsError) {
+          console.error('❌ Error fetching commercial clients:', clientsError);
+          throw clientsError;
+        }
+        
+        const clientIds = commercialClients?.map(relation => relation.client_id) || [];
+        console.log('🔍 Commercial clients IDs:', clientIds);
+        
+        if (clientIds.length > 0) {
+          // Récupérer les wordpress_config_id des clients
+          const { data: clientProfiles, error: profilesError } = await supabase
+            .from('profiles')
+            .select('wordpress_config_id')
+            .in('id', clientIds)
+            .not('wordpress_config_id', 'is', null);
+          
+          if (profilesError) {
+            console.error('❌ Error fetching client profiles:', profilesError);
+            throw profilesError;
+          }
+          
+          const wordpressConfigIds = clientProfiles?.map(profile => profile.wordpress_config_id).filter(Boolean) || [];
+          console.log('🔍 WordPress config IDs for clients:', wordpressConfigIds);
+          
+          if (wordpressConfigIds.length > 0) {
+            // Récupérer les configurations WordPress
+            const { data, error } = await supabase
+              .from('wordpress_configs')
+              .select('*')
+              .in('id', wordpressConfigIds)
+              .order('name');
+            
+            if (error) {
+              console.error('❌ Error fetching WordPress configs:', error);
+              throw error;
+            }
+            
+            console.log('📊 WordPress configs found for commercial:', data?.length || 0);
+            setConfigs(data as WordPressConfig[]);
+          } else {
+            console.log("No WordPress configs found for commercial's clients");
+            setConfigs([]);
+          }
+        } else {
+          console.log("Commercial has no clients assigned");
+          setConfigs([]);
+        }
+      }
+      // Pour les admins, on récupère toutes les configurations
+      else if (isAdmin) {
         const { data, error } = await supabase
           .from('wordpress_configs')
           .select('*')
@@ -55,18 +113,23 @@ export const useWordPressConfigsList = () => {
         
         setConfigs(data as WordPressConfig[]);
       }
+      // Pour les autres rôles, tableau vide
+      else {
+        setConfigs([]);
+      }
     } catch (error) {
       console.error('Error fetching WordPress configs:', error);
       toast.error("Erreur lors de la récupération des configurations WordPress");
+      setConfigs([]);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    console.log("useWordPressConfigsList effect running, isClient:", isClient, "user.wordpressConfigId:", user?.wordpressConfigId);
+    console.log("useWordPressConfigsList effect running, isClient:", isClient, "isCommercial:", isCommercial, "user.wordpressConfigId:", user?.wordpressConfigId);
     fetchConfigs();
-  }, [isClient, user?.wordpressConfigId]);
+  }, [isClient, isCommercial, isAdmin, user?.wordpressConfigId, user?.id]);
 
   return {
     configs,
