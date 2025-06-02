@@ -88,7 +88,8 @@ const FormFields: React.FC<FormFieldsProps> = ({
           )}
         />
 
-        {role === "client" && (
+        {/* Configuration WordPress pour clients ET commerciaux */}
+        {(role === "client" || role === "commercial") && (
           <FormField
             control={form.control}
             name="wpConfigIds"

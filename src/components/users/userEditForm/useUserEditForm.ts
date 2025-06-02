@@ -63,6 +63,7 @@ export const useUserEditForm = (
         email: data.email,
         role: data.role,
         clientId: user.clientId,
+        // Attribuer la configuration WordPress pour les clients ET commerciaux
         wordpressConfigId: (data.role === "client" || data.role === "commercial") ? data.wpConfigIds?.[0] : null,
       });
       setIsDialogOpen(false);

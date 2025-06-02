@@ -92,7 +92,8 @@ export const useUserManagement = () => {
           name: userData.name,
           email: userData.email,
           role: userData.role,
-          wordpress_config_id: userData.role === 'client' ? userData.wordpressConfigId : null
+          // Attribuer la configuration WordPress pour les clients ET commerciaux
+          wordpress_config_id: (userData.role === 'client' || userData.role === 'commercial') ? userData.wordpressConfigId : null
         })
         .eq('id', userId);
       
