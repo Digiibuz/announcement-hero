@@ -61,19 +61,27 @@ export const useWordPressConfigsList = () => {
         console.log('🔍 Commercial clients IDs:', clientIds);
         
         if (clientIds.length > 0) {
-          // Récupérer les wordpress_config_id des clients
+          // Récupérer TOUS les profils clients, puis filtrer côté client
           const { data: clientProfiles, error: profilesError } = await supabase
             .from('profiles')
-            .select('wordpress_config_id')
-            .in('id', clientIds)
-            .not('wordpress_config_id', 'is', null);
+            .select('id, wordpress_config_id')
+            .in('id', clientIds);
           
           if (profilesError) {
             console.error('❌ Error fetching client profiles:', profilesError);
             throw profilesError;
           }
           
-          const wordpressConfigIds = clientProfiles?.map(profile => profile.wordpress_config_id).filter(Boolean) || [];
+          console.log('🔍 Raw client profiles:', clientProfiles);
+          
+          // Filtrer côté client pour exclure les profils sans wordpress_config_id
+          const validProfiles = clientProfiles?.filter(profile => 
+            profile.wordpress_config_id && profile.wordpress_config_id.trim() !== ''
+          ) || [];
+          
+          console.log('🔍 Valid client profiles with WordPress config:', validProfiles);
+          
+          const wordpressConfigIds = validProfiles.map(profile => profile.wordpress_config_id);
           console.log('🔍 WordPress config IDs for clients:', wordpressConfigIds);
           
           if (wordpressConfigIds.length > 0) {
