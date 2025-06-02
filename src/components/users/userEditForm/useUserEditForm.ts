@@ -12,7 +12,6 @@ const userEditSchema = z.object({
   email: z.string().email("Email invalide"),
   role: z.enum(["admin", "client", "editor", "commercial"]),
   wpConfigIds: z.array(z.string()).optional(),
-  commercialId: z.string().optional(),
 });
 
 type UserEditFormData = z.infer<typeof userEditSchema>;
@@ -34,7 +33,6 @@ export const useUserEditForm = (
       email: user.email,
       role: user.role,
       wpConfigIds: [],
-      commercialId: user.commercialId || "",
     },
   });
 
@@ -56,10 +54,7 @@ export const useUserEditForm = (
     } else {
       form.setValue("wpConfigIds", []);
     }
-
-    // Set the commercial ID for clients
-    form.setValue("commercialId", user.commercialId || "");
-  }, [user.role, user.wordpressConfigId, user.commercialId, form]);
+  }, [user.role, user.wordpressConfigId, form]);
 
   const handleSubmit = async (data: UserEditFormData) => {
     try {
@@ -69,7 +64,6 @@ export const useUserEditForm = (
         role: data.role,
         clientId: user.clientId,
         wordpressConfigId: data.role === "client" ? data.wpConfigIds?.[0] : null,
-        commercialId: data.role === "client" ? data.commercialId : null,
       });
       setIsDialogOpen(false);
     } catch (error) {

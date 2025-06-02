@@ -80,6 +80,7 @@ const FormFields: React.FC<FormFieldsProps> = ({
                   <SelectItem value="admin">Administrateur</SelectItem>
                   <SelectItem value="client">Client</SelectItem>
                   <SelectItem value="editor">Éditeur</SelectItem>
+                  <SelectItem value="commercial">Commercial</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

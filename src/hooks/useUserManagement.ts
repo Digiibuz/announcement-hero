@@ -45,7 +45,6 @@ export const useUserManagement = () => {
           name: profile.name,
           role: profile.role as Role,
           clientId: profile.client_id,
-          commercialId: profile.commercial_id,
           wordpressConfigId: profile.wordpress_config_id || null,
           wordpressConfig: profile.wordpress_configs ? {
             name: profile.wordpress_configs.name,
@@ -93,8 +92,7 @@ export const useUserManagement = () => {
           name: userData.name,
           email: userData.email,
           role: userData.role,
-          wordpress_config_id: userData.role === 'client' ? userData.wordpressConfigId : null,
-          commercial_id: userData.role === 'client' ? userData.commercialId : null
+          wordpress_config_id: userData.role === 'client' ? userData.wordpressConfigId : null
         })
         .eq('id', userId);
       

@@ -11,7 +11,7 @@ import { useAuth } from "@/context/AuthContext";
 export const useWordPressConfigsList = () => {
   const [configs, setConfigs] = useState<WordPressConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user, isClient, isCommercial, isAdmin } = useAuth();
+  const { user, isClient, isAdmin } = useAuth();
 
   const fetchConfigs = async () => {
     try {
@@ -42,64 +42,6 @@ export const useWordPressConfigsList = () => {
           setConfigs([]);
         }
       } 
-      // Pour les commerciaux, on récupère les configurations de leurs clients
-      else if (isCommercial) {
-        console.log("🔍 Commercial mode: fetching WordPress configs for clients");
-        console.log("🔍 Commercial user ID:", user?.id);
-        
-        // Récupérer directement les profils des clients avec leur wordpress_config_id
-        // en joignant avec commercial_clients
-        const { data: clientConfigs, error: configsError } = await supabase
-          .from('commercial_clients')
-          .select(`
-            client_id,
-            profiles!commercial_clients_client_id_fkey (
-              id,
-              wordpress_config_id,
-              name,
-              wordpress_configs!profiles_wordpress_config_id_fkey (
-                id,
-                name,
-                site_url,
-                created_at,
-                updated_at,
-                rest_api_key,
-                app_username,
-                app_password,
-                username,
-                password
-              )
-            )
-          `)
-          .eq('commercial_id', user?.id);
-        
-        console.log("🔍 Query result:", clientConfigs);
-        console.log("🔍 Query error:", configsError);
-        
-        if (configsError) {
-          console.error('❌ Error fetching client configs:', configsError);
-          throw configsError;
-        }
-        
-        // Extraire les configurations WordPress uniques
-        const uniqueConfigs = new Map<string, WordPressConfig>();
-        
-        if (clientConfigs && clientConfigs.length > 0) {
-          clientConfigs.forEach((relation) => {
-            console.log("🔍 Processing relation:", relation);
-            
-            if (relation.profiles && relation.profiles.wordpress_configs) {
-              const config = relation.profiles.wordpress_configs;
-              console.log("🔍 Found WordPress config:", config.name);
-              uniqueConfigs.set(config.id, config as WordPressConfig);
-            }
-          });
-        }
-        
-        const finalConfigs = Array.from(uniqueConfigs.values());
-        console.log("📊 Final WordPress configs for commercial:", finalConfigs.length);
-        setConfigs(finalConfigs);
-      }
       // Pour les admins, on récupère toutes les configurations
       else if (isAdmin) {
         const { data, error } = await supabase
@@ -113,7 +55,7 @@ export const useWordPressConfigsList = () => {
         
         setConfigs(data as WordPressConfig[]);
       }
-      // Pour les autres rôles, tableau vide
+      // Pour les autres rôles (y compris commerciaux), tableau vide
       else {
         setConfigs([]);
       }
@@ -127,9 +69,9 @@ export const useWordPressConfigsList = () => {
   };
 
   useEffect(() => {
-    console.log("useWordPressConfigsList effect running, isClient:", isClient, "isCommercial:", isCommercial, "user.wordpressConfigId:", user?.wordpressConfigId);
+    console.log("useWordPressConfigsList effect running, isClient:", isClient, "user.wordpressConfigId:", user?.wordpressConfigId);
     fetchConfigs();
-  }, [isClient, isCommercial, isAdmin, user?.wordpressConfigId, user?.id]);
+  }, [isClient, isAdmin, user?.wordpressConfigId, user?.id]);
 
   return {
     configs,

@@ -66,45 +66,6 @@ export type Database = {
         }
         Relationships: []
       }
-      commercial_clients: {
-        Row: {
-          client_id: string
-          commercial_id: string
-          created_at: string
-          id: string
-          updated_at: string
-        }
-        Insert: {
-          client_id: string
-          commercial_id: string
-          created_at?: string
-          id?: string
-          updated_at?: string
-        }
-        Update: {
-          client_id?: string
-          commercial_id?: string
-          created_at?: string
-          id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "commercial_clients_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "commercial_clients_commercial_id_fkey"
-            columns: ["commercial_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       monthly_ai_limits: {
         Row: {
           created_at: string
@@ -174,7 +135,6 @@ export type Database = {
       profiles: {
         Row: {
           client_id: string | null
-          commercial_id: string | null
           created_at: string
           email: string
           id: string
@@ -185,7 +145,6 @@ export type Database = {
         }
         Insert: {
           client_id?: string | null
-          commercial_id?: string | null
           created_at?: string
           email: string
           id: string
@@ -196,7 +155,6 @@ export type Database = {
         }
         Update: {
           client_id?: string | null
-          commercial_id?: string | null
           created_at?: string
           email?: string
           id?: string
@@ -206,13 +164,6 @@ export type Database = {
           wordpress_config_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "profiles_commercial_id_fkey"
-            columns: ["commercial_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "profiles_wordpress_config_id_fkey"
             columns: ["wordpress_config_id"]

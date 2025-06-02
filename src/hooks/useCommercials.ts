@@ -28,7 +28,6 @@ export const useCommercials = () => {
         name: profile.name,
         role: profile.role as any,
         clientId: profile.client_id,
-        commercialId: profile.commercial_id,
         wordpressConfigId: profile.wordpress_config_id
       }));
       

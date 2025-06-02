@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2, RotateCcw } from "lucide-react";
 import DeleteUserDialog from "./DeleteUserDialog";
-import { useCommercials } from "@/hooks/useCommercials";
 
 interface BasicInfoTabProps {
   form: UseFormReturn<any>;
@@ -32,9 +31,6 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
   confirmDeleteOpen,
   setConfirmDeleteOpen
 }) => {
-  const { commercials, isLoading: isLoadingCommercials } = useCommercials();
-  const role = form.watch("role");
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -89,38 +85,6 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
             </FormItem>
           )}
         />
-
-        {role === "client" && (
-          <FormField
-            control={form.control}
-            name="commercialId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Commercial assigné</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value || ""}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un commercial" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="none">Aucun commercial</SelectItem>
-                    {isLoadingCommercials ? (
-                      <SelectItem value="loading" disabled>Chargement...</SelectItem>
-                    ) : (
-                      commercials.map((commercial) => (
-                        <SelectItem key={commercial.id} value={commercial.id}>
-                          {commercial.name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
 
         <div className="flex flex-col gap-2 pt-4">
           <div className="flex justify-end gap-2">

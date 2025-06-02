@@ -1,3 +1,4 @@
+
 import { Provider } from '@supabase/supabase-js';
 
 export type Role = 'admin' | 'editor' | 'client' | 'commercial';
@@ -10,7 +11,6 @@ export interface UserProfile {
   clientId?: string | null;
   wordpressConfigId?: string | null;
   lastLogin?: string | null;
-  commercialId?: string | null;
   wordpressConfig?: {
     name: string;
     site_url: string;
@@ -75,7 +75,6 @@ export interface UserFormValues {
   password?: string;
   password_confirmation?: string;
   client_id?: string;
-  commercial_id?: string;
 }
 
 export type UserFormErrors = {
@@ -86,5 +85,4 @@ export type UserFormErrors = {
   password?: string;
   password_confirmation?: string;
   client_id?: string;
-  commercial_id?: string;
 };
