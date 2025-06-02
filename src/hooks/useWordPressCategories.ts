@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -9,10 +9,20 @@ export const useWordPressCategories = () => {
   const [categories, setCategories] = useState<DipiCptCategory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const hasRefreshedRef = useRef(false);
 
   const fetchCategories = useCallback(async () => {
     if (!user?.wordpressConfigId) {
+      // Si l'utilisateur est un client ou commercial mais n'a pas de config WordPress, 
+      // essayer de rafraîchir le profil une seule fois
+      if ((user?.role === 'client' || user?.role === 'commercial') && !hasRefreshedRef.current) {
+        console.log("Commercial/Client without WordPress config, refreshing profile...");
+        hasRefreshedRef.current = true;
+        await refreshUser();
+        return; // Le useEffect se déclenchera à nouveau après le refresh
+      }
+      
       console.error("No WordPress configuration ID found for user", user);
       setError("No WordPress configuration found for this user");
       return;
@@ -148,14 +158,15 @@ export const useWordPressCategories = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.wordpressConfigId]);
+  }, [user?.wordpressConfigId, user?.role, refreshUser]);
 
   useEffect(() => {
     console.log("useWordPressCategories effect running, user:", user?.id, "wordpressConfigId:", user?.wordpressConfigId);
-    if (user?.wordpressConfigId) {
+    if (user?.id) {
+      // Si l'utilisateur existe, essayer de récupérer les catégories
       fetchCategories();
     }
-  }, [user?.wordpressConfigId, fetchCategories]);
+  }, [user?.wordpressConfigId, user?.id, user?.role, fetchCategories]);
 
   return { 
     categories, 
