@@ -45,82 +45,60 @@ export const useWordPressConfigsList = () => {
       // Pour les commerciaux, on récupère les configurations de leurs clients
       else if (isCommercial) {
         console.log("🔍 Commercial mode: fetching WordPress configs for clients");
+        console.log("🔍 Commercial user ID:", user?.id);
         
-        // Récupérer les IDs des clients assignés à ce commercial
-        const { data: commercialClients, error: clientsError } = await supabase
+        // Récupérer directement les profils des clients avec leur wordpress_config_id
+        // en joignant avec commercial_clients
+        const { data: clientConfigs, error: configsError } = await supabase
           .from('commercial_clients')
-          .select('client_id')
+          .select(`
+            client_id,
+            profiles!commercial_clients_client_id_fkey (
+              id,
+              wordpress_config_id,
+              name,
+              wordpress_configs!profiles_wordpress_config_id_fkey (
+                id,
+                name,
+                site_url,
+                created_at,
+                updated_at,
+                rest_api_key,
+                app_username,
+                app_password,
+                username,
+                password
+              )
+            )
+          `)
           .eq('commercial_id', user?.id);
         
-        if (clientsError) {
-          console.error('❌ Error fetching commercial clients:', clientsError);
-          throw clientsError;
+        console.log("🔍 Query result:", clientConfigs);
+        console.log("🔍 Query error:", configsError);
+        
+        if (configsError) {
+          console.error('❌ Error fetching client configs:', configsError);
+          throw configsError;
         }
         
-        const clientIds = commercialClients?.map(relation => relation.client_id) || [];
-        console.log('🔍 Commercial clients IDs:', clientIds);
+        // Extraire les configurations WordPress uniques
+        const uniqueConfigs = new Map<string, WordPressConfig>();
         
-        if (clientIds.length > 0) {
-          console.log('🔍 About to fetch client profiles');
-          
-          // Récupérer les profils des clients pour obtenir leurs wordpress_config_id
-          const { data: clientProfiles, error: profilesError } = await supabase
-            .from('profiles')
-            .select('id, wordpress_config_id')
-            .in('id', clientIds)
-            .not('wordpress_config_id', 'is', null);
-          
-          console.log('🔍 Number of profiles returned:', clientProfiles?.length || 0);
-          
-          if (profilesError) {
-            console.error('❌ Error fetching client profiles:', profilesError);
-            throw profilesError;
-          }
-          
-          if (clientProfiles && clientProfiles.length > 0) {
-            clientProfiles.forEach((profile, index) => {
-              console.log(`🔍 Profile ${index}:`, {
-                id: profile.id,
-                wordpress_config_id: profile.wordpress_config_id,
-                type: typeof profile.wordpress_config_id
-              });
-            });
+        if (clientConfigs && clientConfigs.length > 0) {
+          clientConfigs.forEach((relation) => {
+            console.log("🔍 Processing relation:", relation);
             
-            const wordpressConfigIds = clientProfiles
-              .filter(profile => profile.wordpress_config_id)
-              .map(profile => profile.wordpress_config_id);
-            
-            console.log('🔍 WordPress config IDs for clients:', wordpressConfigIds);
-            
-            if (wordpressConfigIds.length > 0) {
-              // Récupérer les configurations WordPress
-              const { data: wordpressConfigs, error: configsError } = await supabase
-                .from('wordpress_configs')
-                .select('*')
-                .in('id', wordpressConfigIds);
-              
-              console.log('🔍 WordPress configs query result:', wordpressConfigs);
-              console.log('🔍 WordPress configs query error:', configsError);
-              
-              if (configsError) {
-                console.error('❌ Error fetching WordPress configs:', configsError);
-                throw configsError;
-              }
-              
-              console.log('📊 WordPress configs found for commercial:', wordpressConfigs?.length || 0);
-              setConfigs(wordpressConfigs as WordPressConfig[] || []);
-            } else {
-              console.log('No WordPress configs found for commercial\'s clients');
-              setConfigs([]);
+            if (relation.profiles && relation.profiles.wordpress_configs) {
+              const config = relation.profiles.wordpress_configs;
+              console.log("🔍 Found WordPress config:", config.name);
+              uniqueConfigs.set(config.id, config as WordPressConfig);
             }
-          } else {
-            console.log('No client profiles with WordPress configs found');
-            setConfigs([]);
-          }
-        } else {
-          console.log("Commercial has no clients assigned");
-          setConfigs([]);
+          });
         }
+        
+        const finalConfigs = Array.from(uniqueConfigs.values());
+        console.log("📊 Final WordPress configs for commercial:", finalConfigs.length);
+        setConfigs(finalConfigs);
       }
       // Pour les admins, on récupère toutes les configurations
       else if (isAdmin) {
