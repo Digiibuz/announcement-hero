@@ -30,13 +30,13 @@ export const useRecentAnnouncements = (limit: number = 5) => {
         } 
         // Si on est commercial, montrer ses annonces + celles de ses clients
         else if (isCommercial && !isImpersonating) {
-          // Récupérer les IDs des clients assignés à ce commercial
-          const { data: assignedClients } = await supabase
-            .from('profiles')
-            .select('id')
+          // Récupérer les IDs des clients assignés à ce commercial via la table commercial_clients
+          const { data: commercialClients } = await supabase
+            .from('commercial_clients')
+            .select('client_id')
             .eq('commercial_id', user.id);
           
-          const clientIds = assignedClients?.map(client => client.id) || [];
+          const clientIds = commercialClients?.map(relation => relation.client_id) || [];
           const allUserIds = [user.id, ...clientIds];
           
           query = query.in("user_id", allUserIds);

@@ -75,13 +75,13 @@ const Announcements = () => {
       else if (isCommercial && !isImpersonating) {
         console.log('💼 Commercial mode: showing own announcements + clients announcements');
         
-        // Récupérer les IDs des clients assignés à ce commercial
-        const { data: assignedClients } = await supabase
-          .from('profiles')
-          .select('id')
+        // Récupérer les IDs des clients assignés à ce commercial via la table commercial_clients
+        const { data: commercialClients } = await supabase
+          .from('commercial_clients')
+          .select('client_id')
           .eq('commercial_id', user?.id);
         
-        const clientIds = assignedClients?.map(client => client.id) || [];
+        const clientIds = commercialClients?.map(relation => relation.client_id) || [];
         const allUserIds = [user?.id, ...clientIds];
         
         console.log('🔍 Commercial filtering for user IDs:', allUserIds);
