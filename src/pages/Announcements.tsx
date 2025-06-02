@@ -25,7 +25,7 @@ const stripHtmlTags = (html: string): string => {
 };
 
 const Announcements = () => {
-  const { isAdmin, user, isImpersonating } = useAuth();
+  const { isAdmin, user, isImpersonating, isCommercial } = useAuth();
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -60,19 +60,37 @@ const Announcements = () => {
 
   // Fetch announcements
   const { data: announcements, isLoading, refetch } = useQuery({
-    queryKey: ["announcements", user?.id, isAdmin],
+    queryKey: ["announcements", user?.id, isAdmin, isCommercial],
     queryFn: async () => {
       let query = supabase
         .from("announcements")
         .select("*")
         .order('created_at', { ascending: false });
       
-      // Si on n'est pas admin OU si on est en mode impersonation, filtrer par user_id
-      if (!isAdmin || isImpersonating) {
+      // Si on est admin ET pas en mode impersonation, montrer toutes les annonces
+      if (isAdmin && !isImpersonating) {
+        console.log('👑 Admin mode: showing all announcements');
+      } 
+      // Si on est commercial, montrer ses annonces + celles de ses clients
+      else if (isCommercial && !isImpersonating) {
+        console.log('💼 Commercial mode: showing own announcements + clients announcements');
+        
+        // Récupérer les IDs des clients assignés à ce commercial
+        const { data: assignedClients } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('commercial_id', user?.id);
+        
+        const clientIds = assignedClients?.map(client => client.id) || [];
+        const allUserIds = [user?.id, ...clientIds];
+        
+        console.log('🔍 Commercial filtering for user IDs:', allUserIds);
+        query = query.in("user_id", allUserIds);
+      }
+      // Sinon (client ou mode impersonation), filtrer par user_id
+      else {
         console.log('🔍 Filtering announcements for user:', user?.id);
         query = query.filter("user_id", "eq", user?.id);
-      } else {
-        console.log('👑 Admin mode: showing all announcements');
       }
       
       const { data: announcementsData, error } = await query;
