@@ -22,6 +22,7 @@ import { toast } from "sonner";
 
 const WordPressManagement = () => {
   const { isAdmin, isClient, user } = useAuth();
+  const isCommercial = user?.role === 'commercial';
   const {
     configs,
     isLoading,
@@ -53,7 +54,7 @@ const WordPressManagement = () => {
     toast.success("Configurations WordPress mises à jour");
   };
 
-  // Le bouton d'ajout n'est disponible que pour les administrateurs, pas pour les clients
+  // Le bouton d'ajout n'est disponible que pour les administrateurs, pas pour les clients ou commerciaux
   const titleAction = isAdmin ? (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>
@@ -75,9 +76,9 @@ const WordPressManagement = () => {
   ) : null;
 
   // Change page title based on user role
-  const pageTitle = isClient ? "Mon site" : "Gestion WordPress";
+  const pageTitle = (isClient || isCommercial) ? "Mon site" : "Gestion WordPress";
 
-  // Message to display when client has no site assigned
+  // Message to display when client/commercial has no site assigned
   const NoSiteMessage = () => (
     <Card className="mt-4">
       <CardContent className="p-6 text-center">
@@ -97,12 +98,12 @@ const WordPressManagement = () => {
       titleAction={titleAction}
       onRefresh={handleRefresh}
     >
-      {!(isAdmin || isClient) ? (
+      {!(isAdmin || isClient || isCommercial) ? (
         <AccessDenied />
       ) : (
         <AnimatedContainer delay={200}>
           <div className="w-full">
-            {isClient && configs.length === 0 ? (
+            {(isClient || isCommercial) && configs.length === 0 ? (
               <NoSiteMessage />
             ) : (
               <WordPressConfigList
@@ -111,7 +112,7 @@ const WordPressManagement = () => {
                 isSubmitting={isSubmitting}
                 onUpdateConfig={handleUpdateConfig}
                 onDeleteConfig={deleteConfig}
-                readOnly={isClient} // Mode lecture seule pour les clients
+                readOnly={isClient || isCommercial} // Mode lecture seule pour les clients et commerciaux
               />
             )}
           </div>

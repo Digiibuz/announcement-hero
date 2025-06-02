@@ -13,32 +13,34 @@ export const useWordPressConfigsList = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { user, isClient } = useAuth();
 
+  const isCommercial = user?.role === 'commercial';
+
   const fetchConfigs = async () => {
     try {
       setIsLoading(true);
       
-      // Pour les clients, on ne récupère que leur configuration WordPress attribuée
-      if (isClient) {
-        // Si le client a un wordpressConfigId, on récupère cette configuration
+      // Pour les clients et commerciaux, on ne récupère que leur configuration WordPress attribuée
+      if (isClient || isCommercial) {
+        // Si le client/commercial a un wordpressConfigId, on récupère cette configuration
         if (user?.wordpressConfigId) {
-          console.log("Fetching WordPress config for client:", user.wordpressConfigId);
+          console.log("Fetching WordPress config for client/commercial:", user.wordpressConfigId);
           
           const { data, error } = await supabase
             .from('wordpress_configs')
             .select('*')
             .eq('id', user.wordpressConfigId)
-            .single();
+            .maybeSingle();
           
           if (error) {
-            console.error("Error fetching client WordPress config:", error);
+            console.error("Error fetching client/commercial WordPress config:", error);
             throw error;
           }
           
-          console.log("WordPress config found for client:", data?.name);
+          console.log("WordPress config found for client/commercial:", data?.name);
           setConfigs(data ? [data as WordPressConfig] : []);
         } else {
-          // Si le client n'a pas de wordpressConfigId, on renvoie un tableau vide
-          console.log("Client has no WordPress config assigned");
+          // Si le client/commercial n'a pas de wordpressConfigId, on renvoie un tableau vide
+          console.log("Client/commercial has no WordPress config assigned");
           setConfigs([]);
         }
       } 
@@ -64,9 +66,9 @@ export const useWordPressConfigsList = () => {
   };
 
   useEffect(() => {
-    console.log("useWordPressConfigsList effect running, isClient:", isClient, "user.wordpressConfigId:", user?.wordpressConfigId);
+    console.log("useWordPressConfigsList effect running, isClient:", isClient, "isCommercial:", isCommercial, "user.wordpressConfigId:", user?.wordpressConfigId);
     fetchConfigs();
-  }, [isClient, user?.wordpressConfigId]);
+  }, [isClient, isCommercial, user?.wordpressConfigId]);
 
   return {
     configs,
