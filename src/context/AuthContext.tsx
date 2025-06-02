@@ -45,6 +45,9 @@ interface AuthContextType {
   isImpersonating: boolean;
 }
 
+// Créer le contexte avec une valeur par défaut
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
