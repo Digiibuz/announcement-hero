@@ -1,3 +1,4 @@
+
 import React, { useRef, useState } from "react";
 import { ImageIcon, Camera, UploadCloud, Loader2, XCircle, AlertCircle, Video, FileImage } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -312,6 +313,11 @@ const MediaUploader = ({
     }
   };
 
+  // Detect if device is Android
+  const isAndroid = () => {
+    return /Android/i.test(navigator.userAgent);
+  };
+
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     if (isMobile) return;
     e.preventDefault();
@@ -365,7 +371,7 @@ const MediaUploader = ({
           type="file" 
           ref={cameraInputRef} 
           accept="image/*,video/*,.heic,.heif" 
-          capture="environment" 
+          capture={isAndroid() ? "camera" : "environment"}
           className="hidden" 
           onChange={handleFileUpload} 
         />
