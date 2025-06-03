@@ -25,7 +25,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate event - Clean up old caches and claim clients immediately
+// Activate event - Clean up old caches and force reload immediately
 self.addEventListener('activate', (event) => {
   console.log('Service Worker activating version:', VERSION);
   event.waitUntil(
@@ -44,20 +44,18 @@ self.addEventListener('activate', (event) => {
       // Take control of all clients immediately
       self.clients.claim()
     ]).then(() => {
-      // Notify all clients that a new version is available
+      // Force reload all clients immediately when new version is available
       return self.clients.matchAll().then((clients) => {
         clients.forEach((client) => {
-          client.postMessage({ 
-            type: 'UPDATE_AVAILABLE',
-            version: VERSION
-          });
+          console.log('Forcing reload for new version:', VERSION);
+          client.navigate(client.url);
         });
       });
     })
   );
 });
 
-// Fetch event - Network first strategy with immediate update detection
+// Fetch event - Network first strategy with automatic reload on updates
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -153,33 +151,29 @@ self.addEventListener('message', (event) => {
   
   if (event.data && event.data.type === 'CHECK_UPDATE') {
     console.log('Service Worker: Checking for updates');
-    // Force update by clearing current caches and notifying clients
+    // Force update by clearing current caches and reloading
     Promise.all([
       caches.delete(CACHE_NAME),
       caches.delete(STATIC_CACHE_NAME)
     ]).then(() => {
       self.clients.matchAll().then((clients) => {
         clients.forEach((client) => {
-          client.postMessage({ 
-            type: 'UPDATE_AVAILABLE',
-            version: VERSION
-          });
+          console.log('Auto-reloading for update check');
+          client.navigate(client.url);
         });
       });
     });
   }
 });
 
-// Periodic update check
+// Periodic update check with auto-reload
 self.addEventListener('sync', (event) => {
   if (event.tag === 'version-check') {
     event.waitUntil(
       self.clients.matchAll().then((clients) => {
         clients.forEach((client) => {
-          client.postMessage({ 
-            type: 'UPDATE_AVAILABLE',
-            version: VERSION
-          });
+          console.log('Auto-reloading for sync update');
+          client.navigate(client.url);
         });
       })
     );

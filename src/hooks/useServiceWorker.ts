@@ -1,14 +1,14 @@
+
 import { useState, useEffect } from 'react';
 
 export const useServiceWorker = () => {
-  const [updateAvailable, setUpdateAvailable] = useState(false);
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       registerServiceWorker();
       
-      // Check for updates every 5 minutes
+      // Check for updates every 5 minutes (optionnel maintenant car auto-reload)
       const updateInterval = setInterval(() => {
         checkForUpdates();
       }, 5 * 60 * 1000);
@@ -22,20 +22,19 @@ export const useServiceWorker = () => {
       const reg = await navigator.serviceWorker.register('/sw.js');
       setRegistration(reg);
       
-      console.log('Service Worker registered successfully');
+      console.log('Service Worker registered successfully with auto-reload');
 
       // Check for updates immediately
       checkForUpdatesWithRegistration(reg);
 
-      // Listen for updatefound events
+      // Listen for updatefound events - auto-reload will handle updates
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
         if (newWorker) {
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed') {
               if (navigator.serviceWorker.controller) {
-                console.log('New version available');
-                setUpdateAvailable(true);
+                console.log('New version detected - auto-reload will occur');
               } else {
                 console.log('Content is cached for offline use');
               }
@@ -44,18 +43,9 @@ export const useServiceWorker = () => {
         }
       });
 
-      // Listen for messages from SW
-      navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data && event.data.type === 'UPDATE_AVAILABLE') {
-          console.log('Update notification received from SW:', event.data.version);
-          setUpdateAvailable(true);
-        }
-      });
-
-      // Listen for controller changes (new SW takes control)
+      // Listen for controller changes (new SW takes control) - auto-reload
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        console.log('Service Worker controller changed');
-        setUpdateAvailable(true);
+        console.log('Service Worker controller changed - auto-reload');
       });
 
     } catch (error) {
@@ -67,31 +57,19 @@ export const useServiceWorker = () => {
     try {
       await reg.update();
       
-      // If there's a waiting worker, update is available
+      // If there's a waiting worker, it will auto-reload
       if (reg.waiting) {
-        setUpdateAvailable(true);
+        console.log('Update available - will auto-reload');
       }
     } catch (error) {
       console.error('Update check failed:', error);
     }
   };
 
-  const updateApp = () => {
-    if (registration && registration.waiting) {
-      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-    }
-    // Force reload to get the new version
-    window.location.reload();
-  };
-
   const checkForUpdates = async () => {
     if (registration) {
       await checkForUpdatesWithRegistration(registration);
     }
-  };
-
-  const dismissUpdate = () => {
-    setUpdateAvailable(false);
   };
 
   const getVersion = () => {
@@ -103,11 +81,7 @@ export const useServiceWorker = () => {
   };
 
   return {
-    updateAvailable,
-    updateApp,
     checkForUpdates,
-    dismissUpdate,
-    setUpdateAvailable,
     getVersion,
     getBuildDate
   };
