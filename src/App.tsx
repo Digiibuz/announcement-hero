@@ -9,6 +9,7 @@ import AppRoutes from "@/components/routing/Routes";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
 import DynamicBackground from "@/components/ui/DynamicBackground";
 import MobileBottomNav from "@/components/ui/layout/MobileBottomNav";
+import UpdateNotification from "@/components/ui/UpdateNotification";
 import { useServiceWorker } from "@/hooks/useServiceWorker";
 
 // Configuration React Query sans refetch automatique
@@ -24,8 +25,8 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  // Initialize service worker for auto-updates
-  useServiceWorker();
+  // Initialize service worker for manual updates
+  const { updateAvailable, updateApp, dismissUpdate } = useServiceWorker();
 
   return (
     <BrowserRouter>
@@ -36,6 +37,12 @@ function App() {
               <ImpersonationBanner />
               <AppRoutes />
               <MobileBottomNav />
+              {updateAvailable && (
+                <UpdateNotification 
+                  onUpdate={updateApp}
+                  onDismiss={dismissUpdate}
+                />
+              )}
             </DynamicBackground>
             <SonnerToaster />
             <UIToaster />

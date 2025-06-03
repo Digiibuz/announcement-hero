@@ -24,12 +24,8 @@ export const useServiceWorker = () => {
         if (newWorker) {
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              console.log('New version available - Auto updating...');
+              console.log('New version available - Manual update required');
               setUpdateAvailable(true);
-              // Auto-update after a short delay
-              setTimeout(() => {
-                updateApp();
-              }, 2000);
             }
           });
         }
@@ -39,19 +35,12 @@ export const useServiceWorker = () => {
       navigator.serviceWorker.addEventListener('message', (event) => {
         if (event.data && event.data.type === 'UPDATE_AVAILABLE') {
           setUpdateAvailable(true);
-          // Auto-update after a short delay
-          setTimeout(() => {
-            updateApp();
-          }, 2000);
         }
       });
 
       // Check for existing updates
       if (reg.waiting) {
         setUpdateAvailable(true);
-        setTimeout(() => {
-          updateApp();
-        }, 2000);
       }
 
     } catch (error) {
@@ -66,10 +55,14 @@ export const useServiceWorker = () => {
     window.location.reload();
   };
 
-  const checkForUpdates = () => {
+  const checkForUpdates = async () => {
     if (registration) {
-      registration.update();
+      await registration.update();
     }
+  };
+
+  const dismissUpdate = () => {
+    setUpdateAvailable(false);
   };
 
   const getVersion = () => {
@@ -84,6 +77,7 @@ export const useServiceWorker = () => {
     updateAvailable,
     updateApp,
     checkForUpdates,
+    dismissUpdate,
     setUpdateAvailable,
     getVersion,
     getBuildDate
