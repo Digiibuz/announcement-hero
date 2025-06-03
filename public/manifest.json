@@ -8,6 +8,11 @@
   "background_color": "#ffffff",
   "theme_color": "#0C1646",
   "orientation": "portrait",
+  "version": "1.0.0",
+  "scope": "/",
+  "prefer_related_applications": false,
+  "categories": ["business", "productivity"],
+  "lang": "fr",
   "icons": [
     {
       "src": "/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png",
