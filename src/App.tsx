@@ -1,3 +1,4 @@
+
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
@@ -8,9 +9,7 @@ import AppRoutes from "@/components/routing/Routes";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
 import DynamicBackground from "@/components/ui/DynamicBackground";
 import MobileBottomNav from "@/components/ui/layout/MobileBottomNav";
-import UpdateNotification from "@/components/ui/UpdateNotification";
 import { useServiceWorker } from "@/hooks/useServiceWorker";
-import VersionIndicator from "@/components/ui/VersionIndicator";
 
 // Configuration React Query sans refetch automatique
 const queryClient = new QueryClient({
@@ -25,11 +24,8 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  const { updateAvailable, updateApp, setUpdateAvailable } = useServiceWorker();
-
-  const handleDismissUpdate = () => {
-    setUpdateAvailable(false);
-  };
+  // Initialize service worker for auto-updates
+  useServiceWorker();
 
   return (
     <BrowserRouter>
@@ -40,13 +36,6 @@ function App() {
               <ImpersonationBanner />
               <AppRoutes />
               <MobileBottomNav />
-              <VersionIndicator />
-              {updateAvailable && (
-                <UpdateNotification 
-                  onUpdate={updateApp}
-                  onDismiss={handleDismissUpdate}
-                />
-              )}
             </DynamicBackground>
             <SonnerToaster />
             <UIToaster />

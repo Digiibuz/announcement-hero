@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -7,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, Globe, KeyRound, Lock, Eye, EyeOff } from "lucide-react";
+import { User, Globe, KeyRound, Lock, Eye, EyeOff, Info, CheckCircle, RefreshCw } from "lucide-react";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +21,8 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { useServiceWorker } from "@/hooks/useServiceWorker";
+import { Badge } from "@/components/ui/badge";
 
 // Schema de validation pour le changement de mot de passe
 const passwordSchema = z.object({
@@ -49,6 +50,8 @@ const UserProfile = () => {
     new: false,
     confirm: false
   });
+
+  const { getVersion, getBuildDate, checkForUpdates } = useServiceWorker();
 
   const form = useForm<PasswordForm>({
     resolver: zodResolver(passwordSchema),
@@ -181,6 +184,46 @@ const UserProfile = () => {
                     </div>
                   </div>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+        </AnimatedContainer>
+
+        <AnimatedContainer delay={150}>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-2xl font-bold flex items-center gap-2">
+                <Info className="h-6 w-6" />
+                Informations de l'application
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4">
+                <div className="flex items-center justify-between">
+                  <Label>Version de l'application</Label>
+                  <Badge variant="outline" className="flex items-center gap-2">
+                    <CheckCircle className="h-3 w-3 text-green-500" />
+                    v{getVersion()}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Date de build</Label>
+                  <span className="text-sm text-muted-foreground">{getBuildDate()}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Mises à jour</Label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-green-600">Automatiques</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={checkForUpdates}
+                      className="h-8 px-2"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
