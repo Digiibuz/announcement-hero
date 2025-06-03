@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Loader2, Save } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import ImageUploader from "./ImageUploader";
+import MediaUploader from "./MediaUploader";
 import DescriptionField from "./DescriptionField";
 import PublishingOptions from "./PublishingOptions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -200,13 +200,13 @@ const AnnouncementForm = ({
             <div className={`${isMobile ? "px-4" : ""}`}>
               <Card className={getCardStyles(true)}>
                 <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"}`}>
-                  <CardTitle className="text-lg font-medium">Images</CardTitle>
+                  <CardTitle className="text-lg font-medium">Image</CardTitle>
                   {!isMobile && <CardDescription className="text-amber-400">
-                      Ajoutez des images à votre annonce pour attirer l'attention
+                      Ajoutez une image à votre annonce pour attirer l'attention
                     </CardDescription>}
                 </CardHeader>
                 <CardContent className={`${isMobile ? "px-0 py-3" : ""}`}>
-                  <ImageUploader form={form} />
+                  <MediaUploader form={form} />
                 </CardContent>
               </Card>
             </div>
