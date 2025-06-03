@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { UserIcon } from "lucide-react";
 
 const ImpersonationBanner = () => {
-  const { originalUser, isImpersonating, stopImpersonating } = useAuth();
+  const { originalUser, isImpersonating, stopImpersonation } = useAuth();
 
   if (!isImpersonating || !originalUser) {
     return null;
@@ -24,7 +24,7 @@ const ImpersonationBanner = () => {
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={stopImpersonating}
+            onClick={stopImpersonation}
             className="bg-primary-foreground hover:bg-primary-foreground/90 text-primary"
           >
             Revenir à mon compte
