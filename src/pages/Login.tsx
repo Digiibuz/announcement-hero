@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -39,7 +40,11 @@ const Login = () => {
         description: "Vous êtes maintenant connecté",
         variant: "default",
       });
-      // Navigation handled by the useEffect above
+      
+      // Délai pour permettre aux gestionnaires de mots de passe de détecter la connexion réussie
+      setTimeout(() => {
+        navigate("/dashboard", { replace: true });
+      }, 100);
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
       toast({
@@ -108,7 +113,7 @@ const Login = () => {
             </CardHeader>
 
             <CardContent className="p-6">
-              <form onSubmit={handleSubmit} className="space-y-6">              
+              <form onSubmit={handleSubmit} className="space-y-6" id="login-form">              
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-gray-700 font-semibold">Email</Label>
                   <div className="relative">
@@ -120,9 +125,10 @@ const Login = () => {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="email@example.com"
                       required
-                      autoComplete="username"
+                      autoComplete="email"
                       disabled={isLoading}
                       className="h-12 rounded-xl border-2 border-gray-200 focus:border-blue-500 transition-all duration-300 text-base"
+                      data-lpignore="false"
                     />
                   </div>
                 </div>
@@ -152,6 +158,7 @@ const Login = () => {
                       autoComplete="current-password"
                       disabled={isLoading}
                       className="h-12 rounded-xl border-2 border-gray-200 focus:border-blue-500 transition-all duration-300 text-base pr-12"
+                      data-lpignore="false"
                     />
                     <Button
                       type="button"
@@ -169,6 +176,7 @@ const Login = () => {
                 
                 <Button 
                   type="submit" 
+                  form="login-form"
                   className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg" 
                   disabled={isLoading}
                 >
@@ -200,3 +208,4 @@ const Login = () => {
 };
 
 export default Login;
+
