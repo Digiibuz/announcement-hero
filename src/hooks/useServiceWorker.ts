@@ -66,7 +66,7 @@ export const useServiceWorker = () => {
   };
 
   const getVersion = () => {
-    return import.meta.env.MODE === 'development' ? 'dev' : '1.2.1';
+    return import.meta.env.MODE === 'development' ? 'dev' : '1.0.2';
   };
 
   const getBuildDate = () => {
