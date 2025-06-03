@@ -72,7 +72,7 @@ export const useServiceWorker = () => {
   };
 
   const getVersion = () => {
-    return '1.3.0';
+    return '1.3.1';
   };
 
   const getBuildDate = () => {
