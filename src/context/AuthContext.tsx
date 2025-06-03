@@ -1,8 +1,8 @@
+
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { UserProfile, Role } from "@/types/auth";
-import { useVersionTracking } from "@/hooks/useVersionTracking";
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -27,47 +27,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [originalUser, setOriginalUser] = useState<UserProfile | null>(null);
 
-  // Use version tracking hook
-  useVersionTracking();
+  const loadSession = async () => {
+    setIsLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*, wordpress_configs(name, site_url)')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profileError) {
+          throw profileError;
+        }
+
+        setUser({
+          id: session.user.id,
+          email: session.user.email ?? '',
+          name: profile.name,
+          role: profile.role as Role,
+          clientId: profile.client_id,
+          wordpressConfigId: profile.wordpress_config_id || null,
+          wordpressConfig: profile.wordpress_configs ? {
+            name: profile.wordpress_configs.name,
+            site_url: profile.wordpress_configs.site_url
+          } : null,
+          lastLogin: session.user.last_sign_in_at,
+          appVersion: profile.app_version || null,
+        });
+      }
+    } catch (error: any) {
+      console.error("Error loading session:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadSession = async () => {
-      setIsLoading(true);
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (session) {
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*, wordpress_configs(name, site_url)')
-            .eq('id', session.user.id)
-            .single();
-
-          if (profileError) {
-            throw profileError;
-          }
-
-          setUser({
-            id: session.user.id,
-            email: session.user.email ?? '',
-            name: profile.name,
-            role: profile.role as Role,
-            clientId: profile.client_id,
-            wordpressConfigId: profile.wordpress_config_id || null,
-            wordpressConfig: profile.wordpress_configs ? {
-              name: profile.wordpress_configs.name,
-              site_url: profile.wordpress_configs.site_url
-            } : null,
-            lastLogin: session.user.last_sign_in_at,
-          });
-        }
-      } catch (error: any) {
-        console.error("Error loading session:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     loadSession();
 
     // Listen for changes on auth state (login, logout, etc.)

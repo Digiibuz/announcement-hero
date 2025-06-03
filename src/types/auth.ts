@@ -1,5 +1,5 @@
 
-export type Role = 'admin' | 'client' | 'commercial';
+export type Role = 'admin' | 'client' | 'commercial' | 'editor';
 
 export interface WordPressConfig {
   name: string;
