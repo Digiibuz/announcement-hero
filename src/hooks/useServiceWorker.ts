@@ -1,10 +1,9 @@
+
 import { useState, useEffect } from 'react';
-import { useVersionManager } from './useVersionManager';
 
 export const useServiceWorker = () => {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
-  const { version } = useVersionManager();
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
@@ -67,7 +66,7 @@ export const useServiceWorker = () => {
   };
 
   const getVersion = () => {
-    return version;
+    return '1.2.2';
   };
 
   const getBuildDate = () => {
