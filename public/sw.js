@@ -1,6 +1,8 @@
 
-const CACHE_NAME = 'digiibuz-v1';
-const STATIC_CACHE_NAME = 'digiibuz-static-v1';
+// Version basée sur la date pour forcer les mises à jour
+const VERSION = '1.2.3';
+const CACHE_NAME = `digiibuz-v${VERSION}`;
+const STATIC_CACHE_NAME = `digiibuz-static-v${VERSION}`;
 
 // Files to cache on install
 const STATIC_ASSETS = [
@@ -11,32 +13,50 @@ const STATIC_ASSETS = [
 
 // Install event
 self.addEventListener('install', (event) => {
-  console.log('Service Worker installing...');
+  console.log('Service Worker installing version:', VERSION);
   event.waitUntil(
     caches.open(STATIC_CACHE_NAME)
       .then((cache) => cache.addAll(STATIC_ASSETS))
-      .then(() => self.skipWaiting())
+      .then(() => {
+        console.log('Service Worker: Skip waiting to activate immediately');
+        return self.skipWaiting();
+      })
   );
 });
 
-// Activate event
+// Activate event - Clean up old caches and claim clients immediately
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker activating...');
+  console.log('Service Worker activating version:', VERSION);
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME && cacheName !== STATIC_CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
+    Promise.all([
+      // Clean up old caches
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cacheName) => {
+            if (cacheName !== CACHE_NAME && cacheName !== STATIC_CACHE_NAME) {
+              console.log('Deleting old cache:', cacheName);
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      }),
+      // Take control of all clients immediately
+      self.clients.claim()
+    ]).then(() => {
+      // Notify all clients that a new version is available
+      return self.clients.matchAll().then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({ 
+            type: 'UPDATE_AVAILABLE',
+            version: VERSION
+          });
+        });
+      });
+    })
   );
 });
 
-// Fetch event - Network first strategy for API calls, cache first for static assets
+// Fetch event - Network first strategy with immediate update detection
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -49,30 +69,65 @@ self.addEventListener('fetch', (event) => {
   // API calls - always try network first
   if (url.pathname.includes('/api/') || url.hostname.includes('supabase')) {
     event.respondWith(
+      fetch(request).catch(() => {
+        return caches.match(request);
+      })
+    );
+    return;
+  }
+
+  // For main app files, always check network first for updates
+  if (url.pathname === '/' || url.pathname.includes('.js') || url.pathname.includes('.css')) {
+    event.respondWith(
       fetch(request)
         .then((response) => {
+          // If we got a valid response, cache it and return
+          if (response && response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseToCache);
+            });
+          }
           return response;
         })
         .catch(() => {
-          // Return cached version if network fails
+          // Only fallback to cache if network fails
           return caches.match(request);
         })
     );
     return;
   }
 
-  // Static assets - cache first
+  // Static assets - cache first but with shorter max-age
   event.respondWith(
     caches.match(request)
       .then((cachedResponse) => {
+        // Return cached version if available and not too old
         if (cachedResponse) {
+          const cacheDate = new Date(cachedResponse.headers.get('date') || 0);
+          const now = new Date();
+          const cacheAge = now.getTime() - cacheDate.getTime();
+          
+          // If cached version is older than 1 hour, try to fetch new version in background
+          if (cacheAge > 60 * 60 * 1000) {
+            fetch(request).then((response) => {
+              if (response && response.status === 200) {
+                caches.open(CACHE_NAME).then((cache) => {
+                  cache.put(request, response);
+                });
+              }
+            }).catch(() => {
+              // Ignore network errors for background updates
+            });
+          }
+          
           return cachedResponse;
         }
         
+        // If not in cache, fetch from network
         return fetch(request)
           .then((response) => {
-            // Don't cache non-successful responses
-            if (!response || response.status !== 200 || response.type !== 'basic') {
+            if (!response || response.status !== 200) {
               return response;
             }
 
@@ -91,24 +146,43 @@ self.addEventListener('fetch', (event) => {
 // Listen for messages from the main thread
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
+    console.log('Service Worker: Received SKIP_WAITING message');
     self.skipWaiting();
   }
-});
-
-// Check for updates
-self.addEventListener('message', (event) => {
+  
   if (event.data && event.data.type === 'CHECK_UPDATE') {
-    // Force update check by clearing caches and reloading
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => caches.delete(cacheName))
-      );
-    }).then(() => {
+    console.log('Service Worker: Checking for updates');
+    // Force update by clearing current caches and notifying clients
+    Promise.all([
+      caches.delete(CACHE_NAME),
+      caches.delete(STATIC_CACHE_NAME)
+    ]).then(() => {
       self.clients.matchAll().then((clients) => {
         clients.forEach((client) => {
-          client.postMessage({ type: 'UPDATE_AVAILABLE' });
+          client.postMessage({ 
+            type: 'UPDATE_AVAILABLE',
+            version: VERSION
+          });
         });
       });
     });
   }
 });
+
+// Periodic update check
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'version-check') {
+    event.waitUntil(
+      self.clients.matchAll().then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({ 
+            type: 'UPDATE_AVAILABLE',
+            version: VERSION
+          });
+        });
+      })
+    );
+  }
+});
+
+console.log('Service Worker loaded with version:', VERSION);
