@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -63,6 +64,8 @@ const UserProfile = () => {
       confirmPassword: ""
     }
   });
+
+  console.log('UserProfile - isAdmin:', isAdmin, 'user role:', user?.role);
 
   if (!user) {
     return (
