@@ -6,6 +6,18 @@ export interface WordPressConfig {
   site_url: string;
 }
 
+export interface GoogleBusinessProfile {
+  id: string;
+  google_email: string;
+  gmb_account_id?: string;
+  gmb_location_id?: string;
+  access_token?: string;
+  refresh_token: string;
+  token_expires_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface UserProfile {
   id: string;
   email: string;

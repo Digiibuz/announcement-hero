@@ -17,6 +17,7 @@ interface AuthContextType {
   stopImpersonation: () => void;
   isImpersonating: boolean;
   originalUser: UserProfile | null;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -55,7 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             site_url: profile.wordpress_configs.site_url
           } : null,
           lastLogin: session.user.last_sign_in_at,
-          appVersion: profile.app_version || null,
+          appVersion: (profile as any).app_version || null,
         });
       }
     } catch (error: any) {
@@ -63,6 +64,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const refreshUser = async () => {
+    await loadSession();
   };
 
   useEffect(() => {
@@ -142,7 +147,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     impersonateUser,
     stopImpersonation,
     isImpersonating,
-    originalUser
+    originalUser,
+    refreshUser
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

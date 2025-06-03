@@ -18,7 +18,7 @@ export const useVersionTracking = () => {
         // Mettre à jour la version de l'utilisateur dans la base de données
         const { error } = await supabase
           .from('profiles')
-          .update({ app_version: currentVersion })
+          .update({ app_version: currentVersion } as any)
           .eq('id', user.id);
 
         if (error) {
