@@ -371,7 +371,7 @@ const MediaUploader = ({
           type="file" 
           ref={cameraInputRef} 
           accept="image/*,video/*,.heic,.heif" 
-          capture={isAndroid() ? "camera" : "environment"}
+          capture={isAndroid() ? "user" : "environment"}
           className="hidden" 
           onChange={handleFileUpload} 
         />
