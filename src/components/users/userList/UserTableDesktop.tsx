@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
-import { Clock } from "lucide-react";
+import { Clock, Monitor } from "lucide-react";
 import { UserProfile } from "@/types/auth";
 import UserActionsMenu from "./UserActionsMenu";
 import { UserListUtils } from "./UserListUtils";
@@ -47,6 +47,12 @@ const UserTableDesktop: React.FC<UserTableDesktopProps> = ({
             <TableHead className="text-gray-700">WordPress</TableHead>
             <TableHead className="text-gray-700">
               <div className="flex items-center">
+                <Monitor className="h-4 w-4 mr-1" />
+                Version
+              </div>
+            </TableHead>
+            <TableHead className="text-gray-700">
+              <div className="flex items-center">
                 <Clock className="h-4 w-4 mr-1" />
                 Dernière connexion
               </div>
@@ -68,6 +74,9 @@ const UserTableDesktop: React.FC<UserTableDesktopProps> = ({
                 </span>
               </TableCell>
               <TableCell className="text-gray-700">{getWordPressConfigName(user)}</TableCell>
+              <TableCell className="text-muted-foreground text-sm">
+                {user.appVersion ? `v${user.appVersion}` : 'Inconnue'}
+              </TableCell>
               <TableCell className="text-muted-foreground text-sm">
                 {formatLastLogin(user.lastLogin)}
               </TableCell>

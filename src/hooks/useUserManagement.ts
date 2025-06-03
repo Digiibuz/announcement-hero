@@ -50,7 +50,8 @@ export const useUserManagement = () => {
             name: profile.wordpress_configs.name,
             site_url: profile.wordpress_configs.site_url
           } : null,
-          lastLogin: userLoginInfo?.last_sign_in_at || null
+          lastLogin: userLoginInfo?.last_sign_in_at || null,
+          appVersion: profile.app_version || null
         };
       });
       

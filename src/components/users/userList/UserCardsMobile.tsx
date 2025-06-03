@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { User, Mail, BadgeCheck, Clock } from "lucide-react";
+import { User, Mail, BadgeCheck, Clock, Monitor } from "lucide-react";
 import { UserProfile } from "@/types/auth";
 import UserActionsMenu from "./UserActionsMenu";
 import { UserListUtils } from "./UserListUtils";
@@ -55,6 +55,12 @@ const UserCardsMobile: React.FC<UserCardsMobileProps> = ({
                 <BadgeCheck className="h-4 w-4 mr-2 text-blue-500" />
                 <span className="text-muted-foreground">WordPress:</span>
                 <span className="ml-1">{getWordPressConfigName(user)}</span>
+              </div>
+
+              <div className="flex items-center text-sm">
+                <Monitor className="h-4 w-4 mr-2 text-purple-500" />
+                <span className="text-muted-foreground">Version:</span>
+                <span className="ml-1">{user.appVersion ? `v${user.appVersion}` : 'Inconnue'}</span>
               </div>
               
               <div className="flex items-center text-sm">

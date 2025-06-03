@@ -66,7 +66,7 @@ export const useServiceWorker = () => {
   };
 
   const getVersion = () => {
-    return '1.2.1';
+    return '1.2.2';
   };
 
   const getBuildDate = () => {
