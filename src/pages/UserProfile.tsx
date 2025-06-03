@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -227,7 +228,7 @@ const UserProfile = () => {
                 <div className="flex items-center justify-between">
                   <Label>Mises à jour</Label>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-green-600">Automatiques</span>
+                    <span className="text-sm text-green-600">Manuelles</span>
                     <Button
                       variant="ghost"
                       size="sm"
