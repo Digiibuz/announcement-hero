@@ -191,7 +191,7 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({ form }) => {
     
     console.log("📁 File selected:", files[0].name);
     
-    // If there's already an uploaded media, remove it first
+    // Si il y a déjà un média, on le remplace
     if (uploadedMedia) {
       setUploadedMedia("");
       form.setValue('images', []);
@@ -203,7 +203,7 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({ form }) => {
       setUploadProgress(5);
       setProcessingStatus("Préparation...");
       
-      // Only use the first file, ignoring any others
+      // Prendre seulement le premier fichier
       const fileToProcess = files[0];
       
       try {
@@ -212,7 +212,6 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({ form }) => {
         
         console.log(`🔄 Processing file:`, fileToProcess.name);
         
-        // Process file based on type
         if (isHeicFile(fileToProcess)) {
           setProcessingStatus("Conversion HEIC vers WebP...");
           processedFile = await convertHeicToWebP(fileToProcess);
@@ -227,13 +226,11 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({ form }) => {
         setUploadProgress(60);
         setProcessingStatus("Upload...");
         
-        // Upload to Supabase
         const mediaUrl = await uploadSingleFile(processedFile);
         
         if (mediaUrl) {
-          // Set single media URL and update form
           setUploadedMedia(mediaUrl);
-          form.setValue('images', [mediaUrl]); // Still use array in form for compatibility
+          form.setValue('images', [mediaUrl]);
           
           console.log("📤 File uploaded:", mediaUrl);
           toast.success("Image téléversée avec succès");
@@ -328,7 +325,6 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({ form }) => {
     
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const dataTransfer = new DataTransfer();
-      // Only add the first file
       dataTransfer.items.add(e.dataTransfer.files[0]);
       
       if (fileInputRef.current) {
