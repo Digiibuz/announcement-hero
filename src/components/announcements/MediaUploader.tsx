@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from "react";
 import { ImageIcon, Camera, UploadCloud, Loader2, XCircle, AlertCircle, Video, FileImage } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,7 +15,8 @@ interface MediaUploaderProps {
 const MediaUploader = ({
   form
 }: MediaUploaderProps) => {
-  const [uploadedMedia, setUploadedMedia] = useState<string[]>(form.getValues('images') || []);
+  // Store only a single media URL instead of an array
+  const [uploadedMedia, setUploadedMedia] = useState<string>(form.getValues('images')?.[0] || "");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
@@ -186,12 +186,12 @@ const MediaUploader = ({
     return new File([file], fileName, { type: 'video/mp4' });
   };
 
-  // Main file upload handler
+  // Main file upload handler - modified to handle only one file
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
     
-    console.log("📁 Files selected:", files.length);
+    console.log("📁 File selected:", files[0].name);
     
     try {
       setError(null);
@@ -199,57 +199,51 @@ const MediaUploader = ({
       setUploadProgress(5);
       setProcessingStatus("Préparation...");
       
-      const maxFiles = isMobile ? 3 : 10;
-      const filesToProcess = Array.from(files).slice(0, maxFiles);
+      // Only use the first file, ignoring any others
+      const fileToProcess = files[0];
       
-      if (files.length > maxFiles) {
-        toast.warning(`Maximum ${maxFiles} fichiers à la fois`);
-      }
-      
-      const uploadedMediaUrls: string[] = [];
-      
-      for (let i = 0; i < filesToProcess.length; i++) {
-        try {
-          setUploadProgress(10 + Math.floor((i / filesToProcess.length) * 80));
-          let fileToProcess = filesToProcess[i];
-          
-          console.log(`🔄 Processing file ${i + 1}/${filesToProcess.length}:`, fileToProcess.name);
-          
-          // Traitement selon le type de fichier
-          if (isHeicFile(fileToProcess)) {
-            fileToProcess = await convertHeicToWebP(fileToProcess);
-          } else if (isVideoFile(fileToProcess)) {
-            fileToProcess = await processVideo(fileToProcess);
-          } else {
-            fileToProcess = await convertToWebP(fileToProcess);
-          }
-          
-          // Upload vers Supabase
-          setProcessingStatus(`Upload... (${i + 1}/${filesToProcess.length})`);
-          const mediaUrl = await uploadSingleFile(fileToProcess);
-          
-          if (mediaUrl) {
-            uploadedMediaUrls.push(mediaUrl);
-            console.log("📤 File uploaded:", mediaUrl);
-          }
-        } catch (error) {
-          console.error(`❌ Error processing file ${i + 1}:`, error);
-          toast.error(`Erreur fichier ${i + 1}: ${filesToProcess[i].name}`);
-        }
-      }
-      
-      if (uploadedMediaUrls.length > 0) {
-        setUploadedMedia(prev => [...prev, ...uploadedMediaUrls]);
-        form.setValue('images', [...(form.getValues('images') || []), ...uploadedMediaUrls]);
+      try {
+        setUploadProgress(15);
+        let processedFile = fileToProcess;
         
-        toast.success(`${uploadedMediaUrls.length} fichier(s) traité(s) et téléversé(s)`);
-        console.log("🎉 All files processed successfully");
-      } else {
-        setError("Aucun fichier n'a pu être téléversé");
-        toast.error("Aucun fichier téléversé");
+        console.log(`🔄 Processing file:`, fileToProcess.name);
+        
+        // Process file based on type
+        if (isHeicFile(fileToProcess)) {
+          setProcessingStatus("Conversion HEIC vers WebP...");
+          processedFile = await convertHeicToWebP(fileToProcess);
+        } else if (isVideoFile(fileToProcess)) {
+          setProcessingStatus("Traitement vidéo...");
+          processedFile = await processVideo(fileToProcess);
+        } else {
+          setProcessingStatus("Conversion vers WebP...");
+          processedFile = await convertToWebP(fileToProcess);
+        }
+        
+        setUploadProgress(60);
+        setProcessingStatus("Upload...");
+        
+        // Upload to Supabase
+        const mediaUrl = await uploadSingleFile(processedFile);
+        
+        if (mediaUrl) {
+          // Set single media URL and update form
+          setUploadedMedia(mediaUrl);
+          form.setValue('images', [mediaUrl]); // Still use array in form for compatibility
+          
+          console.log("📤 File uploaded:", mediaUrl);
+          toast.success("Image téléversée avec succès");
+        } else {
+          throw new Error("Échec de l'upload");
+        }
+        
+      } catch (error: any) {
+        console.error(`❌ Error processing file:`, error);
+        toast.error(`Erreur: ${error.message || "Problème lors du traitement"}`);
+        setError(error.message || "Erreur lors du traitement du fichier");
       }
     } catch (error: any) {
-      console.error("❌ Upload error:", error);
+      console.error("❌ General upload error:", error);
       setError(error.message || "Erreur lors du téléversement");
       toast.error("Erreur: " + error.message);
     } finally {
@@ -294,10 +288,9 @@ const MediaUploader = ({
   };
 
   // Remove media
-  const removeMedia = (indexToRemove: number) => {
-    const newMedia = uploadedMedia.filter((_, index) => index !== indexToRemove);
-    setUploadedMedia(newMedia);
-    form.setValue('images', newMedia);
+  const removeMedia = () => {
+    setUploadedMedia("");
+    form.setValue('images', []);
   };
 
   // UI event handlers
@@ -331,9 +324,8 @@ const MediaUploader = ({
     
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const dataTransfer = new DataTransfer();
-      Array.from(e.dataTransfer.files).forEach(file => {
-        dataTransfer.items.add(file);
-      });
+      // Only add the first file
+      dataTransfer.items.add(e.dataTransfer.files[0]);
       
       if (fileInputRef.current) {
         fileInputRef.current.files = dataTransfer.files;
@@ -352,7 +344,7 @@ const MediaUploader = ({
 
   return (
     <div>
-      <Label>Images et Vidéos</Label>
+      <Label>Image</Label>
       
       <div
         className="mt-2 border-2 border-dashed rounded-lg p-6"
@@ -362,7 +354,7 @@ const MediaUploader = ({
         <input 
           type="file" 
           ref={fileInputRef} 
-          multiple 
+          // Remove multiple attribute to allow only one file
           accept="image/*,video/*,.heic,.heif,.mov" 
           className="hidden" 
           onChange={handleFileUpload} 
@@ -376,101 +368,100 @@ const MediaUploader = ({
           onChange={handleFileUpload} 
         />
         
-        <div className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-              <ImageIcon className="h-6 w-6 text-muted-foreground" />
-            </div>
-          </div>
-          <p className="mb-4 text-gray-950">
-            {isMobile ? 
-              "Ajoutez votre image ou photo" : 
-              "Glissez-déposez vos fichiers ici, ou sélectionnez une option ci-dessous"
-            }
-          </p>
-          
-          <div className="flex flex-col sm:flex-row justify-center gap-2">
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="sm" 
-              onClick={triggerFileUpload} 
-              disabled={isUploading}
-              className="flex-1"
-            >
-              <UploadCloud className="mr-2 h-4 w-4" />
-              {isMobile ? "Galerie" : "Sélectionner des fichiers"}
-            </Button>
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="sm" 
-              onClick={triggerCameraUpload} 
-              disabled={isUploading}
-              className="flex-1"
-            >
-              <Camera className="mr-2 h-4 w-4" />
-              {isMobile ? "Appareil photo" : "Prendre une photo/vidéo"}
-            </Button>
-          </div>
-          
-          {isUploading && (
-            <div className="mt-4">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">{processingStatus || "Traitement en cours..."}</span>
+        {!uploadedMedia && (
+          <div className="text-center">
+            <div className="flex justify-center mb-4">
+              <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                <ImageIcon className="h-6 w-6 text-muted-foreground" />
               </div>
-              {uploadProgress > 0 && (
-                <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
-                  <div 
-                    className="bg-primary h-2.5 rounded-full transition-all duration-300" 
-                    style={{ width: `${uploadProgress}%` }}
-                  ></div>
-                </div>
-              )}
             </div>
-          )}
-          
-          {error && !isUploading && (
-            <div className="mt-4 text-red-500 flex items-center justify-center gap-2">
-              <AlertCircle className="h-4 w-4" />
-              <span className="text-sm">{error}</span>
+            <p className="mb-4 text-gray-950">
+              {isMobile ? 
+                "Ajoutez une image ou photo" : 
+                "Glissez-déposez votre image ici, ou sélectionnez une option ci-dessous"
+              }
+            </p>
+            
+            <div className="flex flex-col sm:flex-row justify-center gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                onClick={triggerFileUpload} 
+                disabled={isUploading}
+                className="flex-1"
+              >
+                <UploadCloud className="mr-2 h-4 w-4" />
+                {isMobile ? "Galerie" : "Sélectionner un fichier"}
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                onClick={triggerCameraUpload} 
+                disabled={isUploading}
+                className="flex-1"
+              >
+                <Camera className="mr-2 h-4 w-4" />
+                {isMobile ? "Appareil photo" : "Prendre une photo"}
+              </Button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+        
+        {isUploading && (
+          <div className="mt-4">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm">{processingStatus || "Traitement en cours..."}</span>
+            </div>
+            {uploadProgress > 0 && (
+              <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                <div 
+                  className="bg-primary h-2.5 rounded-full transition-all duration-300" 
+                  style={{ width: `${uploadProgress}%` }}
+                ></div>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {error && !isUploading && (
+          <div className="mt-4 text-red-500 flex items-center justify-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            <span className="text-sm">{error}</span>
+          </div>
+        )}
 
-        {uploadedMedia.length > 0 && (
-          <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {uploadedMedia.map((mediaUrl, index) => (
-              <div key={index} className="relative group aspect-square">
-                {mediaUrl.includes('.mp4') || mediaUrl.includes('.mov') ? (
-                  <video 
-                    src={mediaUrl} 
-                    className="h-full w-full object-cover rounded-md" 
-                    controls
-                    preload="metadata"
-                  />
-                ) : (
-                  <img 
-                    src={mediaUrl} 
-                    alt={`Media ${index + 1}`} 
-                    className="h-full w-full object-cover rounded-md" 
-                    loading="lazy"
-                  />
-                )}
-                <div className="absolute top-1 left-1 bg-black/50 text-white rounded-full p-1">
-                  {getFileIcon(mediaUrl)}
-                </div>
-                <button 
-                  type="button" 
-                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" 
-                  onClick={() => removeMedia(index)}
-                  aria-label="Supprimer le fichier"
-                >
-                  <XCircle size={16} />
-                </button>
-              </div>
-            ))}
+        {/* Display single image instead of grid */}
+        {uploadedMedia && (
+          <div className="relative group aspect-square max-w-md mx-auto">
+            {uploadedMedia.includes('.mp4') || uploadedMedia.includes('.mov') ? (
+              <video 
+                src={uploadedMedia} 
+                className="h-full w-full object-cover rounded-md" 
+                controls
+                preload="metadata"
+              />
+            ) : (
+              <img 
+                src={uploadedMedia} 
+                alt="Media" 
+                className="h-full w-full object-cover rounded-md" 
+                loading="lazy"
+              />
+            )}
+            <div className="absolute top-2 left-2 bg-black/50 text-white rounded-full p-1">
+              {getFileIcon(uploadedMedia)}
+            </div>
+            <button 
+              type="button" 
+              className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" 
+              onClick={removeMedia}
+              aria-label="Supprimer le fichier"
+            >
+              <XCircle size={20} />
+            </button>
           </div>
         )}
       </div>
