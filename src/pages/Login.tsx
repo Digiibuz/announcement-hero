@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -113,12 +114,13 @@ const Login = () => {
                   <div className="relative">
                     <Input
                       id="email"
+                      name="email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="email@example.com"
                       required
-                      autoComplete="email"
+                      autoComplete="username"
                       disabled={isLoading}
                       className="h-12 rounded-xl border-2 border-gray-200 focus:border-blue-500 transition-all duration-300 text-base"
                     />
@@ -141,6 +143,7 @@ const Login = () => {
                   <div className="relative">
                     <Input
                       id="password"
+                      name="password"
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -157,6 +160,7 @@ const Login = () => {
                       className="absolute right-0 top-0 h-12 w-12 rounded-xl hover:bg-gray-100"
                       onClick={togglePasswordVisibility}
                       disabled={isLoading}
+                      tabIndex={-1}
                     >
                       {showPassword ? <EyeOff className="h-5 w-5 text-gray-500" /> : <Eye className="h-5 w-5 text-gray-500" />}
                     </Button>
