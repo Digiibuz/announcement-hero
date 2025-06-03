@@ -66,39 +66,6 @@ export type Database = {
         }
         Relationships: []
       }
-      maintenance_settings: {
-        Row: {
-          created_at: string
-          created_by: string
-          id: string
-          is_maintenance_mode: boolean
-          maintenance_end: string | null
-          maintenance_start: string | null
-          message: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by: string
-          id?: string
-          is_maintenance_mode?: boolean
-          maintenance_end?: string | null
-          maintenance_start?: string | null
-          message?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string
-          id?: string
-          is_maintenance_mode?: boolean
-          maintenance_end?: string | null
-          maintenance_start?: string | null
-          message?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       monthly_ai_limits: {
         Row: {
           created_at: string
@@ -292,10 +259,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_maintenance_message: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
       get_monthly_ai_count: {
         Args: { p_user_id: string }
         Returns: {
@@ -329,10 +292,6 @@ export type Database = {
         Returns: boolean
       }
       is_editor: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_maintenance_active: {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -8,19 +7,15 @@ import { Label } from "@/components/ui/label";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Lock, LogIn, Loader2, AlertTriangle } from "lucide-react";
+import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
-import { useMaintenanceSettings } from "@/hooks/useMaintenanceSettings";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [maintenanceMessage, setMaintenanceMessage] = useState<string | null>(null);
   const { isAuthenticated, login } = useAuth();
-  const { isMaintenanceActive, getMaintenanceMessage } = useMaintenanceSettings();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -31,28 +26,8 @@ const Login = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  // Fetch maintenance message on component mount
-  useEffect(() => {
-    const fetchMaintenanceMessage = async () => {
-      const message = await getMaintenanceMessage();
-      setMaintenanceMessage(message);
-    };
-    fetchMaintenanceMessage();
-  }, [getMaintenanceMessage]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Check if maintenance mode is active and block login
-    if (isMaintenanceActive) {
-      toast({
-        title: "Connexion impossible",
-        description: "L'application est actuellement en maintenance. Veuillez réessayer plus tard.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsLoading(true);
     
     try {
@@ -136,26 +111,6 @@ const Login = () => {
             </CardHeader>
 
             <CardContent className="p-6">
-              {/* Message de maintenance */}
-              {maintenanceMessage && (
-                <Alert className="mb-6 border-amber-200 bg-amber-50">
-                  <AlertTriangle className="h-4 w-4 text-amber-600" />
-                  <AlertDescription className="text-amber-800">
-                    {maintenanceMessage}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {/* Message de blocage si maintenance active */}
-              {isMaintenanceActive && (
-                <Alert className="mb-6 border-red-200 bg-red-50">
-                  <AlertTriangle className="h-4 w-4 text-red-600" />
-                  <AlertDescription className="text-red-800 font-medium">
-                    L'application est actuellement en maintenance. Les connexions sont temporairement désactivées.
-                  </AlertDescription>
-                </Alert>
-              )}
-
               <form onSubmit={handleSubmit} className="space-y-6" id="login-form" method="POST">              
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-gray-700 font-semibold">Email</Label>
@@ -221,18 +176,13 @@ const Login = () => {
                   type="submit" 
                   form="login-form"
                   className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg" 
-                  disabled={isLoading || isMaintenanceActive}
+                  disabled={isLoading}
                 >
                   {isLoading ? (
                     <div className="flex items-center">
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                       Connexion en cours...
                     </div>
-                  ) : isMaintenanceActive ? (
-                    <>
-                      <Lock className="mr-2 h-5 w-5" />
-                      Maintenance en cours
-                    </>
                   ) : (
                     <>
                       <LogIn className="mr-2 h-5 w-5" />

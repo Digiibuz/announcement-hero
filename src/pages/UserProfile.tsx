@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -23,7 +24,6 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useServiceWorker } from "@/hooks/useServiceWorker";
 import { Badge } from "@/components/ui/badge";
-import MaintenanceManager from "@/components/admin/MaintenanceManager";
 
 // Schema de validation pour le changement de mot de passe
 const passwordSchema = z.object({
@@ -42,7 +42,7 @@ const passwordSchema = z.object({
 type PasswordForm = z.infer<typeof passwordSchema>;
 
 const UserProfile = () => {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
@@ -244,13 +244,6 @@ const UserProfile = () => {
             </CardContent>
           </Card>
         </AnimatedContainer>
-
-        {/* Section de gestion de la maintenance pour les admins */}
-        {isAdmin && (
-          <AnimatedContainer delay={175}>
-            <MaintenanceManager />
-          </AnimatedContainer>
-        )}
 
         <AnimatedContainer delay={200}>
           <Card>

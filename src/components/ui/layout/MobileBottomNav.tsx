@@ -1,7 +1,7 @@
 
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Home, FolderOpen } from "lucide-react";
@@ -41,7 +41,7 @@ const navItems: NavItem[] = [
 const MobileBottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const isMobile = useIsMobile();
+  const isMobile = useMediaQuery("(max-width: 767px)");
   const { isAuthenticated } = useAuth();
 
   // Don't show navigation if not mobile, not authenticated, on public pages, or on create page
