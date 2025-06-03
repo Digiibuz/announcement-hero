@@ -95,7 +95,7 @@ export const useServiceWorker = () => {
   };
 
   const getVersion = () => {
-    return '1.2.4';
+    return '1.2.5';
   };
 
   const getBuildDate = () => {
