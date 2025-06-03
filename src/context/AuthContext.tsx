@@ -49,10 +49,10 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Use React.useState explicitly to ensure proper hook access
-  const [user, setUser] = React.useState<AuthUser | null>(null);
-  const [session, setSession] = React.useState<Session | null>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
+  // Use standard useState hooks
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   console.log('🔍 DEBUG: AuthProvider state:', {
     user: user ? {
@@ -144,8 +144,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Use React.useEffect explicitly
-  React.useEffect(() => {
+  // Use standard useEffect hook
+  useEffect(() => {
     const getSession = async () => {
       try {
         console.log('🔄 Getting initial session...');
