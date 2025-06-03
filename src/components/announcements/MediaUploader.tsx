@@ -1,5 +1,6 @@
+
 import React, { useRef, useState } from "react";
-import { ImageIcon, Camera, UploadCloud, Loader2, XCircle, AlertCircle, Video, FileImage } from "lucide-react";
+import { ImageIcon, Camera, UploadCloud, Loader2, XCircle, AlertCircle, FileImage } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
@@ -77,14 +78,6 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({ form }) => {
            file.type === 'image/heif' || 
            file.name.toLowerCase().endsWith('.heic') || 
            file.name.toLowerCase().endsWith('.heif');
-  };
-
-  const isVideoFile = (file: File): boolean => {
-    return file.type.startsWith('video/') || 
-           file.name.toLowerCase().endsWith('.mov') ||
-           file.name.toLowerCase().endsWith('.mp4') ||
-           file.name.toLowerCase().endsWith('.avi') ||
-           file.name.toLowerCase().endsWith('.mkv');
   };
 
   // Convert regular images to WebP
@@ -175,15 +168,6 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({ form }) => {
     });
   };
 
-  // Process video files
-  const processVideo = async (file: File): Promise<File> => {
-    setProcessingStatus("Traitement vidéo...");
-    console.log("🎥 Processing video:", file.name);
-    
-    const fileName = file.name.split('.')[0] + '.mp4';
-    return new File([file], fileName, { type: 'video/mp4' });
-  };
-
   // Main file upload handler - modified to handle only one file
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -215,9 +199,6 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({ form }) => {
         if (isHeicFile(fileToProcess)) {
           setProcessingStatus("Conversion HEIC vers WebP...");
           processedFile = await convertHeicToWebP(fileToProcess);
-        } else if (isVideoFile(fileToProcess)) {
-          setProcessingStatus("Traitement vidéo...");
-          processedFile = await processVideo(fileToProcess);
         } else {
           setProcessingStatus("Conversion vers WebP...");
           processedFile = await convertToWebP(fileToProcess);
@@ -335,13 +316,6 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({ form }) => {
     }
   };
 
-  const getFileIcon = (url: string) => {
-    if (url.includes('.mp4') || url.includes('.mov') || url.includes('.avi')) {
-      return <Video className="h-4 w-4" />;
-    }
-    return <FileImage className="h-4 w-4" />;
-  };
-
   return (
     <div>
       <Label>Image</Label>
@@ -354,14 +328,14 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({ form }) => {
         <input 
           type="file" 
           ref={fileInputRef} 
-          accept="image/*,video/*,.heic,.heif,.mov" 
+          accept="image/*,.heic,.heif" 
           className="hidden" 
           onChange={handleFileUpload} 
         />
         <input 
           type="file" 
           ref={cameraInputRef} 
-          accept="image/*,video/*,.heic,.heif" 
+          accept="image/*,.heic,.heif" 
           capture={isAndroid() ? "user" : "environment"}
           className="hidden" 
           onChange={handleFileUpload} 
@@ -432,26 +406,17 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({ form }) => {
           </div>
         )}
 
-        {/* Display single image instead of grid */}
+        {/* Display single image */}
         {uploadedMedia && (
           <div className="relative group aspect-square max-w-md mx-auto">
-            {uploadedMedia.includes('.mp4') || uploadedMedia.includes('.mov') ? (
-              <video 
-                src={uploadedMedia} 
-                className="h-full w-full object-cover rounded-md" 
-                controls
-                preload="metadata"
-              />
-            ) : (
-              <img 
-                src={uploadedMedia} 
-                alt="Media" 
-                className="h-full w-full object-cover rounded-md" 
-                loading="lazy"
-              />
-            )}
+            <img 
+              src={uploadedMedia} 
+              alt="Image" 
+              className="h-full w-full object-cover rounded-md" 
+              loading="lazy"
+            />
             <div className="absolute top-2 left-2 bg-black/50 text-white rounded-full p-1">
-              {getFileIcon(uploadedMedia)}
+              <FileImage className="h-4 w-4" />
             </div>
             <button 
               type="button" 
