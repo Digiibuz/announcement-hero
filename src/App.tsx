@@ -1,4 +1,3 @@
-
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
@@ -11,6 +10,7 @@ import DynamicBackground from "@/components/ui/DynamicBackground";
 import MobileBottomNav from "@/components/ui/layout/MobileBottomNav";
 import UpdateNotification from "@/components/ui/UpdateNotification";
 import { useServiceWorker } from "@/hooks/useServiceWorker";
+import VersionIndicator from "@/components/ui/VersionIndicator";
 
 // Configuration React Query sans refetch automatique
 const queryClient = new QueryClient({
@@ -40,6 +40,7 @@ function App() {
               <ImpersonationBanner />
               <AppRoutes />
               <MobileBottomNav />
+              <VersionIndicator />
               {updateAvailable && (
                 <UpdateNotification 
                   onUpdate={updateApp}
