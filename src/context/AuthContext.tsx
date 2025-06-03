@@ -1,163 +1,302 @@
 
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
-import { UserProfile, Role } from "@/types/auth";
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { Session, User } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
+import { useImpersonation } from '@/hooks/useImpersonation';
+import { UserProfile } from '@/types/auth';
+
+interface Profile {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  wordpress_config_id: string | null;
+  client_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface AuthUser extends User {
+  wordpressConfigId?: string | null;
+  role?: string;
+  profile?: Profile;
+  name?: string;
+  wordpressConfig?: {
+    name: string;
+    site_url: string;
+  } | null;
+}
 
 interface AuthContextType {
-  user: UserProfile | null;
-  isAuthenticated: boolean;
+  user: AuthUser | null;
+  session: Session | null;
   isLoading: boolean;
+  isAuthenticated: boolean;
   isAdmin: boolean;
   isClient: boolean;
   isCommercial: boolean;
-  login: (email: string, password: string) => Promise<{ error?: any }>;
-  logout: () => void;
-  impersonateUser: (targetUser: UserProfile) => void;
-  stopImpersonation: () => void;
-  isImpersonating: boolean;
-  originalUser: UserProfile | null;
+  signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  impersonateUser: (userToImpersonate: UserProfile) => void;
+  stopImpersonating: () => void;
+  originalUser: UserProfile | null;
+  isImpersonating: boolean;
 }
 
+// Créer le contexte avec une valeur par défaut
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserProfile | null>(null);
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isImpersonating, setIsImpersonating] = useState(false);
-  const [originalUser, setOriginalUser] = useState<UserProfile | null>(null);
 
-  const loadSession = async () => {
-    setIsLoading(true);
+  console.log('🔍 DEBUG: AuthProvider state:', {
+    user: user ? {
+      id: user.id,
+      email: user.email,
+      wordpressConfigId: user.wordpressConfigId,
+      role: user.role,
+      name: user.name,
+      profile: user.profile
+    } : null,
+    session: !!session,
+    isLoading
+  });
+
+  // Initialize impersonation
+  const {
+    originalUser,
+    isImpersonating,
+    impersonateUser: startImpersonation,
+    stopImpersonating: endImpersonation
+  } = useImpersonation(user ? {
+    id: user.id,
+    name: user.name || user.email,
+    email: user.email,
+    role: user.role as any || 'editor'
+  } : null);
+
+  const refreshUser = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (session) {
-        const { data: profile, error: profileError } = await supabase
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      
+      if (authUser) {
+        console.log('🔍 Refreshing user data for:', authUser.id);
+        
+        const { data: profile, error } = await supabase
           .from('profiles')
-          .select('*, wordpress_configs(name, site_url)')
-          .eq('id', session.user.id)
+          .select('*')
+          .eq('id', authUser.id)
           .single();
 
-        if (profileError) {
-          throw profileError;
+        if (error) {
+          console.error('❌ Error fetching profile:', error);
+          return;
         }
 
-        setUser({
-          id: session.user.id,
-          email: session.user.email ?? '',
-          name: profile.name,
-          role: profile.role as Role,
-          clientId: profile.client_id,
-          wordpressConfigId: profile.wordpress_config_id || null,
-          wordpressConfig: profile.wordpress_configs ? {
-            name: profile.wordpress_configs.name,
-            site_url: profile.wordpress_configs.site_url
-          } : null,
-          lastLogin: session.user.last_sign_in_at,
-          appVersion: (profile as any).app_version || null,
-        });
+        if (profile) {
+          console.log('📊 Profile fetched from database:', {
+            id: profile.id,
+            name: profile.name,
+            wordpress_config_id: profile.wordpress_config_id,
+            role: profile.role
+          });
+
+          // Fetch WordPress config if user has one
+          let wordpressConfig = null;
+          if (profile.wordpress_config_id) {
+            const { data: wpConfig } = await supabase
+              .from('wordpress_configs')
+              .select('name, site_url')
+              .eq('id', profile.wordpress_config_id)
+              .single();
+            
+            if (wpConfig) {
+              wordpressConfig = wpConfig;
+            }
+          }
+
+          const updatedUser: AuthUser = {
+            ...authUser,
+            wordpressConfigId: profile.wordpress_config_id,
+            role: profile.role,
+            name: profile.name,
+            profile,
+            wordpressConfig
+          };
+
+          console.log('✅ Updated user object:', {
+            id: updatedUser.id,
+            wordpressConfigId: updatedUser.wordpressConfigId,
+            role: updatedUser.role,
+            name: updatedUser.name
+          });
+
+          setUser(updatedUser);
+        }
       }
-    } catch (error: any) {
-      console.error("Error loading session:", error);
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      console.error('❌ Error refreshing user:', error);
     }
   };
 
-  const refreshUser = async () => {
-    await loadSession();
-  };
-
   useEffect(() => {
-    loadSession();
-
-    // Listen for changes on auth state (login, logout, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-        loadSession();
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
+    const getSession = async () => {
+      try {
+        console.log('🔄 Getting initial session...');
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        
+        if (currentSession) {
+          console.log('📱 Initial session found:', currentSession.user.id);
+          setSession(currentSession);
+          await refreshUser();
+        } else {
+          console.log('❌ No initial session found');
+        }
+      } catch (error) {
+        console.error('❌ Error getting session:', error);
+      } finally {
+        setIsLoading(false);
       }
+    };
+
+    getSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔄 Auth state change:', event, session?.user?.email);
+      
+      setSession(session);
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        console.log('✅ User signed in:', session.user.id);
+        // Defer profile loading to avoid potential deadlocks
+        setTimeout(async () => {
+          await refreshUser();
+        }, 0);
+      } else if (event === 'SIGNED_OUT') {
+        console.log('👋 User signed out');
+        setUser(null);
+      } else if (event === 'INITIAL_SESSION' && session?.user) {
+        console.log('🎯 Initial session established:', session.user.id);
+        setTimeout(async () => {
+          await refreshUser();
+        }, 0);
+      }
+      
+      setIsLoading(false);
     });
 
     return () => {
-      subscription?.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
   const login = async (email: string, password: string) => {
-    try {
-      setIsLoading(true);
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        console.error("Login error:", error);
-        return { error };
-      }
-
-      // After successful login, load the user session to update the user state
-      await loadSession();
-      return { data };
-    } catch (error: any) {
-      console.error("Login failed:", error);
-      return { error };
-    } finally {
-      setIsLoading(false);
-    }
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw error;
   };
 
-  const logout = async () => {
+  const signOut = async () => {
     try {
-      setIsLoading(true);
+      console.log('👋 Signing out...');
+      
+      // Clear localStorage
+      console.log('🧹 Clearing localStorage...');
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('supabase.') || key.includes('announcement') || key.includes('form')) {
+          console.log('🗑️ Removing localStorage key:', key);
+          localStorage.removeItem(key);
+        }
+      });
+      
+      // Clear sessionStorage
+      console.log('🧹 Clearing sessionStorage...');
+      Object.keys(sessionStorage || {}).forEach(key => {
+        if (key.startsWith('supabase.') || key.includes('announcement') || key.includes('form')) {
+          console.log('🗑️ Removing sessionStorage key:', key);
+          sessionStorage.removeItem(key);
+        }
+      });
+      
       await supabase.auth.signOut();
       setUser(null);
-    } catch (error: any) {
-      console.error("Logout error:", error);
-    } finally {
-      setIsLoading(false);
+      setSession(null);
+    } catch (error) {
+      console.error('❌ Error signing out:', error);
     }
   };
 
-  const impersonateUser = async (targetUser: UserProfile) => {
-    setIsImpersonating(true);
-    setOriginalUser(user);
-    setUser(targetUser);
+  const logout = signOut;
+
+  const impersonateUser = (userToImpersonate: UserProfile) => {
+    const result = startImpersonation(userToImpersonate);
+    if (result) {
+      // Update current user to impersonated user
+      setUser({
+        id: userToImpersonate.id,
+        email: userToImpersonate.email,
+        name: userToImpersonate.name,
+        role: userToImpersonate.role,
+        wordpressConfigId: userToImpersonate.wordpressConfigId,
+        wordpressConfig: userToImpersonate.wordpressConfig
+      } as AuthUser);
+    }
   };
 
-  const stopImpersonation = async () => {
-    setIsImpersonating(false);
-    setUser(originalUser);
-    setOriginalUser(null);
+  const stopImpersonating = () => {
+    const result = endImpersonation();
+    if (result) {
+      // Restore original user
+      setUser({
+        id: result.id,
+        email: result.email,
+        name: result.name,
+        role: result.role,
+        wordpressConfigId: result.wordpressConfigId,
+        wordpressConfig: result.wordpressConfig
+      } as AuthUser);
+    }
   };
+
+  const isAdmin = user?.role === 'admin';
+  const isClient = user?.role === 'client';
+  const isCommercial = user?.role === 'commercial';
 
   const value = {
     user,
-    isAuthenticated: !!user,
+    session,
     isLoading,
-    isAdmin: user?.role === 'admin',
-    isClient: user?.role === 'client',
-    isCommercial: user?.role === 'commercial',
+    isAuthenticated: !!session,
+    isAdmin,
+    isClient,
+    isCommercial,
+    signOut,
+    refreshUser,
     login,
     logout,
     impersonateUser,
-    stopImpersonation,
-    isImpersonating,
+    stopImpersonating,
     originalUser,
-    refreshUser
+    isImpersonating,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };

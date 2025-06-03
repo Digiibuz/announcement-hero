@@ -11,7 +11,6 @@ import DynamicBackground from "@/components/ui/DynamicBackground";
 import MobileBottomNav from "@/components/ui/layout/MobileBottomNav";
 import UpdateNotification from "@/components/ui/UpdateNotification";
 import { useServiceWorker } from "@/hooks/useServiceWorker";
-import { useVersionTracking } from "@/hooks/useVersionTracking";
 
 // Configuration React Query sans refetch automatique
 const queryClient = new QueryClient({
@@ -25,38 +24,29 @@ const queryClient = new QueryClient({
   },
 });
 
-function AppContent() {
+function App() {
   // Initialize service worker for manual updates
   const { updateAvailable, updateApp, dismissUpdate } = useServiceWorker();
-  
-  // Initialize version tracking
-  useVersionTracking();
 
-  return (
-    <TooltipProvider>
-      <DynamicBackground className="min-h-screen">
-        <ImpersonationBanner />
-        <AppRoutes />
-        <MobileBottomNav />
-        {updateAvailable && (
-          <UpdateNotification 
-            onUpdate={updateApp}
-            onDismiss={dismissUpdate}
-          />
-        )}
-      </DynamicBackground>
-      <SonnerToaster />
-      <UIToaster />
-    </TooltipProvider>
-  );
-}
-
-function App() {
   return (
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <AppContent />
+          <TooltipProvider>
+            <DynamicBackground className="min-h-screen">
+              <ImpersonationBanner />
+              <AppRoutes />
+              <MobileBottomNav />
+              {updateAvailable && (
+                <UpdateNotification 
+                  onUpdate={updateApp}
+                  onDismiss={dismissUpdate}
+                />
+              )}
+            </DynamicBackground>
+            <SonnerToaster />
+            <UIToaster />
+          </TooltipProvider>
         </AuthProvider>
       </QueryClientProvider>
     </BrowserRouter>
