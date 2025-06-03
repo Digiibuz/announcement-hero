@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -24,6 +23,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useServiceWorker } from "@/hooks/useServiceWorker";
 import { Badge } from "@/components/ui/badge";
+import VersionManager from "@/components/admin/VersionManager";
 
 // Schema de validation pour le changement de mot de passe
 const passwordSchema = z.object({
@@ -42,7 +42,7 @@ const passwordSchema = z.object({
 type PasswordForm = z.infer<typeof passwordSchema>;
 
 const UserProfile = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
@@ -244,6 +244,12 @@ const UserProfile = () => {
             </CardContent>
           </Card>
         </AnimatedContainer>
+
+        {isAdmin && (
+          <AnimatedContainer delay={175}>
+            <VersionManager />
+          </AnimatedContainer>
+        )}
 
         <AnimatedContainer delay={200}>
           <Card>
