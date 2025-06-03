@@ -45,6 +45,7 @@ const UserProfile = () => {
   const navigate = useNavigate();
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,
@@ -77,6 +78,19 @@ const UserProfile = () => {
   const handleLogout = () => {
     logout();
     navigate("/login");
+  };
+
+  const handleCheckUpdates = async () => {
+    setIsCheckingUpdates(true);
+    try {
+      await checkForUpdates();
+      toast.success("Vérification des mises à jour effectuée");
+    } catch (error) {
+      console.error("Error checking for updates:", error);
+      toast.error("Erreur lors de la vérification des mises à jour");
+    } finally {
+      setIsCheckingUpdates(false);
+    }
   };
 
   const handleResetPassword = async () => {
@@ -217,10 +231,11 @@ const UserProfile = () => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={checkForUpdates}
+                      onClick={handleCheckUpdates}
+                      disabled={isCheckingUpdates}
                       className="h-8 px-2"
                     >
-                      <RefreshCw className="h-3 w-3" />
+                      <RefreshCw className={`h-3 w-3 ${isCheckingUpdates ? 'animate-spin' : ''}`} />
                     </Button>
                   </div>
                 </div>
