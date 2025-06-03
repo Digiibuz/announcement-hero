@@ -12,9 +12,7 @@ interface MediaUploaderProps {
   form: UseFormReturn<any>;
 }
 
-const MediaUploader = ({
-  form
-}: MediaUploaderProps) => {
+const MediaUploader: React.FC<MediaUploaderProps> = ({ form }) => {
   // Store only a single media URL instead of an array
   const [uploadedMedia, setUploadedMedia] = useState<string>(form.getValues('images')?.[0] || "");
   const [isUploading, setIsUploading] = useState(false);
