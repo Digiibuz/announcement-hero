@@ -193,6 +193,12 @@ const MediaUploader = ({
     
     console.log("📁 File selected:", files[0].name);
     
+    // If there's already an uploaded media, remove it first
+    if (uploadedMedia) {
+      setUploadedMedia("");
+      form.setValue('images', []);
+    }
+    
     try {
       setError(null);
       setIsUploading(true);
@@ -354,7 +360,6 @@ const MediaUploader = ({
         <input 
           type="file" 
           ref={fileInputRef} 
-          // Remove multiple attribute to allow only one file
           accept="image/*,video/*,.heic,.heif,.mov" 
           className="hidden" 
           onChange={handleFileUpload} 
