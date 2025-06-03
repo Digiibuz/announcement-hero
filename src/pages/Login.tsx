@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -41,10 +39,10 @@ const Login = () => {
         variant: "default",
       });
       
-      // Délai pour permettre aux gestionnaires de mots de passe de détecter la connexion réussie
+      // Délai plus long pour permettre aux gestionnaires de mots de passe de détecter la connexion réussie
       setTimeout(() => {
         navigate("/dashboard", { replace: true });
-      }, 100);
+      }, 300);
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
       toast({
@@ -113,7 +111,7 @@ const Login = () => {
             </CardHeader>
 
             <CardContent className="p-6">
-              <form onSubmit={handleSubmit} className="space-y-6" id="login-form">              
+              <form onSubmit={handleSubmit} className="space-y-6" id="login-form" method="POST">              
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-gray-700 font-semibold">Email</Label>
                   <div className="relative">
@@ -208,4 +206,3 @@ const Login = () => {
 };
 
 export default Login;
-
