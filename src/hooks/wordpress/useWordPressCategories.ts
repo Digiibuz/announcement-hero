@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -256,7 +257,7 @@ export const useWordPressCategories = () => {
             
             if (!signal.aborted) {
               console.log("Standard WordPress categories fetched successfully:", standardCategoriesData.length, "for", wpConfig.name);
-              setCategories(standardCategoriesData);
+              await filterCategoriesByConfig(user.wordpressConfigId, standardCategoriesData);
             }
             return;
           } catch (standardError: any) {
@@ -280,7 +281,7 @@ export const useWordPressCategories = () => {
         
         if (!signal.aborted) {
           console.log("DipiPixel categories fetched successfully:", categoriesData.length, "for", wpConfig.name);
-          setCategories(categoriesData);
+          await filterCategoriesByConfig(user.wordpressConfigId, categoriesData);
         }
       } catch (fetchError: any) {
         if (fetchError.name === 'AbortError' || signal.aborted) return;
@@ -317,6 +318,44 @@ export const useWordPressCategories = () => {
       }
     }
   }, [user?.wordpressConfigId, user?.id, user?.role, refreshUser, retryCount]);
+
+  // Fonction pour filtrer les catégories selon la configuration
+  const filterCategoriesByConfig = useCallback(async (configId: string, allCategories: DipiCptCategory[]) => {
+    try {
+      // Récupérer les catégories autorisées pour cette config
+      const { data: allowedCategories, error } = await supabase
+        .from('wordpress_config_categories')
+        .select('category_id')
+        .eq('wordpress_config_id', configId);
+
+      if (error) {
+        console.error("Error fetching allowed categories:", error);
+        // En cas d'erreur, afficher toutes les catégories
+        setCategories(allCategories);
+        return;
+      }
+
+      if (!allowedCategories || allowedCategories.length === 0) {
+        // Si aucune catégorie n'est configurée, afficher toutes les catégories
+        console.log("No category restrictions found, showing all categories");
+        setCategories(allCategories);
+        return;
+      }
+
+      // Filtrer les catégories selon la configuration
+      const allowedCategoryIds = new Set(allowedCategories.map(cat => cat.category_id));
+      const filteredCategories = allCategories.filter(category => 
+        allowedCategoryIds.has(String(category.id))
+      );
+
+      console.log(`Filtered categories: ${filteredCategories.length} out of ${allCategories.length} categories`);
+      setCategories(filteredCategories);
+    } catch (err) {
+      console.error("Error filtering categories:", err);
+      // En cas d'erreur, afficher toutes les catégories
+      setCategories(allCategories);
+    }
+  }, []);
 
   const refetch = useCallback(() => {
     setRetryCount(0);

@@ -1,4 +1,3 @@
-
 import React from "react";
 import {
   Dialog,
@@ -16,6 +15,8 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { WordPressConfig } from "@/types/wordpress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import CategorySelection from "./CategorySelection";
 
 const wordpressConfigSchema = z.object({
   name: z.string().min(1, "Le nom est requis"),
@@ -74,85 +75,179 @@ const WordPressConfigForm: React.FC<WordPressConfigFormProps> = ({
       <DialogTrigger asChild>
         {trigger || <Button variant="outline">{buttonText}</Button>}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{dialogTitle}</DialogTitle>
           <DialogDescription>{dialogDescription}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(handleSubmit)}>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Nom
-              </Label>
-              <Input
-                id="name"
-                placeholder="Mon site WordPress"
-                className="col-span-3"
-                {...form.register("name")}
+        
+        {config ? (
+          <Tabs defaultValue="config" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="config">Configuration</TabsTrigger>
+              <TabsTrigger value="categories">Catégories</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="config" className="space-y-4">
+              <form onSubmit={form.handleSubmit(handleSubmit)}>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="name" className="text-right">
+                      Nom
+                    </Label>
+                    <Input
+                      id="name"
+                      placeholder="Mon site WordPress"
+                      className="col-span-3"
+                      {...form.register("name")}
+                    />
+                    {form.formState.errors.name && (
+                      <p className="col-span-4 text-sm text-red-500 text-right">
+                        {form.formState.errors.name.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="site_url" className="text-right">
+                      URL du site
+                    </Label>
+                    <Input
+                      id="site_url"
+                      placeholder="https://monsite.com"
+                      className="col-span-3"
+                      {...form.register("site_url")}
+                    />
+                    {form.formState.errors.site_url && (
+                      <p className="col-span-4 text-sm text-red-500 text-right">
+                        {form.formState.errors.site_url.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="my-2">
+                    <h3 className="text-sm font-medium mb-2">Méthode d'authentification</h3>
+                    <p className="text-xs text-muted-foreground mb-4">
+                      Veuillez fournir les identifiants d'Application Password pour vous connecter à WordPress.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="app_username" className="text-right">
+                      Nom d'utilisateur (App)
+                    </Label>
+                    <Input
+                      id="app_username"
+                      placeholder="admin"
+                      className="col-span-3"
+                      {...form.register("app_username")}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="app_password" className="text-right">
+                      Mot de passe (App)
+                    </Label>
+                    <Input
+                      id="app_password"
+                      type="password"
+                      placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"
+                      className="col-span-3"
+                      {...form.register("app_password")}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? "Enregistrement..." : "Enregistrer"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </TabsContent>
+            
+            <TabsContent value="categories" className="space-y-4">
+              <CategorySelection 
+                configId={config.id} 
+                configName={config.name}
               />
-              {form.formState.errors.name && (
-                <p className="col-span-4 text-sm text-red-500 text-right">
-                  {form.formState.errors.name.message}
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <form onSubmit={form.handleSubmit(handleSubmit)}>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="name" className="text-right">
+                  Nom
+                </Label>
+                <Input
+                  id="name"
+                  placeholder="Mon site WordPress"
+                  className="col-span-3"
+                  {...form.register("name")}
+                />
+                {form.formState.errors.name && (
+                  <p className="col-span-4 text-sm text-red-500 text-right">
+                    {form.formState.errors.name.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="site_url" className="text-right">
+                  URL du site
+                </Label>
+                <Input
+                  id="site_url"
+                  placeholder="https://monsite.com"
+                  className="col-span-3"
+                  {...form.register("site_url")}
+                />
+                {form.formState.errors.site_url && (
+                  <p className="col-span-4 text-sm text-red-500 text-right">
+                    {form.formState.errors.site_url.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="my-2">
+                <h3 className="text-sm font-medium mb-2">Méthode d'authentification</h3>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Veuillez fournir les identifiants d'Application Password pour vous connecter à WordPress.
                 </p>
-              )}
-            </div>
+              </div>
 
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="site_url" className="text-right">
-                URL du site
-              </Label>
-              <Input
-                id="site_url"
-                placeholder="https://monsite.com"
-                className="col-span-3"
-                {...form.register("site_url")}
-              />
-              {form.formState.errors.site_url && (
-                <p className="col-span-4 text-sm text-red-500 text-right">
-                  {form.formState.errors.site_url.message}
-                </p>
-              )}
-            </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="app_username" className="text-right">
+                  Nom d'utilisateur (App)
+                </Label>
+                <Input
+                  id="app_username"
+                  placeholder="admin"
+                  className="col-span-3"
+                  {...form.register("app_username")}
+                />
+              </div>
 
-            <div className="my-2">
-              <h3 className="text-sm font-medium mb-2">Méthode d'authentification</h3>
-              <p className="text-xs text-muted-foreground mb-4">
-                Veuillez fournir les identifiants d'Application Password pour vous connecter à WordPress.
-              </p>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="app_password" className="text-right">
+                  Mot de passe (App)
+                </Label>
+                <Input
+                  id="app_password"
+                  type="password"
+                  placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"
+                  className="col-span-3"
+                  {...form.register("app_password")}
+                />
+              </div>
             </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="app_username" className="text-right">
-                Nom d'utilisateur (App)
-              </Label>
-              <Input
-                id="app_username"
-                placeholder="admin"
-                className="col-span-3"
-                {...form.register("app_username")}
-              />
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="app_password" className="text-right">
-                Mot de passe (App)
-              </Label>
-              <Input
-                id="app_password"
-                type="password"
-                placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"
-                className="col-span-3"
-                {...form.register("app_password")}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Enregistrement..." : "Enregistrer"}
-            </Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Enregistrement..." : "Enregistrer"}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );

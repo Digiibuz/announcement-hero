@@ -245,6 +245,41 @@ export type Database = {
         }
         Relationships: []
       }
+      wordpress_config_categories: {
+        Row: {
+          category_id: string
+          category_name: string
+          created_at: string
+          id: string
+          updated_at: string
+          wordpress_config_id: string
+        }
+        Insert: {
+          category_id: string
+          category_name: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          wordpress_config_id: string
+        }
+        Update: {
+          category_id?: string
+          category_name?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          wordpress_config_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wordpress_config_categories_wordpress_config_id_fkey"
+            columns: ["wordpress_config_id"]
+            isOneToOne: false
+            referencedRelation: "wordpress_configs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wordpress_configs: {
         Row: {
           app_password: string | null
