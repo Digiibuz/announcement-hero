@@ -18,7 +18,8 @@ const CategorySelection: React.FC<CategorySelectionProps> = ({ configId, configN
   const [categoriesSelection, setCategoriesSelection] = useState<DipiCptCategorySelection[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
   
-  const { categories, isLoading: categoriesLoading, refetch } = useWordPressCategories();
+  // Utiliser le hook avec le configId spécifique
+  const { categories, isLoading: categoriesLoading, error: categoriesError, refetch } = useWordPressCategories(configId);
   const { 
     isLoading: configCategoriesLoading, 
     isSubmitting, 
@@ -86,6 +87,22 @@ const CategorySelection: React.FC<CategorySelectionProps> = ({ configId, configN
             <Loader2 className="h-6 w-6 animate-spin mr-2" />
             <span>Chargement des catégories...</span>
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (categoriesError) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <p className="text-red-600 mb-4">
+            Erreur lors de la récupération des catégories: {categoriesError}
+          </p>
+          <Button onClick={refetch} variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Réessayer
+          </Button>
         </CardContent>
       </Card>
     );

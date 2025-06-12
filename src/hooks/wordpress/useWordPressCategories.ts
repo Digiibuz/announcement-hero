@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { DipiCptCategory } from "@/types/announcement";
 
-export const useWordPressCategories = () => {
+export const useWordPressCategories = (specificConfigId?: string) => {
   const [categories, setCategories] = useState<DipiCptCategory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +17,16 @@ export const useWordPressCategories = () => {
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 2;
 
+  // Détermine quel config ID utiliser : spécifique ou celui de l'utilisateur
+  const configIdToUse = specificConfigId || user?.wordpressConfigId;
+
   const fetchCategories = useCallback(async () => {
+    // Si nous avons un configId spécifique, l'utiliser directement
+    if (specificConfigId) {
+      return await fetchCategoriesForConfig(specificConfigId);
+    }
+
+    // Sinon, utiliser la logique existante pour l'utilisateur connecté
     // Si l'utilisateur n'a pas d'ID ou n'est pas connecté, ne rien faire
     if (!user?.id) {
       console.warn("No user ID found, cannot fetch categories");
@@ -60,26 +69,29 @@ export const useWordPressCategories = () => {
       return;
     }
 
-    console.log('🔍 DEBUG: fetchCategories called with:', {
-      userId: user.id,
-      wordpressConfigId: user.wordpressConfigId,
-      lastConfigId: lastConfigIdRef.current,
-      userRole: user.role
+    return await fetchCategoriesForConfig(user.wordpressConfigId);
+  }, [user?.wordpressConfigId, user?.id, user?.role, refreshUser, retryCount, specificConfigId]);
+
+  // Nouvelle fonction pour récupérer les catégories pour un config ID spécifique
+  const fetchCategoriesForConfig = useCallback(async (configId: string) => {
+    console.log('🔍 DEBUG: fetchCategoriesForConfig called with:', {
+      configId,
+      lastConfigId: lastConfigIdRef.current
     });
 
     // Éviter les appels avec des IDs de configuration différents en succession rapide
-    if (lastConfigIdRef.current && lastConfigIdRef.current !== user.wordpressConfigId) {
+    if (lastConfigIdRef.current && lastConfigIdRef.current !== configId) {
       console.log("WordPress config ID changed, waiting for stabilization...");
       // Attendre un peu pour que l'ID se stabilise
       await new Promise(resolve => setTimeout(resolve, 200));
       // Vérifier si l'ID a encore changé
-      if (lastConfigIdRef.current && lastConfigIdRef.current !== user.wordpressConfigId) {
+      if (lastConfigIdRef.current && lastConfigIdRef.current !== configId) {
         console.log("Configuration still changing, skipping fetch");
         return;
       }
     }
 
-    lastConfigIdRef.current = user.wordpressConfigId;
+    lastConfigIdRef.current = configId;
 
     // Éviter les appels multiples simultanés
     if (isLoadingRef.current) {
@@ -100,61 +112,15 @@ export const useWordPressCategories = () => {
       setIsLoading(true);
       isLoadingRef.current = true;
       setError(null);
-      console.log("Fetching categories for WordPress config ID:", user.wordpressConfigId);
+      console.log("Fetching categories for WordPress config ID:", configId);
 
-      // Vérifier d'abord que l'utilisateur a bien accès à cette configuration
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('wordpress_config_id')
-        .eq('id', user.id)
-        .abortSignal(signal)
-        .maybeSingle(); // Utiliser maybeSingle au lieu de single
-
-      if (signal.aborted) return;
-
-      if (profileError) {
-        console.error("Error fetching user profile:", profileError);
-        throw new Error("Erreur lors de la vérification du profil utilisateur");
-      }
-
-      if (!profile) {
-        console.error("Profile not found for user ID:", user.id);
-        throw new Error("Profil utilisateur introuvable");
-      }
-
-      console.log('🔍 DEBUG: Fresh profile data from DB:', {
-        profileWordpressConfigId: profile.wordpress_config_id,
-        userWordpressConfigId: user.wordpressConfigId,
-        match: profile.wordpress_config_id === user.wordpressConfigId
-      });
-
-      if (profile.wordpress_config_id !== user.wordpressConfigId) {
-        console.error("Security check failed: WordPress config ID mismatch");
-        console.log('🔍 DEBUG: Security check failed:', {
-          profileConfigId: profile.wordpress_config_id,
-          userConfigId: user.wordpressConfigId
-        });
-        
-        // Si l'ID dans le profil ne correspond pas à celui dans l'objet user,
-        // mettre à jour l'objet user et réessayer
-        if (profile.wordpress_config_id && !hasRefreshedRef.current) {
-          console.log("Refreshing user with DB config ID:", profile.wordpress_config_id);
-          hasRefreshedRef.current = true;
-          await refreshUser();
-          setTimeout(() => fetchCategories(), 100); // Réessayer rapidement
-          return;
-        }
-        
-        throw new Error("Accès non autorisé à cette configuration WordPress");
-      }
-
-      // Récupérer la configuration WordPress
+      // Récupérer la configuration WordPress directement
       const { data: wpConfig, error: wpConfigError } = await supabase
         .from('wordpress_configs')
         .select('site_url, rest_api_key, app_username, app_password, name')
-        .eq('id', user.wordpressConfigId)
+        .eq('id', configId)
         .abortSignal(signal)
-        .maybeSingle(); // Utiliser maybeSingle au lieu de single
+        .maybeSingle();
 
       if (signal.aborted) return;
 
@@ -162,13 +128,13 @@ export const useWordPressCategories = () => {
         console.error("Error fetching WordPress config:", wpConfigError);
         console.log('🔍 DEBUG: WordPress config error details:', {
           error: wpConfigError,
-          configId: user.wordpressConfigId
+          configId: configId
         });
         throw wpConfigError;
       }
       
       if (!wpConfig) {
-        console.error("WordPress configuration not found for ID:", user.wordpressConfigId);
+        console.error("WordPress configuration not found for ID:", configId);
         throw new Error("Configuration WordPress introuvable");
       }
 
@@ -257,7 +223,7 @@ export const useWordPressCategories = () => {
             
             if (!signal.aborted) {
               console.log("Standard WordPress categories fetched successfully:", standardCategoriesData.length, "for", wpConfig.name);
-              await filterCategoriesByConfig(user.wordpressConfigId, standardCategoriesData);
+              await filterCategoriesByConfig(configId, standardCategoriesData);
             }
             return;
           } catch (standardError: any) {
@@ -281,7 +247,7 @@ export const useWordPressCategories = () => {
         
         if (!signal.aborted) {
           console.log("DipiPixel categories fetched successfully:", categoriesData.length, "for", wpConfig.name);
-          await filterCategoriesByConfig(user.wordpressConfigId, categoriesData);
+          await filterCategoriesByConfig(configId, categoriesData);
         }
       } catch (fetchError: any) {
         if (fetchError.name === 'AbortError' || signal.aborted) return;
@@ -317,7 +283,7 @@ export const useWordPressCategories = () => {
         isLoadingRef.current = false;
       }
     }
-  }, [user?.wordpressConfigId, user?.id, user?.role, refreshUser, retryCount]);
+  }, []);
 
   // Fonction pour filtrer les catégories selon la configuration
   const filterCategoriesByConfig = useCallback(async (configId: string, allCategories: DipiCptCategory[]) => {
@@ -360,13 +326,13 @@ export const useWordPressCategories = () => {
   const refetch = useCallback(() => {
     setRetryCount(0);
     hasRefreshedRef.current = false;
-    if (user?.id) {
+    if (configIdToUse) {
       fetchCategories();
     }
-  }, [fetchCategories, user?.id]);
+  }, [fetchCategories, configIdToUse]);
 
   useEffect(() => {
-    console.log("useWordPressCategories effect running, user:", user?.id, "wordpressConfigId:", user?.wordpressConfigId);
+    console.log("useWordPressCategories effect running, configIdToUse:", configIdToUse);
     
     // Annuler toute requête en cours lors du changement des dépendances
     if (abortControllerRef.current) {
@@ -374,7 +340,7 @@ export const useWordPressCategories = () => {
       abortControllerRef.current = null;
     }
     
-    if (user?.id) {
+    if (configIdToUse) {
       // Si l'utilisateur existe, essayer de récupérer les catégories
       // Ajouter un délai pour éviter les appels simultanés lors du rechargement
       const timer = setTimeout(() => {
@@ -394,7 +360,7 @@ export const useWordPressCategories = () => {
       isLoadingRef.current = false;
       lastConfigIdRef.current = null;
     }
-  }, [user?.wordpressConfigId, user?.id, user?.role, fetchCategories]);
+  }, [configIdToUse, fetchCategories]);
 
   // Nettoyer les requêtes en cours lors du démontage du composant
   useEffect(() => {
