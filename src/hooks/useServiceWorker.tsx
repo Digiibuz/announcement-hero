@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 
 export const useServiceWorker = () => {
@@ -73,7 +72,7 @@ export const useServiceWorker = () => {
   };
 
   const getVersion = () => {
-    return '1.3.1';
+    return '1.3.2';
   };
 
   const getBuildDate = () => {

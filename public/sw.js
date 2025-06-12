@@ -1,5 +1,6 @@
+
 // Version basée sur la date pour forcer les mises à jour
-const VERSION = '1.3.1';
+const VERSION = '1.3.2';
 const CACHE_NAME = `digiibuz-v${VERSION}`;
 const STATIC_CACHE_NAME = `digiibuz-static-v${VERSION}`;
 
