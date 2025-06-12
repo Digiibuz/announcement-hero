@@ -1,11 +1,10 @@
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { DipiCptCategory } from "@/types/announcement";
 
-export const useWordPressCategories = (specificConfigId?: string) => {
+export const useWordPressCategories = (specificConfigId?: string, skipFiltering = false) => {
   const [categories, setCategories] = useState<DipiCptCategory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +75,8 @@ export const useWordPressCategories = (specificConfigId?: string) => {
   const fetchCategoriesForConfig = useCallback(async (configId: string) => {
     console.log('🔍 DEBUG: fetchCategoriesForConfig called with:', {
       configId,
-      lastConfigId: lastConfigIdRef.current
+      lastConfigId: lastConfigIdRef.current,
+      skipFiltering
     });
 
     // Éviter les appels avec des IDs de configuration différents en succession rapide
@@ -223,7 +223,11 @@ export const useWordPressCategories = (specificConfigId?: string) => {
             
             if (!signal.aborted) {
               console.log("Standard WordPress categories fetched successfully:", standardCategoriesData.length, "for", wpConfig.name);
-              await filterCategoriesByConfig(configId, standardCategoriesData);
+              if (skipFiltering) {
+                setCategories(standardCategoriesData);
+              } else {
+                await filterCategoriesByConfig(configId, standardCategoriesData);
+              }
             }
             return;
           } catch (standardError: any) {
@@ -247,7 +251,11 @@ export const useWordPressCategories = (specificConfigId?: string) => {
         
         if (!signal.aborted) {
           console.log("DipiPixel categories fetched successfully:", categoriesData.length, "for", wpConfig.name);
-          await filterCategoriesByConfig(configId, categoriesData);
+          if (skipFiltering) {
+            setCategories(categoriesData);
+          } else {
+            await filterCategoriesByConfig(configId, categoriesData);
+          }
         }
       } catch (fetchError: any) {
         if (fetchError.name === 'AbortError' || signal.aborted) return;
@@ -283,7 +291,7 @@ export const useWordPressCategories = (specificConfigId?: string) => {
         isLoadingRef.current = false;
       }
     }
-  }, []);
+  }, [skipFiltering]);
 
   // Fonction pour filtrer les catégories selon la configuration
   const filterCategoriesByConfig = useCallback(async (configId: string, allCategories: DipiCptCategory[]) => {

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,8 +17,8 @@ const CategorySelection: React.FC<CategorySelectionProps> = ({ configId, configN
   const [categoriesSelection, setCategoriesSelection] = useState<DipiCptCategorySelection[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
   
-  // Utiliser le hook avec le configId spécifique
-  const { categories, isLoading: categoriesLoading, error: categoriesError, refetch } = useWordPressCategories(configId);
+  // Utiliser le hook avec skipFiltering=true pour récupérer TOUTES les catégories disponibles
+  const { categories, isLoading: categoriesLoading, error: categoriesError, refetch } = useWordPressCategories(configId, true);
   const { 
     isLoading: configCategoriesLoading, 
     isSubmitting, 
@@ -31,15 +30,22 @@ const CategorySelection: React.FC<CategorySelectionProps> = ({ configId, configN
   useEffect(() => {
     const loadConfigCategories = async () => {
       if (configId && categories.length > 0) {
+        console.log("Loading config categories for:", configId);
+        console.log("Available categories:", categories.length);
+        
         const savedCategories = await fetchConfigCategories(configId);
+        console.log("Saved categories:", savedCategories);
+        
         const savedCategoryIds = new Set(savedCategories.map(cat => cat.category_id));
         
+        // Créer la sélection avec TOUTES les catégories disponibles
         const selection = categories.map(category => ({
           id: String(category.id),
           name: category.name,
-          selected: savedCategoryIds.has(String(category.id))
+          selected: savedCategoryIds.has(String(category.id)) // Marquer comme sélectionnée si elle était sauvegardée
         }));
         
+        console.log("Categories selection prepared:", selection);
         setCategoriesSelection(selection);
         setHasChanges(false);
       }
@@ -72,6 +78,7 @@ const CategorySelection: React.FC<CategorySelectionProps> = ({ configId, configN
       .filter(cat => cat.selected)
       .map(cat => ({ id: cat.id, name: cat.name }));
 
+    console.log("Saving selected categories:", selectedCategories);
     await saveConfigCategories(configId, selectedCategories);
     setHasChanges(false);
   };
