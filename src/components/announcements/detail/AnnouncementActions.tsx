@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Trash2, Send, ExternalLink } from "lucide-react";
@@ -124,8 +125,8 @@ const AnnouncementActions: React.FC<AnnouncementActionsProps> = ({
       return;
     }
 
-    // Ouvrir directement l'URL stockée - simple et efficace !
-    window.open(wordpressUrl, '_blank', 'noopener,noreferrer');
+    // Utiliser window.location.href au lieu de window.open pour éviter les problèmes de sandbox
+    window.location.href = wordpressUrl;
   };
 
   return (
