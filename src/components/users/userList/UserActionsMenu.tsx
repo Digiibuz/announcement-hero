@@ -1,5 +1,5 @@
 
-import * as React from "react";
+import React, { useState } from "react";
 import { UserProfile } from "@/types/auth";
 import { Button } from "@/components/ui/button";
 import { UserCog, LogIn, MoreHorizontal, UserMinus } from "lucide-react";
@@ -33,7 +33,7 @@ const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
   onImpersonateUser,
   onDeleteClick
 }) => {
-  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const handleEditClick = () => {
     setIsEditDialogOpen(true);
