@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -183,8 +182,8 @@ export const useWordPressCategories = () => {
       // Normaliser l'URL (supprimer les doubles slashes)
       const siteUrl = wpConfig.site_url.replace(/([^:]\/)\/+/g, "$1");
       
-      // Utiliser la taxonomie personnalisée dipi_cpt_category
-      const apiUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt_category`;
+      // Utiliser la taxonomie personnalisée dipi_cpt_category avec per_page=100
+      const apiUrl = `${siteUrl}/wp-json/wp/v2/dipi_cpt_category?per_page=100`;
       
       // Préparer les headers d'authentification
       const headers: Record<string, string> = {
@@ -226,8 +225,8 @@ export const useWordPressCategories = () => {
         if (response.status === 404) {
           console.log("DipiPixel category endpoint not found, falling back to standard categories");
           
-          // Si l'endpoint DipiPixel n'est pas trouvé, utiliser les catégories standards
-          const standardApiUrl = `${siteUrl}/wp-json/wp/v2/categories`;
+          // Si l'endpoint DipiPixel n'est pas trouvé, utiliser les catégories standards avec per_page=100
+          const standardApiUrl = `${siteUrl}/wp-json/wp/v2/categories?per_page=100`;
           console.log("Fetching standard WordPress categories from:", standardApiUrl);
           
           const standardTimeoutId = setTimeout(() => {
