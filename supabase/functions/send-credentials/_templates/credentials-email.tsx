@@ -134,8 +134,8 @@ export const CredentialsEmail = ({
           <Section style={footer}>
             <Text style={footerText}>
               Besoin d'aide ? Contactez notre équipe support :<br/>
-              <Link href="mailto:support@digiibuz.fr" style={link}>
-                support@digiibuz.fr
+              <Link href="mailto:contact@digiibuz.fr" style={link}>
+                contact@digiibuz.fr
               </Link>
             </Text>
             <Text style={footerText}>
