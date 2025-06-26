@@ -43,15 +43,6 @@ const SendCredentialsButton: React.FC<SendCredentialsButtonProps> = ({
     }
   };
 
-  const generateRandomPassword = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-    let result = '';
-    for (let i = 0; i < 8; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setPassword(result);
-  };
-
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>
@@ -85,24 +76,14 @@ const SendCredentialsButton: React.FC<SendCredentialsButtonProps> = ({
             <Label htmlFor="password" className="text-right">
               Mot de passe
             </Label>
-            <div className="col-span-3 flex gap-2">
-              <Input
-                id="password"
-                type="text"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Entrez le mot de passe"
-                className="flex-1"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={generateRandomPassword}
-              >
-                Générer
-              </Button>
-            </div>
+            <Input
+              id="password"
+              type="text"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Entrez le mot de passe"
+              className="col-span-3"
+            />
           </div>
           
           {user.wordpressConfig && (
