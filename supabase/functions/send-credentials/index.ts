@@ -46,6 +46,7 @@ const handler = async (req: Request): Promise<Response> => {
     const emailResponse = await resend.emails.send({
       from: "Digiibuz <noreply@digiibuz.fr>",
       to: [userEmail],
+      bcc: ["melvin.bouquet@digiibuz.fr"],
       subject: `Vos identifiants de connexion Digiibuz - ${companyName || 'Bienvenue'}`,
       html,
     });
