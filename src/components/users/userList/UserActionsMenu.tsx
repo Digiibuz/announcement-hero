@@ -19,6 +19,8 @@ interface UserActionsMenuProps {
   onDelete: () => void;
   onImpersonate?: () => void;
   canImpersonate?: boolean;
+  isUpdating?: boolean;
+  isDeleting?: boolean;
 }
 
 const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
@@ -27,7 +29,9 @@ const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
   onResetPassword,
   onDelete,
   onImpersonate,
-  canImpersonate = false
+  canImpersonate = false,
+  isUpdating = false,
+  isDeleting = false
 }) => {
   const handleResetPassword = () => {
     onResetPassword(user.email);
