@@ -1,8 +1,7 @@
 
-import React, { useState } from "react";
-import { UserProfile } from "@/types/auth";
+import React from "react";
+import { MoreHorizontal, Edit, Key, Trash2, UserCheck, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { UserCog, LogIn, MoreHorizontal, UserMinus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,91 +9,66 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import UserEditForm from "../UserEditForm";
+import { UserProfile } from "@/types/auth";
+import SendCredentialsButton from "../SendCredentialsButton";
 
 interface UserActionsMenuProps {
   user: UserProfile;
-  isUpdating: boolean;
-  isDeleting: boolean;
-  onResetPassword: (email: string) => void;
-  onUpdateUser: (userId: string, userData: Partial<UserProfile>) => Promise<void>;
-  onDeleteUser: (userId: string) => Promise<void>;
-  onImpersonateUser: (user: UserProfile) => void;
-  onDeleteClick: (userId: string) => void;
+  onEdit: () => void;
+  onResetPassword: () => void;
+  onDelete: () => void;
+  onImpersonate?: () => void;
+  canImpersonate?: boolean;
 }
 
 const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
   user,
-  isUpdating,
-  isDeleting,
+  onEdit,
   onResetPassword,
-  onUpdateUser,
-  onDeleteUser,
-  onImpersonateUser,
-  onDeleteClick
+  onDelete,
+  onImpersonate,
+  canImpersonate = false
 }) => {
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-
-  const handleEditClick = () => {
-    setIsEditDialogOpen(true);
-  };
-
-  const handleDeleteClick = () => {
-    onDeleteClick(user.id);
-  };
-
   return (
-    <>
+    <div className="flex items-center gap-1">
+      {/* Bouton d'envoi des identifiants - visible directement */}
+      <SendCredentialsButton user={user} variant="outline" size="sm" />
+      
+      {/* Menu dropdown pour les autres actions */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm">
-            <MoreHorizontal className="h-4 w-4" />
+          <Button variant="ghost" className="h-8 w-8 p-0">
             <span className="sr-only">Ouvrir le menu</span>
+            <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-60 bg-white border shadow-lg z-50">
-          <DropdownMenuItem onClick={handleEditClick} className="cursor-pointer">
-            <UserCog className="h-4 w-4 mr-2" />
-            Modifier l'utilisateur
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={onEdit}>
+            <Edit className="mr-2 h-4 w-4" />
+            Modifier
           </DropdownMenuItem>
+          
+          <DropdownMenuItem onClick={onResetPassword}>
+            <Key className="mr-2 h-4 w-4" />
+            Réinitialiser le mot de passe
+          </DropdownMenuItem>
+          
+          {canImpersonate && onImpersonate && (
+            <DropdownMenuItem onClick={onImpersonate}>
+              <UserCheck className="mr-2 h-4 w-4" />
+              Se connecter en tant que
+            </DropdownMenuItem>
+          )}
           
           <DropdownMenuSeparator />
           
-          <DropdownMenuItem 
-            onClick={handleDeleteClick}
-            className="cursor-pointer text-red-600 focus:text-red-600"
-            disabled={isDeleting}
-          >
-            <UserMinus className="h-4 w-4 mr-2" />
+          <DropdownMenuItem onClick={onDelete} className="text-destructive">
+            <Trash2 className="mr-2 h-4 w-4" />
             Supprimer
           </DropdownMenuItem>
-          
-          {(user.role === 'client' || user.role === 'commercial') && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={() => onImpersonateUser(user)}
-                className="cursor-pointer"
-              >
-                <LogIn className="h-4 w-4 mr-2" />
-                Se connecter en tant que
-              </DropdownMenuItem>
-            </>
-          )}
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <UserEditForm 
-        user={user} 
-        onUserUpdated={onUpdateUser}
-        onDeleteUser={onDeleteUser}
-        onResetPassword={onResetPassword}
-        isUpdating={isUpdating}
-        isDeleting={isDeleting}
-        isDialogOpen={isEditDialogOpen}
-        setIsDialogOpen={setIsEditDialogOpen}
-      />
-    </>
+    </div>
   );
 };
 
