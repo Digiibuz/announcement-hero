@@ -14,9 +14,13 @@ import SendCredentialsButton from "../SendCredentialsButton";
 
 interface UserActionsMenuProps {
   user: UserProfile;
-  onEdit: () => void;
+  onEdit?: () => void;
   onResetPassword: (email: string) => void;
-  onDelete: () => void;
+  onDelete?: () => void;
+  onUpdateUser?: (userId: string, userData: Partial<UserProfile>) => Promise<void>;
+  onDeleteUser?: (userId: string) => Promise<void>;
+  onImpersonateUser?: (user: UserProfile) => void;
+  onDeleteClick?: (userId: string) => void;
   onImpersonate?: () => void;
   canImpersonate?: boolean;
   isUpdating?: boolean;
@@ -28,6 +32,10 @@ const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
   onEdit,
   onResetPassword,
   onDelete,
+  onUpdateUser,
+  onDeleteUser,
+  onImpersonateUser,
+  onDeleteClick,
   onImpersonate,
   canImpersonate = false,
   isUpdating = false,
@@ -35,6 +43,28 @@ const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
 }) => {
   const handleResetPassword = () => {
     onResetPassword(user.email);
+  };
+
+  const handleEdit = () => {
+    if (onEdit) {
+      onEdit();
+    }
+  };
+
+  const handleDelete = () => {
+    if (onDeleteClick) {
+      onDeleteClick(user.id);
+    } else if (onDelete) {
+      onDelete();
+    }
+  };
+
+  const handleImpersonate = () => {
+    if (onImpersonateUser) {
+      onImpersonateUser(user);
+    } else if (onImpersonate) {
+      onImpersonate();
+    }
   };
 
   return (
@@ -51,7 +81,7 @@ const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={onEdit}>
+          <DropdownMenuItem onClick={handleEdit}>
             <Edit className="mr-2 h-4 w-4" />
             Modifier
           </DropdownMenuItem>
@@ -61,8 +91,8 @@ const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
             Réinitialiser le mot de passe
           </DropdownMenuItem>
           
-          {canImpersonate && onImpersonate && (
-            <DropdownMenuItem onClick={onImpersonate}>
+          {canImpersonate && (onImpersonateUser || onImpersonate) && (
+            <DropdownMenuItem onClick={handleImpersonate}>
               <UserCheck className="mr-2 h-4 w-4" />
               Se connecter en tant que
             </DropdownMenuItem>
@@ -70,7 +100,7 @@ const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
           
           <DropdownMenuSeparator />
           
-          <DropdownMenuItem onClick={onDelete} className="text-destructive">
+          <DropdownMenuItem onClick={handleDelete} className="text-destructive">
             <Trash2 className="mr-2 h-4 w-4" />
             Supprimer
           </DropdownMenuItem>
