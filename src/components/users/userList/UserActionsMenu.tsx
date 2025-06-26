@@ -15,7 +15,7 @@ import SendCredentialsButton from "../SendCredentialsButton";
 interface UserActionsMenuProps {
   user: UserProfile;
   onEdit: () => void;
-  onResetPassword: () => void;
+  onResetPassword: (email: string) => void;
   onDelete: () => void;
   onImpersonate?: () => void;
   canImpersonate?: boolean;
@@ -29,6 +29,10 @@ const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
   onImpersonate,
   canImpersonate = false
 }) => {
+  const handleResetPassword = () => {
+    onResetPassword(user.email);
+  };
+
   return (
     <div className="flex items-center gap-1">
       {/* Bouton d'envoi des identifiants - visible directement */}
@@ -48,7 +52,7 @@ const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
             Modifier
           </DropdownMenuItem>
           
-          <DropdownMenuItem onClick={onResetPassword}>
+          <DropdownMenuItem onClick={handleResetPassword}>
             <Key className="mr-2 h-4 w-4" />
             Réinitialiser le mot de passe
           </DropdownMenuItem>
