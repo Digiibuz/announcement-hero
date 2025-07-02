@@ -1,5 +1,4 @@
-
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, forwardRef, useImperativeHandle } from "react";
 import { ImageIcon, Video, UploadCloud, Loader2, XCircle, AlertCircle, FileImage, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +11,11 @@ interface AdditionalMediaUploaderProps {
   form: UseFormReturn<any>;
 }
 
-const AdditionalMediaUploader: React.FC<AdditionalMediaUploaderProps> = ({ form }) => {
+export interface AdditionalMediaUploaderRef {
+  triggerUpload: () => void;
+}
+
+const AdditionalMediaUploader = forwardRef<AdditionalMediaUploaderRef, AdditionalMediaUploaderProps>(({ form }, ref) => {
   const [uploadedMedias, setUploadedMedias] = useState<string[]>(form.getValues('additionalMedias') || []);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
@@ -20,6 +23,15 @@ const AdditionalMediaUploader: React.FC<AdditionalMediaUploaderProps> = ({ form 
   const [processingStatus, setProcessingStatus] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useMediaQuery("(max-width: 767px)");
+
+  // Expose the trigger function to parent component
+  useImperativeHandle(ref, () => ({
+    triggerUpload: () => {
+      if (fileInputRef.current) {
+        fileInputRef.current.click();
+      }
+    }
+  }));
 
   // Check WebP support
   const checkWebPSupport = (): Promise<boolean> => {
@@ -308,7 +320,18 @@ const AdditionalMediaUploader: React.FC<AdditionalMediaUploaderProps> = ({ form 
   };
 
   if (uploadedMedias.length === 0 && !isUploading) {
-    return null; // Ne rien afficher si pas de médias
+    return (
+      <div>
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          accept="image/*,video/*,.heic,.heif" 
+          multiple
+          className="hidden" 
+          onChange={handleFileUpload} 
+        />
+      </div>
+    );
   }
 
   return (
@@ -414,6 +437,8 @@ const AdditionalMediaUploader: React.FC<AdditionalMediaUploaderProps> = ({ form 
       )}
     </div>
   );
-};
+});
+
+AdditionalMediaUploader.displayName = "AdditionalMediaUploader";
 
 export default AdditionalMediaUploader;

@@ -14,7 +14,7 @@ import useVoiceRecognition from "@/hooks/useVoiceRecognition";
 import SparklingStars from "@/components/ui/SparklingStars";
 import AILoadingOverlay from "@/components/ui/AILoadingOverlay";
 import AIGenerationOptions, { AIGenerationSettings } from "./AIGenerationOptions";
-import AdditionalMediaUploader from "./AdditionalMediaUploader";
+import AdditionalMediaUploader, { AdditionalMediaUploaderRef } from "./AdditionalMediaUploader";
 import "@/styles/editor.css";
 import "@/styles/sparkles.css";
 
@@ -30,13 +30,12 @@ const DescriptionField = ({
   const [linkText, setLinkText] = useState("");
   const [isHoveringGenerate, setIsHoveringGenerate] = useState(false);
   const [showAIOptions, setShowAIOptions] = useState(false);
-  const [showMediaUploader, setShowMediaUploader] = useState(false);
   const [aiSettings, setAISettings] = useState<AIGenerationSettings>({
     tone: "convivial",
     length: "standard"
   });
   const editorRef = useRef<HTMLDivElement>(null);
-  const mediaInputRef = useRef<HTMLInputElement>(null);
+  const mediaUploaderRef = useRef<AdditionalMediaUploaderRef>(null);
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const initialRenderRef = useRef(true);
   
@@ -124,8 +123,8 @@ const DescriptionField = ({
   };
 
   const triggerMediaUpload = () => {
-    if (mediaInputRef.current) {
-      mediaInputRef.current.click();
+    if (mediaUploaderRef.current) {
+      mediaUploaderRef.current.triggerUpload();
     }
   };
 
@@ -255,7 +254,6 @@ const DescriptionField = ({
       </div>
       
       <div className="flex flex-wrap gap-1 mb-2">
-        {/* ... keep existing code (formatting buttons) */}
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -390,7 +388,7 @@ const DescriptionField = ({
           </PopoverContent>
         </Popover>
 
-        {/* Media Button - NEW */}
+        {/* Media Button - FIXED */}
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -460,7 +458,7 @@ const DescriptionField = ({
       />
 
       {/* Additional Media Uploader */}
-      <AdditionalMediaUploader form={form} />
+      <AdditionalMediaUploader ref={mediaUploaderRef} form={form} />
 
       {/* Add a hint for voice dictation with punctuation commands */}
       {isRecording && (
