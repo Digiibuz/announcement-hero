@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Loader2, Save } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import MediaUploader from "./MediaUploader";
+import AdditionalMediaUploader from "./AdditionalMediaUploader";
 import DescriptionField from "./DescriptionField";
 import PublishingOptions from "./PublishingOptions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -202,13 +204,21 @@ const AnnouncementForm = ({
             <div className={`${isMobile ? "px-4" : ""}`}>
               <Card className={getCardStyles(true)}>
                 <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"}`}>
-                  <CardTitle className="text-lg font-medium">Image</CardTitle>
+                  <CardTitle className="text-lg font-medium">Médias</CardTitle>
                   {!isMobile && <CardDescription className="text-amber-400">
-                      Ajoutez une image à votre annonce pour attirer l'attention
+                      Ajoutez des images et vidéos à votre annonce
                     </CardDescription>}
                 </CardHeader>
-                <CardContent className={`${isMobile ? "px-0 py-3" : ""}`}>
-                  <MediaUploader form={form} />
+                <CardContent className={`space-y-6 ${isMobile ? "px-0 py-3" : ""}`}>
+                  <div className="space-y-4">
+                    <h4 className="text-base font-medium text-gray-800">Image principale</h4>
+                    <MediaUploader form={form} />
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <h4 className="text-base font-medium text-gray-800">Médias additionnels (optionnel)</h4>
+                    <AdditionalMediaUploader form={form} />
+                  </div>
                 </CardContent>
               </Card>
             </div>
