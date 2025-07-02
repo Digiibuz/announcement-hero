@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -87,6 +86,7 @@ const CreateAnnouncement = () => {
       publishDate: undefined,
       status: "published",
       images: [],
+      additionalMedias: [], // NEW FIELD
       seoTitle: "",
       seoDescription: "",
       seoSlug: ""
@@ -103,6 +103,7 @@ const CreateAnnouncement = () => {
       publishDate: undefined,
       status: "published",
       images: [],
+      additionalMedias: [], // NEW FIELD
       seoTitle: "",
       seoDescription: "",
       seoSlug: ""
@@ -115,7 +116,6 @@ const CreateAnnouncement = () => {
     saveData
   } = useFormPersistence(form, FORM_STORAGE_KEY);
 
-  // Define publishing steps (updated for new flow)
   const publishingSteps: PublishingStepType[] = [
     {
       id: "prepare",
@@ -143,7 +143,6 @@ const CreateAnnouncement = () => {
     }
   ];
 
-  // Function to handle beforeunload event when leaving the page
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       const formData = form.getValues();
@@ -160,7 +159,6 @@ const CreateAnnouncement = () => {
     };
   }, [form]);
 
-  // Handle title changes to update SEO slug only for new announcements
   useEffect(() => {
     const subscription = form.watch((value, {
       name
@@ -169,9 +167,6 @@ const CreateAnnouncement = () => {
         const title = value.title as string;
         if (title) {
           const normalizedTitle = title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
-          
-          // Pour les nouvelles annonces, toujours mettre à jour le slug
-          // (pas de valeurs initiales = nouvelle annonce)
           form.setValue("seoSlug", normalizedTitle);
         }
       }
@@ -245,6 +240,7 @@ const CreateAnnouncement = () => {
         publishDate: undefined,
         status: "published",
         images: [],
+        additionalMedias: [], // NEW FIELD
         seoTitle: "",
         seoDescription: "",
         seoSlug: ""
@@ -315,11 +311,16 @@ const CreateAnnouncement = () => {
         wordpressPostId: null as number | null
       };
       
-      // WordPress publishing with reduced notifications
+      // WordPress publishing with additional medias
       if ((formData.status === 'published' || formData.status === 'scheduled') && formData.wordpressCategory && user?.id) {
-        wordpressResult = await publishToWordPress(newAnnouncement as Announcement, formData.wordpressCategory, user.id);
+        // Créer un objet announcement avec les médias additionnels
+        const announcementWithMedias = {
+          ...newAnnouncement,
+          additionalMedias: formData.additionalMedias || []
+        } as Announcement & { additionalMedias?: string[] };
         
-        // Only show final result notification on desktop
+        wordpressResult = await publishToWordPress(announcementWithMedias, formData.wordpressCategory, user.id);
+        
         if (!isMobile) {
           if (wordpressResult.success) {
             toast({
@@ -350,6 +351,7 @@ const CreateAnnouncement = () => {
         publishDate: undefined,
         status: "published",
         images: [],
+        additionalMedias: [], // NEW FIELD
         seoTitle: "",
         seoDescription: "",
         seoSlug: ""

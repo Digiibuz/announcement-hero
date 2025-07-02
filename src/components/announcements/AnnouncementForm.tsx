@@ -28,6 +28,7 @@ export interface AnnouncementFormData {
   publishDate: Date | undefined;
   status: "draft" | "published" | "scheduled";
   images: string[];
+  additionalMedias: string[]; // NEW FIELD
   seoTitle: string;
   seoDescription: string;
   seoSlug: string;
@@ -48,6 +49,7 @@ const AnnouncementForm = ({
     publishDate: undefined,
     status: "published",
     images: [],
+    additionalMedias: [], // NEW FIELD
     seoTitle: "",
     seoDescription: "",
     seoSlug: ""
@@ -104,7 +106,7 @@ const AnnouncementForm = ({
     const subscription = form.watch((value, {
       name
     }) => {
-      if (name === 'description' || name === 'images' || name === 'wordpressCategory') {
+      if (name === 'description' || name === 'images' || name === 'additionalMedias' || name === 'wordpressCategory') {
         // Force une sauvegarde après un court délai pour s'assurer que tout est à jour
         setTimeout(saveData, 100);
       }
