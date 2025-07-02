@@ -53,13 +53,13 @@ const MediaInsertion = ({ onInsertImage, onInsertVideo }: MediaInsertionProps) =
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('Images')
+        .from('images')
         .upload(fileName, file);
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('Images')
+        .from('images')
         .getPublicUrl(fileName);
 
       onInsertImage(publicUrl, file.name.split('.')[0]);
