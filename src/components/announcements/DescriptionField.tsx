@@ -122,8 +122,46 @@ const DescriptionField = ({
   };
 
   const handleInsertImage = (url: string, alt?: string) => {
-    const imageHtml = `<img src="${url}" alt="${alt || ''}" style="max-width: 100%; height: auto; margin: 10px 0;" />`;
-    document.execCommand('insertHTML', false, imageHtml);
+    if (!editorRef.current) return;
+    
+    // Focus on the editor first
+    editorRef.current.focus();
+    
+    // Create the image element
+    const imageHtml = `<img src="${url}" alt="${alt || ''}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px;" />`;
+    
+    // Get current selection or create one at the end
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      
+      // Make sure the range is within our editor
+      if (editorRef.current.contains(range.commonAncestorContainer)) {
+        // Insert the image at the current cursor position
+        const imageElement = document.createElement('div');
+        imageElement.innerHTML = imageHtml;
+        const imgNode = imageElement.firstChild;
+        
+        if (imgNode) {
+          range.deleteContents();
+          range.insertNode(imgNode);
+          
+          // Move cursor after the image
+          range.setStartAfter(imgNode);
+          range.setEndAfter(imgNode);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+      } else {
+        // If selection is not in editor, append to the end
+        editorRef.current.innerHTML += imageHtml;
+      }
+    } else {
+      // No selection, append to the end
+      editorRef.current.innerHTML += imageHtml;
+    }
+    
+    // Update form value
     updateFormValue();
   };
 
