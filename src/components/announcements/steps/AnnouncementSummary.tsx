@@ -61,6 +61,7 @@ const AnnouncementSummary = ({
                       {isDescriptionExpanded ? data.description : truncateText(data.description, 200)}
                       {shouldShowReadMore(data.description) && (
                         <Button
+                          type="button"
                           variant="ghost"
                           size="sm"
                           onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
