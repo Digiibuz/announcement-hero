@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
@@ -14,8 +15,6 @@ import useVoiceRecognition from "@/hooks/useVoiceRecognition";
 import SparklingStars from "@/components/ui/SparklingStars";
 import AILoadingOverlay from "@/components/ui/AILoadingOverlay";
 import AIGenerationOptions, { AIGenerationSettings } from "./AIGenerationOptions";
-import MediaInsertion from "./MediaInsertion";
-import ImageControls from "./ImageControls";
 import "@/styles/editor.css";
 import "@/styles/sparkles.css";
 
@@ -35,9 +34,6 @@ const DescriptionField = ({
     tone: "convivial",
     length: "standard"
   });
-  const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null);
-  const [imageControlsPosition, setImageControlsPosition] = useState({ x: 0, y: 0 });
-  const [showImageControls, setShowImageControls] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const initialRenderRef = useRef(true);
@@ -125,213 +121,11 @@ const DescriptionField = ({
     updateFormValue();
   };
 
-  const handleInsertImage = (url: string, alt?: string) => {
-    if (!editorRef.current) return;
-    
-    // Focus on the editor first
-    editorRef.current.focus();
-    
-    // Create the image element with proper structure for text insertion
-    const imageHtml = `
-      <div class="image-container" style="margin: 15px 0;">
-        <img src="${url}" alt="${alt || ''}" style="max-width: 100%; height: auto; border-radius: 8px; cursor: pointer; display: block;" class="editable-image" />
-      </div>
-      <p><br></p>
-    `;
-    
-    // Get current selection or create one at the end
-    const selection = window.getSelection();
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      
-      // Make sure the range is within our editor
-      if (editorRef.current.contains(range.commonAncestorContainer)) {
-        // Insert the image at the current cursor position
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = imageHtml;
-        
-        // Insert all child nodes from the temp div
-        while (tempDiv.firstChild) {
-          range.insertNode(tempDiv.firstChild);
-        }
-        
-        // Move cursor to the paragraph after the image
-        const allParagraphs = editorRef.current.querySelectorAll('p');
-        const lastP = allParagraphs[allParagraphs.length - 1];
-        if (lastP) {
-          range.setStart(lastP, 0);
-          range.setEnd(lastP, 0);
-          selection.removeAllRanges();
-          selection.addRange(range);
-        }
-      } else {
-        // If selection is not in editor, append to the end
-        editorRef.current.innerHTML += imageHtml;
-      }
-    } else {
-      // No selection, append to the end
-      editorRef.current.innerHTML += imageHtml;
-    }
-    
-    // Update form value
-    updateFormValue();
-    
-    // Add click listeners to new images
-    setTimeout(() => setupImageClickListeners(), 100);
-  };
-
-  const handleInsertVideo = (embedCode: string) => {
-    // Pour WordPress, on insère simplement le lien YouTube
-    // WordPress le convertira automatiquement en player intégré
-    const videoHtml = `<p><a href="${embedCode}" target="_blank" rel="noopener noreferrer">${embedCode}</a></p><p><br></p>`;
-    document.execCommand('insertHTML', false, videoHtml);
-    updateFormValue();
-  };
-
-  const setupImageClickListeners = () => {
-    if (!editorRef.current) return;
-    
-    // First, make sure all images have the editable-image class
-    const allImages = editorRef.current.querySelectorAll('img');
-    allImages.forEach((img) => {
-      if (!img.classList.contains('editable-image')) {
-        img.classList.add('editable-image');
-        img.style.cursor = 'pointer';
-      }
-    });
-    
-    // Then add click listeners
-    const editableImages = editorRef.current.querySelectorAll('img.editable-image');
-    editableImages.forEach((img) => {
-      const imageElement = img as HTMLImageElement;
-      
-      // Remove existing listeners to avoid duplicates
-      imageElement.onclick = null;
-      
-      imageElement.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        console.log("Image clicked!", imageElement.src);
-        
-        // Remove previous selection styling
-        document.querySelectorAll('.image-selected').forEach(el => {
-          el.classList.remove('image-selected');
-        });
-        
-        // Add selection styling to current image
-        imageElement.classList.add('image-selected');
-        
-        const rect = imageElement.getBoundingClientRect();
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-        
-        // Position controls to the right of the image
-        setImageControlsPosition({
-          x: rect.right + scrollLeft,
-          y: rect.top + scrollTop + rect.height / 2
-        });
-        setSelectedImage(imageElement);
-        setShowImageControls(true);
-      });
-    });
-  };
-
-  const handleImageResize = (size: 'small' | 'medium' | 'large' | 'full') => {
-    if (!selectedImage) return;
-    
-    const sizeMap = {
-      small: '25%',
-      medium: '50%',
-      large: '75%',
-      full: '100%'
-    };
-    
-    selectedImage.style.width = sizeMap[size];
-    selectedImage.style.maxWidth = sizeMap[size];
-    setShowImageControls(false);
-    
-    // Remove selection styling
-    selectedImage.classList.remove('image-selected');
-    
-    updateFormValue();
-  };
-
-  const handleImageAlign = (alignment: 'left' | 'center' | 'right') => {
-    if (!selectedImage) return;
-    
-    // Find or create image container
-    let container = selectedImage.closest('.image-container') as HTMLElement;
-    if (!container) {
-      container = document.createElement('div');
-      container.className = 'image-container';
-      container.style.margin = '15px 0';
-      selectedImage.parentNode?.insertBefore(container, selectedImage);
-      container.appendChild(selectedImage);
-    }
-    
-    const alignmentMap = {
-      left: 'flex-start',
-      center: 'center',
-      right: 'flex-end'
-    };
-    
-    container.style.display = 'flex';
-    container.style.justifyContent = alignmentMap[alignment];
-    
-    setShowImageControls(false);
-    
-    // Remove selection styling
-    selectedImage.classList.remove('image-selected');
-    
-    updateFormValue();
-  };
-
-  const handleImageDelete = () => {
-    if (!selectedImage) return;
-    
-    // Remove container if it exists, otherwise remove image directly
-    const container = selectedImage.closest('.image-container');
-    if (container) {
-      container.remove();
-    } else {
-      selectedImage.remove();
-    }
-    
-    setShowImageControls(false);
-    setSelectedImage(null);
-    updateFormValue();
-  };
-
-  // Close image controls when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (showImageControls) {
-        const target = e.target as Node;
-        const isImageClick = target && (target as HTMLElement).tagName === 'IMG';
-        const isControlsClick = document.querySelector('.image-controls')?.contains(target);
-        
-        if (!isImageClick && !isControlsClick && editorRef.current && !editorRef.current.contains(target)) {
-          setShowImageControls(false);
-          // Remove selection styling from all images
-          document.querySelectorAll('.image-selected').forEach(el => {
-            el.classList.remove('image-selected');
-          });
-        }
-      }
-    };
-
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, [showImageControls]);
-
   useEffect(() => {
     const description = form.getValues('description') || '';
     if (editorRef.current && description && initialRenderRef.current) {
       editorRef.current.innerHTML = description;
       initialRenderRef.current = false;
-      // Setup click listeners for existing images
-      setTimeout(() => setupImageClickListeners(), 100);
     }
   }, [form]);
 
@@ -340,8 +134,6 @@ const DescriptionField = ({
     if (editorElement) {
       const handleInput = () => {
         debouncedUpdateFormValue();
-        // Re-setup image listeners after content changes
-        setTimeout(() => setupImageClickListeners(), 100);
       };
       
       editorElement.addEventListener('input', handleInput);
@@ -349,7 +141,6 @@ const DescriptionField = ({
       
       const observer = new MutationObserver(() => {
         debouncedUpdateFormValue();
-        setTimeout(() => setupImageClickListeners(), 100);
       });
       
       observer.observe(editorElement, {
@@ -373,7 +164,6 @@ const DescriptionField = ({
         const currentDescription = form.getValues('description');
         if (currentDescription && editorRef.current.innerHTML !== currentDescription) {
           editorRef.current.innerHTML = currentDescription;
-          setTimeout(() => setupImageClickListeners(), 100);
         }
       }
     });
@@ -386,16 +176,6 @@ const DescriptionField = ({
       {/* AI Loading Overlay */}
       <AILoadingOverlay 
         isVisible={isOptimizing.generateDescription} 
-      />
-      
-      {/* Image Controls */}
-      <ImageControls
-        isOpen={showImageControls}
-        onClose={() => setShowImageControls(false)}
-        onResize={handleImageResize}
-        onAlign={handleImageAlign}
-        onDelete={handleImageDelete}
-        position={imageControlsPosition}
       />
       
       <div className="flex justify-between items-center">
@@ -600,12 +380,6 @@ const DescriptionField = ({
             </div>
           </PopoverContent>
         </Popover>
-
-        {/* Nouveau bouton pour l'insertion de médias */}
-        <MediaInsertion 
-          onInsertImage={handleInsertImage}
-          onInsertVideo={handleInsertVideo}
-        />
 
         {/* Voice Recording Button */}
         {isSupported && (
