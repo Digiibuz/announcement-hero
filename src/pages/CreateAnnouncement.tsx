@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -44,8 +43,8 @@ const stepConfigs: StepConfig[] = [
   },
   {
     id: "images",
-    title: "Images",
-    description: "Les annonces avec des images de qualité attirent davantage l'attention et génèrent plus d'intérêt."
+    title: "Médias",
+    description: "Ajoutez des images ou vidéos pour enrichir votre annonce. Elles apparaîtront en bas de votre page WordPress."
   },
   {
     id: "publishing",
@@ -115,7 +114,7 @@ const CreateAnnouncement = () => {
     saveData
   } = useFormPersistence(form, FORM_STORAGE_KEY);
 
-  // Define publishing steps (updated for new flow)
+  // Define publishing steps (updated for new media flow)
   const publishingSteps: PublishingStepType[] = [
     {
       id: "prepare",
@@ -124,9 +123,9 @@ const CreateAnnouncement = () => {
       icon: <div className="h-5 w-5 text-muted-foreground"></div>
     },
     {
-      id: "compress",
-      label: "Compression optimisée de l'image",
-      status: publishingState.steps.compress?.status || "idle",
+      id: "media",
+      label: "Traitement des médias",
+      status: publishingState.steps.media?.status || "idle",
       icon: <div className="h-5 w-5 text-muted-foreground"></div>
     },
     {
