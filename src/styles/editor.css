@@ -73,6 +73,27 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   margin: 10px 0;
   display: block;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Styles pour les images cliquables avec contrôles */
+.rich-text-editor img.editable-image {
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s ease-in-out;
+}
+
+.rich-text-editor img.editable-image:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  transform: scale(1.02);
+}
+
+/* Wrapper pour l'alignement des images */
+.rich-text-editor .image-wrapper {
+  display: flex;
+  margin: 10px 0;
+  width: 100%;
 }
 
 /* Styles pour les vidéos intégrées */
@@ -150,5 +171,9 @@
     padding: 8px;
     margin: 8px 0;
     font-size: 0.9rem;
+  }
+  
+  .rich-text-editor img.editable-image:hover {
+    transform: none; /* Désactive le zoom sur mobile */
   }
 }

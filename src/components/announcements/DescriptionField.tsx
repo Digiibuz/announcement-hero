@@ -15,6 +15,7 @@ import SparklingStars from "@/components/ui/SparklingStars";
 import AILoadingOverlay from "@/components/ui/AILoadingOverlay";
 import AIGenerationOptions, { AIGenerationSettings } from "./AIGenerationOptions";
 import MediaInsertion from "./MediaInsertion";
+import ImageControls from "./ImageControls";
 import "@/styles/editor.css";
 import "@/styles/sparkles.css";
 
@@ -34,6 +35,9 @@ const DescriptionField = ({
     tone: "convivial",
     length: "standard"
   });
+  const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null);
+  const [imageControlsPosition, setImageControlsPosition] = useState({ x: 0, y: 0 });
+  const [showImageControls, setShowImageControls] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const initialRenderRef = useRef(true);
@@ -128,7 +132,7 @@ const DescriptionField = ({
     editorRef.current.focus();
     
     // Create the image element
-    const imageHtml = `<img src="${url}" alt="${alt || ''}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px;" />`;
+    const imageHtml = `<img src="${url}" alt="${alt || ''}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px; cursor: pointer;" class="editable-image" />`;
     
     // Get current selection or create one at the end
     const selection = window.getSelection();
@@ -163,6 +167,9 @@ const DescriptionField = ({
     
     // Update form value
     updateFormValue();
+    
+    // Add click listeners to new images
+    setTimeout(() => setupImageClickListeners(), 100);
   };
 
   const handleInsertVideo = (embedCode: string) => {
@@ -173,11 +180,104 @@ const DescriptionField = ({
     updateFormValue();
   };
 
+  const setupImageClickListeners = () => {
+    if (!editorRef.current) return;
+    
+    const images = editorRef.current.querySelectorAll('img.editable-image');
+    images.forEach((img) => {
+      const imageElement = img as HTMLImageElement;
+      imageElement.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const rect = imageElement.getBoundingClientRect();
+        setImageControlsPosition({
+          x: rect.left + rect.width / 2,
+          y: rect.top
+        });
+        setSelectedImage(imageElement);
+        setShowImageControls(true);
+      };
+    });
+  };
+
+  const handleImageResize = (size: 'small' | 'medium' | 'large' | 'full') => {
+    if (!selectedImage) return;
+    
+    const sizeMap = {
+      small: '25%',
+      medium: '50%',
+      large: '75%',
+      full: '100%'
+    };
+    
+    selectedImage.style.width = sizeMap[size];
+    selectedImage.style.maxWidth = sizeMap[size];
+    setShowImageControls(false);
+    updateFormValue();
+  };
+
+  const handleImageAlign = (alignment: 'left' | 'center' | 'right') => {
+    if (!selectedImage) return;
+    
+    const alignmentMap = {
+      left: 'flex-start',
+      center: 'center',
+      right: 'flex-end'
+    };
+    
+    // Create or update wrapper div for alignment
+    let wrapper = selectedImage.parentElement;
+    if (!wrapper || !wrapper.classList.contains('image-wrapper')) {
+      wrapper = document.createElement('div');
+      wrapper.className = 'image-wrapper';
+      selectedImage.parentNode?.insertBefore(wrapper, selectedImage);
+      wrapper.appendChild(selectedImage);
+    }
+    
+    wrapper.style.display = 'flex';
+    wrapper.style.justifyContent = alignmentMap[alignment];
+    wrapper.style.margin = '10px 0';
+    
+    setShowImageControls(false);
+    updateFormValue();
+  };
+
+  const handleImageDelete = () => {
+    if (!selectedImage) return;
+    
+    // Remove wrapper if it exists, otherwise remove image directly
+    const wrapper = selectedImage.parentElement;
+    if (wrapper && wrapper.classList.contains('image-wrapper')) {
+      wrapper.remove();
+    } else {
+      selectedImage.remove();
+    }
+    
+    setShowImageControls(false);
+    setSelectedImage(null);
+    updateFormValue();
+  };
+
+  // Close image controls when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (showImageControls && editorRef.current && !editorRef.current.contains(e.target as Node)) {
+        setShowImageControls(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showImageControls]);
+
   useEffect(() => {
     const description = form.getValues('description') || '';
     if (editorRef.current && description && initialRenderRef.current) {
       editorRef.current.innerHTML = description;
       initialRenderRef.current = false;
+      // Setup click listeners for existing images
+      setTimeout(() => setupImageClickListeners(), 100);
     }
   }, [form]);
 
@@ -186,6 +286,8 @@ const DescriptionField = ({
     if (editorElement) {
       const handleInput = () => {
         debouncedUpdateFormValue();
+        // Re-setup image listeners after content changes
+        setTimeout(() => setupImageClickListeners(), 100);
       };
       
       editorElement.addEventListener('input', handleInput);
@@ -193,6 +295,7 @@ const DescriptionField = ({
       
       const observer = new MutationObserver(() => {
         debouncedUpdateFormValue();
+        setTimeout(() => setupImageClickListeners(), 100);
       });
       
       observer.observe(editorElement, {
@@ -216,6 +319,7 @@ const DescriptionField = ({
         const currentDescription = form.getValues('description');
         if (currentDescription && editorRef.current.innerHTML !== currentDescription) {
           editorRef.current.innerHTML = currentDescription;
+          setTimeout(() => setupImageClickListeners(), 100);
         }
       }
     });
@@ -228,6 +332,16 @@ const DescriptionField = ({
       {/* AI Loading Overlay */}
       <AILoadingOverlay 
         isVisible={isOptimizing.generateDescription} 
+      />
+      
+      {/* Image Controls */}
+      <ImageControls
+        isOpen={showImageControls}
+        onClose={() => setShowImageControls(false)}
+        onResize={handleImageResize}
+        onAlign={handleImageAlign}
+        onDelete={handleImageDelete}
+        position={imageControlsPosition}
       />
       
       <div className="flex justify-between items-center">
