@@ -3,7 +3,7 @@ import React from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { CalendarIcon, FolderIcon, Clock, Search, Link, Tag, AlertCircle } from "lucide-react";
+import { CalendarIcon, FolderIcon, Clock, Search, Link, Tag, AlertCircle, Play } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 export interface AnnouncementPreviewProps {
@@ -14,6 +14,7 @@ export interface AnnouncementPreviewProps {
     publishDate: Date | undefined;
     status: string;
     images: string[];
+    additionalMedias?: string[];
     seoTitle?: string;
     seoDescription?: string;
     seoSlug?: string;
@@ -48,6 +49,14 @@ const AnnouncementPreview = ({ data }: AnnouncementPreviewProps) => {
         return "bg-muted text-muted-foreground";
     }
   };
+
+  const isVideoUrl = (url: string) => {
+    return url.toLowerCase().includes('.mp4') || 
+           url.toLowerCase().includes('.webm') || 
+           url.toLowerCase().includes('.mov');
+  };
+
+  const allMedias = [...(data.images || []), ...(data.additionalMedias || [])];
 
   return (
     <div className="space-y-6">
@@ -104,6 +113,7 @@ const AnnouncementPreview = ({ data }: AnnouncementPreviewProps) => {
         </CardHeader>
 
         <CardContent className="p-6">
+          {/* Image principale */}
           {data.images && data.images.length > 0 ? (
             <div className="mb-6">
               <div className="aspect-video rounded-md overflow-hidden bg-muted">
@@ -113,34 +123,50 @@ const AnnouncementPreview = ({ data }: AnnouncementPreviewProps) => {
                   className="w-full h-full object-cover"
                 />
               </div>
-              
-              {data.images.length > 1 && (
-                <div className="grid grid-cols-4 gap-2 mt-2">
-                  {data.images.slice(1).map((image, index) => (
-                    <div key={index} className="aspect-square rounded-md overflow-hidden bg-muted">
-                      <img
-                        src={image}
-                        alt={`Image supplémentaire ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           ) : (
             <div className="mb-6 border border-dashed rounded-md aspect-video flex items-center justify-center text-muted-foreground">
-              Aucune image attachée
+              Aucune image principale
             </div>
           )}
 
+          {/* Contenu principal */}
           {data.description ? (
-            <div className="prose prose-sm md:prose-base max-w-none rich-text-editor">
+            <div className="prose prose-sm md:prose-base max-w-none rich-text-editor mb-8">
               <div dangerouslySetInnerHTML={{ __html: data.description }} />
             </div>
           ) : (
-            <div className="text-muted-foreground italic py-4 text-center">
+            <div className="text-muted-foreground italic py-4 text-center mb-8">
               Aucune description fournie
+            </div>
+          )}
+
+          {/* Médias additionnels */}
+          {data.additionalMedias && data.additionalMedias.length > 0 && (
+            <div className="mt-8 pt-6 border-t border-muted">
+              <h3 className="text-lg font-medium mb-4">Médias additionnels</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {data.additionalMedias.map((media, index) => (
+                  <div key={index} className="rounded-md overflow-hidden bg-muted border">
+                    {isVideoUrl(media) ? (
+                      <div className="relative aspect-video">
+                        <video controls className="w-full h-full object-cover">
+                          <source src={media} type="video/mp4" />
+                          Votre navigateur ne supporte pas la lecture de vidéos.
+                        </video>
+                      </div>
+                    ) : (
+                      <div className="aspect-video">
+                        <img
+                          src={media}
+                          alt={`Média additionnel ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
           

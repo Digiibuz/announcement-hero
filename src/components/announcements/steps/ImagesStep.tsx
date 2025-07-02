@@ -3,6 +3,7 @@ import React from "react";
 import { UseFormReturn } from "react-hook-form";
 import { AnnouncementFormData } from "../AnnouncementForm";
 import MediaUploader from "../MediaUploader";
+import AdditionalMediaUploader from "../AdditionalMediaUploader";
 
 interface ImagesStepProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -11,22 +12,36 @@ interface ImagesStepProps {
 
 const ImagesStep = ({ form, isMobile }: ImagesStepProps) => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="text-center mb-6">
         <h3 className="text-lg font-medium text-gray-900 mb-2">
-          Images
+          Médias
         </h3>
         <p className="text-gray-600">
-          Ajoutez une image pour illustrer votre annonce et attirer plus d'attention.
+          Ajoutez une image principale et des médias additionnels pour illustrer votre annonce.
         </p>
       </div>
       
-      <MediaUploader form={form} />
-      
-      <div className="text-sm text-gray-500 text-center">
-        <p>• Formats supportés : JPEG, PNG, WebP, HEIC</p>
-        <p>• Taille maximale : 10 MB par fichier</p>
-        <p>• Une seule image par annonce</p>
+      {/* Image principale */}
+      <div className="space-y-4">
+        <h4 className="text-base font-medium text-gray-800">Image principale</h4>
+        <MediaUploader form={form} />
+        <div className="text-sm text-gray-500">
+          <p>• Cette image sera mise en avant dans votre annonce</p>
+          <p>• Formats supportés : JPEG, PNG, WebP, HEIC</p>
+          <p>• Taille maximale : 10 MB</p>
+        </div>
+      </div>
+
+      {/* Médias additionnels */}
+      <div className="space-y-4">
+        <h4 className="text-base font-medium text-gray-800">Médias additionnels (optionnel)</h4>
+        <AdditionalMediaUploader form={form} />
+        <div className="text-sm text-gray-500">
+          <p>• Ajoutez jusqu'à 5 images ou vidéos supplémentaires</p>
+          <p>• Formats supportés : JPEG, PNG, WebP, MP4, MOV</p>
+          <p>• Taille maximale : 10 MB par fichier</p>
+        </div>
       </div>
     </div>
   );

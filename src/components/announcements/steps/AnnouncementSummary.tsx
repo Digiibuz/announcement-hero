@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AnnouncementFormData } from "../AnnouncementForm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CalendarIcon, FileImage, FileText, Tag, ChevronDown, ChevronUp } from "lucide-react";
+import { CalendarIcon, FileImage, FileText, Tag, ChevronDown, ChevronUp, Play } from "lucide-react";
 import { format } from "date-fns";
 
 interface AnnouncementSummaryProps {
@@ -35,6 +35,14 @@ const AnnouncementSummary = ({
   const shouldShowReadMore = (text: string, maxLength: number = 200) => {
     return text && text.length > maxLength;
   };
+
+  const isVideoUrl = (url: string) => {
+    return url.toLowerCase().includes('.mp4') || 
+           url.toLowerCase().includes('.webm') || 
+           url.toLowerCase().includes('.mov');
+  };
+
+  const allMedias = [...(data.images || []), ...(data.additionalMedias || [])];
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
@@ -104,15 +112,52 @@ const AnnouncementSummary = ({
           <CardHeader className={`${isMobile ? "px-0 py-3" : "pb-3"}`}>
             <CardTitle className="text-lg font-medium flex items-center">
               <FileImage className="h-5 w-5 mr-2" />
-              Images
+              Médias {allMedias.length > 0 && `(${allMedias.length})`}
             </CardTitle>
           </CardHeader>
           <CardContent className={`${isMobile ? "px-0 py-3" : ""}`}>
-            {data.images && data.images.length > 0 ? <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {data.images.map((image, index) => <div key={index} className="aspect-square rounded-md border overflow-hidden bg-muted">
-                    <img src={image} alt={`Image ${index + 1}`} className="w-full h-full object-cover" />
-                  </div>)}
-              </div> : <div className="text-muted-foreground">Aucune image ajoutée</div>}
+            {allMedias.length > 0 ? (
+              <div className="space-y-4">
+                {/* Image principale */}
+                {data.images && data.images.length > 0 && (
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-2">Image principale</div>
+                    <div className="aspect-video rounded-md border overflow-hidden bg-muted">
+                      <img src={data.images[0]} alt="Image principale" className="w-full h-full object-cover" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Médias additionnels */}
+                {data.additionalMedias && data.additionalMedias.length > 0 && (
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-2">
+                      Médias additionnels ({data.additionalMedias.length})
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {data.additionalMedias.map((media, index) => (
+                        <div key={index} className="aspect-square rounded-md border overflow-hidden bg-muted relative">
+                          {isVideoUrl(media) ? (
+                            <>
+                              <video className="w-full h-full object-cover">
+                                <source src={media} type="video/mp4" />
+                              </video>
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                <Play className="h-8 w-8 text-white" />
+                              </div>
+                            </>
+                          ) : (
+                            <img src={media} alt={`Média additionnel ${index + 1}`} className="w-full h-full object-cover" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-muted-foreground">Aucun média ajouté</div>
+            )}
           </CardContent>
         </Card>
         
@@ -134,10 +179,12 @@ const AnnouncementSummary = ({
                 </div>
               </div>
               
-              {data.status === 'scheduled' && data.publishDate && <div>
+              {data.status === 'scheduled' && data.publishDate && (
+                <div>
                   <div className="text-sm font-medium text-muted-foreground mb-1">Date de publication</div>
                   <div className="text-foreground">{format(data.publishDate, "PPP")}</div>
-                </div>}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
