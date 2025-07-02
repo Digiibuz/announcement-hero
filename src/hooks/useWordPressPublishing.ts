@@ -49,6 +49,29 @@ export const useWordPressPublishing = () => {
   const resetPublishingState = () => {
     setPublishingState(initialPublishingState);
   };
+
+  // Fonction pour optimiser le contenu pour WordPress
+  const optimizeContentForWordPress = (content: string): string => {
+    if (!content) return content;
+
+    // Convertir les liens YouTube en shortcodes WordPress si nécessaire
+    // WordPress gère automatiquement la conversion des liens YouTube via oEmbed
+    let optimizedContent = content;
+
+    // Nettoyer les styles inline des images pour la compatibilité WordPress
+    optimizedContent = optimizedContent.replace(
+      /<img([^>]*?)style="[^"]*"([^>]*?)>/gi,
+      '<img$1$2>'
+    );
+
+    // Ajouter des classes WordPress pour les images si elles n'en ont pas
+    optimizedContent = optimizedContent.replace(
+      /<img(?![^>]*class=)([^>]*?)>/gi,
+      '<img class="wp-image aligncenter size-full"$1>'
+    );
+
+    return optimizedContent;
+  };
   
   const publishToWordPress = async (
     announcement: Announcement, 
@@ -258,10 +281,13 @@ export const useWordPressPublishing = () => {
         };
       }
       
+      // Optimize content for WordPress
+      const optimizedDescription = optimizeContentForWordPress(announcement.description || "");
+      
       // Prepare post data
       const wpPostData: any = {
         title: announcement.title,
-        content: announcement.description || "",
+        content: optimizedDescription,
         status: announcement.status === 'scheduled' ? 'future' : 'publish',
       };
       

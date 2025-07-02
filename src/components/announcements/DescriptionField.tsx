@@ -14,6 +14,7 @@ import useVoiceRecognition from "@/hooks/useVoiceRecognition";
 import SparklingStars from "@/components/ui/SparklingStars";
 import AILoadingOverlay from "@/components/ui/AILoadingOverlay";
 import AIGenerationOptions, { AIGenerationSettings } from "./AIGenerationOptions";
+import MediaInsertion from "./MediaInsertion";
 import "@/styles/editor.css";
 import "@/styles/sparkles.css";
 
@@ -117,6 +118,20 @@ const DescriptionField = ({
     setLinkUrl("");
     setLinkText("");
     setShowLinkPopover(false);
+    updateFormValue();
+  };
+
+  const handleInsertImage = (url: string, alt?: string) => {
+    const imageHtml = `<img src="${url}" alt="${alt || ''}" style="max-width: 100%; height: auto; margin: 10px 0;" />`;
+    document.execCommand('insertHTML', false, imageHtml);
+    updateFormValue();
+  };
+
+  const handleInsertVideo = (embedCode: string) => {
+    // Pour WordPress, on insère simplement le lien YouTube
+    // WordPress le convertira automatiquement en player intégré
+    const videoHtml = `<p><a href="${embedCode}" target="_blank" rel="noopener noreferrer">${embedCode}</a></p>`;
+    document.execCommand('insertHTML', false, videoHtml);
     updateFormValue();
   };
 
@@ -379,6 +394,12 @@ const DescriptionField = ({
             </div>
           </PopoverContent>
         </Popover>
+
+        {/* Nouveau bouton pour l'insertion de médias */}
+        <MediaInsertion 
+          onInsertImage={handleInsertImage}
+          onInsertVideo={handleInsertVideo}
+        />
 
         {/* Voice Recording Button */}
         {isSupported && (

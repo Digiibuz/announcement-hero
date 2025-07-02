@@ -65,6 +65,50 @@
   text-decoration: none;
 }
 
+/* Styles pour les images dans l'éditeur */
+.rich-text-editor img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin: 10px 0;
+  display: block;
+}
+
+/* Styles pour les vidéos intégrées */
+.rich-text-editor iframe {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 10px 0;
+  display: block;
+}
+
+/* Style pour les liens vidéo en attente de conversion WordPress */
+.rich-text-editor a[href*="youtube.com"],
+.rich-text-editor a[href*="youtu.be"] {
+  display: block;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 10px;
+  margin: 10px 0;
+  text-decoration: none;
+  color: #495057;
+  position: relative;
+}
+
+.rich-text-editor a[href*="youtube.com"]:before,
+.rich-text-editor a[href*="youtu.be"]:before {
+  content: "🎥 ";
+  margin-right: 8px;
+}
+
+.rich-text-editor a[href*="youtube.com"]:hover,
+.rich-text-editor a[href*="youtu.be"]:hover {
+  background: #e9ecef;
+  border-color: #dee2e6;
+}
+
 .rich-text-editor:empty:before {
   content: "Entrez la description de l'annonce";
   color: #9ca3af;
@@ -92,4 +136,19 @@
   margin-top: 0.5rem !important;
   height: 1.2em !important;
   line-height: 1.2em !important;
+}
+
+/* Responsive design pour les médias */
+@media (max-width: 768px) {
+  .rich-text-editor img,
+  .rich-text-editor iframe {
+    margin: 8px 0;
+  }
+  
+  .rich-text-editor a[href*="youtube.com"],
+  .rich-text-editor a[href*="youtu.be"] {
+    padding: 8px;
+    margin: 8px 0;
+    font-size: 0.9rem;
+  }
 }
