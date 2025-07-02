@@ -5,6 +5,7 @@ export type Announcement = {
   title: string;
   description?: string;
   images?: string[];
+  additionalMedias?: string[]; // Nouveau champ pour les médias additionnels
   status: "draft" | "published" | "scheduled";
   created_at: string;
   updated_at: string;

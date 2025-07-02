@@ -141,10 +141,10 @@ const AnnouncementPreview = ({ data }: AnnouncementPreviewProps) => {
             </div>
           )}
 
-          {/* Médias additionnels */}
+          {/* Photos et vidéos additionnelles */}
           {data.additionalMedias && data.additionalMedias.length > 0 && (
             <div className="mt-8 pt-6 border-t border-muted">
-              <h3 className="text-lg font-medium mb-4">Médias additionnels</h3>
+              <h3 className="text-lg font-medium mb-4">Photos et vidéos</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {data.additionalMedias.map((media, index) => (
                   <div key={index} className="rounded-md overflow-hidden bg-muted border">
@@ -154,12 +154,16 @@ const AnnouncementPreview = ({ data }: AnnouncementPreviewProps) => {
                           <source src={media} type="video/mp4" />
                           Votre navigateur ne supporte pas la lecture de vidéos.
                         </video>
+                        <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
+                          <Play size={12} />
+                          Vidéo
+                        </div>
                       </div>
                     ) : (
                       <div className="aspect-video">
                         <img
                           src={media}
-                          alt={`Média additionnel ${index + 1}`}
+                          alt={`Photo ${index + 1}`}
                           className="w-full h-full object-cover"
                         />
                       </div>

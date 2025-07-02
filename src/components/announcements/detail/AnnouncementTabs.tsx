@@ -96,6 +96,7 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
               publishDate: announcement.publish_date ? new Date(announcement.publish_date) : undefined,
               status: announcement.status,
               images: announcement.images || [],
+              additionalMedias: (announcement as any).additionalMedias || [],
               seoTitle: announcement.seo_title,
               seoDescription: announcement.seo_description,
               seoSlug: announcement.seo_slug,
