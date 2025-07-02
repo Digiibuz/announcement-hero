@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Announcement } from "@/types/announcement";
@@ -169,7 +168,7 @@ export const useWordPressPublishing = () => {
         }
       }
 
-      // Process additional medias
+      // Process additional medias with improved styling
       let additionalMediasContent = "";
       const additionalMedias = (announcement as any).additionalMedias || [];
       
@@ -206,7 +205,14 @@ export const useWordPressPublishing = () => {
                 
                 if (videoUploadResponse.ok) {
                   const videoData = await videoUploadResponse.json();
-                  return `<video controls style="max-width: 100%; height: auto; margin: 10px 0;"><source src="${videoData.source_url}" type="video/mp4">Votre navigateur ne supporte pas la lecture de vidéos.</video>`;
+                  return `
+                    <div style="margin: 30px 0; text-align: center; background: #f8f9fa; padding: 20px; border-radius: 12px; border: 1px solid #e9ecef;">
+                      <video controls style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                        <source src="${videoData.source_url}" type="video/mp4">
+                        Votre navigateur ne supporte pas la lecture de vidéos.
+                      </video>
+                    </div>
+                  `;
                 }
               } else {
                 // For images, compress and upload
@@ -238,7 +244,13 @@ export const useWordPressPublishing = () => {
                 
                 if (imageUploadResponse.ok) {
                   const imageData = await imageUploadResponse.json();
-                  return `<img src="${imageData.source_url}" alt="${announcement.title} - Image ${index + 1}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px;" />`;
+                  return `
+                    <div style="margin: 30px 0; text-align: center; background: #f8f9fa; padding: 20px; border-radius: 12px; border: 1px solid #e9ecef;">
+                      <img src="${imageData.source_url}" 
+                           alt="${announcement.title} - Image ${index + 1}" 
+                           style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
+                    </div>
+                  `;
                 }
                 
                 // Clean up blob URL
@@ -256,7 +268,12 @@ export const useWordPressPublishing = () => {
           const validMedias = processedMedias.filter(media => media !== null);
           
           if (validMedias.length > 0) {
-            additionalMediasContent = `<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e1e1e1;">${validMedias.join('')}</div>`;
+            additionalMediasContent = `
+              <div style="margin-top: 50px; padding-top: 30px; border-top: 2px solid #e9ecef;">
+                <h3 style="color: #495057; font-size: 1.2em; margin-bottom: 20px; text-align: center; font-weight: 600;">Médias additionnels</h3>
+                ${validMedias.join('')}
+              </div>
+            `;
             updatePublishingStep("compress", "success", `${validMedias.length} média(s) additionnel(s) traité(s)`, 60);
           } else {
             updatePublishingStep("compress", "success", "Médias additionnels traités", 60);
