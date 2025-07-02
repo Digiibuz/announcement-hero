@@ -62,6 +62,7 @@ const MediaInsertion = ({ onInsertImage, onInsertVideo }: MediaInsertionProps) =
         .from('images')
         .getPublicUrl(fileName);
 
+      // Insert the image into the editor
       onInsertImage(publicUrl, file.name.split('.')[0]);
       toast.success("Image ajoutée avec succès");
     } catch (error: any) {
