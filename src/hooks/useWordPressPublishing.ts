@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Announcement } from "@/types/announcement";
@@ -21,7 +22,7 @@ const initialPublishingState: PublishingState = {
   currentStep: null,
   steps: {
     prepare: { status: "idle" },
-    media: { status: "idle" },
+    compress: { status: "idle" },
     wordpress: { status: "idle" },
     database: { status: "idle" }
   },
@@ -47,10 +48,6 @@ export const useWordPressPublishing = () => {
   
   const resetPublishingState = () => {
     setPublishingState(initialPublishingState);
-  };
-
-  const isVideo = (url: string) => {
-    return /\.(mp4|mov|avi|mkv|webm)$/i.test(url);
   };
   
   const publishToWordPress = async (
@@ -102,100 +99,82 @@ export const useWordPressPublishing = () => {
         };
       }
       
+      // Define siteUrl here for use throughout the function
       const siteUrl = wpConfig.site_url.endsWith('/')
         ? wpConfig.site_url.slice(0, -1)
         : wpConfig.site_url;
       
       updatePublishingStep("prepare", "success", "Préparation terminée", 25);
       
-      // Process media files
+      // NOUVELLE ÉTAPE: Compression légère pour la publication (les images sont déjà en WebP)
       let featuredMediaId = null;
-      let additionalMediaIds: number[] = [];
       
       if (announcement.images && announcement.images.length > 0) {
-        updatePublishingStep("media", "loading", "Traitement des médias", 40);
-        
         try {
-          for (let i = 0; i < announcement.images.length; i++) {
-            const mediaUrl = announcement.images[i];
-            let processedBlob: Blob;
-            let fileName: string;
-            let mimeType: string;
-            
-            if (isVideo(mediaUrl)) {
-              // Pour les vidéos, pas de compression
-              const response = await fetch(mediaUrl);
-              processedBlob = await response.blob();
-              const extension = mediaUrl.split('.').pop()?.toLowerCase() || 'mp4';
-              fileName = `${announcement.title}-video-${i + 1}.${extension}`;
-              mimeType = `video/${extension}`;
-            } else {
-              // Pour les images, compression légère
-              const compressedImageUrl = await compressImage(mediaUrl, {
-                maxWidth: 1200,
-                maxHeight: 1200,
-                quality: 0.9,
-                format: 'jpeg'
-              });
-              
-              const response = await fetch(compressedImageUrl);
-              processedBlob = await response.blob();
-              fileName = `${announcement.title}-image-${i + 1}.jpg`;
-              mimeType = 'image/jpeg';
-              
-              // Clean up blob URL
-              URL.revokeObjectURL(compressedImageUrl);
-            }
-            
-            // Upload to WordPress media library
-            const mediaFormData = new FormData();
-            const mediaFile = new File([processedBlob], fileName, { type: mimeType });
-            mediaFormData.append('file', mediaFile);
-            mediaFormData.append('title', `${announcement.title} - Média ${i + 1}`);
-            mediaFormData.append('alt_text', announcement.title);
-            
-            const mediaEndpoint = `${siteUrl}/wp-json/wp/v2/media`;
-            
-            const mediaHeaders = new Headers();
-            if (wpConfig.app_username && wpConfig.app_password) {
-              const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
-              mediaHeaders.append('Authorization', `Basic ${basicAuth}`);
-            }
-            
-            const mediaResponse = await fetch(mediaEndpoint, {
-              method: 'POST',
-              headers: mediaHeaders,
-              body: mediaFormData
-            });
-            
-            if (mediaResponse.ok) {
-              const mediaData = await mediaResponse.json();
-              if (mediaData && mediaData.id) {
-                if (i === 0 && !isVideo(mediaUrl)) {
-                  // Première image comme featured image
-                  featuredMediaId = mediaData.id;
-                } else {
-                  // Autres médias à insérer dans le contenu
-                  additionalMediaIds.push(mediaData.id);
-                }
-              }
-            } else {
-              console.error(`Media upload failed for ${fileName}`);
-            }
+          updatePublishingStep("compress", "loading", "Compression légère pour WordPress", 40);
+          
+          // Compression légère WebP vers JPEG pour WordPress
+          const compressedImageUrl = await compressImage(announcement.images[0], {
+            maxWidth: 1200,
+            maxHeight: 1200,
+            quality: 0.9,
+            format: 'jpeg' // WordPress préfère JPEG pour la compatibilité
+          });
+          
+          updatePublishingStep("compress", "success", "Image compressée", 50);
+          
+          // Convert blob URL to file for WordPress upload
+          const response = await fetch(compressedImageUrl);
+          const blob = await response.blob();
+          const imageFile = new File([blob], `${announcement.title}-compressed.jpg`, { 
+            type: 'image/jpeg' 
+          });
+          
+          // Upload to WordPress media library
+          console.log("Uploading compressed image to WordPress");
+          const mediaFormData = new FormData();
+          mediaFormData.append('file', imageFile);
+          mediaFormData.append('title', `${announcement.title} - ${Date.now()}`);
+          mediaFormData.append('alt_text', announcement.title);
+          
+          const mediaEndpoint = `${siteUrl}/wp-json/wp/v2/media`;
+          
+          const mediaHeaders = new Headers();
+          if (wpConfig.app_username && wpConfig.app_password) {
+            const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
+            mediaHeaders.append('Authorization', `Basic ${basicAuth}`);
           }
           
-          updatePublishingStep("media", "success", "Médias traités", 60);
+          const mediaResponse = await fetch(mediaEndpoint, {
+            method: 'POST',
+            headers: mediaHeaders,
+            body: mediaFormData
+          });
+          
+          if (mediaResponse.ok) {
+            const mediaData = await mediaResponse.json();
+            if (mediaData && mediaData.id) {
+              featuredMediaId = mediaData.id;
+              updatePublishingStep("compress", "success", "Image téléversée", 60);
+            }
+          } else {
+            console.error("Media upload failed");
+            updatePublishingStep("compress", "error", "Échec du téléversement de l'image");
+          }
+          
+          // Clean up blob URL
+          URL.revokeObjectURL(compressedImageUrl);
           
         } catch (error) {
-          console.error("Error processing media:", error);
-          updatePublishingStep("media", "error", "Erreur lors du traitement des médias");
-          toast.warning("Erreur lors du traitement des médias");
+          console.error("Error compressing image:", error);
+          updatePublishingStep("compress", "error", "Erreur lors de la compression");
+          toast.warning("Erreur lors du traitement de l'image");
         }
       } else if (isUpdate) {
-        updatePublishingStep("media", "success", "Médias supprimés", 60);
+        updatePublishingStep("compress", "success", "Image supprimée", 60);
         featuredMediaId = 0;
       } else {
-        updatePublishingStep("media", "success", "Aucun média à traiter", 60);
+        updatePublishingStep("compress", "success", "Aucune image à traiter", 60);
       }
       
       // WordPress publication
@@ -265,7 +244,9 @@ export const useWordPressPublishing = () => {
         'Content-Type': 'application/json',
       };
       
+      // Check for authentication credentials
       if (wpConfig.app_username && wpConfig.app_password) {
+        // Application Password Format: "Basic base64(username:password)"
         const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
         headers['Authorization'] = `Basic ${basicAuth}`;
       } else {
@@ -277,43 +258,14 @@ export const useWordPressPublishing = () => {
         };
       }
       
-      // Préparer le contenu avec les médias additionnels
-      let contentWithMedia = announcement.description || "";
-      
-      // Ajouter les médias à la fin du contenu
-      if (additionalMediaIds.length > 0) {
-        contentWithMedia += "\n\n";
-        for (const mediaId of additionalMediaIds) {
-          // Récupérer les détails du média pour déterminer son type
-          try {
-            const mediaResponse = await fetch(`${siteUrl}/wp-json/wp/v2/media/${mediaId}`, {
-              headers: headers
-            });
-            
-            if (mediaResponse.ok) {
-              const mediaData = await mediaResponse.json();
-              const mediaType = mediaData.mime_type;
-              
-              if (mediaType.startsWith('video/')) {
-                contentWithMedia += `[video src="${mediaData.source_url}"]\n\n`;
-              } else {
-                contentWithMedia += `<img src="${mediaData.source_url}" alt="${mediaData.alt_text || ''}" />\n\n`;
-              }
-            }
-          } catch (error) {
-            console.error("Error fetching media details:", error);
-          }
-        }
-      }
-      
       // Prepare post data
       const wpPostData: any = {
         title: announcement.title,
-        content: contentWithMedia,
+        content: announcement.description || "",
         status: announcement.status === 'scheduled' ? 'future' : 'publish',
       };
       
-      // Set featured image
+      // Set featured image (including removal for updates)
       if (featuredMediaId !== null) {
         wpPostData.featured_media = featuredMediaId;
       }
@@ -325,6 +277,7 @@ export const useWordPressPublishing = () => {
       
       // Add category based on endpoint type
       if (useCustomTaxonomy) {
+        // Use the custom taxonomy for DipiPixel
         wpPostData.dipi_cpt_category = [parseInt(wordpressCategoryId)];
       }
       
@@ -382,6 +335,7 @@ export const useWordPressPublishing = () => {
         const wordpressPostId = wpResponseData.id;
         console.log("WordPress post ID received:", wordpressPostId);
         
+        // Calculate the WordPress URL
         let wordpressUrl;
         if (announcement.seo_slug) {
           wordpressUrl = `${siteUrl}/${announcement.seo_slug}`;
@@ -389,11 +343,13 @@ export const useWordPressPublishing = () => {
           wordpressUrl = `${siteUrl}/?p=${wordpressPostId}`;
         }
         
+        // Update the announcement in Supabase with the WordPress post ID and URL
         const updateData: any = {
           is_divipixel: useCustomTaxonomy,
           wordpress_url: wordpressUrl
         };
         
+        // Only update wordpress_post_id for new posts
         if (!isUpdate) {
           updateData.wordpress_post_id = wordpressPostId;
         }
@@ -411,12 +367,9 @@ export const useWordPressPublishing = () => {
           updatePublishingStep("database", "success", "Mise à jour finalisée", 100);
         }
         
-        const mediaCount = (announcement.images?.length || 0);
-        const mediaText = mediaCount > 0 ? ` avec ${mediaCount} média${mediaCount > 1 ? 's' : ''}` : "";
-        
         return { 
           success: true, 
-          message: `${actionText} avec succès sur WordPress${mediaText}`, 
+          message: `${actionText} avec succès sur WordPress` + (featuredMediaId ? " avec image optimisée" : ""), 
           wordpressPostId 
         };
       } else {
