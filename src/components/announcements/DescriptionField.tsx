@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
@@ -132,8 +131,13 @@ const DescriptionField = ({
     // Focus on the editor first
     editorRef.current.focus();
     
-    // Create the image element with editable-image class
-    const imageHtml = `<img src="${url}" alt="${alt || ''}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px; cursor: pointer;" class="editable-image" />`;
+    // Create the image element with proper structure for text insertion
+    const imageHtml = `
+      <div class="image-container" style="margin: 15px 0;">
+        <img src="${url}" alt="${alt || ''}" style="max-width: 100%; height: auto; border-radius: 8px; cursor: pointer; display: block;" class="editable-image" />
+      </div>
+      <p><br></p>
+    `;
     
     // Get current selection or create one at the end
     const selection = window.getSelection();
@@ -143,17 +147,20 @@ const DescriptionField = ({
       // Make sure the range is within our editor
       if (editorRef.current.contains(range.commonAncestorContainer)) {
         // Insert the image at the current cursor position
-        const imageElement = document.createElement('div');
-        imageElement.innerHTML = imageHtml;
-        const imgNode = imageElement.firstChild;
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = imageHtml;
         
-        if (imgNode) {
-          range.deleteContents();
-          range.insertNode(imgNode);
-          
-          // Move cursor after the image
-          range.setStartAfter(imgNode);
-          range.setEndAfter(imgNode);
+        // Insert all child nodes from the temp div
+        while (tempDiv.firstChild) {
+          range.insertNode(tempDiv.firstChild);
+        }
+        
+        // Move cursor to the paragraph after the image
+        const allParagraphs = editorRef.current.querySelectorAll('p');
+        const lastP = allParagraphs[allParagraphs.length - 1];
+        if (lastP) {
+          range.setStart(lastP, 0);
+          range.setEnd(lastP, 0);
           selection.removeAllRanges();
           selection.addRange(range);
         }
@@ -176,7 +183,7 @@ const DescriptionField = ({
   const handleInsertVideo = (embedCode: string) => {
     // Pour WordPress, on insère simplement le lien YouTube
     // WordPress le convertira automatiquement en player intégré
-    const videoHtml = `<p><a href="${embedCode}" target="_blank" rel="noopener noreferrer">${embedCode}</a></p>`;
+    const videoHtml = `<p><a href="${embedCode}" target="_blank" rel="noopener noreferrer">${embedCode}</a></p><p><br></p>`;
     document.execCommand('insertHTML', false, videoHtml);
     updateFormValue();
   };
@@ -207,13 +214,22 @@ const DescriptionField = ({
         
         console.log("Image clicked!", imageElement.src);
         
+        // Remove previous selection styling
+        document.querySelectorAll('.image-selected').forEach(el => {
+          el.classList.remove('image-selected');
+        });
+        
+        // Add selection styling to current image
+        imageElement.classList.add('image-selected');
+        
         const rect = imageElement.getBoundingClientRect();
         const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
         const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
         
+        // Position controls to the right of the image
         setImageControlsPosition({
-          x: rect.left + scrollLeft + rect.width / 2,
-          y: rect.top + scrollTop
+          x: rect.right + scrollLeft,
+          y: rect.top + scrollTop + rect.height / 2
         });
         setSelectedImage(imageElement);
         setShowImageControls(true);
@@ -234,11 +250,25 @@ const DescriptionField = ({
     selectedImage.style.width = sizeMap[size];
     selectedImage.style.maxWidth = sizeMap[size];
     setShowImageControls(false);
+    
+    // Remove selection styling
+    selectedImage.classList.remove('image-selected');
+    
     updateFormValue();
   };
 
   const handleImageAlign = (alignment: 'left' | 'center' | 'right') => {
     if (!selectedImage) return;
+    
+    // Find or create image container
+    let container = selectedImage.closest('.image-container') as HTMLElement;
+    if (!container) {
+      container = document.createElement('div');
+      container.className = 'image-container';
+      container.style.margin = '15px 0';
+      selectedImage.parentNode?.insertBefore(container, selectedImage);
+      container.appendChild(selectedImage);
+    }
     
     const alignmentMap = {
       left: 'flex-start',
@@ -246,30 +276,24 @@ const DescriptionField = ({
       right: 'flex-end'
     };
     
-    // Create or update wrapper div for alignment
-    let wrapper = selectedImage.parentElement;
-    if (!wrapper || !wrapper.classList.contains('image-wrapper')) {
-      wrapper = document.createElement('div');
-      wrapper.className = 'image-wrapper';
-      selectedImage.parentNode?.insertBefore(wrapper, selectedImage);
-      wrapper.appendChild(selectedImage);
-    }
-    
-    wrapper.style.display = 'flex';
-    wrapper.style.justifyContent = alignmentMap[alignment];
-    wrapper.style.margin = '10px 0';
+    container.style.display = 'flex';
+    container.style.justifyContent = alignmentMap[alignment];
     
     setShowImageControls(false);
+    
+    // Remove selection styling
+    selectedImage.classList.remove('image-selected');
+    
     updateFormValue();
   };
 
   const handleImageDelete = () => {
     if (!selectedImage) return;
     
-    // Remove wrapper if it exists, otherwise remove image directly
-    const wrapper = selectedImage.parentElement;
-    if (wrapper && wrapper.classList.contains('image-wrapper')) {
-      wrapper.remove();
+    // Remove container if it exists, otherwise remove image directly
+    const container = selectedImage.closest('.image-container');
+    if (container) {
+      container.remove();
     } else {
       selectedImage.remove();
     }
@@ -289,6 +313,10 @@ const DescriptionField = ({
         
         if (!isImageClick && !isControlsClick && editorRef.current && !editorRef.current.contains(target)) {
           setShowImageControls(false);
+          // Remove selection styling from all images
+          document.querySelectorAll('.image-selected').forEach(el => {
+            el.classList.remove('image-selected');
+          });
         }
       }
     };

@@ -24,98 +24,108 @@ const ImageControls = ({
 
   return (
     <div 
-      className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-2 image-controls"
+      className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-xl p-3 image-controls"
       style={{
         left: position.x,
         top: position.y,
-        transform: 'translate(-50%, -100%)'
+        transform: 'translate(10px, -50%)', // Position à droite de l'image
+        minWidth: '200px'
       }}
     >
-      <div className="flex flex-col gap-2">
+      <div className="space-y-3">
+        <div className="text-xs font-medium text-gray-700 mb-2">Contrôles d'image</div>
+        
         {/* Taille */}
-        <div className="flex gap-1">
-          <span className="text-xs text-gray-500 min-w-12">Taille:</span>
+        <div className="space-y-2">
+          <div className="text-xs text-gray-500">Taille :</div>
+          <div className="flex gap-1">
+            <Button 
+              type="button" 
+              size="sm" 
+              variant="outline" 
+              className="h-7 px-2 text-xs flex-1"
+              onClick={() => onResize('small')}
+            >
+              Petit
+            </Button>
+            <Button 
+              type="button" 
+              size="sm" 
+              variant="outline" 
+              className="h-7 px-2 text-xs flex-1"
+              onClick={() => onResize('medium')}
+            >
+              Moyen
+            </Button>
+            <Button 
+              type="button" 
+              size="sm" 
+              variant="outline" 
+              className="h-7 px-2 text-xs flex-1"
+              onClick={() => onResize('large')}
+            >
+              Grand
+            </Button>
+          </div>
           <Button 
             type="button" 
             size="sm" 
             variant="outline" 
-            className="h-6 px-2 text-xs"
-            onClick={() => onResize('small')}
-          >
-            S
-          </Button>
-          <Button 
-            type="button" 
-            size="sm" 
-            variant="outline" 
-            className="h-6 px-2 text-xs"
-            onClick={() => onResize('medium')}
-          >
-            M
-          </Button>
-          <Button 
-            type="button" 
-            size="sm" 
-            variant="outline" 
-            className="h-6 px-2 text-xs"
-            onClick={() => onResize('large')}
-          >
-            L
-          </Button>
-          <Button 
-            type="button" 
-            size="sm" 
-            variant="outline" 
-            className="h-6 px-2 text-xs"
+            className="h-7 px-2 text-xs w-full"
             onClick={() => onResize('full')}
           >
-            100%
+            Pleine largeur
           </Button>
         </div>
 
         {/* Alignement */}
-        <div className="flex gap-1">
-          <span className="text-xs text-gray-500 min-w-12">Align:</span>
-          <Button 
-            type="button" 
-            size="sm" 
-            variant="outline" 
-            className="h-6 w-6 p-0"
-            onClick={() => onAlign('left')}
-          >
-            <AlignLeft size={12} />
-          </Button>
-          <Button 
-            type="button" 
-            size="sm" 
-            variant="outline" 
-            className="h-6 w-6 p-0"
-            onClick={() => onAlign('center')}
-          >
-            <AlignCenter size={12} />
-          </Button>
-          <Button 
-            type="button" 
-            size="sm" 
-            variant="outline" 
-            className="h-6 w-6 p-0"
-            onClick={() => onAlign('right')}
-          >
-            <AlignRight size={12} />
-          </Button>
+        <div className="space-y-2">
+          <div className="text-xs text-gray-500">Alignement :</div>
+          <div className="flex gap-1">
+            <Button 
+              type="button" 
+              size="sm" 
+              variant="outline" 
+              className="h-7 w-full p-0 flex items-center justify-center gap-1"
+              onClick={() => onAlign('left')}
+            >
+              <AlignLeft size={12} />
+              <span className="text-xs">Gauche</span>
+            </Button>
+            <Button 
+              type="button" 
+              size="sm" 
+              variant="outline" 
+              className="h-7 w-full p-0 flex items-center justify-center gap-1"
+              onClick={() => onAlign('center')}
+            >
+              <AlignCenter size={12} />
+              <span className="text-xs">Centre</span>
+            </Button>
+            <Button 
+              type="button" 
+              size="sm" 
+              variant="outline" 
+              className="h-7 w-full p-0 flex items-center justify-center gap-1"
+              onClick={() => onAlign('right')}
+            >
+              <AlignRight size={12} />
+              <span className="text-xs">Droite</span>
+            </Button>
+          </div>
         </div>
 
         {/* Supprimer */}
-        <div className="border-t pt-1">
+        <div className="border-t pt-2">
           <Button 
             type="button" 
             size="sm" 
             variant="destructive" 
-            className="h-6 w-full text-xs"
+            className="h-7 w-full text-xs"
             onClick={onDelete}
           >
             <Trash2 size={12} className="mr-1" />
-            Supprimer
+            Supprimer l'image
           </Button>
         </div>
       </div>

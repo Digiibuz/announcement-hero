@@ -65,13 +65,18 @@
   text-decoration: none;
 }
 
+/* Styles pour les conteneurs d'images */
+.rich-text-editor .image-container {
+  margin: 15px 0;
+  position: relative;
+}
+
 /* Styles pour les images dans l'éditeur */
 .rich-text-editor img {
   max-width: 100%;
   height: auto;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin: 10px 0;
   display: block;
   transition: all 0.2s ease-in-out;
 }
@@ -86,14 +91,14 @@
 .rich-text-editor img.editable-image:hover {
   border-color: #3b82f6;
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-  transform: scale(1.02);
+  transform: scale(1.01);
 }
 
-/* Wrapper pour l'alignement des images */
-.rich-text-editor .image-wrapper {
-  display: flex;
-  margin: 10px 0;
-  width: 100%;
+/* Style pour l'image sélectionnée */
+.rich-text-editor img.image-selected {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4) !important;
+  transform: scale(1.01) !important;
 }
 
 /* Styles pour les vidéos intégrées */
@@ -173,7 +178,8 @@
     font-size: 0.9rem;
   }
   
-  .rich-text-editor img.editable-image:hover {
+  .rich-text-editor img.editable-image:hover,
+  .rich-text-editor img.image-selected {
     transform: none; /* Désactive le zoom sur mobile */
   }
 }
