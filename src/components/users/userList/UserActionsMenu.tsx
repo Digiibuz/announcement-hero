@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { MoreHorizontal, Edit, Key, Trash2, UserCheck, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { UserProfile } from "@/types/auth";
 import SendCredentialsButton from "../SendCredentialsButton";
+import UserEditForm from "../UserEditForm";
 
 interface UserActionsMenuProps {
   user: UserProfile;
@@ -41,6 +42,8 @@ const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
   isUpdating = false,
   isDeleting = false
 }) => {
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
   const handleResetPassword = () => {
     onResetPassword(user.email);
   };
@@ -48,6 +51,8 @@ const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
   const handleEdit = () => {
     if (onEdit) {
       onEdit();
+    } else {
+      setIsEditDialogOpen(true);
     }
   };
 
@@ -68,45 +73,61 @@ const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
   };
 
   return (
-    <div className="flex items-center gap-1">
-      {/* Bouton d'envoi des identifiants - visible directement */}
-      <SendCredentialsButton user={user} variant="outline" size="sm" />
-      
-      {/* Menu dropdown pour les autres actions */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-8 w-8 p-0">
-            <span className="sr-only">Ouvrir le menu</span>
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={handleEdit}>
-            <Edit className="mr-2 h-4 w-4" />
-            Modifier
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem onClick={handleResetPassword}>
-            <Key className="mr-2 h-4 w-4" />
-            Réinitialiser le mot de passe
-          </DropdownMenuItem>
-          
-          {canImpersonate && (onImpersonateUser || onImpersonate) && (
-            <DropdownMenuItem onClick={handleImpersonate}>
-              <UserCheck className="mr-2 h-4 w-4" />
-              Se connecter en tant que
+    <>
+      <div className="flex items-center gap-1">
+        {/* Bouton d'envoi des identifiants - visible directement */}
+        <SendCredentialsButton user={user} variant="outline" size="sm" />
+        
+        {/* Menu dropdown pour les autres actions */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">Ouvrir le menu</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleEdit}>
+              <Edit className="mr-2 h-4 w-4" />
+              Modifier
             </DropdownMenuItem>
-          )}
-          
-          <DropdownMenuSeparator />
-          
-          <DropdownMenuItem onClick={handleDelete} className="text-destructive">
-            <Trash2 className="mr-2 h-4 w-4" />
-            Supprimer
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+            
+            <DropdownMenuItem onClick={handleResetPassword}>
+              <Key className="mr-2 h-4 w-4" />
+              Réinitialiser le mot de passe
+            </DropdownMenuItem>
+            
+            {canImpersonate && (onImpersonateUser || onImpersonate) && (
+              <DropdownMenuItem onClick={handleImpersonate}>
+                <UserCheck className="mr-2 h-4 w-4" />
+                Se connecter en tant que
+              </DropdownMenuItem>
+            )}
+            
+            <DropdownMenuSeparator />
+            
+            <DropdownMenuItem onClick={handleDelete} className="text-destructive">
+              <Trash2 className="mr-2 h-4 w-4" />
+              Supprimer
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* Dialog d'édition de l'utilisateur */}
+      {onUpdateUser && (
+        <UserEditForm
+          user={user}
+          onUserUpdated={onUpdateUser}
+          onDeleteUser={onDeleteUser}
+          onResetPassword={onResetPassword}
+          isUpdating={isUpdating}
+          isDeleting={isDeleting}
+          isDialogOpen={isEditDialogOpen}
+          setIsDialogOpen={setIsEditDialogOpen}
+        />
+      )}
+    </>
   );
 };
 
