@@ -2,7 +2,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { AlignLeft, AlignCenter, AlignRight, Trash2 } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface ImageControlsProps {
   isOpen: boolean;
@@ -25,7 +24,7 @@ const ImageControls = ({
 
   return (
     <div 
-      className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-2"
+      className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-2 image-controls"
       style={{
         left: position.x,
         top: position.y,

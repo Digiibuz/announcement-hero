@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
@@ -131,7 +132,7 @@ const DescriptionField = ({
     // Focus on the editor first
     editorRef.current.focus();
     
-    // Create the image element
+    // Create the image element with editable-image class
     const imageHtml = `<img src="${url}" alt="${alt || ''}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px; cursor: pointer;" class="editable-image" />`;
     
     // Get current selection or create one at the end
@@ -183,21 +184,40 @@ const DescriptionField = ({
   const setupImageClickListeners = () => {
     if (!editorRef.current) return;
     
-    const images = editorRef.current.querySelectorAll('img.editable-image');
-    images.forEach((img) => {
+    // First, make sure all images have the editable-image class
+    const allImages = editorRef.current.querySelectorAll('img');
+    allImages.forEach((img) => {
+      if (!img.classList.contains('editable-image')) {
+        img.classList.add('editable-image');
+        img.style.cursor = 'pointer';
+      }
+    });
+    
+    // Then add click listeners
+    const editableImages = editorRef.current.querySelectorAll('img.editable-image');
+    editableImages.forEach((img) => {
       const imageElement = img as HTMLImageElement;
-      imageElement.onclick = (e) => {
+      
+      // Remove existing listeners to avoid duplicates
+      imageElement.onclick = null;
+      
+      imageElement.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         
+        console.log("Image clicked!", imageElement.src);
+        
         const rect = imageElement.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+        
         setImageControlsPosition({
-          x: rect.left + rect.width / 2,
-          y: rect.top
+          x: rect.left + scrollLeft + rect.width / 2,
+          y: rect.top + scrollTop
         });
         setSelectedImage(imageElement);
         setShowImageControls(true);
-      };
+      });
     });
   };
 
@@ -262,8 +282,14 @@ const DescriptionField = ({
   // Close image controls when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (showImageControls && editorRef.current && !editorRef.current.contains(e.target as Node)) {
-        setShowImageControls(false);
+      if (showImageControls) {
+        const target = e.target as Node;
+        const isImageClick = target && (target as HTMLElement).tagName === 'IMG';
+        const isControlsClick = document.querySelector('.image-controls')?.contains(target);
+        
+        if (!isImageClick && !isControlsClick && editorRef.current && !editorRef.current.contains(target)) {
+          setShowImageControls(false);
+        }
       }
     };
 
