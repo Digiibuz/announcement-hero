@@ -1,4 +1,5 @@
 
+
 import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Pencil, FileEdit } from "lucide-react";
@@ -144,3 +145,4 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
 };
 
 export default AnnouncementTabs;
+

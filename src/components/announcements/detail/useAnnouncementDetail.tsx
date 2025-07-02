@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,8 +42,15 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
       if (data) {
         console.log("Loaded announcement:", data);
         console.log("WordPress post ID:", data.wordpress_post_id);
-        // Format data for the form
-        setAnnouncement(data as ExtendedAnnouncement);
+        console.log("Additional medias from DB:", data.additional_medias);
+        
+        // Mapper les données de la base vers le format TypeScript
+        const mappedAnnouncement = {
+          ...data,
+          additionalMedias: data.additional_medias || []
+        } as ExtendedAnnouncement;
+        
+        setAnnouncement(mappedAnnouncement);
       }
     } catch (error: any) {
       console.error("Error fetching announcement:", error);
@@ -65,6 +73,7 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
 
     // Prepare form data from announcement
     if (announcement) {
+      console.log("Setting form data with additional medias:", announcement.additionalMedias);
       setFormData({
         title: announcement.title || "",
         description: announcement.description || "",
@@ -94,6 +103,8 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
         formData.status = 'draft';
       }
       
+      console.log("Updating announcement with additional medias:", formData.additionalMedias);
+      
       // Map form data to database column names
       const updateData = {
         title: formData.title,
@@ -102,7 +113,7 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
         publish_date: formData.publishDate ? new Date(formData.publishDate).toISOString() : null,
         status: formData.status,
         images: formData.images || [],
-        additional_medias: formData.additionalMedias || [],
+        additional_medias: formData.additionalMedias || [], // Correct mapping
         seo_title: formData.seoTitle || null,
         seo_description: formData.seoDescription || null,
         seo_slug: formData.seoSlug || null
@@ -138,8 +149,14 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
             // IMPORTANT: Use the announcement owner's user_id for WordPress sync, not the current user's ID
             const announcementOwnerId = updatedAnnouncement.user_id;
             
+            // Map DB data to Announcement format for WordPress sync
+            const announcementForWordPress = {
+              ...updatedAnnouncement,
+              additionalMedias: updatedAnnouncement.additional_medias || []
+            } as Announcement;
+            
             const result = await publishToWordPress(
-              updatedAnnouncement,
+              announcementForWordPress,
               updatedAnnouncement.wordpress_category_id,
               announcementOwnerId // Use the original owner's ID for WordPress config
             );
@@ -186,3 +203,4 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
     publicationStats: stats
   };
 };
+
