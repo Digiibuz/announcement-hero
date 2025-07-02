@@ -21,7 +21,8 @@ const MediaInsertion = ({ onInsertImage, onInsertVideo }: MediaInsertionProps) =
   const [videoUrl, setVideoUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
 
-  const handleImageUpload = async (file: File) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
@@ -52,6 +53,9 @@ const MediaInsertion = ({ onInsertImage, onInsertVideo }: MediaInsertionProps) =
       onInsertImage(publicUrl, file.name.split('.')[0]);
       setIsOpen(false);
       toast.success("Image ajoutée avec succès");
+      
+      // Reset the input
+      event.target.value = '';
     } catch (error: any) {
       console.error("Error uploading image:", error);
       toast.error("Erreur lors de l'upload de l'image");
@@ -143,15 +147,16 @@ const MediaInsertion = ({ onInsertImage, onInsertVideo }: MediaInsertionProps) =
                     id="image-upload"
                     type="file"
                     accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleImageUpload(file);
-                    }}
+                    onChange={handleImageUpload}
                     disabled={isUploading}
+                    className="cursor-pointer"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Formats supportés: JPEG, PNG, WebP, GIF (max 10 MB)
                   </p>
+                  {isUploading && (
+                    <p className="text-sm text-blue-600 mt-2">Upload en cours...</p>
+                  )}
                 </div>
               </TabsContent>
               
