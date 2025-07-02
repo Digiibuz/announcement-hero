@@ -106,35 +106,33 @@ export const useWordPressPublishing = () => {
       
       updatePublishingStep("prepare", "success", "Préparation terminée", 25);
       
-      // NOUVELLE ÉTAPE: Compression légère pour la publication (les images sont déjà en WebP)
+      // Process main featured image
       let featuredMediaId = null;
       
       if (announcement.images && announcement.images.length > 0) {
         try {
-          updatePublishingStep("compress", "loading", "Compression légère pour WordPress", 40);
+          updatePublishingStep("compress", "loading", "Compression de l'image principale", 35);
           
           // Compression légère WebP vers JPEG pour WordPress
           const compressedImageUrl = await compressImage(announcement.images[0], {
             maxWidth: 1200,
             maxHeight: 1200,
             quality: 0.9,
-            format: 'jpeg' // WordPress préfère JPEG pour la compatibilité
+            format: 'jpeg'
           });
-          
-          updatePublishingStep("compress", "success", "Image compressée", 50);
           
           // Convert blob URL to file for WordPress upload
           const response = await fetch(compressedImageUrl);
           const blob = await response.blob();
-          const imageFile = new File([blob], `${announcement.title}-compressed.jpg`, { 
+          const imageFile = new File([blob], `${announcement.title}-featured.jpg`, { 
             type: 'image/jpeg' 
           });
           
           // Upload to WordPress media library
-          console.log("Uploading compressed image to WordPress");
+          console.log("Uploading featured image to WordPress");
           const mediaFormData = new FormData();
           mediaFormData.append('file', imageFile);
-          mediaFormData.append('title', `${announcement.title} - ${Date.now()}`);
+          mediaFormData.append('title', `${announcement.title} - Image principale`);
           mediaFormData.append('alt_text', announcement.title);
           
           const mediaEndpoint = `${siteUrl}/wp-json/wp/v2/media`;
@@ -155,26 +153,121 @@ export const useWordPressPublishing = () => {
             const mediaData = await mediaResponse.json();
             if (mediaData && mediaData.id) {
               featuredMediaId = mediaData.id;
-              updatePublishingStep("compress", "success", "Image téléversée", 60);
+              updatePublishingStep("compress", "success", "Image principale téléversée", 45);
             }
           } else {
-            console.error("Media upload failed");
-            updatePublishingStep("compress", "error", "Échec du téléversement de l'image");
+            console.error("Featured image upload failed");
+            updatePublishingStep("compress", "error", "Échec du téléversement de l'image principale");
           }
           
           // Clean up blob URL
           URL.revokeObjectURL(compressedImageUrl);
           
         } catch (error) {
-          console.error("Error compressing image:", error);
-          updatePublishingStep("compress", "error", "Erreur lors de la compression");
-          toast.warning("Erreur lors du traitement de l'image");
+          console.error("Error processing featured image:", error);
+          updatePublishingStep("compress", "error", "Erreur lors du traitement de l'image principale");
         }
-      } else if (isUpdate) {
-        updatePublishingStep("compress", "success", "Image supprimée", 60);
-        featuredMediaId = 0;
+      }
+
+      // Process additional medias
+      let additionalMediasContent = "";
+      const additionalMedias = (announcement as any).additionalMedias || [];
+      
+      if (additionalMedias.length > 0) {
+        try {
+          updatePublishingStep("compress", "loading", "Traitement des médias additionnels", 50);
+          
+          const mediaPromises = additionalMedias.map(async (mediaUrl: string, index: number) => {
+            try {
+              // Determine if it's an image or video
+              const isVideo = mediaUrl.toLowerCase().includes('.mp4') || 
+                            mediaUrl.toLowerCase().includes('.webm') || 
+                            mediaUrl.toLowerCase().includes('.mov');
+              
+              if (isVideo) {
+                // For videos, upload directly without compression
+                const videoResponse = await fetch(mediaUrl);
+                const videoBlob = await videoResponse.blob();
+                const videoFile = new File([videoBlob], `${announcement.title}-video-${index + 1}.mp4`, { 
+                  type: 'video/mp4' 
+                });
+                
+                const videoFormData = new FormData();
+                videoFormData.append('file', videoFile);
+                videoFormData.append('title', `${announcement.title} - Vidéo ${index + 1}`);
+                
+                const videoUploadResponse = await fetch(`${siteUrl}/wp-json/wp/v2/media`, {
+                  method: 'POST',
+                  headers: new Headers({
+                    'Authorization': `Basic ${btoa(`${wpConfig.app_username}:${wpConfig.app_password}`)}`
+                  }),
+                  body: videoFormData
+                });
+                
+                if (videoUploadResponse.ok) {
+                  const videoData = await videoUploadResponse.json();
+                  return `<video controls style="max-width: 100%; height: auto; margin: 10px 0;"><source src="${videoData.source_url}" type="video/mp4">Votre navigateur ne supporte pas la lecture de vidéos.</video>`;
+                }
+              } else {
+                // For images, compress and upload
+                const compressedUrl = await compressImage(mediaUrl, {
+                  maxWidth: 1200,
+                  maxHeight: 1200,
+                  quality: 0.85,
+                  format: 'jpeg'
+                });
+                
+                const imageResponse = await fetch(compressedUrl);
+                const imageBlob = await imageResponse.blob();
+                const imageFile = new File([imageBlob], `${announcement.title}-image-${index + 1}.jpg`, { 
+                  type: 'image/jpeg' 
+                });
+                
+                const imageFormData = new FormData();
+                imageFormData.append('file', imageFile);
+                imageFormData.append('title', `${announcement.title} - Image ${index + 1}`);
+                imageFormData.append('alt_text', `${announcement.title} - Image ${index + 1}`);
+                
+                const imageUploadResponse = await fetch(`${siteUrl}/wp-json/wp/v2/media`, {
+                  method: 'POST',
+                  headers: new Headers({
+                    'Authorization': `Basic ${btoa(`${wpConfig.app_username}:${wpConfig.app_password}`)}`
+                  }),
+                  body: imageFormData
+                });
+                
+                if (imageUploadResponse.ok) {
+                  const imageData = await imageUploadResponse.json();
+                  return `<img src="${imageData.source_url}" alt="${announcement.title} - Image ${index + 1}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px;" />`;
+                }
+                
+                // Clean up blob URL
+                URL.revokeObjectURL(compressedUrl);
+              }
+            } catch (error) {
+              console.error(`Error processing additional media ${index + 1}:`, error);
+              return null;
+            }
+            
+            return null;
+          });
+          
+          const processedMedias = await Promise.all(mediaPromises);
+          const validMedias = processedMedias.filter(media => media !== null);
+          
+          if (validMedias.length > 0) {
+            additionalMediasContent = `<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e1e1e1;">${validMedias.join('')}</div>`;
+            updatePublishingStep("compress", "success", `${validMedias.length} média(s) additionnel(s) traité(s)`, 60);
+          } else {
+            updatePublishingStep("compress", "success", "Médias additionnels traités", 60);
+          }
+          
+        } catch (error) {
+          console.error("Error processing additional medias:", error);
+          updatePublishingStep("compress", "error", "Erreur lors du traitement des médias additionnels");
+        }
       } else {
-        updatePublishingStep("compress", "success", "Aucune image à traiter", 60);
+        updatePublishingStep("compress", "success", "Aucun média additionnel à traiter", 60);
       }
       
       // WordPress publication
@@ -246,7 +339,6 @@ export const useWordPressPublishing = () => {
       
       // Check for authentication credentials
       if (wpConfig.app_username && wpConfig.app_password) {
-        // Application Password Format: "Basic base64(username:password)"
         const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
         headers['Authorization'] = `Basic ${basicAuth}`;
       } else {
@@ -258,10 +350,13 @@ export const useWordPressPublishing = () => {
         };
       }
       
-      // Prepare post data
+      // Prepare post data with additional medias integrated into content
+      const baseContent = announcement.description || "";
+      const fullContent = baseContent + additionalMediasContent;
+      
       const wpPostData: any = {
         title: announcement.title,
-        content: announcement.description || "",
+        content: fullContent,
         status: announcement.status === 'scheduled' ? 'future' : 'publish',
       };
       
@@ -277,7 +372,6 @@ export const useWordPressPublishing = () => {
       
       // Add category based on endpoint type
       if (useCustomTaxonomy) {
-        // Use the custom taxonomy for DipiPixel
         wpPostData.dipi_cpt_category = [parseInt(wordpressCategoryId)];
       }
       
@@ -362,14 +456,18 @@ export const useWordPressPublishing = () => {
         if (updateError) {
           console.error("Error updating announcement with WordPress data:", updateError);
           updatePublishingStep("database", "error", "Erreur de mise à jour de la base de données");
-          toast.error("L'annonce a été publiée sur WordPress mais les données n'ont pas pu être enregistrées");
         } else {
           updatePublishingStep("database", "success", "Mise à jour finalisée", 100);
         }
         
+        const additionalMediasCount = additionalMedias.length;
+        const successMessage = `${actionText} avec succès sur WordPress` + 
+                              (featuredMediaId ? " avec image principale" : "") +
+                              (additionalMediasCount > 0 ? ` et ${additionalMediasCount} média(s) additionnel(s)` : "");
+        
         return { 
           success: true, 
-          message: `${actionText} avec succès sur WordPress` + (featuredMediaId ? " avec image optimisée" : ""), 
+          message: successMessage, 
           wordpressPostId 
         };
       } else {
