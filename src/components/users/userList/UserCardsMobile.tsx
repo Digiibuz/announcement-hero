@@ -73,6 +73,7 @@ const UserCardsMobile: React.FC<UserCardsMobileProps> = ({
                   onDeleteUser={onDeleteUser}
                   onImpersonateUser={onImpersonateUser}
                   onDeleteClick={onDeleteClick}
+                  canImpersonate={true}
                 />
               </div>
             </div>

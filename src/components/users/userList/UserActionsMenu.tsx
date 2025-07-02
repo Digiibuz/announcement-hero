@@ -38,7 +38,7 @@ const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
   onImpersonateUser,
   onDeleteClick,
   onImpersonate,
-  canImpersonate = false,
+  canImpersonate = true, // Par défaut à true pour les admins
   isUpdating = false,
   isDeleting = false
 }) => {
@@ -72,6 +72,9 @@ const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
     }
   };
 
+  // Détermine si on peut impersonner cet utilisateur (clients et commerciaux uniquement)
+  const canImpersonateThisUser = canImpersonate && (user.role === 'client' || user.role === 'commercial');
+
   return (
     <>
       <div className="flex items-center gap-1">
@@ -97,7 +100,7 @@ const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
               Réinitialiser le mot de passe
             </DropdownMenuItem>
             
-            {canImpersonate && (onImpersonateUser || onImpersonate) && (
+            {canImpersonateThisUser && (onImpersonateUser || onImpersonate) && (
               <DropdownMenuItem onClick={handleImpersonate}>
                 <UserCheck className="mr-2 h-4 w-4" />
                 Se connecter en tant que

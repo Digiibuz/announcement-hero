@@ -81,6 +81,7 @@ const UserTableDesktop: React.FC<UserTableDesktopProps> = ({
                   onDeleteUser={onDeleteUser}
                   onImpersonateUser={onImpersonateUser}
                   onDeleteClick={onDeleteClick}
+                  canImpersonate={true}
                 />
               </TableCell>
             </TableRow>
