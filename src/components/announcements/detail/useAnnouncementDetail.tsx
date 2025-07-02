@@ -72,6 +72,7 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
         publishDate: announcement.publish_date ? new Date(announcement.publish_date) : undefined,
         status: announcement.status || "draft",
         images: announcement.images || [],
+        additionalMedias: announcement.additionalMedias || [],
         seoTitle: announcement.seo_title || "",
         seoDescription: announcement.seo_description || "",
         seoSlug: announcement.seo_slug || ""
@@ -101,6 +102,7 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
         publish_date: formData.publishDate ? new Date(formData.publishDate).toISOString() : null,
         status: formData.status,
         images: formData.images || [],
+        additional_medias: formData.additionalMedias || [],
         seo_title: formData.seoTitle || null,
         seo_description: formData.seoDescription || null,
         seo_slug: formData.seoSlug || null

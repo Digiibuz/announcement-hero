@@ -11,6 +11,7 @@ export type Database = {
     Tables: {
       announcements: {
         Row: {
+          additional_medias: string[] | null
           created_at: string
           description: string | null
           id: string
@@ -29,6 +30,7 @@ export type Database = {
           wordpress_url: string | null
         }
         Insert: {
+          additional_medias?: string[] | null
           created_at?: string
           description?: string | null
           id?: string
@@ -47,6 +49,7 @@ export type Database = {
           wordpress_url?: string | null
         }
         Update: {
+          additional_medias?: string[] | null
           created_at?: string
           description?: string | null
           id?: string

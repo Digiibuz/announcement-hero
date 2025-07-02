@@ -209,6 +209,7 @@ const CreateAnnouncement = () => {
         description: formData.description,
         status: "draft" as "draft",
         images: formData.images || [],
+        additional_medias: formData.additionalMedias || [],
         wordpress_category_id: formData.wordpressCategory,
         publish_date: formData.publishDate ? new Date(formData.publishDate).toISOString() : null,
         seo_title: formData.seoTitle || null,
@@ -288,6 +289,7 @@ const CreateAnnouncement = () => {
         description: formData.description,
         status: formData.status as "draft" | "published" | "scheduled",
         images: formData.images || [],
+        additional_medias: formData.additionalMedias || [],
         wordpress_category_id: formData.wordpressCategory,
         publish_date: formData.publishDate ? new Date(formData.publishDate).toISOString() : null,
         seo_title: formData.seoTitle || null,
@@ -317,7 +319,7 @@ const CreateAnnouncement = () => {
         const announcementWithMedias = {
           ...newAnnouncement,
           additionalMedias: formData.additionalMedias || []
-        } as Announcement & { additionalMedias?: string[] };
+        } as Announcement;
         
         wordpressResult = await publishToWordPress(announcementWithMedias, formData.wordpressCategory, user.id);
         
