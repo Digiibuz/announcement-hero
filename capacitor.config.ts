@@ -1,7 +1,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.64c2702a3a054d0dbbba3f29359bfeba',
+  appId: 'com.digiibuz.app',
   appName: 'DigiiBuz',
   webDir: 'dist',
   server: {
