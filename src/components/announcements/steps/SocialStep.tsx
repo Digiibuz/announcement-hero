@@ -14,6 +14,7 @@ import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
+import SocialMediaImageSelector from "../SocialMediaImageSelector";
 
 interface SocialStepProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -214,30 +215,8 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
         </CardContent>
       </Card>
 
-      {/* Images sélectionnées */}
-      {images && images.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <ImageIcon className="h-5 w-5" />
-              Images sélectionnées ({images.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {images.map((image, index) => (
-                <div key={index} className="aspect-square rounded-lg overflow-hidden bg-muted">
-                  <img
-                    src={image}
-                    alt={`Image ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Images sélectionnées avec drag & drop */}
+      <SocialMediaImageSelector form={form} />
 
       {/* Programmation */}
       <Card>
