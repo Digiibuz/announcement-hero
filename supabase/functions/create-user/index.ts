@@ -39,7 +39,7 @@ serve(async (req) => {
       );
     }
     
-    const { email, password, name, role, wordpressConfigId } = requestData;
+    const { email, password, name, role, wordpressConfigId, zapier_webhook_url } = requestData;
     
     // Validate required fields
     if (!email || !password || !name || !role) {
@@ -172,7 +172,8 @@ serve(async (req) => {
             email: email,
             name: name,
             role: role,
-            wordpress_config_id: sanitizedWordpressConfigId
+            wordpress_config_id: sanitizedWordpressConfigId,
+            zapier_webhook_url: zapier_webhook_url || null
           })
           .eq('id', userId);
 
@@ -196,7 +197,8 @@ serve(async (req) => {
             email: email,
             name: name,
             role: role,
-            wordpress_config_id: sanitizedWordpressConfigId
+            wordpress_config_id: sanitizedWordpressConfigId,
+            zapier_webhook_url: zapier_webhook_url || null
           });
 
         if (profileError) {

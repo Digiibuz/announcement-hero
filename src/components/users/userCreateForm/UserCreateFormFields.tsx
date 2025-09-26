@@ -4,6 +4,7 @@ import { UseFormReturn } from "react-hook-form";
 import * as z from "zod";
 import { Input } from "@/components/ui/input";
 import { WordPressConfig } from "@/types/wordpress";
+import ZapierConfigField from "../userEditForm/ZapierConfigField";
 import {
   FormControl,
   FormDescription,
@@ -29,6 +30,7 @@ export const formSchema = z.object({
     required_error: "Veuillez sélectionner un rôle",
   }),
   wordpressConfigId: z.string().optional(),
+  zapier_webhook_url: z.string().optional(),
 });
 
 export type FormSchema = z.infer<typeof formSchema>;
@@ -145,6 +147,9 @@ const UserCreateFormFields: React.FC<UserCreateFormFieldsProps> = ({
           )}
         />
       )}
+
+      {/* Zapier Configuration Section */}
+      <ZapierConfigField form={form} showForRoles={["client"]} />
     </div>
   );
 };

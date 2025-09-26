@@ -12,6 +12,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect } from "react";
 
 interface SocialStepProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -27,7 +29,24 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
   const [publishTime, setPublishTime] = useState("");
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [newHashtag, setNewHashtag] = useState("");
-  const [hasZapierWebhook, setHasZapierWebhook] = useState(false); // À remplacer par la vraie donnée depuis le profil
+  const [hasZapierWebhook, setHasZapierWebhook] = useState(false);
+
+  // Vérifier si l'utilisateur a configuré Zapier
+  useEffect(() => {
+    const checkZapierConfig = async () => {
+      if (user?.id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('zapier_webhook_url')
+          .eq('id', user.id)
+          .single();
+        
+        setHasZapierWebhook(!!profile?.zapier_webhook_url);
+      }
+    };
+    
+    checkZapierConfig();
+  }, [user]);
 
   const watchedValues = form.watch();
   const { title, description, images } = watchedValues;

@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { UserProfile } from "@/types/auth";
 import { WordPressConfig } from "@/types/wordpress";
 import PublicationLimitsField from "./PublicationLimitsField";
+import ZapierConfigField from "./ZapierConfigField";
 
 interface FormFieldsProps {
   form: UseFormReturn<any>;
@@ -141,6 +142,9 @@ const FormFields: React.FC<FormFieldsProps> = ({
             )}
           />
         )}
+
+        {/* Zapier Configuration Section */}
+        <ZapierConfigField form={form} />
 
         {/* Publication Limits Section for Client and Commercial Users */}
         {user && (role === "client" || role === "commercial") && (
