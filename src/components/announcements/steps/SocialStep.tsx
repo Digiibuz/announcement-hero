@@ -155,29 +155,95 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
             <Sparkles className="h-5 w-5" />
             Contenu pour les réseaux sociaux
           </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Notre IA va transformer votre description en contenu optimisé pour les réseaux sociaux avec emojis et mise en forme
+          </p>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
+          {/* Zone d'exemple avant génération */}
+          {!socialContent && (
+            <div className="bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-1">✨ Génération automatique par IA</h4>
+                  <p className="text-sm text-gray-600 mb-3">
+                    À partir de votre description, notre IA va créer un contenu engageant avec :
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600 mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                      Emojis appropriés
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                      Structure engageante
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                      Call-to-action
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                      Ton professionnel
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Exemple de contenu généré */}
+              <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                <div className="text-sm text-gray-700 leading-relaxed">
+                  <div className="font-medium text-gray-600 mb-2 text-xs uppercase tracking-wide">Exemple de génération :</div>
+                  <div className="whitespace-pre-wrap">
+{`✌️ Les 6 erreurs à éviter sur votre site web
+
+Un site internet peut être votre meilleur commercial… ou votre pire ennemi si certaines erreurs sont présentes 😅
+
+❌ 1. Un site trop lent  
+👉 Les visiteurs (et Google) détestent attendre.
+
+❌ 2. Pas adapté au mobile  
+👉 Plus de 50% du trafic vient du smartphone !
+
+🚀 En évitant ces erreurs, vous améliorez votre crédibilité !
+
+👉 Besoin d'aide ? Contactez-nous !`}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">Texte de publication</label>
               <Button
                 type="button"
-                variant="outline"
+                variant="default"
                 size="sm"
                 onClick={handleGenerateContent}
                 disabled={isOptimizing.generateDescription}
-                className="gap-2"
+                className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
                 <Sparkles className="h-4 w-4" />
-                {isOptimizing.generateDescription ? "Génération..." : "Générer avec l'IA"}
+                {isOptimizing.generateDescription ? "Génération en cours..." : "🚀 Générer avec l'IA"}
               </Button>
             </div>
             <Textarea
               value={socialContent}
               onChange={(e) => setSocialContent(e.target.value)}
-              placeholder="Rédigez votre publication pour les réseaux sociaux..."
+              placeholder="Le contenu optimisé pour les réseaux sociaux apparaîtra ici après génération IA..."
               className="min-h-[120px]"
             />
+            {socialContent && (
+              <div className="text-xs text-green-600 flex items-center gap-1 mt-2">
+                <Sparkles className="h-3 w-3" />
+                Contenu généré par IA - Vous pouvez le modifier si nécessaire
+              </div>
+            )}
           </div>
 
           {/* Hashtags */}
