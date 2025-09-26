@@ -9,6 +9,7 @@ export interface UserProfile {
   role: Role;
   clientId?: string | null;
   wordpressConfigId?: string | null;
+  zapier_webhook_url?: string | null;
   lastLogin?: string | null;
   wordpressConfig?: {
     name: string;

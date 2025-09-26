@@ -12,6 +12,7 @@ const userEditSchema = z.object({
   email: z.string().email("Email invalide"),
   role: z.enum(["admin", "client", "editor", "commercial"]),
   wpConfigIds: z.array(z.string()).optional(),
+  zapier_webhook_url: z.string().optional(),
 });
 
 type UserEditFormData = z.infer<typeof userEditSchema>;
@@ -33,6 +34,7 @@ export const useUserEditForm = (
       email: user.email,
       role: user.role,
       wpConfigIds: [],
+      zapier_webhook_url: user.zapier_webhook_url || "",
     },
   });
 
@@ -64,6 +66,7 @@ export const useUserEditForm = (
         role: data.role,
         clientId: user.clientId,
         wordpressConfigId: (data.role === "client" || data.role === "commercial") ? data.wpConfigIds?.[0] : null,
+        zapier_webhook_url: data.zapier_webhook_url,
       });
       setIsDialogOpen(false);
     } catch (error) {
