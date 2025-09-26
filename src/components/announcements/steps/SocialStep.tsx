@@ -61,7 +61,15 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
     if (createFacebookPost !== undefined) {
       setShowFacebookQuestion(false);
     }
-  }, [createFacebookPost]);
+    
+    // Initialiser les valeurs depuis le formulaire s'il y en a
+    if (watchedValues.socialContent) {
+      setSocialContent(watchedValues.socialContent);
+    }
+    if (watchedValues.socialHashtags) {
+      setHashtags(watchedValues.socialHashtags);
+    }
+  }, [createFacebookPost, watchedValues.socialContent, watchedValues.socialHashtags]);
 
   const handleGenerateContent = async () => {
     if (!title) {
@@ -86,6 +94,8 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
 
       if (optimizedContent) {
         setSocialContent(optimizedContent);
+        // Sauvegarder automatiquement dans le formulaire
+        form.setValue('socialContent', optimizedContent);
         toast({
           title: "Contenu généré",
           description: "Le contenu pour les réseaux sociaux a été généré avec succès",
@@ -103,13 +113,19 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
 
   const addHashtag = () => {
     if (newHashtag && !hashtags.includes(newHashtag)) {
-      setHashtags([...hashtags, newHashtag.replace("#", "")]);
+      const updatedHashtags = [...hashtags, newHashtag.replace("#", "")];
+      setHashtags(updatedHashtags);
+      // Sauvegarder automatiquement dans le formulaire
+      form.setValue('socialHashtags', updatedHashtags);
       setNewHashtag("");
     }
   };
 
   const removeHashtag = (tag: string) => {
-    setHashtags(hashtags.filter(h => h !== tag));
+    const updatedHashtags = hashtags.filter(h => h !== tag);
+    setHashtags(updatedHashtags);
+    // Sauvegarder automatiquement dans le formulaire
+    form.setValue('socialHashtags', updatedHashtags);
   };
 
   const handleCreateFacebookPost = (choice: boolean) => {
@@ -332,7 +348,11 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
             </div>
             <Textarea
               value={socialContent}
-              onChange={(e) => setSocialContent(e.target.value)}
+              onChange={(e) => {
+                setSocialContent(e.target.value);
+                // Sauvegarder automatiquement dans le formulaire
+                form.setValue('socialContent', e.target.value);
+              }}
               placeholder="Le contenu optimisé pour les réseaux sociaux apparaîtra ici après génération IA..."
               className="min-h-[120px]"
             />
