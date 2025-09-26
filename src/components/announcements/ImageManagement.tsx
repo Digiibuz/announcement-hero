@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Image as ImageIcon, GripVertical, Crown } from "lucide-react";
+import { Image as ImageIcon, GripVertical, Crown, Upload, Plus } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { AnnouncementFormData } from "./AnnouncementForm";
+import MediaUploader from "./MediaUploader";
+import AdditionalMediaUploader from "./AdditionalMediaUploader";
 
 interface ImageManagementProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -141,11 +143,51 @@ export default function ImageManagement({ form }: ImageManagementProps) {
           Gestion des images ({selectedImages.length})
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Organisez vos images par ordre d'importance. La première image sera l'image principale.
+          Ajoutez vos images puis organisez-les par ordre d'importance.
         </p>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
+        <div className="space-y-6">
+          {/* Section d'ajout d'images */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Upload image principale */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Upload className="h-4 w-4" />
+                  <h4 className="text-sm font-medium">Image principale</h4>
+                </div>
+                <MediaUploader form={form} />
+                <div className="text-xs text-muted-foreground">
+                  <p>• Formats : JPEG, PNG, WebP, HEIC</p>
+                  <p>• Taille max : 10 MB</p>
+                </div>
+              </div>
+
+              {/* Upload images additionnelles */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  <h4 className="text-sm font-medium">Images additionnelles</h4>
+                </div>
+                <AdditionalMediaUploader form={form} />
+                <div className="text-xs text-muted-foreground">
+                  <p>• Jusqu'à 5 images supplémentaires</p>
+                  <p>• Formats : JPEG, PNG, WebP, MP4, MOV</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Séparateur */}
+          {allImages.length > 0 && (
+            <div className="border-t border-muted pt-6">
+              <h4 className="text-sm font-medium mb-4 flex items-center gap-2">
+                <GripVertical className="h-4 w-4" />
+                Organisation des images
+              </h4>
+            </div>
+          )}
           {/* Grille des images */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {imageItems.map((item, index) => (
