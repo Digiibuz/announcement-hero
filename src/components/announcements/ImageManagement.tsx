@@ -384,10 +384,6 @@ export default function ImageManagement({ form }: ImageManagementProps) {
   const mainImage = selectedImages.find(item => item.type === 'main');
   const firstSelectedImage = selectedImages[0];
 
-  if (allImages.length === 0) {
-    return null;
-  }
-
   return (
     <Card>
       <CardHeader>
