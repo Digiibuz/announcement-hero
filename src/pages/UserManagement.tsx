@@ -1,9 +1,10 @@
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { useAuth } from "@/context/AuthContext";
 import UserCreateForm from "@/components/users/UserCreateForm";
 import UserList from "@/components/users/UserList";
+import UserSearchBar from "@/components/users/UserSearchBar";
 import AccessDenied from "@/components/users/AccessDenied";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import { useUserManagement } from "@/hooks/useUserManagement";
@@ -23,12 +24,28 @@ const UserManagement = () => {
     deleteUser
   } = useUserManagement();
   
+  const [searchTerm, setSearchTerm] = useState("");
+  
   // Fetch users on component mount
   useEffect(() => {
     if (isAdmin) {
       fetchUsers();
     }
   }, [isAdmin, fetchUsers]);
+
+  // Filtrer les utilisateurs en fonction du terme de recherche
+  const filteredUsers = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return users;
+    }
+    
+    const searchLower = searchTerm.toLowerCase();
+    return users.filter(user => 
+      user.name?.toLowerCase().includes(searchLower) ||
+      user.email.toLowerCase().includes(searchLower) ||
+      user.role.toLowerCase().includes(searchLower)
+    );
+  }, [users, searchTerm]);
 
   const handleUserCreated = () => {
     console.log("Rafraîchissement de la liste des utilisateurs après création");
@@ -61,9 +78,23 @@ const UserManagement = () => {
       {!isAdmin ? (
         <AccessDenied />
       ) : (
-        <AnimatedContainer delay={200} className="w-full">
+        <AnimatedContainer delay={200} className="w-full space-y-6">
+          {/* Barre de recherche */}
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <UserSearchBar
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+            />
+            {searchTerm && (
+              <div className="text-sm text-muted-foreground">
+                {filteredUsers.length} utilisateur{filteredUsers.length !== 1 ? 's' : ''} trouvé{filteredUsers.length !== 1 ? 's' : ''}
+              </div>
+            )}
+          </div>
+          
+          {/* Liste des utilisateurs */}
           <UserList 
-            users={users}
+            users={filteredUsers}
             isLoading={isLoading}
             isDeleting={isDeleting}
             isUpdating={isUpdating}
