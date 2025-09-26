@@ -187,7 +187,7 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                      Gestion des hashtags et programmation
+                      Gestion des hashtags
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
@@ -380,38 +380,6 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
       {/* Images sélectionnées avec drag & drop */}
       <SocialMediaImageSelector form={form} />
 
-      {/* Programmation */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Programmation
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Date de publication</label>
-              <Input
-                type="date"
-                value={publishDate}
-                onChange={(e) => setPublishDate(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                Heure de publication
-              </label>
-              <Input
-                type="time"
-                value={publishTime}
-                onChange={(e) => setPublishTime(e.target.value)}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Prévisualisation Facebook */}
       <Card>
