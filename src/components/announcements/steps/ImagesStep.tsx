@@ -35,13 +35,19 @@ const ImagesStep = ({ form, isMobile }: ImagesStepProps) => {
 
       {/* Médias additionnels */}
       <div className="space-y-4">
-        <h4 className="text-base font-medium text-gray-800">Médias additionnels (optionnel)</h4>
+        <div className="flex items-center justify-between">
+          <h4 className="text-base font-medium text-gray-800">Médias additionnels (optionnel)</h4>
+          <div className="text-xs text-gray-500 bg-blue-50 px-2 py-1 rounded">
+            Glissez-déposez pour réorganiser
+          </div>
+        </div>
         <AdditionalMediaUploader form={form} />
         <div className="text-sm text-gray-500">
           <p>• Ajoutez jusqu'à 5 images ou vidéos supplémentaires</p>
           <p>• Formats supportés : JPEG, PNG, WebP, MP4, MOV</p>
           <p>• Taille maximale : 10 MB par fichier</p>
           <p>• Ces médias enrichiront votre annonce et amélioreront son attrait visuel</p>
+          <p>• <strong>Le premier média sera l'image de couverture pour les réseaux sociaux</strong></p>
         </div>
       </div>
     </div>
