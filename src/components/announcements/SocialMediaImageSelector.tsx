@@ -16,9 +16,15 @@ interface ImageItem {
   order: number;
 }
 
+interface DraggedItem {
+  index: number;
+  item: ImageItem;
+}
+
 export default function SocialMediaImageSelector({ form }: SocialMediaImageSelectorProps) {
   const [imageItems, setImageItems] = useState<ImageItem[]>([]);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const watchedValues = form.watch();
   const { images = [], additionalMedias = [] } = watchedValues;
@@ -55,12 +61,34 @@ export default function SocialMediaImageSelector({ form }: SocialMediaImageSelec
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
+    setDragOverIndex(null);
     e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", index.toString());
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
+    
+    if (draggedIndex !== null && draggedIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Vérifier si on quitte vraiment l'élément
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      setDragOverIndex(null);
+    }
   };
 
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
@@ -68,6 +96,7 @@ export default function SocialMediaImageSelector({ form }: SocialMediaImageSelec
     
     if (draggedIndex === null || draggedIndex === dropIndex) {
       setDraggedIndex(null);
+      setDragOverIndex(null);
       return;
     }
 
@@ -75,11 +104,14 @@ export default function SocialMediaImageSelector({ form }: SocialMediaImageSelec
       const newItems = [...prev];
       const draggedItem = newItems[draggedIndex];
       
-      // Supprimer l'élément de sa position actuelle
+      // Retirer l'élément de sa position actuelle
       newItems.splice(draggedIndex, 1);
       
-      // L'insérer à la nouvelle position
-      newItems.splice(dropIndex, 0, draggedItem);
+      // Calculer la nouvelle position
+      const targetIndex = draggedIndex < dropIndex ? dropIndex - 1 : dropIndex;
+      
+      // Insérer à la nouvelle position
+      newItems.splice(targetIndex, 0, draggedItem);
       
       // Mettre à jour les ordres
       return newItems.map((item, index) => ({
@@ -89,6 +121,7 @@ export default function SocialMediaImageSelector({ form }: SocialMediaImageSelec
     });
     
     setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
   const selectedImages = imageItems.filter(item => item.selected);
@@ -118,12 +151,15 @@ export default function SocialMediaImageSelector({ form }: SocialMediaImageSelec
                 key={item.url}
                 draggable
                 onDragStart={(e) => handleDragStart(e, index)}
-                onDragOver={handleDragOver}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, index)}
                 className={`
                   relative group cursor-move border-2 rounded-lg overflow-hidden transition-all duration-200
                   ${item.selected ? 'border-primary' : 'border-muted'}
                   ${draggedIndex === index ? 'opacity-50 scale-95' : ''}
+                  ${dragOverIndex === index ? 'border-blue-500 border-dashed' : ''}
                   hover:shadow-md
                 `}
               >
