@@ -204,7 +204,7 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
                 size="sm"
                 onClick={handleGenerateContent}
                 disabled={isOptimizing.generateSocialContent}
-                className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
               >
                 <Sparkles className="h-4 w-4" />
                 {isOptimizing.generateSocialContent ? "Génération en cours..." : "🚀 Générer avec l'IA"}
