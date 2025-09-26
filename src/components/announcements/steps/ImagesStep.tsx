@@ -4,6 +4,7 @@ import { UseFormReturn } from "react-hook-form";
 import { AnnouncementFormData } from "../AnnouncementForm";
 import MediaUploader from "../MediaUploader";
 import AdditionalMediaUploader from "../AdditionalMediaUploader";
+import ImageManagement from "../ImageManagement";
 
 interface ImagesStepProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -44,6 +45,9 @@ const ImagesStep = ({ form, isMobile }: ImagesStepProps) => {
           <p>• Ces médias enrichiront votre annonce et amélioreront son attrait visuel</p>
         </div>
       </div>
+
+      {/* Gestion et organisation des images */}
+      <ImageManagement form={form} />
     </div>
   );
 };
