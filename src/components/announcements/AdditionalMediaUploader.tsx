@@ -1,12 +1,11 @@
 import React, { useRef, useState, forwardRef, useImperativeHandle } from "react";
-import { ImageIcon, UploadCloud, Loader2, AlertCircle } from "lucide-react";
+import { ImageIcon, Video, UploadCloud, Loader2, XCircle, AlertCircle, FileImage, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { UseFormReturn } from "react-hook-form";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import heic2any from "heic2any";
-import DraggableMediaGrid from "./DraggableMediaGrid";
 
 interface AdditionalMediaUploaderProps {
   form: UseFormReturn<any>;
@@ -299,17 +298,25 @@ const AdditionalMediaUploader = forwardRef<AdditionalMediaUploaderRef, Additiona
     form.setValue('additionalMedias', updatedMedias);
   };
 
-  // Reorder medias
-  const reorderMedias = (newOrder: string[]) => {
-    setUploadedMedias(newOrder);
-    form.setValue('additionalMedias', newOrder);
-  };
-
   // UI event handlers
   const triggerFileUpload = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
+  };
+
+  const getMediaType = (url: string): 'image' | 'video' => {
+    // Détecter le type basé sur l'extension ou le contenu
+    const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi'];
+    const lowerUrl = url.toLowerCase();
+    
+    for (const ext of videoExtensions) {
+      if (lowerUrl.includes(ext)) {
+        return 'video';
+      }
+    }
+    
+    return 'image';
   };
 
   return (
@@ -376,13 +383,60 @@ const AdditionalMediaUploader = forwardRef<AdditionalMediaUploaderRef, Additiona
         </div>
       )}
 
-      {/* Display uploaded medias using DraggableMediaGrid */}
-      <DraggableMediaGrid
-        mediaUrls={uploadedMedias}
-        onReorder={reorderMedias}
-        onRemove={removeMedia}
-        maxItems={5}
-      />
+      {/* Display uploaded medias */}
+      {uploadedMedias.length > 0 && (
+        <div className="space-y-3">
+          <div className="text-sm font-medium text-gray-700">
+            Médias ajoutés ({uploadedMedias.length}/5)
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {uploadedMedias.map((mediaUrl, index) => {
+              const mediaType = getMediaType(mediaUrl);
+              
+              return (
+                <div key={index} className="relative group aspect-square">
+                  {mediaType === 'image' ? (
+                    <img 
+                      src={mediaUrl} 
+                      alt={`Média ${index + 1}`} 
+                      className="h-full w-full object-cover rounded-md" 
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="relative h-full w-full bg-gray-100 rounded-md flex items-center justify-center">
+                      <video 
+                        src={mediaUrl}
+                        className="h-full w-full object-cover rounded-md"
+                        muted
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-md">
+                        <Play className="h-8 w-8 text-white" />
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="absolute top-2 left-2 bg-black/50 text-white rounded-full p-1">
+                    {mediaType === 'image' ? (
+                      <FileImage className="h-3 w-3" />
+                    ) : (
+                      <Video className="h-3 w-3" />
+                    )}
+                  </div>
+                  
+                  <button 
+                    type="button" 
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" 
+                    onClick={() => removeMedia(index)}
+                    aria-label="Supprimer le média"
+                  >
+                    <XCircle size={16} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 });
