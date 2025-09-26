@@ -476,7 +476,9 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
                 </div>
                 
                 {/* Menu 3 points */}
-                <MoreHorizontal className="w-5 h-5 text-gray-500 cursor-pointer" />
+                <div className="w-5 h-5 text-gray-500 cursor-default">
+                  <MoreHorizontal className="w-5 h-5" />
+                </div>
               </div>
               
               {/* Contenu du post */}
@@ -548,18 +550,18 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
               {/* Actions */}
               <div className="p-2">
                 <div className="grid grid-cols-3 gap-1">
-                  <button className="flex items-center justify-center gap-2 py-2 px-3 hover:bg-gray-100 rounded-md transition-colors">
-                    <Heart className="w-5 h-5 text-gray-600" />
+                  <div className="flex items-center justify-center gap-2 py-2 px-3 text-gray-600 cursor-default">
+                    <Heart className="w-5 h-5" />
                     <span className="text-sm font-medium text-gray-700">J'aime</span>
-                  </button>
-                  <button className="flex items-center justify-center gap-2 py-2 px-3 hover:bg-gray-100 rounded-md transition-colors">
-                    <MessageCircle className="w-5 h-5 text-gray-600" />
+                  </div>
+                  <div className="flex items-center justify-center gap-2 py-2 px-3 text-gray-600 cursor-default">
+                    <MessageCircle className="w-5 h-5" />
                     <span className="text-sm font-medium text-gray-700">Commenter</span>
-                  </button>
-                  <button className="flex items-center justify-center gap-2 py-2 px-3 hover:bg-gray-100 rounded-md transition-colors">
-                    <Share className="w-5 h-5 text-gray-600" />
+                  </div>
+                  <div className="flex items-center justify-center gap-2 py-2 px-3 text-gray-600 cursor-default">
+                    <Share className="w-5 h-5" />
                     <span className="text-sm font-medium text-gray-700">Partager</span>
-                  </button>
+                  </div>
                 </div>
               </div>
             </div>

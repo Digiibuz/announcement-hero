@@ -460,7 +460,19 @@ const CreateAnnouncement = () => {
     
       <div className={`pt-16 ${isMobile ? 'pb-24' : 'pb-20'} px-4 md:max-w-4xl md:mx-auto`}>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="h-full">
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              form.handleSubmit(handleSubmit)(e);
+            }} 
+            onKeyDown={(e) => {
+              // Empêcher la soumission avec la touche Entrée
+              if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
+                e.preventDefault();
+              }
+            }}
+            className="h-full"
+          >
             <div className="max-w-4xl mx-auto">
               <div className="my-8 text-center">
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">{currentStep.title}</h2>
