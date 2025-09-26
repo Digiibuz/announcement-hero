@@ -509,7 +509,7 @@ export const useWordPressPublishing = () => {
                published_at: new Date().toISOString(),
                triggered_from: 'announcement_publication',
                social_content: currentFormData?.socialContent || announcement.social_content,
-               hashtags: currentFormData?.socialHashtags || announcement.social_hashtags
+               hashtags: (currentFormData?.socialHashtags || announcement.social_hashtags)?.map(tag => tag.startsWith('#') ? tag : `#${tag}`).join(' ') || ''
              };
             
             await fetch(userProfile.zapier_webhook_url, {
