@@ -64,12 +64,55 @@ export default function ImageManagement({ form }: ImageManagementProps) {
   }, [allImages.join(','), images.join(',')]);
 
   const handleCheckboxChange = (imageUrl: string, checked: boolean) => {
-    setImageItems(prev => 
-      prev.map(item => 
+    setImageItems(prev => {
+      const newItems = prev.map(item => 
         item.url === imageUrl ? { ...item, selected: checked } : item
-      )
-    );
+      );
+      
+      // Mettre à jour le formulaire avec les nouvelles sélections
+      setTimeout(() => {
+        const selectedItems = newItems.filter(item => item.selected);
+        if (selectedItems.length > 0) {
+          form.setValue('images', [selectedItems[0].url]);
+          if (selectedItems.length > 1) {
+            form.setValue('additionalMedias', selectedItems.slice(1).map(item => item.url));
+          } else {
+            form.setValue('additionalMedias', []);
+          }
+        } else {
+          form.setValue('images', []);
+          form.setValue('additionalMedias', []);
+        }
+      }, 0);
+      
+      return newItems;
+    });
   };
+
+  // Mettre à jour les champs du formulaire quand les images changent
+  const updateFormFields = () => {
+    const selectedItems = imageItems.filter(item => item.selected);
+    
+    // La première image sélectionnée devient l'image principale
+    if (selectedItems.length > 0) {
+      form.setValue('images', [selectedItems[0].url]);
+      
+      // Le reste va dans additionalMedias
+      if (selectedItems.length > 1) {
+        form.setValue('additionalMedias', selectedItems.slice(1).map(item => item.url));
+      } else {
+        form.setValue('additionalMedias', []);
+      }
+    } else {
+      form.setValue('images', []);
+      form.setValue('additionalMedias', []);
+    }
+  };
+
+  // Déclencher la mise à jour quand les images changent
+  useEffect(() => {
+    updateFormFields();
+  }, [imageItems]);
 
   const handleDragStart = (e: React.DragEvent, itemId: string) => {
     setDraggedId(itemId);
@@ -131,6 +174,9 @@ export default function ImageManagement({ form }: ImageManagementProps) {
     moveItem(draggedId, targetId);
     setDraggedId(null);
     setDragOverId(null);
+    
+    // Mettre à jour le formulaire après le réorganisation
+    setTimeout(updateFormFields, 0);
   };
 
   // Check WebP support
@@ -356,14 +402,24 @@ export default function ImageManagement({ form }: ImageManagementProps) {
         }
       }
       
-      if (newImageUrls.length > 0) {
-        // Ajouter les nouvelles images aux deux tableaux du formulaire
-        const currentImages = form.getValues('images') || [];
-        const currentAdditional = form.getValues('additionalMedias') || [];
-        
-        // Ajouter à additionalMedias par défaut
-        const updatedAdditional = [...currentAdditional, ...newImageUrls];
-        form.setValue('additionalMedias', updatedAdditional);
+        if (newImageUrls.length > 0) {
+          // Ajouter les nouvelles images aux deux tableaux du formulaire
+          const currentImages = form.getValues('images') || [];
+          const currentAdditional = form.getValues('additionalMedias') || [];
+          
+          // Si aucune image principale, ajouter la première à images
+          if (currentImages.length === 0) {
+            form.setValue('images', [newImageUrls[0]]);
+            // Ajouter le reste à additionalMedias si il y en a
+            if (newImageUrls.length > 1) {
+              const updatedAdditional = [...currentAdditional, ...newImageUrls.slice(1)];
+              form.setValue('additionalMedias', updatedAdditional);
+            }
+          } else {
+            // Sinon, ajouter toutes les nouvelles images à additionalMedias
+            const updatedAdditional = [...currentAdditional, ...newImageUrls];
+            form.setValue('additionalMedias', updatedAdditional);
+          }
         
         toast.success(`${newImageUrls.length} image(s) téléversée(s) avec succès`);
       }
