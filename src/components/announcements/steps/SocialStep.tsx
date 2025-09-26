@@ -134,8 +134,11 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
       // Sauvegarder les hashtags et contenu social dans le formulaire
       form.setValue('socialContent', socialContent);
       form.setValue('socialHashtags', hashtags);
+      setShowFacebookQuestion(false);
+    } else {
+      // Si l'utilisateur choisit "Non", passer directement à l'étape suivante
+      onSkip();
     }
-    setShowFacebookQuestion(false);
   };
 
   const getSocialMediaPreview = () => {
