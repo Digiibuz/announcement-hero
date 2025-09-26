@@ -491,6 +491,11 @@ export const useWordPressPublishing = () => {
             .single();
           
           if (userProfile?.zapier_webhook_url && announcement.status === 'published') {
+            // Démarrer l'étape Facebook si l'utilisateur a configuré un post Facebook
+            if (announcement.title && (announcement as any).createFacebookPost === true) {
+              updatePublishingStep("facebook", "loading", "Publication sur Facebook en cours...");
+            }
+            
             console.log("Déclenchement du webhook Zapier:", userProfile.zapier_webhook_url);
             
             const zapierData = {
@@ -501,7 +506,9 @@ export const useWordPressPublishing = () => {
               wordpress_post_id: wordpressPostId,
               main_image: announcement.images?.[0] || null,
               published_at: new Date().toISOString(),
-              triggered_from: 'announcement_publication'
+              triggered_from: 'announcement_publication',
+              social_content: (announcement as any).socialContent,
+              hashtags: (announcement as any).socialHashtags
             };
             
             await fetch(userProfile.zapier_webhook_url, {
@@ -513,10 +520,19 @@ export const useWordPressPublishing = () => {
               body: JSON.stringify(zapierData),
             });
             
+            // Marquer l'étape Facebook comme terminée si elle était démarrée
+            if ((announcement as any).createFacebookPost === true) {
+              updatePublishingStep("facebook", "success", "Publication Facebook envoyée");
+            }
+            
             console.log("Webhook Zapier déclenché avec succès");
           }
         } catch (zapierError) {
           console.warn("Erreur lors du déclenchement Zapier (non bloquant):", zapierError);
+          // Marquer l'étape Facebook comme erreur si elle était démarrée
+          if ((announcement as any).createFacebookPost === true) {
+            updatePublishingStep("facebook", "error", "Échec publication Facebook");
+          }
         }
         
         return { 

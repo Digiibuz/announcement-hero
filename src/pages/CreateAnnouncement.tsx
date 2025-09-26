@@ -141,6 +141,13 @@ const CreateAnnouncement = () => {
       status: publishingState.steps.wordpress?.status || "idle",
       icon: <div className="h-5 w-5 text-muted-foreground"></div>
     },
+    // Ajouter l'étape Facebook conditionnellement
+    ...(form.getValues('createFacebookPost') === true ? [{
+      id: "facebook",
+      label: "Publication sur Facebook",
+      status: publishingState.steps.facebook?.status || "idle",
+      icon: <div className="h-5 w-5 text-muted-foreground"></div>
+    }] : []),
     {
       id: "database",
       label: "Mise à jour de la base de données",
