@@ -572,19 +572,19 @@ export default function ImageManagement({ form }: ImageManagementProps) {
                 </div>
 
                 {/* Image */}
-                <div className="aspect-square bg-muted">
+                <div className={`aspect-square bg-muted ${!item.selected ? 'opacity-40' : ''}`}>
                   <img
                     src={item.url}
                     alt={`Image ${index + 1}`}
-                    className="w-full h-full object-cover"
+                    className={`w-full h-full object-cover transition-all duration-200 ${!item.selected ? 'grayscale brightness-50' : ''}`}
                     draggable={false}
                   />
                 </div>
 
                 {/* Overlay pour les images non sélectionnées */}
                 {!item.selected && (
-                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                    <span className="text-white text-sm font-medium">
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-[1px]">
+                    <span className="text-white text-sm font-medium bg-black/70 px-2 py-1 rounded">
                       Non utilisée
                     </span>
                   </div>
