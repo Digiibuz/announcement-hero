@@ -160,10 +160,10 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
           </p>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Zone d'exemple avant génération */}
+          {/* Zone d'explication avant génération */}
           {!socialContent && (
             <div className="bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start gap-3 mb-3">
+              <div className="flex items-start gap-3">
                 <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
                   <Sparkles className="h-4 w-4 text-white" />
                 </div>
@@ -172,7 +172,7 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
                   <p className="text-sm text-gray-600 mb-3">
                     À partir de votre description, notre IA va créer un contenu engageant avec :
                   </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600 mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600">
                     <div className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
                       Emojis appropriés
@@ -189,28 +189,6 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
                       <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
                       Ton professionnel
                     </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Exemple de contenu généré */}
-              <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
-                <div className="text-sm text-gray-700 leading-relaxed">
-                  <div className="font-medium text-gray-600 mb-2 text-xs uppercase tracking-wide">Exemple de génération :</div>
-                  <div className="whitespace-pre-wrap">
-{`✌️ Les 6 erreurs à éviter sur votre site web
-
-Un site internet peut être votre meilleur commercial… ou votre pire ennemi si certaines erreurs sont présentes 😅
-
-❌ 1. Un site trop lent  
-👉 Les visiteurs (et Google) détestent attendre.
-
-❌ 2. Pas adapté au mobile  
-👉 Plus de 50% du trafic vient du smartphone !
-
-🚀 En évitant ces erreurs, vous améliorez votre crédibilité !
-
-👉 Besoin d'aide ? Contactez-nous !`}
                   </div>
                 </div>
               </div>
