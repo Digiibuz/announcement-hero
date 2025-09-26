@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Image as ImageIcon, GripVertical, Crown, Upload, Plus } from "lucide-react";
+import { Image as ImageIcon, GripVertical, Crown, Upload, Plus, Loader2, AlertCircle } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { AnnouncementFormData } from "./AnnouncementForm";
-import MediaUploader from "./MediaUploader";
-import AdditionalMediaUploader from "./AdditionalMediaUploader";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import heic2any from "heic2any";
 
 interface ImageManagementProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -23,6 +24,11 @@ export default function ImageManagement({ form }: ImageManagementProps) {
   const [imageItems, setImageItems] = useState<ImageItem[]>([]);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [error, setError] = useState<string | null>(null);
+  const [processingStatus, setProcessingStatus] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const watchedValues = form.watch();
   const { images = [], additionalMedias = [] } = watchedValues;
@@ -127,6 +133,253 @@ export default function ImageManagement({ form }: ImageManagementProps) {
     setDragOverId(null);
   };
 
+  // Check WebP support
+  const checkWebPSupport = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const webP = new Image();
+      webP.onload = webP.onerror = () => {
+        resolve(webP.height === 2);
+      };
+      webP.src = 'data:image/webp;base64,UklGRjoAAABXRUJQVlA4IC4AAACyAgCdASoCAAIALmk0mk0iIiIiIgBoSygABc6WWgAA/veff/0PP8bA//LwYAAA';
+    });
+  };
+
+  // Convert HEIC directly to WebP
+  const convertHeicToWebP = async (file: File): Promise<File> => {
+    try {
+      console.log("🔄 Converting HEIC to WebP:", file.name);
+      setProcessingStatus("Conversion HEIC vers WebP...");
+      
+      const webpSupported = await checkWebPSupport();
+      const targetFormat = webpSupported ? 'image/webp' : 'image/jpeg';
+      const extension = webpSupported ? '.webp' : '.jpg';
+      
+      const convertedBlob = await heic2any({
+        blob: file,
+        toType: targetFormat,
+        quality: 0.85
+      }) as Blob;
+      
+      const fileName = file.name.replace(/\.heic$/i, extension);
+      const convertedFile = new File(
+        [convertedBlob], 
+        fileName, 
+        { type: targetFormat }
+      );
+      
+      console.log("✅ HEIC to WebP conversion successful:", {
+        originalSize: file.size,
+        convertedSize: convertedFile.size,
+        format: targetFormat,
+        compressionRatio: ((file.size - convertedFile.size) / file.size * 100).toFixed(1) + '%'
+      });
+      
+      return convertedFile;
+    } catch (error) {
+      console.error("❌ HEIC to WebP conversion failed:", error);
+      throw new Error("Échec de la conversion HEIC vers WebP");
+    }
+  };
+
+  // Detect file types
+  const isHeicFile = (file: File): boolean => {
+    return file.type === 'image/heic' || 
+           file.type === 'image/heif' || 
+           file.name.toLowerCase().endsWith('.heic') || 
+           file.name.toLowerCase().endsWith('.heif');
+  };
+
+  // Convert regular images to WebP
+  const convertToWebP = async (file: File): Promise<File> => {
+    return new Promise(async (resolve, reject) => {
+      setProcessingStatus("Conversion vers WebP...");
+      console.log("🔄 Converting to WebP:", file.name);
+
+      const webpSupported = await checkWebPSupport();
+      console.log("🌐 WebP support:", webpSupported);
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        reject(new Error("Impossible de créer le contexte canvas"));
+        return;
+      }
+
+      const reader = new FileReader();
+      
+      reader.onload = event => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        
+        img.onload = () => {
+          try {
+            // Dimensions optimales pour le stockage
+            const MAX_WIDTH = 1920;
+            const MAX_HEIGHT = 1920;
+            let width = img.width;
+            let height = img.height;
+            
+            // Redimensionner si nécessaire
+            if (width > height) {
+              if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width;
+                width = MAX_WIDTH;
+              }
+            } else {
+              if (height > MAX_HEIGHT) {
+                width *= MAX_HEIGHT / height;
+                height = MAX_HEIGHT;
+              }
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            // Dessiner l'image
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Convertir selon le support WebP
+            const targetFormat = webpSupported ? 'image/webp' : 'image/jpeg';
+            const quality = 0.85;
+            const extension = webpSupported ? '.webp' : '.jpg';
+            
+            canvas.toBlob(blob => {
+              if (!blob) {
+                reject(new Error("Conversion failed"));
+                return;
+              }
+              
+              const fileName = file.name.split('.')[0] + extension;
+              const convertedFile = new File([blob], fileName, { type: targetFormat });
+              
+              console.log("✅ WebP conversion successful:", {
+                originalSize: file.size,
+                convertedSize: convertedFile.size,
+                format: targetFormat,
+                compressionRatio: ((file.size - convertedFile.size) / file.size * 100).toFixed(1) + '%'
+              });
+              
+              resolve(convertedFile);
+            }, targetFormat, quality);
+          } catch (error) {
+            reject(error);
+          }
+        };
+        
+        img.onerror = () => reject(new Error("Erreur lors du chargement de l'image"));
+      };
+      
+      reader.onerror = () => reject(new Error("Erreur lors de la lecture du fichier"));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Upload single file to Supabase
+  const uploadSingleFile = async (file: File, retries = 2): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const filePath = `announcements/${fileName}`;
+      
+      console.log(`📤 Uploading ${file.type} file: ${file.name} (${file.size} bytes)`);
+      
+      const { data, error } = await supabase.storage.from('images').upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+      
+      if (error) {
+        if (retries > 0) {
+          console.log(`🔄 Retrying upload... (${retries} attempts left)`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return uploadSingleFile(file, retries - 1);
+        }
+        throw error;
+      }
+      
+      const { data: urlData } = supabase.storage.from('images').getPublicUrl(filePath);
+      console.log("✅ Upload successful:", urlData.publicUrl);
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error("❌ Upload failed:", error);
+      return null;
+    }
+  };
+
+  // Main file upload handler
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    console.log("📁 Files selected:", files.length);
+    
+    try {
+      setError(null);
+      setIsUploading(true);
+      setUploadProgress(5);
+      setProcessingStatus("Préparation...");
+      
+      const newImageUrls: string[] = [];
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        console.log(`🔄 Processing file ${i + 1}/${files.length}:`, file.name);
+        
+        try {
+          setUploadProgress(15 + (i * 70) / files.length);
+          let processedFile = file;
+          
+          if (isHeicFile(file)) {
+            setProcessingStatus(`Conversion HEIC vers WebP... (${i + 1}/${files.length})`);
+            processedFile = await convertHeicToWebP(file);
+          } else {
+            setProcessingStatus(`Conversion vers WebP... (${i + 1}/${files.length})`);
+            processedFile = await convertToWebP(file);
+          }
+          
+          setProcessingStatus(`Upload... (${i + 1}/${files.length})`);
+          
+          const imageUrl = await uploadSingleFile(processedFile);
+          
+          if (imageUrl) {
+            newImageUrls.push(imageUrl);
+            console.log(`📤 File ${i + 1} uploaded:`, imageUrl);
+          } else {
+            throw new Error(`Échec de l'upload du fichier ${file.name}`);
+          }
+        } catch (error: any) {
+          console.error(`❌ Error processing file ${file.name}:`, error);
+          toast.error(`Erreur avec ${file.name}: ${error.message}`);
+        }
+      }
+      
+      if (newImageUrls.length > 0) {
+        // Ajouter les nouvelles images aux deux tableaux du formulaire
+        const currentImages = form.getValues('images') || [];
+        const currentAdditional = form.getValues('additionalMedias') || [];
+        
+        // Ajouter à additionalMedias par défaut
+        const updatedAdditional = [...currentAdditional, ...newImageUrls];
+        form.setValue('additionalMedias', updatedAdditional);
+        
+        toast.success(`${newImageUrls.length} image(s) téléversée(s) avec succès`);
+      }
+      
+    } catch (error: any) {
+      console.error("❌ General upload error:", error);
+      setError(error.message || "Erreur lors du téléversement");
+      toast.error("Erreur: " + error.message);
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+      setProcessingStatus("");
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const selectedImages = imageItems.filter(item => item.selected);
   const mainImage = selectedImages.find(item => item.type === 'main');
   const firstSelectedImage = selectedImages[0];
@@ -177,12 +430,35 @@ export default function ImageManagement({ form }: ImageManagementProps) {
               multiple
               accept="image/*"
               className="hidden"
-              onChange={(e) => {
-                // Ici on gérera l'upload des fichiers
-                console.log("Files selected:", e.target.files);
-              }}
+              onChange={handleFileUpload}
             />
           </div>
+
+          {/* Indicateur de chargement */}
+          {isUploading && (
+            <div className="mt-4">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">{processingStatus || "Traitement en cours..."}</span>
+              </div>
+              {uploadProgress > 0 && (
+                <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                  <div 
+                    className="bg-primary h-2.5 rounded-full transition-all duration-300" 
+                    style={{ width: `${uploadProgress}%` }}
+                  ></div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Erreur */}
+          {error && !isUploading && (
+            <div className="mt-4 text-red-500 flex items-center justify-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              <span className="text-sm">{error}</span>
+            </div>
+          )}
 
           {/* Section organisation (seulement si des images existent) */}
           {/* Grille des images */}
