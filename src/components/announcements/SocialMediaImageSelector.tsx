@@ -173,7 +173,7 @@ export default function SocialMediaImageSelector({ form }: SocialMediaImageSelec
               >
                 {/* Numéro d'ordre */}
                 {item.selected && (
-                  <div className="absolute top-2 left-2 z-10">
+                  <div className="absolute top-2 left-2 z-[1]">
                     <Badge 
                       variant={index === 0 ? "default" : "secondary"}
                       className="text-xs"
@@ -187,14 +187,14 @@ export default function SocialMediaImageSelector({ form }: SocialMediaImageSelec
                 )}
 
                 {/* Icône de glissement */}
-                <div className="absolute top-2 right-2 z-10">
+                <div className="absolute top-2 right-2 z-[1]">
                   <div className="bg-black/50 rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <GripVertical className="h-4 w-4 text-white" />
                   </div>
                 </div>
 
                 {/* Checkbox */}
-                <div className="absolute bottom-2 left-2 z-10">
+                <div className="absolute bottom-2 left-2 z-[1]">
                   <Checkbox
                     checked={item.selected}
                     onCheckedChange={(checked) => 
