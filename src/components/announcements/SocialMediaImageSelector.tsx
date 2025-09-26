@@ -216,7 +216,7 @@ export default function SocialMediaImageSelector({ form }: SocialMediaImageSelec
 
                 {/* Overlay pour les images non sélectionnées */}
                 {!item.selected && (
-                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center pointer-events-none">
                     <span className="text-white text-sm font-medium">
                       Non incluse
                     </span>
