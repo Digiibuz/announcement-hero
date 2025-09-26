@@ -31,6 +31,7 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [newHashtag, setNewHashtag] = useState("");
   const [hasZapierWebhook, setHasZapierWebhook] = useState(false);
+  const [showFacebookQuestion, setShowFacebookQuestion] = useState(true);
 
   // Vérifier si l'utilisateur a configuré Zapier
   useEffect(() => {
@@ -50,10 +51,17 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
   }, [user]);
 
   const watchedValues = form.watch();
-  const { title, description, images = [], additionalMedias = [] } = watchedValues;
+  const { title, description, images = [], additionalMedias = [], createFacebookPost } = watchedValues;
   
   // Combiner toutes les images disponibles
   const allImages = [...images, ...additionalMedias].filter(Boolean);
+
+  // Vérifier si l'utilisateur a déjà fait un choix pour la création de post Facebook
+  useEffect(() => {
+    if (createFacebookPost !== undefined) {
+      setShowFacebookQuestion(false);
+    }
+  }, [createFacebookPost]);
 
   const handleGenerateContent = async () => {
     if (!title) {
@@ -104,11 +112,120 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
     setHashtags(hashtags.filter(h => h !== tag));
   };
 
+  const handleCreateFacebookPost = (choice: boolean) => {
+    form.setValue('createFacebookPost', choice);
+    if (choice) {
+      // Sauvegarder les hashtags et contenu social dans le formulaire
+      form.setValue('socialContent', socialContent);
+      form.setValue('socialHashtags', hashtags);
+    }
+    setShowFacebookQuestion(false);
+  };
+
   const getSocialMediaPreview = () => {
     const previewText = socialContent || description || "";
     const displayHashtags = hashtags.map(tag => `#${tag}`).join(" ");
     return `${previewText}\n\n${displayHashtags}`.trim();
   };
+
+  // Si l'utilisateur ne veut pas créer de post Facebook, afficher seulement le message
+  if (createFacebookPost === false) {
+    return (
+      <div className={cn("space-y-6", className)}>
+        <Card>
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+              <Share2 className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <CardTitle>Publication sur les réseaux sociaux désactivée</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-muted-foreground">
+              Vous avez choisi de ne pas créer de post pour les réseaux sociaux pour cette annonce.
+            </p>
+            <Button 
+              onClick={() => {
+                form.setValue('createFacebookPost', undefined);
+                setShowFacebookQuestion(true);
+              }} 
+              variant="outline" 
+              className="w-full"
+            >
+              Modifier ce choix
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  
+  // Afficher la question initiale si l'utilisateur n'a pas encore fait de choix
+  if (showFacebookQuestion && createFacebookPost === undefined) {
+    return (
+      <div className={cn("space-y-6", className)}>
+        <Card>
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+              <Share2 className="h-6 w-6 text-white" />
+            </div>
+            <CardTitle>Publication sur les réseaux sociaux</CardTitle>
+            <p className="text-muted-foreground mt-2">
+              Souhaitez-vous créer un post Facebook pour cette annonce ?
+            </p>
+          </CardHeader>
+          <CardContent className="text-center space-y-6">
+            <div className="bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="h-5 w-5 text-white" />
+                </div>
+                <div className="text-left">
+                  <h4 className="font-medium text-gray-900 mb-2">✨ Avec un post Facebook, vous obtiendrez :</h4>
+                  <div className="grid grid-cols-1 gap-2 text-sm text-gray-600">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                      Contenu optimisé généré par IA
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                      Prévisualisation Facebook en temps réel
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                      Gestion des hashtags et programmation
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                      Publication automatique via Zapier
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Button 
+                onClick={() => handleCreateFacebookPost(true)}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                size="lg"
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                Oui, créer un post Facebook
+              </Button>
+              <Button 
+                onClick={() => handleCreateFacebookPost(false)}
+                variant="outline"
+                size="lg"
+              >
+                Non, passer cette étape
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (!hasZapierWebhook) {
     return (

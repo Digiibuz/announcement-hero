@@ -30,10 +30,13 @@ export interface AnnouncementFormData {
   publishDate: Date | undefined;
   status: "draft" | "published" | "scheduled";
   images: string[];
-  additionalMedias: string[]; // NEW FIELD
+  additionalMedias: string[];
   seoTitle: string;
   seoDescription: string;
   seoSlug: string;
+  createFacebookPost?: boolean;
+  socialContent?: string;
+  socialHashtags?: string[];
 }
 
 const AnnouncementForm = ({
