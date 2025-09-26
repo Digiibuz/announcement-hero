@@ -19,6 +19,12 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+    // Ensure React is resolved consistently
+    dedupe: ['react', 'react-dom'],
+  },
+  // Optimize React dependencies
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react/jsx-runtime'],
   },
   // Define for Deno global in browser builds
   define: {
