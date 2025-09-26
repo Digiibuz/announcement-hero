@@ -50,7 +50,10 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
   }, [user]);
 
   const watchedValues = form.watch();
-  const { title, description, images } = watchedValues;
+  const { title, description, images = [], additionalMedias = [] } = watchedValues;
+  
+  // Combiner toutes les images disponibles
+  const allImages = [...images, ...additionalMedias].filter(Boolean);
 
   const handleGenerateContent = async () => {
     if (!title) {
@@ -347,33 +350,33 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
               </div>
               
               {/* Images */}
-              {images && images.length > 0 && (
+              {allImages && allImages.length > 0 && (
                 <div className="relative">
-                  {images.length === 1 ? (
+                  {allImages.length === 1 ? (
                     <div className="aspect-video bg-gray-100">
                       <img
-                        src={images[0]}
+                        src={allImages[0]}
                         alt="Publication"
                         className="w-full h-full object-cover"
                       />
                     </div>
                   ) : (
                     <div className={`grid gap-1 ${
-                      images.length === 2 ? 'grid-cols-2' : 
-                      images.length === 3 ? 'grid-cols-2' : 
+                      allImages.length === 2 ? 'grid-cols-2' : 
+                      allImages.length === 3 ? 'grid-cols-2' : 
                       'grid-cols-2'
                     }`}>
-                      {images.slice(0, 4).map((image, index) => (
+                      {allImages.slice(0, 4).map((image, index) => (
                         <div key={index} className="aspect-square bg-gray-100 relative">
                           <img
                             src={image}
                             alt={`Image ${index + 1}`}
                             className="w-full h-full object-cover"
                           />
-                          {index === 3 && images.length > 4 && (
+                          {index === 3 && allImages.length > 4 && (
                             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                               <span className="text-white text-lg font-semibold">
-                                +{images.length - 4}
+                                +{allImages.length - 4}
                               </span>
                             </div>
                           )}
