@@ -34,7 +34,14 @@ export default defineConfig(({ mode }) => ({
       'lucide-react'
     ],
     force: true,
+    esbuildOptions: {
+      target: 'esnext'
+    }
   },
+  esbuild: {
+    target: 'esnext'
+  },
+  clearScreen: false,
   build: {
     rollupOptions: {
       external: [],
