@@ -175,11 +175,11 @@ export default function SocialMediaImageSelector({ form }: SocialMediaImageSelec
                 {item.selected && (
                   <div className="absolute top-2 left-2" style={{ zIndex: 0 }}>
                     <Badge 
-                      variant={index === 0 ? "default" : "secondary"}
+                      variant={selectedImages.findIndex(si => si.id === item.id) === 0 ? "default" : "secondary"}
                       className="text-xs"
                     >
                       {selectedImages.findIndex(si => si.id === item.id) + 1}
-                      {index === 0 && selectedImages.includes(item) && (
+                      {selectedImages.findIndex(si => si.id === item.id) === 0 && (
                         <span className="ml-1">👑</span>
                       )}
                     </Badge>
