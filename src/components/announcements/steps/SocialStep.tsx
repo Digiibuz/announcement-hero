@@ -35,11 +35,15 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
   useEffect(() => {
     const checkZapierConfig = async () => {
       if (user?.id) {
-        const { data: profile } = await supabase
+        console.log("Vérification Zapier pour l'utilisateur:", user.email, user.id);
+        const { data: profile, error } = await supabase
           .from('profiles')
           .select('zapier_webhook_url')
           .eq('id', user.id)
           .single();
+        
+        console.log("Profil récupéré:", profile, "Erreur:", error);
+        console.log("URL Zapier:", profile?.zapier_webhook_url);
         
         setHasZapierWebhook(!!profile?.zapier_webhook_url);
       }
