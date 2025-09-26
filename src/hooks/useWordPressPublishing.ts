@@ -482,6 +482,43 @@ export const useWordPressPublishing = () => {
                               (featuredMediaId ? " avec image principale" : "") +
                               (additionalMediasCount > 0 ? ` et ${additionalMediasCount} média(s) additionnel(s)` : "");
         
+        // Déclencher Zapier webhook si configuré et si post publié avec réseaux sociaux
+        try {
+          const { data: userProfile } = await supabase
+            .from('profiles')
+            .select('zapier_webhook_url')
+            .eq('id', userId)
+            .single();
+          
+          if (userProfile?.zapier_webhook_url && announcement.status === 'published') {
+            console.log("Déclenchement du webhook Zapier:", userProfile.zapier_webhook_url);
+            
+            const zapierData = {
+              announcement_id: announcement.id,
+              title: announcement.title,
+              description: announcement.description,
+              wordpress_url: wpResponseData.link || `${wpConfig.site_url}/?p=${wordpressPostId}`,
+              wordpress_post_id: wordpressPostId,
+              main_image: announcement.images?.[0] || null,
+              published_at: new Date().toISOString(),
+              triggered_from: 'announcement_publication'
+            };
+            
+            await fetch(userProfile.zapier_webhook_url, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              mode: "no-cors",
+              body: JSON.stringify(zapierData),
+            });
+            
+            console.log("Webhook Zapier déclenché avec succès");
+          }
+        } catch (zapierError) {
+          console.warn("Erreur lors du déclenchement Zapier (non bloquant):", zapierError);
+        }
+        
         return { 
           success: true, 
           message: successMessage, 
