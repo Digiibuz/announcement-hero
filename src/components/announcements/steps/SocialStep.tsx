@@ -58,7 +58,12 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
 
   // Vérifier si l'utilisateur a déjà fait un choix pour la création de post Facebook
   useEffect(() => {
-    if (createFacebookPost !== undefined) {
+    // Si createFacebookPost est false (l'utilisateur avait dit "non"), 
+    // mais qu'il revient sur cette étape, on repose la question
+    if (createFacebookPost === false) {
+      form.setValue('createFacebookPost', undefined);
+      setShowFacebookQuestion(true);
+    } else if (createFacebookPost !== undefined) {
       setShowFacebookQuestion(false);
     }
     
