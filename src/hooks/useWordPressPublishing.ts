@@ -506,6 +506,8 @@ export const useWordPressPublishing = () => {
                wordpress_url: wpResponseData.link || `${wpConfig.site_url}/?p=${wordpressPostId}`,
                wordpress_post_id: wordpressPostId,
                main_image: announcement.images?.[0] || null,
+               additional_images: announcement.images?.slice(1) || [],
+               additional_medias: (announcement as any).additionalMedias || [],
                published_at: new Date().toISOString(),
                triggered_from: 'announcement_publication',
                social_content: currentFormData?.socialContent || announcement.social_content,
