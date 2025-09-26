@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
 import SocialMediaImageSelector from "../SocialMediaImageSelector";
-import SocialContentWriterModal from "../SocialContentWriterModal";
+
 
 interface SocialStepProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -33,7 +33,7 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
   const [newHashtag, setNewHashtag] = useState("");
   const [hasZapierWebhook, setHasZapierWebhook] = useState(false);
   const [showFacebookQuestion, setShowFacebookQuestion] = useState(true);
-  const [isWriterModalOpen, setIsWriterModalOpen] = useState(false);
+  
 
   // Vérifier si l'utilisateur a configuré Zapier
   useEffect(() => {
@@ -118,16 +118,6 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
     }
   };
 
-  const handleWriterModalSave = (content: string, modalHashtags: string[]) => {
-    setSocialContent(content);
-    setHashtags(modalHashtags);
-    form.setValue('socialContent', content);
-    form.setValue('socialHashtags', modalHashtags);
-    toast({
-      title: "Contenu enregistré",
-      description: "Votre post personnalisé a été enregistré avec succès",
-    });
-  };
 
   const addHashtag = () => {
     if (newHashtag && !hashtags.includes(newHashtag)) {
@@ -297,7 +287,7 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Bouton Rédiger moi-même */}
-                  <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-primary/50" onClick={() => setIsWriterModalOpen(true)}>
+                  <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-primary/50" onClick={() => setSocialContent("Commencez à rédiger votre post ici...")}>
                     <CardContent className="p-6 text-center">
                       <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <PenTool className="h-6 w-6 text-green-600" />
@@ -385,13 +375,15 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
                 </Button>
               </div>
               
-              <div className="bg-muted/50 rounded-lg p-4 border cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => setIsWriterModalOpen(true)}>
-                <div className="whitespace-pre-wrap text-sm">{socialContent}</div>
-                <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                  <PenTool className="h-3 w-3" />
-                  Cliquez pour modifier le texte
-                </div>
-              </div>
+              <Textarea
+                value={socialContent}
+                onChange={(e) => {
+                  setSocialContent(e.target.value);
+                  form.setValue('socialContent', e.target.value);
+                }}
+                placeholder="Rédigez votre post ici..."
+                className="min-h-[120px] resize-none"
+              />
               
               <div className="text-xs text-green-600 flex items-center gap-1">
                 <Sparkles className="h-3 w-3" />
@@ -617,14 +609,6 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
         </Button>
       </div>
 
-      {/* Modal pour rédiger manuellement */}
-      <SocialContentWriterModal
-        isOpen={isWriterModalOpen}
-        onClose={() => setIsWriterModalOpen(false)}
-        onSave={handleWriterModalSave}
-        initialContent={socialContent}
-        initialHashtags={hashtags}
-      />
     </div>
   );
 }
