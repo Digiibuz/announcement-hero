@@ -20,7 +20,8 @@ import {
   Calendar,
   CalendarClock,
   Tag,
-  MessageSquareText
+  MessageSquareText,
+  Share2
 } from "lucide-react";
 import { Announcement } from "@/types/announcement";
 import { Link } from "react-router-dom";
@@ -64,6 +65,18 @@ const AnnouncementList = ({
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
+  };
+
+  const getFacebookBadge = (announcement: Announcement) => {
+    if (announcement.create_facebook_post && announcement.status === 'published') {
+      return (
+        <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200">
+          <Share2 className="h-3 w-3 mr-1" />
+          Facebook
+        </Badge>
+      );
+    }
+    return null;
   };
 
   // Function to get the public URL for an image
@@ -171,7 +184,12 @@ const AnnouncementList = ({
                     <span className="text-muted-foreground">—</span>
                   )}
                 </TableCell>
-                <TableCell>{getStatusBadge(announcement.status)}</TableCell>
+                <TableCell>
+                  <div className="flex gap-2">
+                    {getStatusBadge(announcement.status)}
+                    {getFacebookBadge(announcement)}
+                  </div>
+                </TableCell>
                 <TableCell>
                   <div className="flex items-center">
                     <Calendar className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
@@ -273,7 +291,10 @@ const AnnouncementList = ({
               <CardTitle className="text-lg line-clamp-2">
                 {announcement.title}
               </CardTitle>
-              {getStatusBadge(announcement.status)}
+              <div className="flex flex-col gap-2">
+                {getStatusBadge(announcement.status)}
+                {getFacebookBadge(announcement)}
+              </div>
             </div>
           </CardHeader>
           

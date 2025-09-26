@@ -17,6 +17,7 @@ export type Database = {
       announcements: {
         Row: {
           additional_medias: string[] | null
+          create_facebook_post: boolean | null
           created_at: string
           description: string | null
           id: string
@@ -26,6 +27,8 @@ export type Database = {
           seo_description: string | null
           seo_slug: string | null
           seo_title: string | null
+          social_content: string | null
+          social_hashtags: string[] | null
           status: Database["public"]["Enums"]["announcement_status"]
           title: string
           updated_at: string
@@ -36,6 +39,7 @@ export type Database = {
         }
         Insert: {
           additional_medias?: string[] | null
+          create_facebook_post?: boolean | null
           created_at?: string
           description?: string | null
           id?: string
@@ -45,6 +49,8 @@ export type Database = {
           seo_description?: string | null
           seo_slug?: string | null
           seo_title?: string | null
+          social_content?: string | null
+          social_hashtags?: string[] | null
           status?: Database["public"]["Enums"]["announcement_status"]
           title: string
           updated_at?: string
@@ -55,6 +61,7 @@ export type Database = {
         }
         Update: {
           additional_medias?: string[] | null
+          create_facebook_post?: boolean | null
           created_at?: string
           description?: string | null
           id?: string
@@ -64,6 +71,8 @@ export type Database = {
           seo_description?: string | null
           seo_slug?: string | null
           seo_title?: string | null
+          social_content?: string | null
+          social_hashtags?: string[] | null
           status?: Database["public"]["Enums"]["announcement_status"]
           title?: string
           updated_at?: string

@@ -18,6 +18,9 @@ export type Announcement = {
   seo_title?: string;
   seo_description?: string;
   seo_slug?: string;
+  create_facebook_post?: boolean; // Nouveau champ pour la publication Facebook
+  social_content?: string; // Contenu optimisé pour les réseaux sociaux
+  social_hashtags?: string[]; // Hashtags pour les réseaux sociaux
 };
 
 // Type pour les catégories WordPress standard

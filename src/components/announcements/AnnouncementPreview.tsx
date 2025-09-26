@@ -3,7 +3,7 @@ import React from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { CalendarIcon, FolderIcon, Clock, Search, Link, Tag, AlertCircle, Play } from "lucide-react";
+import { CalendarIcon, FolderIcon, Clock, Search, Link, Tag, AlertCircle, Play, Share2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 export interface AnnouncementPreviewProps {
@@ -18,6 +18,9 @@ export interface AnnouncementPreviewProps {
     seoTitle?: string;
     seoDescription?: string;
     seoSlug?: string;
+    createFacebookPost?: boolean;
+    socialContent?: string;
+    socialHashtags?: string[];
   };
 }
 
@@ -71,12 +74,20 @@ const AnnouncementPreview = ({ data }: AnnouncementPreviewProps) => {
             <h1 className="text-2xl font-semibold leading-tight">
               {data.title || "Titre de l'annonce"}
             </h1>
-            <Badge className={getStatusColor(data.status)} variant="outline">
-              {data.status === "draft" ? "Brouillon" : 
-               data.status === "published" ? "Publié" :
-               data.status === "scheduled" ? "Planifié" : 
-               data.status.charAt(0).toUpperCase() + data.status.slice(1)}
-            </Badge>
+            <div className="flex gap-2">
+              <Badge className={getStatusColor(data.status)} variant="outline">
+                {data.status === "draft" ? "Brouillon" : 
+                 data.status === "published" ? "Publié" :
+                 data.status === "scheduled" ? "Planifié" : 
+                 data.status.charAt(0).toUpperCase() + data.status.slice(1)}
+              </Badge>
+              {data.createFacebookPost && data.status === 'published' && (
+                <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200">
+                  <Share2 className="h-3 w-3 mr-1" />
+                  Facebook
+                </Badge>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">

@@ -101,6 +101,9 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
               seoTitle: announcement.seo_title,
               seoDescription: announcement.seo_description,
               seoSlug: announcement.seo_slug,
+              createFacebookPost: announcement.create_facebook_post,
+              socialContent: announcement.social_content,
+              socialHashtags: announcement.social_hashtags,
             }} />
           </>
         )}
