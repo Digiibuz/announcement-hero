@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => ({
   },
   // Optimize React dependencies
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react/jsx-runtime'],
+    include: ['react', 'react-dom', 'react/jsx-runtime', 'react-router-dom'],
   },
   // Define for Deno global in browser builds
   define: {
