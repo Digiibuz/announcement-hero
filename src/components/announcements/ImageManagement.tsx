@@ -545,7 +545,8 @@ export default function ImageManagement({ form }: ImageManagementProps) {
                   ${item.selected ? 'border-primary' : 'border-muted'}
                   ${draggedId === item.id ? 'opacity-50 scale-95' : ''}
                   ${dragOverId === item.id ? 'border-blue-500 border-dashed scale-105' : ''}
-                  hover:shadow-md
+                  hover:shadow-md hover:scale-[1.02]
+                  ${!item.selected ? 'hover:border-primary/50' : ''}
                 `}
               >
                 {/* Badge d'ordre et statut */}
@@ -599,8 +600,8 @@ export default function ImageManagement({ form }: ImageManagementProps) {
 
                 {/* Overlay pour les images non sélectionnées */}
                 {!item.selected && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-[1px]">
-                    <span className="text-white text-sm font-medium bg-black/70 px-2 py-1 rounded">
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-[1px] pointer-events-none transition-all duration-200 group-hover:bg-black/30">
+                    <span className="text-white text-sm font-medium bg-black/70 px-2 py-1 rounded transition-all duration-200 group-hover:bg-black/50">
                       Non utilisée
                     </span>
                   </div>
