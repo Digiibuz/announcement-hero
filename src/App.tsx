@@ -1,14 +1,17 @@
 
 import React from "react";
+import { HashRouter } from "react-router-dom";
 
 function App() {
-  console.log("App component is rendering");
+  console.log("App with HashRouter is rendering");
 
   return (
-    <div style={{ padding: "20px", backgroundColor: "white", color: "black" }}>
-      <h1>Test App</h1>
-      <p>Si vous voyez ceci, React fonctionne !</p>
-    </div>
+    <HashRouter>
+      <div style={{ padding: "20px", backgroundColor: "white", color: "black" }}>
+        <h1>Test App avec HashRouter</h1>
+        <p>Si vous voyez ceci, HashRouter fonctionne !</p>
+      </div>
+    </HashRouter>
   );
 }
 
