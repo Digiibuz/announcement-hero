@@ -31,6 +31,12 @@ export default function SocialMediaImageSelector({ form }: SocialMediaImageSelec
   useEffect(() => {
     if (allImages.length > 0) {
       setImageItems(prevItems => {
+        // Si on a déjà des items avec les mêmes URLs, ne pas réinitialiser
+        if (prevItems.length === allImages.length && 
+            prevItems.every(item => allImages.includes(item.url))) {
+          return prevItems;
+        }
+        
         // Créer un map des items existants pour préserver l'état
         const existingItemsMap = new Map(prevItems.map(item => [item.url, item]));
         
@@ -44,7 +50,7 @@ export default function SocialMediaImageSelector({ form }: SocialMediaImageSelec
         });
       });
     }
-  }, [allImages]);
+  }, [allImages.join(',')]); // Utiliser join pour éviter les re-renders inutiles
 
   const handleCheckboxChange = (imageUrl: string, checked: boolean) => {
     setImageItems(prev => 
@@ -96,8 +102,8 @@ export default function SocialMediaImageSelector({ form }: SocialMediaImageSelec
       
       console.log("Indices:", { draggedIndex, targetIndex });
       
-      if (draggedIndex === -1 || targetIndex === -1) {
-        console.log("Invalid indices");
+      if (draggedIndex === -1 || targetIndex === -1 || draggedIndex === targetIndex) {
+        console.log("Invalid indices or same position");
         return prev;
       }
       
