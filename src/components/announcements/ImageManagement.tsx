@@ -21,6 +21,7 @@ interface ImageItem {
 }
 
 export default function ImageManagement({ form }: ImageManagementProps) {
+  const [allUploadedImages, setAllUploadedImages] = useState<string[]>([]); // Stocke TOUTES les images téléchargées
   const [imageItems, setImageItems] = useState<ImageItem[]>([]);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
@@ -33,35 +34,47 @@ export default function ImageManagement({ form }: ImageManagementProps) {
   const watchedValues = form.watch();
   const { images = [], additionalMedias = [] } = watchedValues;
 
-  // Combiner toutes les images
+  // Combiner toutes les images du formulaire
   const allImages = [...(images || []), ...(additionalMedias || [])];
 
-  // Initialiser les items d'images
+  // Synchroniser allUploadedImages avec les images du formulaire au premier chargement
   useEffect(() => {
-    if (allImages.length > 0) {
+    if (allImages.length > 0 && allUploadedImages.length === 0) {
+      setAllUploadedImages(allImages);
+    }
+  }, [allImages.length]);
+
+  // Initialiser les items d'images basé sur TOUTES les images téléchargées
+  useEffect(() => {
+    if (allUploadedImages.length > 0) {
       setImageItems(prevItems => {
         // Si on a déjà des items avec les mêmes URLs, ne pas réinitialiser
-        if (prevItems.length === allImages.length && 
-            prevItems.every(item => allImages.includes(item.url))) {
-          return prevItems;
+        if (prevItems.length === allUploadedImages.length && 
+            prevItems.every(item => allUploadedImages.includes(item.url))) {
+          return prevItems.map(item => ({
+            ...item,
+            selected: allImages.includes(item.url), // Mettre à jour le statut de sélection
+            type: images.includes(item.url) ? 'main' : 'additional' as 'main' | 'additional'
+          }));
         }
         
         // Créer un map des items existants pour préserver l'état
         const existingItemsMap = new Map(prevItems.map(item => [item.url, item]));
         
-        return allImages.map((url, index) => {
+        return allUploadedImages.map((url, index) => {
           const existingItem = existingItemsMap.get(url);
+          const isSelected = allImages.includes(url);
           const isMainImage = images.includes(url);
           return existingItem || {
             url,
-            selected: true,
+            selected: isSelected,
             id: `img-${index}-${url.substring(url.length - 10)}`,
             type: isMainImage ? 'main' : 'additional' as 'main' | 'additional'
           };
         });
       });
     }
-  }, [allImages.join(','), images.join(',')]);
+  }, [allUploadedImages.join(','), allImages.join(','), images.join(',')]);
 
   const handleCheckboxChange = (imageUrl: string, checked: boolean) => {
     setImageItems(prev => {
@@ -403,9 +416,12 @@ export default function ImageManagement({ form }: ImageManagementProps) {
       }
       
         if (newImageUrls.length > 0) {
-          // Ajouter les nouvelles images aux deux tableaux du formulaire
+          // Ajouter les nouvelles images aux deux tableaux du formulaire ET au stockage local
           const currentImages = form.getValues('images') || [];
           const currentAdditional = form.getValues('additionalMedias') || [];
+          
+          // Mettre à jour allUploadedImages avec les nouvelles images
+          setAllUploadedImages(prev => [...prev, ...newImageUrls]);
           
           // Si aucune image principale, ajouter la première à images
           if (currentImages.length === 0) {
