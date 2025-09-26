@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Loader2, Wand2, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Link, Mic, MicOff, Settings, ImageIcon } from "lucide-react";
+import { Loader2, Wand2, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Link, Mic, MicOff, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
@@ -14,7 +14,6 @@ import useVoiceRecognition from "@/hooks/useVoiceRecognition";
 import SparklingStars from "@/components/ui/SparklingStars";
 import AILoadingOverlay from "@/components/ui/AILoadingOverlay";
 import AIGenerationOptions, { AIGenerationSettings } from "./AIGenerationOptions";
-import AdditionalMediaUploader, { AdditionalMediaUploaderRef } from "./AdditionalMediaUploader";
 import "@/styles/editor.css";
 import "@/styles/sparkles.css";
 
@@ -35,7 +34,6 @@ const DescriptionField = ({
     length: "standard"
   });
   const editorRef = useRef<HTMLDivElement>(null);
-  const mediaUploaderRef = useRef<AdditionalMediaUploaderRef>(null);
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const initialRenderRef = useRef(true);
   
@@ -122,11 +120,6 @@ const DescriptionField = ({
     updateFormValue();
   };
 
-  const triggerMediaUpload = () => {
-    if (mediaUploaderRef.current) {
-      mediaUploaderRef.current.triggerUpload();
-    }
-  };
 
   useEffect(() => {
     const description = form.getValues('description') || '';
@@ -388,25 +381,6 @@ const DescriptionField = ({
           </PopoverContent>
         </Popover>
 
-        {/* Media Button - FIXED */}
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="icon" 
-                className="h-8 w-8 ml-1" 
-                onClick={triggerMediaUpload}
-              >
-                <ImageIcon size={16} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Ajouter des médias</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
 
         {/* Voice Recording Button */}
         {isSupported && (
@@ -457,8 +431,6 @@ const DescriptionField = ({
         )} 
       />
 
-      {/* Additional Media Uploader */}
-      <AdditionalMediaUploader ref={mediaUploaderRef} form={form} />
 
       {/* Add a hint for voice dictation with punctuation commands */}
       {isRecording && (

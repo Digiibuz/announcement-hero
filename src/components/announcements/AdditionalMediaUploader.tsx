@@ -319,23 +319,8 @@ const AdditionalMediaUploader = forwardRef<AdditionalMediaUploaderRef, Additiona
     return 'image';
   };
 
-  if (uploadedMedias.length === 0 && !isUploading) {
-    return (
-      <div>
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          accept="image/*,video/*,.heic,.heif" 
-          multiple
-          className="hidden" 
-          onChange={handleFileUpload} 
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="mt-4">
+    <div className="space-y-4">
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -344,6 +329,35 @@ const AdditionalMediaUploader = forwardRef<AdditionalMediaUploaderRef, Additiona
         className="hidden" 
         onChange={handleFileUpload} 
       />
+      
+      {/* Zone d'upload toujours visible */}
+      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+        <div className="text-center">
+          <div className="flex justify-center mb-4">
+            <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+              <ImageIcon className="h-6 w-6 text-muted-foreground" />
+            </div>
+          </div>
+          <p className="mb-4 text-gray-950">
+            Glissez-déposez vos médias ici ou cliquez pour sélectionner
+          </p>
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={triggerFileUpload} 
+            disabled={isUploading}
+            className="gap-2"
+          >
+            <UploadCloud className="h-4 w-4" />
+            {uploadedMedias.length > 0 ? "Ajouter plus de médias" : "Sélectionner des médias"}
+          </Button>
+          {uploadedMedias.length > 0 && (
+            <p className="text-sm text-gray-500 mt-2">
+              {uploadedMedias.length}/5 médias ajoutés
+            </p>
+          )}
+        </div>
+      </div>
       
       {isUploading && (
         <div className="mb-4">
@@ -373,7 +387,7 @@ const AdditionalMediaUploader = forwardRef<AdditionalMediaUploaderRef, Additiona
       {uploadedMedias.length > 0 && (
         <div className="space-y-3">
           <div className="text-sm font-medium text-gray-700">
-            Médias ajoutés ({uploadedMedias.length})
+            Médias ajoutés ({uploadedMedias.length}/5)
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {uploadedMedias.map((mediaUrl, index) => {
@@ -421,18 +435,6 @@ const AdditionalMediaUploader = forwardRef<AdditionalMediaUploaderRef, Additiona
               );
             })}
           </div>
-          
-          <Button 
-            type="button" 
-            variant="outline" 
-            size="sm" 
-            onClick={triggerFileUpload} 
-            disabled={isUploading}
-            className="w-full"
-          >
-            <UploadCloud className="mr-2 h-4 w-4" />
-            Ajouter plus de médias
-          </Button>
         </div>
       )}
     </div>
