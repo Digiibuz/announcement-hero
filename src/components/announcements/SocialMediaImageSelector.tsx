@@ -13,18 +13,13 @@ interface SocialMediaImageSelectorProps {
 interface ImageItem {
   url: string;
   selected: boolean;
-  order: number;
-}
-
-interface DraggedItem {
-  index: number;
-  item: ImageItem;
+  id: string; // Utiliser un ID unique au lieu de l'index
 }
 
 export default function SocialMediaImageSelector({ form }: SocialMediaImageSelectorProps) {
   const [imageItems, setImageItems] = useState<ImageItem[]>([]);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const watchedValues = form.watch();
   const { images = [], additionalMedias = [] } = watchedValues;
@@ -44,7 +39,7 @@ export default function SocialMediaImageSelector({ form }: SocialMediaImageSelec
           return existingItem || {
             url,
             selected: true, // Par défaut, toutes les images sont sélectionnées
-            order: index
+            id: `img-${index}-${url.substring(url.length - 10)}` // ID unique
           };
         });
       });
@@ -59,73 +54,80 @@ export default function SocialMediaImageSelector({ form }: SocialMediaImageSelec
     );
   };
 
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    setDraggedIndex(index);
-    setDragOverIndex(null);
+  const handleDragStart = (e: React.DragEvent, itemId: string) => {
+    setDraggedId(itemId);
+    setDragOverId(null);
     e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", index.toString());
+    e.dataTransfer.setData("text/plain", itemId);
+    console.log("Drag start:", itemId);
   };
 
   const handleDragEnd = () => {
-    setDraggedIndex(null);
-    setDragOverIndex(null);
+    setDraggedId(null);
+    setDragOverId(null);
+    console.log("Drag end");
   };
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
+  const handleDragOver = (e: React.DragEvent, itemId: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     
-    if (draggedIndex !== null && draggedIndex !== index) {
-      setDragOverIndex(index);
+    if (draggedId && draggedId !== itemId) {
+      setDragOverId(itemId);
     }
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
-    // Vérifier si on quitte vraiment l'élément
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const x = e.clientX;
     const y = e.clientY;
     
     if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-      setDragOverIndex(null);
+      setDragOverId(null);
     }
   };
 
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+  const moveItem = (draggedId: string, targetId: string) => {
+    console.log("Moving item from", draggedId, "to", targetId);
+    
+    setImageItems(prev => {
+      const draggedIndex = prev.findIndex(item => item.id === draggedId);
+      const targetIndex = prev.findIndex(item => item.id === targetId);
+      
+      console.log("Indices:", { draggedIndex, targetIndex });
+      
+      if (draggedIndex === -1 || targetIndex === -1) {
+        console.log("Invalid indices");
+        return prev;
+      }
+      
+      const newItems = [...prev];
+      const [draggedItem] = newItems.splice(draggedIndex, 1);
+      newItems.splice(targetIndex, 0, draggedItem);
+      
+      console.log("New order:", newItems.map(item => item.url));
+      return newItems;
+    });
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
     e.preventDefault();
     
-    if (draggedIndex === null || draggedIndex === dropIndex) {
-      setDraggedIndex(null);
-      setDragOverIndex(null);
+    console.log("Drop event:", { draggedId, targetId });
+    
+    if (!draggedId || draggedId === targetId) {
+      console.log("Drop cancelled");
+      setDraggedId(null);
+      setDragOverId(null);
       return;
     }
 
-    setImageItems(prev => {
-      const newItems = [...prev];
-      const draggedItem = newItems[draggedIndex];
-      
-      // Retirer l'élément de sa position actuelle
-      newItems.splice(draggedIndex, 1);
-      
-      // Calculer la nouvelle position
-      const targetIndex = draggedIndex < dropIndex ? dropIndex - 1 : dropIndex;
-      
-      // Insérer à la nouvelle position
-      newItems.splice(targetIndex, 0, draggedItem);
-      
-      // Mettre à jour les ordres
-      return newItems.map((item, index) => ({
-        ...item,
-        order: index
-      }));
-    });
-    
-    setDraggedIndex(null);
-    setDragOverIndex(null);
+    moveItem(draggedId, targetId);
+    setDraggedId(null);
+    setDragOverId(null);
   };
 
   const selectedImages = imageItems.filter(item => item.selected);
-  const coverImage = selectedImages.length > 0 ? selectedImages[0] : null;
 
   if (allImages.length === 0) {
     return null;
@@ -148,18 +150,18 @@ export default function SocialMediaImageSelector({ form }: SocialMediaImageSelec
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {imageItems.map((item, index) => (
               <div
-                key={item.url}
+                key={item.id}
                 draggable
-                onDragStart={(e) => handleDragStart(e, index)}
+                onDragStart={(e) => handleDragStart(e, item.id)}
                 onDragEnd={handleDragEnd}
-                onDragOver={(e) => handleDragOver(e, index)}
+                onDragOver={(e) => handleDragOver(e, item.id)}
                 onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, index)}
+                onDrop={(e) => handleDrop(e, item.id)}
                 className={`
                   relative group cursor-move border-2 rounded-lg overflow-hidden transition-all duration-200
                   ${item.selected ? 'border-primary' : 'border-muted'}
-                  ${draggedIndex === index ? 'opacity-50 scale-95' : ''}
-                  ${dragOverIndex === index ? 'border-blue-500 border-dashed' : ''}
+                  ${draggedId === item.id ? 'opacity-50 scale-95' : ''}
+                  ${dragOverId === item.id ? 'border-blue-500 border-dashed scale-105' : ''}
                   hover:shadow-md
                 `}
               >
@@ -170,7 +172,7 @@ export default function SocialMediaImageSelector({ form }: SocialMediaImageSelec
                       variant={index === 0 ? "default" : "secondary"}
                       className="text-xs"
                     >
-                      {selectedImages.findIndex(si => si.url === item.url) + 1}
+                      {selectedImages.findIndex(si => si.id === item.id) + 1}
                       {index === 0 && selectedImages.includes(item) && (
                         <span className="ml-1">👑</span>
                       )}
@@ -219,7 +221,7 @@ export default function SocialMediaImageSelector({ form }: SocialMediaImageSelec
           </div>
 
           {/* Informations sur l'image de couverture */}
-          {coverImage && (
+          {selectedImages.length > 0 && (
             <div className="bg-muted/50 rounded-lg p-3">
               <div className="flex items-center gap-2 text-sm">
                 <span className="font-medium">Image de couverture :</span>
