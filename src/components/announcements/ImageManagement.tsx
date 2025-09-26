@@ -148,46 +148,43 @@ export default function ImageManagement({ form }: ImageManagementProps) {
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          {/* Section d'ajout d'images */}
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Upload image principale */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Upload className="h-4 w-4" />
-                  <h4 className="text-sm font-medium">Image principale</h4>
-                </div>
-                <MediaUploader form={form} />
-                <div className="text-xs text-muted-foreground">
-                  <p>• Formats : JPEG, PNG, WebP, HEIC</p>
-                  <p>• Taille max : 10 MB</p>
-                </div>
+          {/* Bouton d'ajout d'images */}
+          <div 
+            className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-8 text-center hover:border-primary/50 hover:bg-muted/20 transition-all duration-200 cursor-pointer group"
+            onClick={() => {
+              // Trigger le click sur l'input file caché
+              document.getElementById('image-upload-input')?.click();
+            }}
+          >
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                <Plus className="h-6 w-6 text-muted-foreground group-hover:text-primary" />
               </div>
-
-              {/* Upload images additionnelles */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  <h4 className="text-sm font-medium">Images additionnelles</h4>
-                </div>
-                <AdditionalMediaUploader form={form} />
-                <div className="text-xs text-muted-foreground">
-                  <p>• Jusqu'à 5 images supplémentaires</p>
-                  <p>• Formats : JPEG, PNG, WebP, MP4, MOV</p>
-                </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground group-hover:text-primary">
+                  Ajouter des images
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  JPEG, PNG, WebP, HEIC - Max 10 MB par fichier
+                </p>
               </div>
             </div>
+            
+            {/* Input file caché */}
+            <input
+              id="image-upload-input"
+              type="file"
+              multiple
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                // Ici on gérera l'upload des fichiers
+                console.log("Files selected:", e.target.files);
+              }}
+            />
           </div>
 
-          {/* Séparateur */}
-          {allImages.length > 0 && (
-            <div className="border-t border-muted pt-6">
-              <h4 className="text-sm font-medium mb-4 flex items-center gap-2">
-                <GripVertical className="h-4 w-4" />
-                Organisation des images
-              </h4>
-            </div>
-          )}
+          {/* Section organisation (seulement si des images existent) */}
           {/* Grille des images */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {imageItems.map((item, index) => (
