@@ -15,6 +15,7 @@ import PublishingLoadingOverlay, { PublishingStep as PublishingStepType } from "
 import CategoryStep from "@/components/announcements/steps/CategoryStep";
 import DescriptionStep from "@/components/announcements/steps/DescriptionStep";
 import ImagesStep from "@/components/announcements/steps/ImagesStep";
+import SocialStep from "@/components/announcements/steps/SocialStep";
 import PublishingStep from "@/components/announcements/steps/PublishingStep";
 import StepNavigation from "@/components/announcements/steps/StepNavigation";
 import AnnouncementSummary from "@/components/announcements/steps/AnnouncementSummary";
@@ -45,6 +46,11 @@ const stepConfigs: StepConfig[] = [
     id: "images",
     title: "Images",
     description: "Les annonces avec des images de qualité attirent davantage l'attention et génèrent plus d'intérêt."
+  },
+  {
+    id: "social",
+    title: "Réseaux sociaux",
+    description: "Adaptez votre contenu pour les réseaux sociaux et programmez votre publication."
   },
   {
     id: "publishing",
@@ -468,6 +474,8 @@ const CreateAnnouncement = () => {
                   {currentStep.id === "description" && <DescriptionStep form={form} isMobile={isMobile} />}
                   
                   {currentStep.id === "images" && <ImagesStep form={form} isMobile={isMobile} />}
+                  
+                  {currentStep.id === "social" && <SocialStep form={form} onSkip={handleNext} />}
                   
                   {currentStep.id === "publishing" && <PublishingStep form={form} isMobile={isMobile} />}
                   
