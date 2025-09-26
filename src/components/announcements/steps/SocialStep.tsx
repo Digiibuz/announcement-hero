@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Calendar, Clock, Hash, Sparkles, Image as ImageIcon, Share2, Zap, Heart, MessageCircle, Share, MoreHorizontal, PenTool } from "lucide-react";
+import { Calendar, Clock, Hash, Sparkles, Image as ImageIcon, Share2, Zap, Heart, MessageCircle, Share, MoreHorizontal } from "lucide-react";
 import { AnnouncementFormData } from "../AnnouncementForm";
 import { useAuth } from "@/context/AuthContext";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
@@ -15,7 +15,6 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
 import SocialMediaImageSelector from "../SocialMediaImageSelector";
-
 
 interface SocialStepProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -33,7 +32,6 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
   const [newHashtag, setNewHashtag] = useState("");
   const [hasZapierWebhook, setHasZapierWebhook] = useState(false);
   const [showFacebookQuestion, setShowFacebookQuestion] = useState(true);
-  
 
   // Vérifier si l'utilisateur a configuré Zapier
   useEffect(() => {
@@ -117,7 +115,6 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
       });
     }
   };
-
 
   const addHashtag = () => {
     if (newHashtag && !hashtags.includes(newHashtag)) {
@@ -277,80 +274,34 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
           </p>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Choix du mode de rédaction */}
+          {/* Zone d'explication avant génération */}
           {!socialContent && (
-            <div className="space-y-4">
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground mb-6">
-                  Comment souhaitez-vous créer le contenu de votre post ?
-                </p>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Bouton Rédiger moi-même */}
-                  <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-primary/50" onClick={() => setSocialContent("Commencez à rédiger votre post ici...")}>
-                    <CardContent className="p-6 text-center">
-                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <PenTool className="h-6 w-6 text-green-600" />
-                      </div>
-                      <h3 className="font-semibold text-lg mb-2">Rédiger mon post moi-même</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Rédigez votre contenu personnalisé avec vos propres mots et style
-                      </p>
-                      <Button variant="outline" className="w-full">
-                        <PenTool className="h-4 w-4 mr-2" />
-                        Commencer à rédiger
-                      </Button>
-                    </CardContent>
-                  </Card>
-
-                  {/* Bouton Générer avec l'IA */}
-                  <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-primary/50" onClick={handleGenerateContent}>
-                    <CardContent className="p-6 text-center">
-                      <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Sparkles className="h-6 w-6 text-white" />
-                      </div>
-                      <h3 className="font-semibold text-lg mb-2">Générer avec l'IA</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Notre IA crée un contenu optimisé avec emojis et structure engageante
-                      </p>
-                      <Button 
-                        variant="default" 
-                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                        disabled={isOptimizing.generateSocialContent}
-                      >
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        {isOptimizing.generateSocialContent ? "Génération..." : "Générer maintenant"}
-                      </Button>
-                    </CardContent>
-                  </Card>
+            <div className="bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="h-4 w-4 text-white" />
                 </div>
-              </div>
-              
-              {/* Avantages de l'IA */}
-              <div className="bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Sparkles className="h-4 w-4 text-white" />
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-1">✨ Avantages de la génération IA</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600">
-                      <div className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                        Emojis appropriés
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                        Structure engageante
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                        Call-to-action
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                        Ton professionnel
-                      </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-1">✨ Génération automatique par IA</h4>
+                  <p className="text-sm text-gray-600 mb-3">
+                    À partir de votre description, notre IA va créer un contenu engageant avec :
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                      Emojis appropriés
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                      Structure engageante
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                      Call-to-action
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                      Ton professionnel
                     </div>
                   </div>
                 </div>
@@ -358,39 +309,38 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
             </div>
           )}
 
-          {/* Affichage du contenu une fois créé */}
-          {socialContent && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">Texte de publication</label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleGenerateContent}
-                  disabled={isOptimizing.generateSocialContent}
-                >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  {isOptimizing.generateSocialContent ? "Génération..." : "Régénérer IA"}
-                </Button>
-              </div>
-              
-              <Textarea
-                value={socialContent}
-                onChange={(e) => {
-                  setSocialContent(e.target.value);
-                  form.setValue('socialContent', e.target.value);
-                }}
-                placeholder="Rédigez votre post ici..."
-                className="min-h-[120px] resize-none"
-              />
-              
-              <div className="text-xs text-green-600 flex items-center gap-1">
-                <Sparkles className="h-3 w-3" />
-                Contenu créé - Vous pouvez le modifier à tout moment
-              </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Texte de publication</label>
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={handleGenerateContent}
+                disabled={isOptimizing.generateSocialContent}
+                className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+              >
+                <Sparkles className="h-4 w-4" />
+                {isOptimizing.generateSocialContent ? "Génération en cours..." : "🚀 Générer avec l'IA"}
+              </Button>
             </div>
-          )}
+            <Textarea
+              value={socialContent}
+              onChange={(e) => {
+                setSocialContent(e.target.value);
+                // Sauvegarder automatiquement dans le formulaire
+                form.setValue('socialContent', e.target.value);
+              }}
+              placeholder="Le contenu optimisé pour les réseaux sociaux apparaîtra ici après génération IA..."
+              className="min-h-[120px]"
+            />
+            {socialContent && (
+              <div className="text-xs text-green-600 flex items-center gap-1 mt-2">
+                <Sparkles className="h-3 w-3" />
+                Contenu généré par IA - Vous pouvez le modifier si nécessaire
+              </div>
+            )}
+          </div>
 
           {/* Hashtags */}
           <div className="space-y-2">
@@ -608,7 +558,6 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
           Passer cette étape
         </Button>
       </div>
-
     </div>
   );
 }
