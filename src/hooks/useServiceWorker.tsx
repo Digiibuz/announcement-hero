@@ -5,16 +5,26 @@ export const useServiceWorker = () => {
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      registerServiceWorker();
-      
-      // Check for updates every 5 minutes (optionnel maintenant car auto-reload)
-      const updateInterval = setInterval(() => {
-        checkForUpdates();
-      }, 5 * 60 * 1000);
+    let updateInterval: NodeJS.Timeout | null = null;
+    
+    // Add a small delay to ensure React is fully initialized
+    const timer = setTimeout(() => {
+      if ('serviceWorker' in navigator) {
+        registerServiceWorker();
+        
+        // Check for updates every 5 minutes (optionnel maintenant car auto-reload)
+        updateInterval = setInterval(() => {
+          checkForUpdates();
+        }, 5 * 60 * 1000);
+      }
+    }, 100);
 
-      return () => clearInterval(updateInterval);
-    }
+    return () => {
+      clearTimeout(timer);
+      if (updateInterval) {
+        clearInterval(updateInterval);
+      }
+    };
   }, []);
 
   const registerServiceWorker = async () => {
