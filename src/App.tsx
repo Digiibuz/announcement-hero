@@ -1,16 +1,47 @@
 
-import React from "react";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
+import { Toaster as UIToaster } from "@/components/ui/toaster";
+import { Toaster as SonnerToaster } from "@/components/ui/sonner";
+import AppRoutes from "@/components/routing/Routes";
+import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
+import DynamicBackground from "@/components/ui/DynamicBackground";
+import MobileBottomNav from "@/components/ui/layout/MobileBottomNav";
+import { useServiceWorker } from "@/hooks/useServiceWorker";
+
+// Configuration React Query - Recréé pour éviter les conflits de cache
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      refetchOnMount: false, 
+      refetchOnReconnect: false,
+      staleTime: Infinity,
+    },
+  },
+});
 
 function App() {
-  console.log("App with HashRouter is rendering");
+  // Initialize service worker for automatic updates
+  useServiceWorker();
 
   return (
     <HashRouter>
-      <div style={{ padding: "20px", backgroundColor: "white", color: "black" }}>
-        <h1>Test App avec HashRouter</h1>
-        <p>Si vous voyez ceci, HashRouter fonctionne !</p>
-      </div>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TooltipProvider>
+            <DynamicBackground className="min-h-screen">
+              <ImpersonationBanner />
+              <AppRoutes />
+              <MobileBottomNav />
+            </DynamicBackground>
+            <SonnerToaster />
+            <UIToaster />
+          </TooltipProvider>
+        </AuthProvider>
+      </QueryClientProvider>
     </HashRouter>
   );
 }
