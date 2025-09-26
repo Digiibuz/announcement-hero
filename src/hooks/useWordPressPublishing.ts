@@ -52,7 +52,8 @@ export const useWordPressPublishing = () => {
   const publishToWordPress = async (
     announcement: Announcement, 
     wordpressCategoryId: string,
-    userId: string
+    userId: string,
+    currentFormData?: { socialContent?: string; socialHashtags?: string[] }
   ): Promise<{ success: boolean; message: string; wordpressPostId: number | null }> => {
     setIsPublishing(true);
     resetPublishingState();
@@ -507,8 +508,8 @@ export const useWordPressPublishing = () => {
                main_image: announcement.images?.[0] || null,
                published_at: new Date().toISOString(),
                triggered_from: 'announcement_publication',
-               social_content: announcement.social_content,
-               hashtags: announcement.social_hashtags
+               social_content: currentFormData?.socialContent || announcement.social_content,
+               hashtags: currentFormData?.socialHashtags || announcement.social_hashtags
              };
             
             await fetch(userProfile.zapier_webhook_url, {

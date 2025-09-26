@@ -158,7 +158,8 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
             const result = await publishToWordPress(
               announcementForWordPress,
               updatedAnnouncement.wordpress_category_id,
-              announcementOwnerId // Use the original owner's ID for WordPress config
+              announcementOwnerId, // Use the original owner's ID for WordPress config
+              formData // Pass current form data for social content
             );
 
             if (result.success) {

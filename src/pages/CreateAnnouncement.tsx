@@ -334,7 +334,7 @@ const CreateAnnouncement = () => {
           additionalMedias: formData.additionalMedias || []
         } as Announcement;
         
-        wordpressResult = await publishToWordPress(announcementWithMedias, formData.wordpressCategory, user.id);
+        wordpressResult = await publishToWordPress(announcementWithMedias, formData.wordpressCategory, user.id, formData);
         
         if (!isMobile) {
           if (wordpressResult.success) {
