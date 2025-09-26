@@ -373,31 +373,24 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium">Texte de publication</label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsWriterModalOpen(true)}
-                  >
-                    <PenTool className="h-4 w-4 mr-2" />
-                    Modifier
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleGenerateContent}
-                    disabled={isOptimizing.generateSocialContent}
-                  >
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    {isOptimizing.generateSocialContent ? "Génération..." : "Régénérer IA"}
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerateContent}
+                  disabled={isOptimizing.generateSocialContent}
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  {isOptimizing.generateSocialContent ? "Génération..." : "Régénérer IA"}
+                </Button>
               </div>
               
-              <div className="bg-muted/50 rounded-lg p-4 border">
+              <div className="bg-muted/50 rounded-lg p-4 border cursor-pointer hover:bg-muted/70 transition-colors" onClick={() => setIsWriterModalOpen(true)}>
                 <div className="whitespace-pre-wrap text-sm">{socialContent}</div>
+                <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                  <PenTool className="h-3 w-3" />
+                  Cliquez pour modifier le texte
+                </div>
               </div>
               
               <div className="text-xs text-green-600 flex items-center gap-1">
