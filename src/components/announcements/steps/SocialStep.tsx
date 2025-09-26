@@ -147,36 +147,6 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
     return `${previewText}\n\n${displayHashtags}`.trim();
   };
 
-  // Si l'utilisateur ne veut pas créer de post Facebook, afficher seulement le message
-  if (createFacebookPost === false) {
-    return (
-      <div className={cn("space-y-6", className)}>
-        <Card>
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-muted flex items-center justify-center">
-              <Share2 className="h-6 w-6 text-muted-foreground" />
-            </div>
-            <CardTitle>Publication sur les réseaux sociaux désactivée</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <p className="text-muted-foreground">
-              Vous avez choisi de ne pas créer de post pour les réseaux sociaux pour cette annonce.
-            </p>
-            <Button 
-              onClick={() => {
-                form.setValue('createFacebookPost', undefined);
-                setShowFacebookQuestion(true);
-              }} 
-              variant="outline" 
-              className="w-full"
-            >
-              Modifier ce choix
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   
   // Afficher la question initiale si l'utilisateur n'a pas encore fait de choix
