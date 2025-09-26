@@ -1,48 +1,14 @@
 
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HashRouter } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
-import { Toaster as UIToaster } from "@/components/ui/toaster";
-import { Toaster as SonnerToaster } from "@/components/ui/sonner";
-import AppRoutes from "@/components/routing/Routes";
-import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
-import DynamicBackground from "@/components/ui/DynamicBackground";
-import MobileBottomNav from "@/components/ui/layout/MobileBottomNav";
-import { useServiceWorker } from "@/hooks/useServiceWorker";
-
-// Configuration React Query sans refetch automatique
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false, // Empêche les refetch sur changement de fenêtre
-      refetchOnMount: false,
-      refetchOnReconnect: false,
-      staleTime: Infinity, // Les données ne deviennent jamais stale
-    },
-  },
-});
+import React from "react";
 
 function App() {
-  // Initialize service worker for automatic updates
-  useServiceWorker();
+  console.log("App component is rendering");
 
   return (
-    <HashRouter>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <TooltipProvider>
-            <DynamicBackground className="min-h-screen">
-              <ImpersonationBanner />
-              <AppRoutes />
-              <MobileBottomNav />
-            </DynamicBackground>
-            <SonnerToaster />
-            <UIToaster />
-          </TooltipProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </HashRouter>
+    <div style={{ padding: "20px", backgroundColor: "white", color: "black" }}>
+      <h1>Test App</h1>
+      <p>Si vous voyez ceci, React fonctionne !</p>
+    </div>
   );
 }
 
