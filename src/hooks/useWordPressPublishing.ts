@@ -498,18 +498,18 @@ export const useWordPressPublishing = () => {
             
             console.log("Déclenchement du webhook Zapier:", userProfile.zapier_webhook_url);
             
-            const zapierData = {
-              announcement_id: announcement.id,
-              title: announcement.title,
-              description: announcement.description,
-              wordpress_url: wpResponseData.link || `${wpConfig.site_url}/?p=${wordpressPostId}`,
-              wordpress_post_id: wordpressPostId,
-              main_image: announcement.images?.[0] || null,
-              published_at: new Date().toISOString(),
-              triggered_from: 'announcement_publication',
-              social_content: (announcement as any).socialContent,
-              hashtags: (announcement as any).socialHashtags
-            };
+             const zapierData = {
+               announcement_id: announcement.id,
+               title: announcement.title,
+               description: announcement.description,
+               wordpress_url: wpResponseData.link || `${wpConfig.site_url}/?p=${wordpressPostId}`,
+               wordpress_post_id: wordpressPostId,
+               main_image: announcement.images?.[0] || null,
+               published_at: new Date().toISOString(),
+               triggered_from: 'announcement_publication',
+               social_content: announcement.social_content,
+               hashtags: announcement.social_hashtags
+             };
             
             await fetch(userProfile.zapier_webhook_url, {
               method: "POST",
