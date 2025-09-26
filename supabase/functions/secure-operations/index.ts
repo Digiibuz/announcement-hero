@@ -67,11 +67,14 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in secure operations:', error);
     
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+    const isUnauthorized = error instanceof Error && error.message === 'Unauthorized access';
+    
     return new Response(
-      JSON.stringify({ error: error.message || 'An unexpected error occurred' }),
+      JSON.stringify({ error: errorMessage }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: error.message === 'Unauthorized access' ? 401 : 500
+        status: isUnauthorized ? 401 : 500
       }
     );
   }

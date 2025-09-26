@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import * as log from "https://deno.land/std@0.168.0/log/mod.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.1";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.38.1";
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') as string;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') as string;
@@ -33,7 +33,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-let supabaseAdmin;
+let supabaseAdmin: SupabaseClient;
 try {
   supabaseAdmin = createClient(
     SUPABASE_URL,
@@ -41,9 +41,10 @@ try {
   );
 } catch (error) {
   console.error("Error creating Supabase Admin client:", error);
+  throw new Error("Failed to initialize Supabase Admin client");
 }
 
-let supabaseClient;
+let supabaseClient: SupabaseClient;
 try {
   supabaseClient = createClient(
     SUPABASE_URL,
@@ -51,6 +52,7 @@ try {
   );
 } catch (error) {
   console.error("Error creating Supabase Client:", error);
+  throw new Error("Failed to initialize Supabase Client");
 }
 
 function handleError(error: any) {
@@ -94,7 +96,8 @@ async function getUserGoogleProfile(userId: string) {
         logger.info(`Table exists check: user_google_business_profiles has ${count} total records`);
       }
     } catch (e) {
-      logger.error(`Exception checking table: ${e.message}`);
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      logger.error(`Exception checking table: ${errorMessage}`);
     }
     
     const { data, error } = await supabaseAdmin
@@ -124,7 +127,8 @@ async function getUserGoogleProfile(userId: string) {
           logger.info(`Table check: user_google_business_profiles has ${count} total records`);
         }
       } catch (e) {
-        logger.error(`Exception checking table: ${e.message}`);
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        logger.error(`Exception checking table: ${errorMessage}`);
       }
     }
     
@@ -425,7 +429,8 @@ async function handleCallback(code: string, state: string, userId: string) {
           
         logger.info(`Table check result: ${tableError ? 'Error: ' + JSON.stringify(tableError) : 'Table exists'}`);
       } catch (e) {
-        logger.error(`Error checking table: ${e.message}`);
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        logger.error(`Error checking table: ${errorMessage}`);
       }
       
       // Now attempt the insert
@@ -517,7 +522,8 @@ serve(async (req) => {
       console.log(`[${requestId}] Request data:`, JSON.stringify(requestData));
     } catch (e) {
       console.error(`[${requestId}] Error parsing JSON:`, e);
-      throw new Error(`Error parsing JSON: ${e.message || e}`);
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      throw new Error(`Error parsing JSON: ${errorMessage}`);
     }
     
     const action = requestData?.action;
@@ -555,7 +561,8 @@ serve(async (req) => {
       console.log(`[${requestId}] User authenticated: ${user.id}`);
     } catch (authError) {
       console.error(`[${requestId}] Error during authentication:`, authError);
-      throw new Error(`Error during authentication: ${authError.message || authError}`);
+      const errorMessage = authError instanceof Error ? authError.message : String(authError);
+      throw new Error(`Error during authentication: ${errorMessage}`);
     }
     
     const userId = user.id;
@@ -616,9 +623,10 @@ serve(async (req) => {
         );
       } catch (error) {
         logger.error(`[${requestId}] Error handling callback:`, error);
+        const errorMessage = error instanceof Error ? error.message : "Failed to connect Google account";
         return new Response(
           JSON.stringify({ 
-            error: error.message || "Failed to connect Google account" 
+            error: errorMessage
           }),
           {
             status: 400,
@@ -800,7 +808,8 @@ serve(async (req) => {
     throw new Error(`Unrecognized action: ${action}`);
   } catch (error) {
     console.error(`[${requestId}] Unhandled error:`, error);
-    console.error(`[${requestId}] Stack trace:`, error.stack);
+    const errorStack = error instanceof Error ? error.stack : String(error);
+    console.error(`[${requestId}] Stack trace:`, errorStack);
     return handleError(error);
   }
 });
