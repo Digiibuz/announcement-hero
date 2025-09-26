@@ -64,7 +64,7 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
 
     try {
       const optimizedContent = await optimizeContent(
-        "generateDescription",
+        "generateSocialContent",
         title,
         description || "",
         {
@@ -203,11 +203,11 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
                 variant="default"
                 size="sm"
                 onClick={handleGenerateContent}
-                disabled={isOptimizing.generateDescription}
+                disabled={isOptimizing.generateSocialContent}
                 className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
                 <Sparkles className="h-4 w-4" />
-                {isOptimizing.generateDescription ? "Génération en cours..." : "🚀 Générer avec l'IA"}
+                {isOptimizing.generateSocialContent ? "Génération en cours..." : "🚀 Générer avec l'IA"}
               </Button>
             </div>
             <Textarea

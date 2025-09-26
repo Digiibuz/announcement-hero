@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useAILimits } from "@/hooks/useAILimits";
 import { AIGenerationSettings } from "@/components/announcements/AIGenerationOptions";
 
-export type OptimizationType = "generateDescription";
+export type OptimizationType = "generateDescription" | "generateSocialContent";
 
 export const useContentOptimization = () => {
   const { user } = useAuth();
@@ -14,6 +14,7 @@ export const useContentOptimization = () => {
   
   const [isOptimizing, setIsOptimizing] = useState<Record<OptimizationType, boolean>>({
     generateDescription: false,
+    generateSocialContent: false,
   });
 
   const optimizeContent = useCallback(async (

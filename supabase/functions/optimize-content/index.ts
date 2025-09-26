@@ -28,29 +28,69 @@ serve(async (req) => {
       console.log(`Options IA: Ton=${aiSettings.tone}, Longueur=${aiSettings.length}`);
     }
     
-    // Seule la génération de description est supportée maintenant
-    if (type !== "generateDescription") {
+    let systemMessage: string;
+    let prompt: string;
+    
+    // Différencier entre génération de description et contenu social
+    if (type === "generateDescription") {
+      // Génération de description classique (sans emojis)
+      const toneInstructions = getToneInstructions(aiSettings?.tone || "convivial");
+      const lengthInstructions = getLengthInstructions(aiSettings?.length || "standard");
+      
+      systemMessage = `Tu es un rédacteur professionnel spécialisé dans la création de contenu pour des annonces. Rédige un texte informatif, structuré et engageant ${lengthInstructions.target} basé sur le titre fourni. ${toneInstructions.system} IMPORTANT: Fournis UNIQUEMENT le texte généré, sans préface ni commentaire.`;
+      
+      prompt = `Titre de l'annonce: "${title}".
+      ${description ? `Voici un exemple de contenu ou notes: "${description}"` : ""}
+      
+      Rédige un texte structuré, informatif et engageant ${lengthInstructions.target} qui servira de description pour cette annonce. 
+      Ton texte doit:
+      - Avoir une structure claire avec des paragraphes
+      - ${toneInstructions.style}
+      - ${lengthInstructions.structure}
+      - Ne pas contenir de titre ni sous-titres
+      - Ne pas inclure de formatage spécial (pas de gras, italique...)
+      
+      Renvoie uniquement le texte généré sans aucune introduction ou commentaire supplémentaire.`;
+
+    } else if (type === "generateSocialContent") {
+      // Génération de contenu spécialement pour les réseaux sociaux avec emojis
+      systemMessage = `Tu es un expert en création de contenu pour les réseaux sociaux. Tu dois transformer le contenu fourni en une publication engageante avec des emojis, des bullet points et une structure optimisée pour les réseaux sociaux. IMPORTANT: Fournis UNIQUEMENT le contenu social généré, sans préface ni commentaire.`;
+      
+      prompt = `Titre: "${title}"
+      ${description ? `Description: "${description}"` : ""}
+      
+      Transforme ce contenu en une publication optimisée pour les réseaux sociaux en respectant ces règles:
+      
+      🎯 STRUCTURE OBLIGATOIRE:
+      - Commencer par un emoji et un titre accrocheur
+      - Utiliser des bullet points avec emojis appropriés (❌, ✅, 👉, 💡, 🚀, etc.)
+      - Inclure un call-to-action à la fin avec emoji
+      - Maximum 300 mots pour garder l'engagement
+      
+      📝 STYLE:
+      - Ton engageant et professionnel
+      - Emojis pertinents pour illustrer chaque point
+      - Phrases courtes et percutantes
+      - Interpeller directement le lecteur
+      
+      ⚡ EXEMPLE DE FORMAT:
+      "🌟 [Titre accrocheur]
+      
+      [Phrase d'accroche engageante] 😊
+      
+      ✅ Point clé 1
+      👉 Bénéfice ou explication
+      
+      ✅ Point clé 2  
+      👉 Bénéfice ou explication
+      
+      🚀 [Call-to-action avec emoji]"
+      
+      Génère maintenant la publication pour les réseaux sociaux:`;
+
+    } else {
       throw new Error(`Type d'opération non supporté: ${type}`);
     }
-    
-    // Définir les paramètres selon les options IA
-    const toneInstructions = getToneInstructions(aiSettings?.tone || "convivial");
-    const lengthInstructions = getLengthInstructions(aiSettings?.length || "standard");
-    
-    const systemMessage = `Tu es un rédacteur professionnel spécialisé dans la création de contenu pour des annonces. Rédige un texte informatif, structuré et engageant ${lengthInstructions.target} basé sur le titre fourni. ${toneInstructions.system} IMPORTANT: Fournis UNIQUEMENT le texte généré, sans préface ni commentaire.`;
-    
-    const prompt = `Titre de l'annonce: "${title}".
-    ${description ? `Voici un exemple de contenu ou notes: "${description}"` : ""}
-    
-    Rédige un texte structuré, informatif et engageant ${lengthInstructions.target} qui servira de description pour cette annonce. 
-    Ton texte doit:
-    - Avoir une structure claire avec des paragraphes
-    - ${toneInstructions.style}
-    - ${lengthInstructions.structure}
-    - Ne pas contenir de titre ni sous-titres
-    - Ne pas inclure de formatage spécial (pas de gras, italique...)
-    
-    Renvoie uniquement le texte généré sans aucune introduction ou commentaire supplémentaire.`;
 
     console.log(`Génération de contenu, appel à OpenAI en cours...`);
 
@@ -104,23 +144,36 @@ serve(async (req) => {
       
       let optimizedContent = data.choices[0].message.content;
       
-      // Post-traitement pour retirer tout texte introductif ou commentaire
-      optimizedContent = optimizedContent
-        // Supprime les phrases d'introduction comme "Voici" ou "Bien sûr"
-        .replace(/^(Bien sûr !|Voici|Certainement|D'accord|Absolument|Voilà|Avec plaisir)[^\n]*\n+/i, '')
-        // Supprime les commentaires finaux commençant par des tirets ou des remarques
-        .replace(/\n+(-{2,}|Remarque|Note|Cette version)[^\n]*$/i, '')
-        // Supprime les guillemets qui pourraient entourer la réponse
-        .replace(/^["\s]+|["\s]+$/g, '')
-        // Supprime les titres (lignes suivies de ':' ou lignes avec # au début)
-        .replace(/^#+\s+.*$|^\s*[\w\s]+\s*:\s*$/gm, '')
-        // Supprime les exemples entre parenthèses ou qui commencent par "Exemple :"
-        .replace(/\(exemple.*?\)|exemple\s*:.*?(\n|$)/gi, '')
-        // Supprime toutes les mises en gras (balises Markdown ** ou __)
-        .replace(/(\*\*|__)(.*?)(\*\*|__)/g, "$2")
-        // Supprime les marqueurs d'icônes et symboles courants
-        .replace(/:[a-z_]+:|🔍|✅|⚠️|❗|📝|💡|🔑|📊|🎯|⭐|👉|✨|🚀|💪|⚡|📌|🔖|📢|🔔/g, '')
-        .trim();
+      // Post-traitement différent selon le type
+      if (type === "generateDescription") {
+        // Pour les descriptions classiques : supprimer emojis et formatage
+        optimizedContent = optimizedContent
+          // Supprime les phrases d'introduction comme "Voici" ou "Bien sûr"
+          .replace(/^(Bien sûr !|Voici|Certainement|D'accord|Absolument|Voilà|Avec plaisir)[^\n]*\n+/i, '')
+          // Supprime les commentaires finaux commençant par des tirets ou des remarques
+          .replace(/\n+(-{2,}|Remarque|Note|Cette version)[^\n]*$/i, '')
+          // Supprime les guillemets qui pourraient entourer la réponse
+          .replace(/^["\s]+|["\s]+$/g, '')
+          // Supprime les titres (lignes suivies de ':' ou lignes avec # au début)
+          .replace(/^#+\s+.*$|^\s*[\w\s]+\s*:\s*$/gm, '')
+          // Supprime les exemples entre parenthèses ou qui commencent par "Exemple :"
+          .replace(/\(exemple.*?\)|exemple\s*:.*?(\n|$)/gi, '')
+          // Supprime toutes les mises en gras (balises Markdown ** ou __)
+          .replace(/(\*\*|__)(.*?)(\*\*|__)/g, "$2")
+          // Supprime les marqueurs d'icônes et symboles courants
+          .replace(/:[a-z_]+:|🔍|✅|⚠️|❗|📝|💡|🔑|📊|🎯|⭐|👉|✨|🚀|💪|⚡|📌|🔖|📢|🔔/g, '')
+          .trim();
+      } else if (type === "generateSocialContent") {
+        // Pour le contenu social : garder les emojis mais nettoyer les commentaires
+        optimizedContent = optimizedContent
+          // Supprime les phrases d'introduction comme "Voici" ou "Bien sûr"
+          .replace(/^(Bien sûr !|Voici|Certainement|D'accord|Absolument|Voilà|Avec plaisir)[^\n]*\n+/i, '')
+          // Supprime les commentaires finaux commençant par des tirets ou des remarques
+          .replace(/\n+(-{2,}|Remarque|Note|Cette version)[^\n]*$/i, '')
+          // Supprime les guillemets qui pourraient entourer la réponse
+          .replace(/^["\s]+|["\s]+$/g, '')
+          .trim();
+      }
 
       console.log("Contenu généré traité: ", optimizedContent.substring(0, 100) + "...");
 
