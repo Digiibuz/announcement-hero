@@ -84,7 +84,10 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
         additionalMedias: announcement.additionalMedias || [],
         seoTitle: announcement.seo_title || "",
         seoDescription: announcement.seo_description || "",
-        seoSlug: announcement.seo_slug || ""
+        seoSlug: announcement.seo_slug || "",
+        createFacebookPost: announcement.create_facebook_post || false,
+        socialContent: announcement.social_content || "",
+        socialHashtags: announcement.social_hashtags || []
       });
     }
   }, [announcement, isEditing]);
@@ -116,7 +119,10 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
         additional_medias: formData.additionalMedias || [], // Correct mapping
         seo_title: formData.seoTitle || null,
         seo_description: formData.seoDescription || null,
-        seo_slug: formData.seoSlug || null
+        seo_slug: formData.seoSlug || null,
+        create_facebook_post: formData.createFacebookPost || false,
+        social_content: formData.socialContent || null,
+        social_hashtags: formData.socialHashtags || []
       };
       
       // Update announcement in database

@@ -227,7 +227,10 @@ const CreateAnnouncement = () => {
         publish_date: formData.publishDate ? new Date(formData.publishDate).toISOString() : null,
         seo_title: formData.seoTitle || null,
         seo_description: formData.seoDescription || null,
-        seo_slug: formData.seoSlug || null
+        seo_slug: formData.seoSlug || null,
+        create_facebook_post: formData.createFacebookPost || false,
+        social_content: formData.socialContent || null,
+        social_hashtags: formData.socialHashtags || []
       };
 
       const { data: newAnnouncement, error } = await supabase
@@ -307,7 +310,10 @@ const CreateAnnouncement = () => {
         publish_date: formData.publishDate ? new Date(formData.publishDate).toISOString() : null,
         seo_title: formData.seoTitle || null,
         seo_description: formData.seoDescription || null,
-        seo_slug: formData.seoSlug || null
+        seo_slug: formData.seoSlug || null,
+        create_facebook_post: formData.createFacebookPost || false,
+        social_content: formData.socialContent || null,
+        social_hashtags: formData.socialHashtags || []
       };
 
       const {
