@@ -21,6 +21,11 @@ export type Announcement = {
   create_facebook_post?: boolean; // Nouveau champ pour la publication Facebook
   social_content?: string; // Contenu optimisé pour les réseaux sociaux
   social_hashtags?: string[]; // Hashtags pour les réseaux sociaux
+  facebook_publication_status?: 'pending' | 'success' | 'error'; // Statut de publication Facebook
+  facebook_published_at?: string; // Date de publication Facebook
+  facebook_error_message?: string; // Message d'erreur Facebook
+  facebook_post_id?: string; // ID du post Facebook
+  facebook_url?: string; // URL du post Facebook
 };
 
 // Type pour les catégories WordPress standard
