@@ -20,6 +20,11 @@ export type Database = {
           create_facebook_post: boolean | null
           created_at: string
           description: string | null
+          facebook_error_message: string | null
+          facebook_post_id: string | null
+          facebook_publication_status: string | null
+          facebook_published_at: string | null
+          facebook_url: string | null
           id: string
           images: string[] | null
           is_divipixel: boolean | null
@@ -42,6 +47,11 @@ export type Database = {
           create_facebook_post?: boolean | null
           created_at?: string
           description?: string | null
+          facebook_error_message?: string | null
+          facebook_post_id?: string | null
+          facebook_publication_status?: string | null
+          facebook_published_at?: string | null
+          facebook_url?: string | null
           id?: string
           images?: string[] | null
           is_divipixel?: boolean | null
@@ -64,6 +74,11 @@ export type Database = {
           create_facebook_post?: boolean | null
           created_at?: string
           description?: string | null
+          facebook_error_message?: string | null
+          facebook_post_id?: string | null
+          facebook_publication_status?: string | null
+          facebook_published_at?: string | null
+          facebook_url?: string | null
           id?: string
           images?: string[] | null
           is_divipixel?: boolean | null

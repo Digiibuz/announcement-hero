@@ -49,7 +49,7 @@ const ClientDetailDialog = ({ clientId, open, onOpenChange }: ClientDetailDialog
           return;
         }
 
-        setAnnouncements(data || []);
+        setAnnouncements(data as Announcement[] || []);
       } catch (error) {
         console.error('Error fetching client announcements:', error);
       } finally {

@@ -491,13 +491,21 @@ export const useWordPressPublishing = () => {
             .eq('id', userId)
             .single();
           
-          if (userProfile?.zapier_webhook_url && announcement.status === 'published') {
+            if (userProfile?.zapier_webhook_url && announcement.status === 'published') {
             // Démarrer l'étape Facebook si l'utilisateur a configuré un post Facebook
             if (announcement.title && (announcement as any).createFacebookPost === true) {
               updatePublishingStep("facebook", "loading", "Publication sur Facebook en cours...");
+              
+              // Marquer le statut Facebook comme "pending" dans la base de données
+              await supabase
+                .from("announcements")
+                .update({ facebook_publication_status: 'pending' })
+                .eq("id", announcement.id);
             }
             
             console.log("Déclenchement du webhook Zapier:", userProfile.zapier_webhook_url);
+            
+            const callbackUrl = `${window.location.origin.replace('localhost:5173', 'localhost:54321')}/functions/v1/zapier-callback`;
             
              const zapierData = {
                announcement_id: announcement.id,
@@ -511,8 +519,9 @@ export const useWordPressPublishing = () => {
                published_at: new Date().toISOString(),
                triggered_from: 'announcement_publication',
                social_content: currentFormData?.socialContent || announcement.social_content,
-               hashtags: (currentFormData?.socialHashtags || announcement.social_hashtags)?.map(tag => tag.startsWith('#') ? tag : `#${tag}`).join(' ') || ''
-             };
+               hashtags: (currentFormData?.socialHashtags || announcement.social_hashtags)?.map(tag => tag.startsWith('#') ? tag : `#${tag}`).join(' ') || '',
+               callback_url: callbackUrl // URL pour que Zapier confirme le succès/échec
+              };
             
             await fetch(userProfile.zapier_webhook_url, {
               method: "POST",

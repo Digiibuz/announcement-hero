@@ -29,7 +29,7 @@ export const useRecentAnnouncements = (limit: number = 5) => {
           throw fetchError;
         }
 
-        setAnnouncements(data || []);
+        setAnnouncements(data as Announcement[] || []);
       } catch (err: any) {
         console.error('Error fetching recent announcements:', err);
         setError(err.message);

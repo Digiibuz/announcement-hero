@@ -6,6 +6,7 @@ import { Pencil, FileEdit } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import AnnouncementPreview from "@/components/announcements/AnnouncementPreview";
 import AnnouncementForm from "@/components/announcements/AnnouncementForm";
+import FacebookPublicationStatus from "@/components/announcements/FacebookPublicationStatus";
 import { Announcement } from "@/types/announcement";
 
 interface AnnouncementTabsProps {
@@ -105,6 +106,8 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
               socialContent: announcement.social_content,
               socialHashtags: announcement.social_hashtags,
             }} />
+            
+            <FacebookPublicationStatus announcement={announcement} />
           </>
         )}
       </TabsContent>
