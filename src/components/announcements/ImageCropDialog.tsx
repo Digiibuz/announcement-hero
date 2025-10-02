@@ -108,23 +108,13 @@ export const ImageCropDialog = ({
       <DialogContent className="max-w-5xl p-0 gap-0 bg-white max-h-[95vh] overflow-y-auto sm:max-h-[90vh]">
         {/* Header personnalisé */}
         <div className="px-4 pt-4 pb-3 border-b sm:px-8 sm:pt-8 sm:pb-6">
-          <div className="flex items-start justify-between">
-            <div className="space-y-1 sm:space-y-2">
-              <DialogTitle className="text-lg sm:text-2xl font-semibold text-gray-900">
-                Redimensionner pour Instagram
-              </DialogTitle>
-              <p className="text-xs sm:text-sm text-gray-600 font-normal">
-                Choisissez le format Instagram souhaité. L'image sera automatiquement recadrée depuis le centre.
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-full hover:bg-gray-100 flex-shrink-0"
-              onClick={() => onOpenChange(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
+          <div className="space-y-1 sm:space-y-2">
+            <DialogTitle className="text-lg sm:text-2xl font-semibold text-gray-900">
+              Redimensionner pour Instagram
+            </DialogTitle>
+            <p className="text-xs sm:text-sm text-gray-600 font-normal">
+              Choisissez le format Instagram souhaité. L'image sera automatiquement recadrée depuis le centre.
+            </p>
           </div>
         </div>
 
