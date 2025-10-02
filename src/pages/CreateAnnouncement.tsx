@@ -50,7 +50,7 @@ const stepConfigs: StepConfig[] = [
   {
     id: "social",
     title: "Réseaux sociaux",
-    description: "Adaptez votre contenu pour les réseaux sociaux et programmez votre publication."
+    description: ""
   },
   {
     id: "publishing",
