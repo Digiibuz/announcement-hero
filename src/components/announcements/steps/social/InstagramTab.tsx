@@ -89,20 +89,22 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
               <Button
                 type="button"
                 variant="ghost"
-                size="icon"
+                size="sm"
                 onClick={() => setShowCropDialog(true)}
-                className="h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
+                className="h-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background px-4"
               >
-                <Crop className="h-5 w-5" />
+                <Crop className="h-4 w-4 mr-2" />
+                Recadrer
               </Button>
               <Button
                 type="button"
                 variant="ghost"
-                size="icon"
+                size="sm"
                 onClick={() => setShowImageSelector(true)}
-                className="h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
+                className="h-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background px-4"
               >
-                <ImageIcon className="h-5 w-5" />
+                <ImageIcon className="h-4 w-4 mr-2" />
+                Remplacer
               </Button>
             </div>
           </div>
