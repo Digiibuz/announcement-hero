@@ -162,7 +162,7 @@ export const ImageCropDialog = ({
           {/* Zone de recadrage */}
           <div className="space-y-2 sm:space-y-3">
             <h3 className="text-sm font-semibold text-gray-900">Recadrage interactif</h3>
-            <div className="relative h-[400px] sm:h-[420px] bg-gray-400 rounded-lg overflow-hidden">
+            <div className="relative h-[500px] sm:h-[420px] bg-gray-400 rounded-lg overflow-hidden">
               <Cropper
                 image={imageUrl}
                 crop={crop}
@@ -177,7 +177,13 @@ export const ImageCropDialog = ({
                 style={{
                   containerStyle: {
                     backgroundColor: '#9CA3AF',
+                    width: '100%',
+                    height: '100%',
                   },
+                  mediaStyle: {
+                    width: '100%',
+                    height: '100%',
+                  }
                 }}
               />
             </div>
