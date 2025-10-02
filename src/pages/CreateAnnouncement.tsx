@@ -49,7 +49,7 @@ const stepConfigs: StepConfig[] = [
   },
   {
     id: "social",
-    title: "Réseaux sociaux",
+    title: "",
     description: ""
   },
   {
