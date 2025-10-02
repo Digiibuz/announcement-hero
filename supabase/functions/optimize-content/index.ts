@@ -53,13 +53,13 @@ serve(async (req) => {
       Renvoie uniquement le texte généré sans aucune introduction ou commentaire supplémentaire.`;
 
     } else if (type === "generateSocialContent") {
-      // Génération de contenu spécialement pour les réseaux sociaux avec emojis
-      systemMessage = `Tu es un expert en création de contenu pour les réseaux sociaux. Tu dois transformer le contenu fourni en une publication engageante avec des emojis, des bullet points et une structure optimisée pour les réseaux sociaux. IMPORTANT: Fournis UNIQUEMENT le contenu social généré, sans préface ni commentaire.`;
+      // Génération de contenu spécialement pour Instagram avec emojis
+      systemMessage = `Tu es un expert en création de contenu pour Instagram. Tu dois transformer le contenu fourni en une publication engageante avec des emojis, des bullet points et une structure optimisée pour Instagram. IMPORTANT: Fournis UNIQUEMENT le contenu Instagram généré, sans préface ni commentaire.`;
       
       prompt = `Titre: "${title}"
       ${description ? `Description: "${description}"` : ""}
       
-      Transforme ce contenu en une publication optimisée pour les réseaux sociaux en respectant ces règles:
+      Transforme ce contenu en une publication optimisée pour Instagram en respectant ces règles:
       
       🎯 STRUCTURE OBLIGATOIRE:
       - Commencer par un emoji et un titre accrocheur
@@ -86,7 +86,46 @@ serve(async (req) => {
       
       🚀 [Call-to-action avec emoji]"
       
-      Génère maintenant la publication pour les réseaux sociaux:`;
+      Génère maintenant la publication pour Instagram:`;
+
+    } else if (type === "generateFacebookContent") {
+      // Génération de contenu spécialement pour Facebook avec hashtags intégrés
+      systemMessage = `Tu es un expert en création de contenu pour Facebook. Tu dois transformer le contenu fourni en une publication engageante avec des emojis, des hashtags intégrés naturellement dans le texte, et une structure optimisée pour Facebook. IMPORTANT: Fournis UNIQUEMENT le contenu Facebook généré, sans préface ni commentaire.`;
+      
+      prompt = `Titre: "${title}"
+      ${description ? `Description: "${description}"` : ""}
+      
+      Transforme ce contenu en une publication optimisée pour Facebook en respectant ces règles:
+      
+      🎯 STRUCTURE OBLIGATOIRE:
+      - Commencer par un emoji et un titre accrocheur
+      - Intégrer 3-5 hashtags pertinents NATURELLEMENT dans le texte (pas à la fin en liste)
+      - Utiliser des emojis pour illustrer les points clés
+      - Inclure un call-to-action à la fin
+      - Maximum 400 mots pour une lecture agréable
+      
+      📝 STYLE:
+      - Ton convivial et engageant
+      - Hashtags intégrés de façon fluide (#MonHashtag dans une phrase naturelle)
+      - Emojis pertinents mais sans en abuser
+      - Phrases courtes et impactantes
+      - Interpeller directement le lecteur
+      
+      ⚡ EXEMPLE DE FORMAT:
+      "🌟 [Titre accrocheur]
+      
+      [Phrase d'accroche qui intègre un #hashtag naturellement] 😊
+      
+      Voici pourquoi c'est important pour votre #projet :
+      
+      ✅ Point clé 1 avec #mot-clé intégré
+      💡 Point clé 2
+      
+      🚀 [Call-to-action]"
+      
+      IMPORTANT: Les hashtags doivent être intégrés DANS le texte, pas listés à la fin !
+      
+      Génère maintenant la publication pour Facebook:`;
 
     } else {
       throw new Error(`Type d'opération non supporté: ${type}`);
@@ -163,8 +202,8 @@ serve(async (req) => {
           // Supprime les marqueurs d'icônes et symboles courants
           .replace(/:[a-z_]+:|🔍|✅|⚠️|❗|📝|💡|🔑|📊|🎯|⭐|👉|✨|🚀|💪|⚡|📌|🔖|📢|🔔/g, '')
           .trim();
-      } else if (type === "generateSocialContent") {
-        // Pour le contenu social : garder les emojis mais nettoyer les commentaires
+      } else if (type === "generateSocialContent" || type === "generateFacebookContent") {
+        // Pour le contenu social : garder les emojis et hashtags mais nettoyer les commentaires
         optimizedContent = optimizedContent
           // Supprime les phrases d'introduction comme "Voici" ou "Bien sûr"
           .replace(/^(Bien sûr !|Voici|Certainement|D'accord|Absolument|Voilà|Avec plaisir)[^\n]*\n+/i, '')
