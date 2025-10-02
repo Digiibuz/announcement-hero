@@ -53,7 +53,7 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
               onInstagramChange={(enabled) => form.setValue("createInstagramPost", enabled)}
             />
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+            <div className="flex justify-center pt-4">
               <Button
                 type="button"
                 onClick={() => handlePlatformSelection(false)}
@@ -61,14 +61,6 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
                 disabled={!facebookEnabled && !instagramEnabled}
               >
                 Continuer
-              </Button>
-              <Button
-                type="button"
-                onClick={() => handlePlatformSelection(true)}
-                variant="outline"
-                size="lg"
-              >
-                Passer cette étape
               </Button>
             </div>
           </div>
@@ -115,17 +107,6 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
           </TabsContent>
         )}
       </Tabs>
-
-      {/* Bouton passer - avec padding */}
-      <div className="flex justify-center pt-6 px-4 pb-8">
-        <Button
-          type="button"
-          onClick={onSkip}
-          variant="outline"
-        >
-          Passer cette étape
-        </Button>
-      </div>
     </div>
   );
 }
