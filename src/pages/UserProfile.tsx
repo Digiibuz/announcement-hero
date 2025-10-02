@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, Globe, KeyRound, Lock, Eye, EyeOff, Info, CheckCircle, RefreshCw } from "lucide-react";
+import { User, Globe, KeyRound, Lock, Eye, EyeOff, Info, CheckCircle, RefreshCw, Facebook } from "lucide-react";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +24,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useServiceWorker } from "@/hooks/useServiceWorker";
 import { Badge } from "@/components/ui/badge";
+import FacebookConnectionTab from "@/components/users/FacebookConnectionTab";
 
 // Schema de validation pour le changement de mot de passe
 const passwordSchema = z.object({
@@ -241,6 +242,20 @@ const UserProfile = () => {
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </AnimatedContainer>
+
+        <AnimatedContainer delay={175}>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-2xl font-bold flex items-center gap-2">
+                <Facebook className="h-6 w-6" />
+                Connexion Facebook
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FacebookConnectionTab />
             </CardContent>
           </Card>
         </AnimatedContainer>
