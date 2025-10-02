@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sparkles, X, ImageIcon } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
 import AILoadingOverlay from "@/components/ui/AILoadingOverlay";
 import SparklingStars from "@/components/ui/SparklingStars";
@@ -24,6 +24,14 @@ export const FacebookTab = ({ form }: FacebookTabProps) => {
   const images = form.watch("images") || [];
   const additionalMedias = form.watch("additionalMedias") || [];
   const selectedImages = form.watch("facebook_images") || [];
+
+  // Auto-sélection de toutes les images disponibles (max 10)
+  useEffect(() => {
+    const allMedias = [...images, ...additionalMedias];
+    if (allMedias.length > 0 && selectedImages.length === 0) {
+      form.setValue("facebook_images", allMedias.slice(0, 10));
+    }
+  }, [images, additionalMedias]);
 
   const handleGenerateContent = async () => {
     const title = form.getValues("title");
@@ -49,7 +57,6 @@ export const FacebookTab = ({ form }: FacebookTabProps) => {
 
   const contentLength = form.watch("facebook_content")?.length || 0;
   const hashtagCount = hashtags.length;
-  const allMedias = [...images, ...additionalMedias];
 
   return (
     <div className="w-full pb-8">
