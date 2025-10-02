@@ -105,22 +105,22 @@ export const ImageCropDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl p-0 gap-0 bg-white">
+      <DialogContent className="max-w-5xl p-0 gap-0 bg-white max-h-[95vh] overflow-y-auto sm:max-h-[90vh]">
         {/* Header personnalisé */}
-        <div className="px-8 pt-8 pb-6 border-b">
+        <div className="px-4 pt-4 pb-3 border-b sm:px-8 sm:pt-8 sm:pb-6">
           <div className="flex items-start justify-between">
-            <div className="space-y-2">
-              <DialogTitle className="text-2xl font-semibold text-gray-900">
+            <div className="space-y-1 sm:space-y-2">
+              <DialogTitle className="text-lg sm:text-2xl font-semibold text-gray-900">
                 Redimensionner pour Instagram
               </DialogTitle>
-              <p className="text-sm text-gray-600 font-normal">
+              <p className="text-xs sm:text-sm text-gray-600 font-normal">
                 Choisissez le format Instagram souhaité. L'image sera automatiquement recadrée depuis le centre.
               </p>
             </div>
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-full hover:bg-gray-100"
+              className="h-8 w-8 rounded-full hover:bg-gray-100 flex-shrink-0"
               onClick={() => onOpenChange(false)}
             >
               <X className="h-4 w-4" />
@@ -128,14 +128,14 @@ export const ImageCropDialog = ({
           </div>
         </div>
 
-        <div className="px-8 py-6 space-y-6">
+        <div className="px-4 py-4 space-y-4 sm:px-8 sm:py-6 sm:space-y-6">
           {/* Sélection du format */}
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             <h3 className="text-sm font-semibold text-gray-900">Format Instagram</h3>
             <RadioGroup
               value={selectedAspectRatio}
               onValueChange={setSelectedAspectRatio}
-              className="grid grid-cols-3 gap-4"
+              className="flex flex-col gap-2 sm:grid sm:grid-cols-3 sm:gap-4"
             >
               {aspectRatios.map((ratio) => (
                 <div key={ratio.value}>
@@ -146,9 +146,9 @@ export const ImageCropDialog = ({
                   />
                   <Label
                     htmlFor={`ratio-${ratio.value}`}
-                    className="flex items-center gap-3 rounded-lg border-2 border-gray-200 p-4 cursor-pointer hover:border-gray-300 peer-data-[state=checked]:border-yellow-500 peer-data-[state=checked]:bg-yellow-50 transition-all"
+                    className="flex items-center gap-2 sm:gap-3 rounded-lg border-2 border-gray-200 p-3 sm:p-4 cursor-pointer hover:border-gray-300 peer-data-[state=checked]:border-yellow-500 peer-data-[state=checked]:bg-yellow-50 transition-all"
                   >
-                    <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 border-gray-300 peer-data-[state=checked]:border-yellow-500 peer-data-[state=checked]:bg-yellow-500 relative">
+                    <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 border-gray-300 peer-data-[state=checked]:border-yellow-500 peer-data-[state=checked]:bg-yellow-500 relative flex-shrink-0">
                       <div className="w-2 h-2 rounded-full bg-white opacity-0 peer-data-[state=checked]:opacity-100" />
                     </div>
                     {ratio.icon}
@@ -160,9 +160,9 @@ export const ImageCropDialog = ({
           </div>
 
           {/* Zone de recadrage */}
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             <h3 className="text-sm font-semibold text-gray-900">Recadrage interactif</h3>
-            <div className="relative h-[420px] bg-gray-400 rounded-lg overflow-hidden">
+            <div className="relative h-[280px] sm:h-[420px] bg-gray-400 rounded-lg overflow-hidden">
               <Cropper
                 image={imageUrl}
                 crop={crop}
@@ -179,13 +179,13 @@ export const ImageCropDialog = ({
                 }}
               />
             </div>
-            <p className="text-sm text-center text-gray-600">
+            <p className="text-xs sm:text-sm text-center text-gray-600">
               Glissez pour repositionner • Molette pour zoomer
             </p>
           </div>
 
           {/* Contrôle du zoom */}
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             <div className="flex items-center gap-2">
               <ZoomIn className="h-4 w-4 text-gray-900" />
               <span className="text-sm font-semibold text-gray-900">Zoom</span>
@@ -202,19 +202,19 @@ export const ImageCropDialog = ({
         </div>
 
         {/* Footer */}
-        <div className="px-8 py-6 border-t bg-white flex justify-end gap-3">
+        <div className="px-4 py-4 border-t bg-white flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 sm:px-8 sm:py-6">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="px-6"
+            className="w-full sm:w-auto sm:px-6"
           >
             Annuler
           </Button>
           <Button
             type="button"
             onClick={handleCropConfirm}
-            className="px-6 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-semibold"
+            className="w-full sm:w-auto sm:px-6 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-semibold"
           >
             Appliquer le redimensionnement
           </Button>
