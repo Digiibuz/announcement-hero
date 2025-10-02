@@ -81,7 +81,7 @@ export const ImageCropDialog = ({
   ],
 }: ImageCropDialogProps) => {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1.5);
+  const [zoom, setZoom] = useState(2);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [selectedAspectRatio, setSelectedAspectRatio] = useState("1");
 
