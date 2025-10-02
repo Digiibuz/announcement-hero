@@ -152,8 +152,8 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
         />
       )}
 
-      {/* Contenu - pleine largeur */}
-      <div className="px-4 space-y-4 mt-4">
+      {/* Contenu - même largeur que l'image, sans padding */}
+      <div className="space-y-4 mt-4">
         {/* Légende */}
         <FormField
           control={form.control}
