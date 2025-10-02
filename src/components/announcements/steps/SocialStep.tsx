@@ -82,15 +82,21 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
     <div className={className}>
       {/* Onglets - pleine largeur */}
       <Tabs defaultValue={facebookEnabled ? "facebook" : "instagram"} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 rounded-none">
+        <TabsList className="grid w-full grid-cols-2 rounded-none bg-background">
           {facebookEnabled && (
-            <TabsTrigger value="facebook" className="gap-2">
+            <TabsTrigger 
+              value="facebook" 
+              className="gap-2 data-[state=active]:bg-[#1877F2] data-[state=active]:text-white"
+            >
               <FacebookIcon className="h-4 w-4" />
               Facebook
             </TabsTrigger>
           )}
           {instagramEnabled && (
-            <TabsTrigger value="instagram" className="gap-2">
+            <TabsTrigger 
+              value="instagram" 
+              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#E4405F] data-[state=active]:via-[#C13584] data-[state=active]:to-[#833AB4] data-[state=active]:text-white"
+            >
               <InstagramIcon className="h-4 w-4" />
               Instagram
             </TabsTrigger>
