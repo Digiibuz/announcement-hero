@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Sparkles, X, ImageIcon, Crop, Trash2 } from "lucide-react";
+import { Sparkles, X, ImageIcon, Crop, Trash2, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { useState, useEffect } from "react";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
@@ -21,18 +21,21 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
   const [newHashtag, setNewHashtag] = useState("");
   const [showImageSelector, setShowImageSelector] = useState(false);
   const [showCropDialog, setShowCropDialog] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [cropImageIndex, setCropImageIndex] = useState<number | null>(null);
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const hashtags = form.watch("instagram_hashtags") || [];
   const images = form.watch("images") || [];
   const additionalMedias = form.watch("additionalMedias") || [];
   const selectedImages = form.watch("instagram_images") || [];
-  const imageAspectRatio = form.watch("instagram_image_aspect_ratio") || 1;
+  const imageAspectRatios = form.watch("instagram_image_aspect_ratios") || [];
 
   // Auto-sélection de la 1ère image disponible
   useEffect(() => {
     const allMedias = [...images, ...additionalMedias];
     if (allMedias.length > 0 && selectedImages.length === 0) {
       form.setValue("instagram_images", [allMedias[0]]);
+      form.setValue("instagram_image_aspect_ratios", [1]);
     }
   }, [images, additionalMedias]);
 
@@ -62,67 +65,145 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
   const hashtagCount = hashtags.length;
 
   const handleCropComplete = (croppedImageUrl: string, aspectRatio?: number) => {
-    form.setValue("instagram_images", [croppedImageUrl]);
-    if (aspectRatio) {
-      form.setValue("instagram_image_aspect_ratio", aspectRatio);
+    if (cropImageIndex !== null) {
+      const updatedImages = [...selectedImages];
+      updatedImages[cropImageIndex] = croppedImageUrl;
+      form.setValue("instagram_images", updatedImages);
+      
+      if (aspectRatio) {
+        const updatedRatios = [...imageAspectRatios];
+        updatedRatios[cropImageIndex] = aspectRatio;
+        form.setValue("instagram_image_aspect_ratios", updatedRatios);
+      }
+      setCropImageIndex(null);
     }
   };
 
-  const handleDeleteImage = () => {
-    form.setValue("instagram_images", []);
+  const handleDeleteImage = (index: number) => {
+    const updatedImages = selectedImages.filter((_: string, i: number) => i !== index);
+    const updatedRatios = imageAspectRatios.filter((_: number, i: number) => i !== index);
+    form.setValue("instagram_images", updatedImages);
+    form.setValue("instagram_image_aspect_ratios", updatedRatios);
+    if (currentImageIndex >= updatedImages.length && currentImageIndex > 0) {
+      setCurrentImageIndex(currentImageIndex - 1);
+    }
   };
+
+  const handlePreviousImage = () => {
+    setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : selectedImages.length - 1));
+  };
+
+  const handleNextImage = () => {
+    setCurrentImageIndex((prev) => (prev < selectedImages.length - 1 ? prev + 1 : 0));
+  };
+
+  const currentAspectRatio = imageAspectRatios[currentImageIndex] || 1;
 
   return (
     <div className="w-full pb-8">
       <AILoadingOverlay isVisible={isOptimizing.generateSocialContent} />
       <SparklingStars />
 
-      {/* Image principale avec aspect ratio dynamique */}
+      {/* Carrousel d'images avec aspect ratio dynamique */}
       <div className="relative w-full bg-background">
         {selectedImages.length > 0 ? (
-          <div 
-            className="w-full overflow-hidden bg-muted relative"
-            style={{ aspectRatio: imageAspectRatio }}
-          >
-            <img
-              src={selectedImages[0]}
-              alt="Publication Instagram"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute top-4 right-4 flex gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowCropDialog(true)}
-                className="h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
-              >
-                <Crop className="h-5 w-5" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={handleDeleteImage}
-                className="h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background hover:text-destructive"
-              >
-                <Trash2 className="h-5 w-5" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowImageSelector(true)}
-                className="h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
-              >
-                <ImageIcon className="h-5 w-5" />
-              </Button>
+          <div className="relative">
+            <div 
+              className="w-full overflow-hidden bg-muted relative"
+              style={{ aspectRatio: currentAspectRatio }}
+            >
+              <img
+                src={selectedImages[currentImageIndex]}
+                alt={`Publication Instagram ${currentImageIndex + 1}`}
+                className="w-full h-full object-cover"
+              />
+              
+              {/* Contrôles d'image */}
+              <div className="absolute top-4 right-4 flex gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setCropImageIndex(currentImageIndex);
+                    setShowCropDialog(true);
+                  }}
+                  className="h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
+                >
+                  <Crop className="h-5 w-5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDeleteImage(currentImageIndex)}
+                  className="h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background hover:text-destructive"
+                >
+                  <Trash2 className="h-5 w-5" />
+                </Button>
+                {selectedImages.length < 10 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowImageSelector(true)}
+                    className="h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </Button>
+                )}
+              </div>
+
+              {/* Navigation carrousel */}
+              {selectedImages.length > 1 && (
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={handlePreviousImage}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleNextImage}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </Button>
+                  
+                  {/* Indicateurs de position */}
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+                    {selectedImages.map((_: string, index: number) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => setCurrentImageIndex(index)}
+                        className={`h-1.5 rounded-full transition-all ${
+                          index === currentImageIndex 
+                            ? 'w-6 bg-white' 
+                            : 'w-1.5 bg-white/50 hover:bg-white/70'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  
+                  {/* Compteur */}
+                  <div className="absolute top-4 left-4 bg-black/60 text-white px-3 py-1 rounded-full text-sm font-medium">
+                    {currentImageIndex + 1} / {selectedImages.length}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         ) : (
           <div 
             className="w-full flex items-center justify-center bg-muted/20"
-            style={{ aspectRatio: imageAspectRatio }}
+            style={{ aspectRatio: 1 }}
           >
             <Button
               type="button"
@@ -131,7 +212,8 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
               className="flex-col h-auto py-6"
             >
               <ImageIcon className="h-8 w-8 mb-2" />
-              <span>Sélectionner une image</span>
+              <span>Sélectionner des images</span>
+              <span className="text-xs text-muted-foreground mt-1">Jusqu'à 10 images</span>
             </Button>
           </div>
         )}
@@ -141,23 +223,28 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
       <Dialog open={showImageSelector} onOpenChange={setShowImageSelector}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Sélectionner une image pour Instagram</DialogTitle>
+            <DialogTitle>
+              Sélectionner des images pour Instagram ({selectedImages.length}/10)
+            </DialogTitle>
           </DialogHeader>
           <SocialMediaImageSelector
             form={form}
             fieldName="instagram_images"
             label=""
-            maxImages={1}
+            maxImages={10}
           />
         </DialogContent>
       </Dialog>
 
       {/* Dialog de recadrage */}
-      {selectedImages.length > 0 && (
+      {selectedImages.length > 0 && cropImageIndex !== null && (
         <ImageCropDialog
           open={showCropDialog}
-          onOpenChange={setShowCropDialog}
-          imageUrl={selectedImages[0]}
+          onOpenChange={(open) => {
+            setShowCropDialog(open);
+            if (!open) setCropImageIndex(null);
+          }}
+          imageUrl={selectedImages[cropImageIndex]}
           onCropComplete={handleCropComplete}
         />
       )}
