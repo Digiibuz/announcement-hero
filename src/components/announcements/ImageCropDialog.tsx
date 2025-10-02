@@ -41,19 +41,28 @@ const getCroppedImg = async (imageSrc: string, pixelCrop: Area): Promise<string>
     throw new Error("No 2d context");
   }
 
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
+  // Instagram optimal width
+  const maxWidth = 1080;
+  
+  // Calculate scale between displayed image and natural image size
+  const scaleX = image.naturalWidth / image.width;
+  const scaleY = image.naturalHeight / image.height;
 
+  // Set canvas size (limited to Instagram's optimal width)
+  canvas.width = Math.min(maxWidth, pixelCrop.width);
+  canvas.height = (canvas.width * pixelCrop.height) / pixelCrop.width;
+
+  // Draw the cropped image using natural dimensions
   ctx.drawImage(
     image,
-    pixelCrop.x,
-    pixelCrop.y,
-    pixelCrop.width,
-    pixelCrop.height,
+    pixelCrop.x * scaleX,
+    pixelCrop.y * scaleY,
+    pixelCrop.width * scaleX,
+    pixelCrop.height * scaleY,
     0,
     0,
-    pixelCrop.width,
-    pixelCrop.height
+    canvas.width,
+    canvas.height
   );
 
   return new Promise((resolve) => {
@@ -63,7 +72,7 @@ const getCroppedImg = async (imageSrc: string, pixelCrop: Area): Promise<string>
       }
       const fileUrl = URL.createObjectURL(blob);
       resolve(fileUrl);
-    }, "image/jpeg");
+    }, "image/jpeg", 0.9);
   });
 };
 
