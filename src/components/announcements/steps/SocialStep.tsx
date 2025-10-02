@@ -82,7 +82,7 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
     <div className={className}>
       {/* Alerte de connexion Facebook */}
       {!hasActiveConnection && (
-        <Alert className="mb-6">
+        <Alert className="mb-6 mx-4">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between">
             <span>Connectez votre page Facebook pour publier vos annonces automatiquement.</span>
@@ -98,55 +98,54 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
         </Alert>
       )}
 
-      <Card className="p-6">
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-2xl font-bold">Réseaux sociaux</h2>
-            <p className="text-muted-foreground">
-              Adaptez votre contenu pour les réseaux sociaux et programmez votre publication.
-            </p>
-          </div>
+      {/* Header */}
+      <div className="px-4 pb-4 space-y-2">
+        <h2 className="text-2xl font-bold">Réseaux sociaux</h2>
+        <p className="text-muted-foreground">
+          Adaptez votre contenu pour les réseaux sociaux et programmez votre publication.
+        </p>
+      </div>
 
-          <Tabs defaultValue={facebookEnabled ? "facebook" : "instagram"} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              {facebookEnabled && (
-                <TabsTrigger value="facebook" className="gap-2">
-                  <FacebookIcon className="h-4 w-4" />
-                  Facebook
-                </TabsTrigger>
-              )}
-              {instagramEnabled && (
-                <TabsTrigger value="instagram" className="gap-2">
-                  <InstagramIcon className="h-4 w-4" />
-                  Instagram
-                </TabsTrigger>
-              )}
-            </TabsList>
+      {/* Onglets - pleine largeur */}
+      <Tabs defaultValue={facebookEnabled ? "facebook" : "instagram"} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 rounded-none">
+          {facebookEnabled && (
+            <TabsTrigger value="facebook" className="gap-2">
+              <FacebookIcon className="h-4 w-4" />
+              Facebook
+            </TabsTrigger>
+          )}
+          {instagramEnabled && (
+            <TabsTrigger value="instagram" className="gap-2">
+              <InstagramIcon className="h-4 w-4" />
+              Instagram
+            </TabsTrigger>
+          )}
+        </TabsList>
 
-            {facebookEnabled && (
-              <TabsContent value="facebook" className="mt-6">
-                <FacebookTab form={form} />
-              </TabsContent>
-            )}
+        {facebookEnabled && (
+          <TabsContent value="facebook" className="mt-0">
+            <FacebookTab form={form} />
+          </TabsContent>
+        )}
 
-            {instagramEnabled && (
-              <TabsContent value="instagram" className="mt-6">
-                <InstagramTab form={form} />
-              </TabsContent>
-            )}
-          </Tabs>
+        {instagramEnabled && (
+          <TabsContent value="instagram" className="mt-0">
+            <InstagramTab form={form} />
+          </TabsContent>
+        )}
+      </Tabs>
 
-          <div className="flex justify-center pt-4">
-            <Button
-              type="button"
-              onClick={onSkip}
-              variant="outline"
-            >
-              Passer cette étape
-            </Button>
-          </div>
-        </div>
-      </Card>
+      {/* Bouton passer - avec padding */}
+      <div className="flex justify-center pt-6 px-4 pb-8">
+        <Button
+          type="button"
+          onClick={onSkip}
+          variant="outline"
+        >
+          Passer cette étape
+        </Button>
+      </div>
     </div>
   );
 }
