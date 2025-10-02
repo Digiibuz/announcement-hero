@@ -4,13 +4,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Sparkles, X, ImageIcon } from "lucide-react";
+import { Sparkles, X, ImageIcon, Crop } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { useState, useEffect } from "react";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
 import AILoadingOverlay from "@/components/ui/AILoadingOverlay";
 import SparklingStars from "@/components/ui/SparklingStars";
 import SocialMediaImageSelector from "../../SocialMediaImageSelector";
+import { ImageCropDialog } from "../../ImageCropDialog";
 
 interface InstagramTabProps {
   form: UseFormReturn<any>;
@@ -19,6 +20,7 @@ interface InstagramTabProps {
 export const InstagramTab = ({ form }: InstagramTabProps) => {
   const [newHashtag, setNewHashtag] = useState("");
   const [showImageSelector, setShowImageSelector] = useState(false);
+  const [showCropDialog, setShowCropDialog] = useState(false);
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const hashtags = form.watch("instagram_hashtags") || [];
   const images = form.watch("images") || [];
@@ -58,6 +60,10 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
   const contentLength = form.watch("instagram_content")?.length || 0;
   const hashtagCount = hashtags.length;
 
+  const handleCropComplete = (croppedImageUrl: string) => {
+    form.setValue("instagram_images", [croppedImageUrl]);
+  };
+
   return (
     <div className="w-full pb-8">
       <AILoadingOverlay isVisible={isOptimizing.generateSocialContent} />
@@ -72,15 +78,26 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
               alt="Publication Instagram"
               className="w-full h-full object-cover"
             />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowImageSelector(true)}
-              className="absolute top-4 right-4 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
-            >
-              <ImageIcon className="h-5 w-5" />
-            </Button>
+            <div className="absolute top-4 right-4 flex gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowCropDialog(true)}
+                className="h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
+              >
+                <Crop className="h-5 w-5" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowImageSelector(true)}
+                className="h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
+              >
+                <ImageIcon className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="aspect-square w-full flex items-center justify-center bg-muted/20">
@@ -111,6 +128,16 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de recadrage */}
+      {selectedImages.length > 0 && (
+        <ImageCropDialog
+          open={showCropDialog}
+          onOpenChange={setShowCropDialog}
+          imageUrl={selectedImages[0]}
+          onCropComplete={handleCropComplete}
+        />
+      )}
 
       {/* Contenu - pleine largeur */}
       <div className="px-4 space-y-4 mt-4">
