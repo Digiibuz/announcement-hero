@@ -449,94 +449,188 @@ const CreateAnnouncement = () => {
   };
 
   return (
-    <DynamicBackground className="min-h-screen">
-      <CreateAnnouncementHeader 
-        currentStep={currentStepIndex} 
-        totalSteps={stepConfigs.length} 
-        onSaveDraft={saveAnnouncementDraft}
-        isSavingDraft={isSavingDraft}
-      />
+    <>
+      {isMobile ? (
+        <div className="min-h-screen bg-white">
+          <CreateAnnouncementHeader 
+            currentStep={currentStepIndex} 
+            totalSteps={stepConfigs.length} 
+            onSaveDraft={saveAnnouncementDraft}
+            isSavingDraft={isSavingDraft}
+          />
 
-      {!canPublish() && (
-        <div className="pt-16 px-4">
-          <div className="max-w-3xl mx-auto mb-4">
-            <Card className="border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 shadow-lg">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-orange-600" />
-                  <CardTitle className="text-orange-800 text-lg">Limite mensuelle atteinte</CardTitle>
+          {!canPublish() && (
+            <div className="pt-16 px-4">
+              <div className="max-w-3xl mx-auto mb-4">
+                <Card className="border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 shadow-lg">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-orange-600" />
+                      <CardTitle className="text-orange-800 text-lg">Limite mensuelle atteinte</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-orange-700 mb-2">
+                      Vous avez publié {stats.publishedCount}/{stats.maxLimit} annonces ce mois-ci.
+                    </p>
+                    <p className="text-orange-600 text-sm">
+                      Vos nouvelles annonces seront automatiquement sauvegardées en brouillon. 
+                      Nouveau quota disponible le mois prochain !
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+        
+          <div className={`pt-16 ${isMobile ? 'pb-24' : 'pb-20'}`}>
+            <Form {...form}>
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  form.handleSubmit(handleSubmit)(e);
+                }} 
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
+                    e.preventDefault();
+                  }
+                }}
+                className="h-full"
+              >
+                <div className="max-w-4xl mx-auto">
+                  <div className="my-8 text-center px-4">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">{currentStep.title}</h2>
+                    <p className="text-gray-600 text-base max-w-2xl mx-auto">{currentStep.description}</p>
+                  </div>
+                  
+                  <div className="overflow-hidden">
+                    <div>
+                      {currentStep.id === "category" && <CategoryStep form={form} isMobile={isMobile} />}
+                      
+                      {currentStep.id === "description" && <DescriptionStep form={form} isMobile={isMobile} />}
+                      
+                      {currentStep.id === "images" && <ImagesStep form={form} isMobile={isMobile} />}
+                      
+                      {currentStep.id === "social" && <SocialStep form={form} onSkip={handleNext} />}
+                      
+                      {currentStep.id === "publishing" && <PublishingStep form={form} isMobile={isMobile} />}
+                      
+                      {currentStep.id === "summary" && <AnnouncementSummary data={form.getValues()} isMobile={isMobile} categoryName={getCategoryName()} />}
+                    </div>
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-orange-700 mb-2">
-                  Vous avez publié {stats.publishedCount}/{stats.maxLimit} annonces ce mois-ci.
-                </p>
-                <p className="text-orange-600 text-sm">
-                  Vos nouvelles annonces seront automatiquement sauvegardées en brouillon. 
-                  Nouveau quota disponible le mois prochain !
-                </p>
-              </CardContent>
-            </Card>
+                
+                <div className={`fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-lg`}>
+                  <StepNavigation 
+                    currentStep={currentStepIndex} 
+                    totalSteps={stepConfigs.length} 
+                    onPrevious={handlePrevious} 
+                    onNext={handleNext} 
+                    onSubmit={handleSubmit}
+                    onSaveDraft={saveAnnouncementDraft}
+                    isLastStep={currentStepIndex === stepConfigs.length - 1} 
+                    isFirstStep={currentStepIndex === 0} 
+                    isSubmitting={isSubmitting || isPublishing || isSavingDraft} 
+                    isMobile={isMobile} 
+                    className="bg-transparent border-none max-w-4xl mx-auto" 
+                  />
+                </div>
+              </form>
+            </Form>
           </div>
         </div>
-      )}
-    
-      <div className={`pt-16 ${isMobile ? 'pb-24' : 'pb-20'} ${isMobile ? '' : 'px-4 md:max-w-4xl md:mx-auto'}`}>
-        <Form {...form}>
-          <form 
-            onSubmit={(e) => {
-              e.preventDefault();
-              form.handleSubmit(handleSubmit)(e);
-            }} 
-            onKeyDown={(e) => {
-              // Empêcher la soumission avec la touche Entrée
-              if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
-                e.preventDefault();
-              }
-            }}
-            className="h-full"
-          >
-            <div className="max-w-4xl mx-auto">
-              <div className="my-8 text-center">
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">{currentStep.title}</h2>
-                <p className="text-gray-600 text-base max-w-2xl mx-auto">{currentStep.description}</p>
+      ) : (
+        <DynamicBackground className="min-h-screen">
+
+          <CreateAnnouncementHeader 
+            currentStep={currentStepIndex} 
+            totalSteps={stepConfigs.length} 
+            onSaveDraft={saveAnnouncementDraft}
+            isSavingDraft={isSavingDraft}
+          />
+
+          {!canPublish() && (
+            <div className="pt-16 px-4">
+              <div className="max-w-3xl mx-auto mb-4">
+                <Card className="border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 shadow-lg">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-orange-600" />
+                      <CardTitle className="text-orange-800 text-lg">Limite mensuelle atteinte</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-orange-700 mb-2">
+                      Vous avez publié {stats.publishedCount}/{stats.maxLimit} annonces ce mois-ci.
+                    </p>
+                    <p className="text-orange-600 text-sm">
+                      Vos nouvelles annonces seront automatiquement sauvegardées en brouillon. 
+                      Nouveau quota disponible le mois prochain !
+                    </p>
+                  </CardContent>
+                </Card>
               </div>
-              
-              <div className={`${isMobile ? '' : 'bg-white rounded-2xl shadow-xl border border-gray-100'} overflow-hidden`}>
-                <div className={`${isMobile ? '' : 'p-6 md:p-8'}`}>
-                  {currentStep.id === "category" && <CategoryStep form={form} isMobile={isMobile} />}
+            </div>
+          )}
+        
+          <div className="pt-16 pb-20 px-4 md:max-w-4xl md:mx-auto">
+            <Form {...form}>
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  form.handleSubmit(handleSubmit)(e);
+                }} 
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
+                    e.preventDefault();
+                  }
+                }}
+                className="h-full"
+              >
+                <div className="max-w-4xl mx-auto">
+                  <div className="my-8 text-center">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">{currentStep.title}</h2>
+                    <p className="text-gray-600 text-base max-w-2xl mx-auto">{currentStep.description}</p>
+                  </div>
                   
-                  {currentStep.id === "description" && <DescriptionStep form={form} isMobile={isMobile} />}
-                  
-                  {currentStep.id === "images" && <ImagesStep form={form} isMobile={isMobile} />}
-                  
-                  {currentStep.id === "social" && <SocialStep form={form} onSkip={handleNext} />}
-                  
-                  {currentStep.id === "publishing" && <PublishingStep form={form} isMobile={isMobile} />}
-                  
-                  {currentStep.id === "summary" && <AnnouncementSummary data={form.getValues()} isMobile={isMobile} categoryName={getCategoryName()} />}
+                  <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                    <div className="p-6 md:p-8">
+                      {currentStep.id === "category" && <CategoryStep form={form} isMobile={isMobile} />}
+                      
+                      {currentStep.id === "description" && <DescriptionStep form={form} isMobile={isMobile} />}
+                      
+                      {currentStep.id === "images" && <ImagesStep form={form} isMobile={isMobile} />}
+                      
+                      {currentStep.id === "social" && <SocialStep form={form} onSkip={handleNext} />}
+                      
+                      {currentStep.id === "publishing" && <PublishingStep form={form} isMobile={isMobile} />}
+                      
+                      {currentStep.id === "summary" && <AnnouncementSummary data={form.getValues()} isMobile={isMobile} categoryName={getCategoryName()} />}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-            
-            <div className={`fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-lg`}>
-              <StepNavigation 
-                currentStep={currentStepIndex} 
-                totalSteps={stepConfigs.length} 
-                onPrevious={handlePrevious} 
-                onNext={handleNext} 
-                onSubmit={handleSubmit}
-                onSaveDraft={saveAnnouncementDraft}
-                isLastStep={currentStepIndex === stepConfigs.length - 1} 
-                isFirstStep={currentStepIndex === 0} 
-                isSubmitting={isSubmitting || isPublishing || isSavingDraft} 
-                isMobile={isMobile} 
-                className="bg-transparent border-none max-w-4xl mx-auto" 
-              />
-            </div>
-          </form>
-        </Form>
-      </div>
+                
+                <div className={`fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-lg`}>
+                  <StepNavigation 
+                    currentStep={currentStepIndex} 
+                    totalSteps={stepConfigs.length} 
+                    onPrevious={handlePrevious} 
+                    onNext={handleNext} 
+                    onSubmit={handleSubmit}
+                    onSaveDraft={saveAnnouncementDraft}
+                    isLastStep={currentStepIndex === stepConfigs.length - 1} 
+                    isFirstStep={currentStepIndex === 0} 
+                    isSubmitting={isSubmitting || isPublishing || isSavingDraft} 
+                    isMobile={isMobile} 
+                    className="bg-transparent border-none max-w-4xl mx-auto" 
+                  />
+                </div>
+              </form>
+            </Form>
+          </div>
+        </DynamicBackground>
+      )}
+      
       
       <PublishingLoadingOverlay 
         isOpen={showPublishingOverlay} 
@@ -544,7 +638,7 @@ const CreateAnnouncement = () => {
         currentStepId={publishingState.currentStep} 
         progress={publishingState.progress} 
       />
-    </DynamicBackground>
+    </>
   );
 };
 
