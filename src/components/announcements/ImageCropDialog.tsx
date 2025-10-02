@@ -101,14 +101,14 @@ export const ImageCropDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="max-w-3xl max-h-[90vh] w-[95vw] sm:w-full overflow-hidden p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle>Recadrer l'image pour Instagram</DialogTitle>
+          <DialogTitle className="text-lg sm:text-xl">Recadrer l'image pour Instagram</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {/* Sélection du format */}
-          <div className="flex gap-2 justify-center">
+          <div className="flex flex-wrap gap-2 justify-center">
             {aspectRatios.map((ratio) => (
               <Button
                 key={ratio.label}
@@ -116,15 +116,17 @@ export const ImageCropDialog = ({
                 variant={selectedAspectRatio.value === ratio.value ? "default" : "outline"}
                 size="sm"
                 onClick={() => setSelectedAspectRatio(ratio)}
+                className="text-xs sm:text-sm flex-1 min-w-[90px] sm:flex-none"
               >
-                <Maximize2 className="h-4 w-4 mr-2" />
-                {ratio.label}
+                <Maximize2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">{ratio.label}</span>
+                <span className="sm:hidden">{ratio.label.split(' ')[0]}</span>
               </Button>
             ))}
           </div>
 
           {/* Zone de recadrage */}
-          <div className="relative h-[400px] bg-muted rounded-lg overflow-hidden">
+          <div className="relative h-[250px] sm:h-[350px] md:h-[400px] bg-muted rounded-lg overflow-hidden">
             <Cropper
               image={imageUrl}
               crop={crop}
@@ -137,8 +139,8 @@ export const ImageCropDialog = ({
           </div>
 
           {/* Contrôle du zoom */}
-          <div className="flex items-center gap-4 px-4">
-            <ZoomOut className="h-4 w-4 text-muted-foreground" />
+          <div className="flex items-center gap-2 sm:gap-4 px-2 sm:px-4">
+            <ZoomOut className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
             <Slider
               value={[zoom]}
               onValueChange={([value]) => setZoom(value)}
@@ -147,21 +149,23 @@ export const ImageCropDialog = ({
               step={0.1}
               className="flex-1"
             />
-            <ZoomIn className="h-4 w-4 text-muted-foreground" />
+            <ZoomIn className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
           </div>
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="gap-2 flex-col sm:flex-row mt-4">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
+            className="w-full sm:w-auto"
           >
             Annuler
           </Button>
           <Button
             type="button"
             onClick={handleCropConfirm}
+            className="w-full sm:w-auto"
           >
             Appliquer
           </Button>
