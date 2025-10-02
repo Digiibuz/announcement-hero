@@ -111,7 +111,7 @@ export const FacebookTab = ({ form }: FacebookTabProps) => {
               <div className="flex items-center justify-between mb-2">
                 <FormLabel className="text-base">Texte de publication</FormLabel>
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                  <span>{contentLength}/63206</span>
+                  <span>{contentLength}/2200</span>
                   <Button
                     type="button"
                     variant="ghost"
@@ -129,7 +129,7 @@ export const FacebookTab = ({ form }: FacebookTabProps) => {
                   {...field}
                   placeholder="Rédigez votre publication Facebook avec hashtags intégrés..."
                   className="min-h-[150px] resize-none border-0 bg-muted/30 focus-visible:ring-0 focus-visible:ring-offset-0"
-                  maxLength={63206}
+                  maxLength={2200}
                 />
               </FormControl>
               <FormMessage />
