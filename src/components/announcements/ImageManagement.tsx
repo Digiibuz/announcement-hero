@@ -11,6 +11,7 @@ import heic2any from "heic2any";
 
 interface ImageManagementProps {
   form: UseFormReturn<AnnouncementFormData>;
+  isMobile?: boolean;
 }
 
 interface ImageItem {
@@ -20,7 +21,7 @@ interface ImageItem {
   type: 'main' | 'additional';
 }
 
-export default function ImageManagement({ form }: ImageManagementProps) {
+export default function ImageManagement({ form, isMobile = false }: ImageManagementProps) {
   const [allUploadedImages, setAllUploadedImages] = useState<string[]>([]); // Stocke TOUTES les images téléchargées
   const [imageItems, setImageItems] = useState<ImageItem[]>([]);
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -457,17 +458,19 @@ export default function ImageManagement({ form }: ImageManagementProps) {
   const firstSelectedImage = selectedImages[0];
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className={isMobile ? "border-0 shadow-none" : ""}>
+      <CardHeader className={isMobile ? "px-0 pt-0" : ""}>
         <CardTitle className="text-lg flex items-center gap-2">
           <ImageIcon className="h-5 w-5" />
           Gestion des images ({selectedImages.length})
         </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Ajoutez vos images puis organisez-les par ordre d'importance.
-        </p>
+        {!isMobile && (
+          <p className="text-sm text-muted-foreground">
+            Ajoutez vos images puis organisez-les par ordre d'importance.
+          </p>
+        )}
       </CardHeader>
-      <CardContent>
+      <CardContent className={isMobile ? "px-0 pb-0" : ""}>
         <div className="space-y-6">
           {/* Bouton d'ajout d'images */}
           <div 
@@ -530,7 +533,7 @@ export default function ImageManagement({ form }: ImageManagementProps) {
 
           {/* Section organisation (seulement si des images existent) */}
           {/* Grille des images */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className={`grid gap-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
             {imageItems.map((item, index) => (
               <div
                 key={item.id}
