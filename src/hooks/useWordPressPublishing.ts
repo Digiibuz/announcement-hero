@@ -483,69 +483,7 @@ export const useWordPressPublishing = () => {
                               (featuredMediaId ? " avec image principale" : "") +
                               (additionalMediasCount > 0 ? ` et ${additionalMediasCount} média(s) additionnel(s)` : "");
         
-        // Déclencher Zapier webhook si configuré et si post publié avec réseaux sociaux
-        try {
-          const { data: userProfile } = await supabase
-            .from('profiles')
-            .select('zapier_webhook_url')
-            .eq('id', userId)
-            .single();
-          
-            if (userProfile?.zapier_webhook_url && announcement.status === 'published') {
-            // Démarrer l'étape Facebook si l'utilisateur a configuré un post Facebook
-            if (announcement.title && (announcement as any).createFacebookPost === true) {
-              updatePublishingStep("facebook", "loading", "Publication sur Facebook en cours...");
-              
-              // Marquer le statut Facebook comme "pending" dans la base de données
-              await supabase
-                .from("announcements")
-                .update({ facebook_publication_status: 'pending' })
-                .eq("id", announcement.id);
-            }
-            
-            console.log("Déclenchement du webhook Zapier:", userProfile.zapier_webhook_url);
-            
-            const callbackUrl = `${window.location.origin.replace('localhost:5173', 'localhost:54321')}/functions/v1/zapier-callback`;
-            
-             const zapierData = {
-               announcement_id: announcement.id,
-               title: announcement.title,
-               description: announcement.description,
-               wordpress_url: wpResponseData.link || `${wpConfig.site_url}/?p=${wordpressPostId}`,
-               wordpress_post_id: wordpressPostId,
-               main_image: announcement.images?.[0] || null,
-               additional_images: announcement.images?.slice(1) || [],
-               additional_medias: (announcement as any).additionalMedias || [],
-               published_at: new Date().toISOString(),
-               triggered_from: 'announcement_publication',
-               social_content: currentFormData?.socialContent || announcement.social_content,
-               hashtags: (currentFormData?.socialHashtags || announcement.social_hashtags)?.map(tag => tag.startsWith('#') ? tag : `#${tag}`).join(' ') || '',
-               callback_url: callbackUrl // URL pour que Zapier confirme le succès/échec
-              };
-            
-            await fetch(userProfile.zapier_webhook_url, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              mode: "no-cors",
-              body: JSON.stringify(zapierData),
-            });
-            
-            // Marquer l'étape Facebook comme terminée si elle était démarrée
-            if ((announcement as any).createFacebookPost === true) {
-              updatePublishingStep("facebook", "success", "Publication Facebook envoyée");
-            }
-            
-            console.log("Webhook Zapier déclenché avec succès");
-          }
-        } catch (zapierError) {
-          console.warn("Erreur lors du déclenchement Zapier (non bloquant):", zapierError);
-          // Marquer l'étape Facebook comme erreur si elle était démarrée
-          if ((announcement as any).createFacebookPost === true) {
-            updatePublishingStep("facebook", "error", "Échec publication Facebook");
-          }
-        }
+        // Note: Publication Facebook sera gérée via l'API Meta directement
         
         return { 
           success: true, 

@@ -37,7 +37,7 @@ export const useUserCreateForm = (onUserCreated: () => void) => {
         password: values.password,
         role: values.role,
         wordpressConfigId: values.role === "client" && values.wordpressConfigId ? values.wordpressConfigId : "",
-        zapier_webhook_url: values.zapier_webhook_url || "",
+        
       };
       
       console.log("Données envoyées pour création:", userData);

@@ -207,7 +207,6 @@ export type Database = {
           role: string
           updated_at: string
           wordpress_config_id: string | null
-          zapier_webhook_url: string | null
         }
         Insert: {
           client_id?: string | null
@@ -218,7 +217,6 @@ export type Database = {
           role?: string
           updated_at?: string
           wordpress_config_id?: string | null
-          zapier_webhook_url?: string | null
         }
         Update: {
           client_id?: string | null
@@ -229,7 +227,6 @@ export type Database = {
           role?: string
           updated_at?: string
           wordpress_config_id?: string | null
-          zapier_webhook_url?: string | null
         }
         Relationships: [
           {

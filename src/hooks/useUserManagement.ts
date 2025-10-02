@@ -46,7 +46,7 @@ export const useUserManagement = () => {
           role: profile.role as Role,
           clientId: profile.client_id,
           wordpressConfigId: profile.wordpress_config_id || null,
-          zapier_webhook_url: profile.zapier_webhook_url || null,
+          
           wordpressConfig: profile.wordpress_configs ? {
             name: profile.wordpress_configs.name,
             site_url: profile.wordpress_configs.site_url
@@ -94,7 +94,7 @@ export const useUserManagement = () => {
           email: userData.email,
           role: userData.role,
           wordpress_config_id: (userData.role === 'client' || userData.role === 'commercial') ? userData.wordpressConfigId : null,
-          zapier_webhook_url: userData.zapier_webhook_url
+          
         })
         .eq('id', userId);
       

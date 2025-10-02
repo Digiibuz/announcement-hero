@@ -87,7 +87,7 @@ const FacebookPublicationStatus = ({ announcement }: FacebookPublicationStatusPr
         
         {announcement.facebook_publication_status === 'pending' && (
           <p className="text-sm text-muted-foreground mt-2">
-            La publication sur Facebook est en cours via Zapier. Le statut se mettra à jour automatiquement.
+            La publication sur Facebook est en cours via l'API Meta. Le statut se mettra à jour automatiquement.
           </p>
         )}
       </CardContent>

@@ -30,25 +30,7 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
   const [publishTime, setPublishTime] = useState("");
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [newHashtag, setNewHashtag] = useState("");
-  const [hasZapierWebhook, setHasZapierWebhook] = useState(false);
   const [showFacebookQuestion, setShowFacebookQuestion] = useState(true);
-
-  // Vérifier si l'utilisateur a configuré Zapier
-  useEffect(() => {
-    const checkZapierConfig = async () => {
-      if (user?.id) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('zapier_webhook_url')
-          .eq('id', user.id)
-          .single();
-        
-        setHasZapierWebhook(!!profile?.zapier_webhook_url);
-      }
-    };
-    
-    checkZapierConfig();
-  }, [user]);
 
   const watchedValues = form.watch();
   const { title, description, images = [], additionalMedias = [], createFacebookPost } = watchedValues;
@@ -191,7 +173,7 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                      Publication automatique via Zapier
+                      Publication automatique sur Facebook
                     </div>
                   </div>
                 </div>
@@ -221,31 +203,6 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
     );
   }
 
-  if (!hasZapierWebhook) {
-    return (
-      <div className={cn("space-y-6", className)}>
-        <Card>
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-muted flex items-center justify-center">
-              <Zap className="h-6 w-6 text-muted-foreground" />
-            </div>
-            <CardTitle>Configuration Zapier requise</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <p className="text-muted-foreground">
-              La publication sur les réseaux sociaux nécessite une configuration Zapier par votre administrateur.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Contactez votre administrateur pour configurer l'intégration Zapier et pouvoir publier automatiquement sur Facebook, Instagram, LinkedIn, etc.
-            </p>
-            <Button onClick={onSkip} variant="outline" className="w-full">
-              Passer cette étape
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className={cn("space-y-6", className)}>
