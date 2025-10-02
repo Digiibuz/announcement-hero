@@ -171,7 +171,9 @@ export const ImageCropDialog = ({
                 onCropChange={setCrop}
                 onCropComplete={onCropCompleteCallback}
                 onZoomChange={setZoom}
-                objectFit="horizontal-cover"
+                objectFit="contain"
+                minZoom={0.5}
+                maxZoom={3}
                 style={{
                   containerStyle: {
                     backgroundColor: '#9CA3AF',
@@ -193,7 +195,7 @@ export const ImageCropDialog = ({
             <Slider
               value={[zoom]}
               onValueChange={([value]) => setZoom(value)}
-              min={1}
+              min={0.5}
               max={3}
               step={0.1}
               className="w-full"
