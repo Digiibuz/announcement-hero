@@ -64,13 +64,6 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
     form.setValue("instagram_images", [croppedImageUrl]);
   };
 
-  const handleUseOriginal = () => {
-    const allMedias = [...images, ...additionalMedias];
-    if (allMedias.length > 0) {
-      form.setValue("instagram_images", [allMedias[0]]);
-    }
-  };
-
   return (
     <div className="w-full pb-8">
       <AILoadingOverlay isVisible={isOptimizing.generateSocialContent} />
@@ -89,22 +82,20 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
+                size="icon"
                 onClick={() => setShowCropDialog(true)}
-                className="h-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background px-4"
+                className="h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
               >
-                <Crop className="h-4 w-4 mr-2" />
-                Recadrer
+                <Crop className="h-5 w-5" />
               </Button>
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
+                size="icon"
                 onClick={() => setShowImageSelector(true)}
-                className="h-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background px-4"
+                className="h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
               >
-                <ImageIcon className="h-4 w-4 mr-2" />
-                Remplacer
+                <ImageIcon className="h-5 w-5" />
               </Button>
             </div>
           </div>
@@ -145,7 +136,6 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
           onOpenChange={setShowCropDialog}
           imageUrl={selectedImages[0]}
           onCropComplete={handleCropComplete}
-          onUseOriginal={handleUseOriginal}
         />
       )}
 

@@ -13,7 +13,6 @@ interface ImageCropDialogProps {
   onOpenChange: (open: boolean) => void;
   imageUrl: string;
   onCropComplete: (croppedImageUrl: string) => void;
-  onUseOriginal?: () => void;
   aspectRatios?: { label: string; value: number; icon: React.ReactNode }[];
 }
 
@@ -73,7 +72,6 @@ export const ImageCropDialog = ({
   onOpenChange,
   imageUrl,
   onCropComplete,
-  onUseOriginal,
   aspectRatios = [
     { label: "Carré (1:1)", value: 1, icon: <Square className="h-4 w-4" /> },
     { label: "Portrait (4:5)", value: 4 / 5, icon: <Maximize2 className="h-4 w-4" /> },
@@ -81,7 +79,7 @@ export const ImageCropDialog = ({
   ],
 }: ImageCropDialogProps) => {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(1.2);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [selectedAspectRatio, setSelectedAspectRatio] = useState("1");
 
@@ -103,19 +101,11 @@ export const ImageCropDialog = ({
     }
   }, [croppedAreaPixels, imageUrl, onCropComplete, onOpenChange]);
 
-  const handleUseOriginal = useCallback(() => {
-    if (onUseOriginal) {
-      onUseOriginal();
-      onOpenChange(false);
-      toast.success("Image originale restaurée !");
-    }
-  }, [onUseOriginal, onOpenChange]);
-
   const currentAspectRatio = aspectRatios.find(r => r.value.toString() === selectedAspectRatio)?.value || 1;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl p-0 gap-0 bg-white max-h-[95vh] overflow-y-auto sm:max-h-[90vh] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
+      <DialogContent className="max-w-5xl p-0 gap-0 bg-white max-h-[95vh] overflow-y-auto sm:max-h-[90vh]">
         {/* Header personnalisé */}
         <div className="px-4 pt-4 pb-3 border-b sm:px-8 sm:pt-8 sm:pb-6">
           <div className="space-y-1 sm:space-y-2">
@@ -162,7 +152,7 @@ export const ImageCropDialog = ({
           {/* Zone de recadrage */}
           <div className="space-y-2 sm:space-y-3">
             <h3 className="text-sm font-semibold text-gray-900">Recadrage interactif</h3>
-            <div className="relative h-[500px] sm:h-[420px] bg-gray-400 rounded-lg overflow-hidden">
+            <div className="relative h-[280px] sm:h-[420px] bg-gray-400 rounded-lg overflow-hidden">
               <Cropper
                 image={imageUrl}
                 crop={crop}
@@ -172,18 +162,10 @@ export const ImageCropDialog = ({
                 onCropComplete={onCropCompleteCallback}
                 onZoomChange={setZoom}
                 objectFit="contain"
-                minZoom={0.5}
-                maxZoom={3}
                 style={{
                   containerStyle: {
                     backgroundColor: '#9CA3AF',
-                    width: '100%',
-                    height: '100%',
                   },
-                  mediaStyle: {
-                    width: '100%',
-                    height: '100%',
-                  }
                 }}
               />
             </div>
@@ -201,7 +183,7 @@ export const ImageCropDialog = ({
             <Slider
               value={[zoom]}
               onValueChange={([value]) => setZoom(value)}
-              min={0.5}
+              min={1}
               max={3}
               step={0.1}
               className="w-full"
@@ -210,36 +192,22 @@ export const ImageCropDialog = ({
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-4 border-t bg-white flex flex-col-reverse sm:flex-row justify-between gap-2 sm:gap-3 sm:px-8 sm:py-6">
-          <div className="flex gap-2">
-            {onUseOriginal && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleUseOriginal}
-                className="w-full sm:w-auto sm:px-6"
-              >
-                Utiliser l'image originale
-              </Button>
-            )}
-          </div>
-          <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              className="w-full sm:w-auto sm:px-6"
-            >
-              Annuler
-            </Button>
-            <Button
-              type="button"
-              onClick={handleCropConfirm}
-              className="w-full sm:w-auto sm:px-6 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-semibold"
-            >
-              Appliquer le redimensionnement
-            </Button>
-          </div>
+        <div className="px-4 py-4 border-t bg-white flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 sm:px-8 sm:py-6">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="w-full sm:w-auto sm:px-6"
+          >
+            Annuler
+          </Button>
+          <Button
+            type="button"
+            onClick={handleCropConfirm}
+            className="w-full sm:w-auto sm:px-6 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-semibold"
+          >
+            Appliquer le redimensionnement
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
