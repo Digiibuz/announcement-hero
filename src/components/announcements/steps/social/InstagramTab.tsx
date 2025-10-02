@@ -45,35 +45,63 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
     form.setValue("instagram_hashtags", hashtags.filter((_: string, i: number) => i !== index));
   };
 
+  const contentLength = form.watch("instagram_content")?.length || 0;
+  const hashtagCount = hashtags.length;
+
   return (
-    <div className="space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6 pb-8">
       <AILoadingOverlay isVisible={isOptimizing.generateSocialContent} />
       <SparklingStars />
 
-      {/* Contenu */}
+      {/* Image principale */}
+      <div className="relative">
+        {selectedImages.length > 0 ? (
+          <div className="aspect-square rounded-2xl overflow-hidden bg-muted border-2 border-border">
+            <img
+              src={selectedImages[0]}
+              alt="Publication Instagram"
+              className="w-full h-full object-cover"
+            />
+          </div>
+        ) : (
+          <div className="aspect-square rounded-2xl border-2 border-dashed border-muted-foreground/30 flex items-center justify-center bg-muted/20">
+            <div className="text-center text-muted-foreground">
+              <p className="text-sm">Aucune image sélectionnée</p>
+              <p className="text-xs mt-1">Sélectionnez une image dans l'étape précédente</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Légende */}
       <FormField
         control={form.control}
         name="instagram_content"
         render={({ field }) => (
           <FormItem>
-            <div className="flex items-center justify-between">
-              <FormLabel>Légende Instagram</FormLabel>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleGenerateContent}
-                disabled={isOptimizing.generateSocialContent}
-              >
-                <Sparkles className="h-4 w-4 mr-2" />
-                Générer avec l'IA
-              </Button>
+            <div className="flex items-center justify-between mb-2">
+              <FormLabel className="text-base">Légende</FormLabel>
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <span>{contentLength}/2200</span>
+                <span># {hashtagCount}/30</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleGenerateContent}
+                  disabled={isOptimizing.generateSocialContent}
+                  className="h-8 w-8 p-0 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                >
+                  <Sparkles className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             <FormControl>
               <Textarea
                 {...field}
-                placeholder="Le contenu optimisé pour Instagram apparaîtra ici..."
-                className="min-h-[150px]"
+                placeholder="Rédigez une belle légende pour votre publication..."
+                className="min-h-[120px] resize-none"
+                maxLength={2200}
               />
             </FormControl>
             <FormMessage />
@@ -83,69 +111,31 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
 
       {/* Hashtags */}
       <FormItem>
-        <FormLabel>Hashtags Instagram</FormLabel>
-        <div className="flex gap-2">
+        <FormLabel className="text-base">Hashtags</FormLabel>
+        <div className="flex gap-2 mt-2">
           <Input
             placeholder="Ajouter un hashtag"
             value={newHashtag}
             onChange={(e) => setNewHashtag(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addHashtag())}
+            className="flex-1"
           />
-          <Button type="button" onClick={addHashtag} variant="outline">
+          <Button type="button" onClick={addHashtag} variant="outline" size="sm">
             Ajouter
           </Button>
         </div>
-        <div className="flex flex-wrap gap-2 mt-2">
+        <div className="flex flex-wrap gap-2 mt-3">
           {hashtags.map((tag: string, index: number) => (
-            <Badge key={index} variant="secondary" className="gap-1">
+            <Badge key={index} variant="secondary" className="gap-1 px-3 py-1">
               {tag}
               <X
-                className="h-3 w-3 cursor-pointer"
+                className="h-3 w-3 cursor-pointer hover:text-destructive"
                 onClick={() => removeHashtag(index)}
               />
             </Badge>
           ))}
         </div>
       </FormItem>
-
-      {/* Note: Les images seront sélectionnées dans le sélecteur principal */}
-      <FormItem>
-        <FormLabel>Images sélectionnées pour Instagram</FormLabel>
-        <div className="text-sm text-muted-foreground">
-          {selectedImages.length} image(s) sélectionnée(s) depuis l'étape Images
-        </div>
-      </FormItem>
-
-      {/* Prévisualisation Instagram */}
-      <div className="border rounded-lg p-4 bg-card">
-        <h3 className="font-medium mb-3">Aperçu Instagram</h3>
-        <div className="bg-background rounded-lg border overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center gap-2 p-3 border-b">
-            <div className="w-8 h-8 bg-muted rounded-full" />
-            <div className="font-semibold text-sm">votre_compte</div>
-          </div>
-          
-          {/* Images */}
-          {selectedImages.length > 0 && (
-            <div className="aspect-square bg-muted">
-              <img src={selectedImages[0]} alt="" className="w-full h-full object-cover" />
-            </div>
-          )}
-          
-          {/* Content */}
-          <div className="p-3 space-y-2">
-            <div className="text-sm">
-              <span className="font-semibold">votre_compte </span>
-              {form.watch("instagram_content") || "Votre légende apparaîtra ici..."}
-            </div>
-            {hashtags.length > 0 && (
-              <p className="text-sm text-primary">{hashtags.join(" ")}</p>
-            )}
-            <div className="text-xs text-muted-foreground">À L'INSTANT</div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
