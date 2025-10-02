@@ -18,6 +18,7 @@ import UserProfile from "@/pages/UserProfile";
 import GoogleBusinessPage from "@/pages/GoogleBusinessPage";
 import WebsiteManagement from "@/pages/WebsiteManagement";
 import Templates from "@/pages/Templates";
+import FacebookCallback from "@/pages/FacebookCallback";
 
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
@@ -128,6 +129,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <GoogleBusinessPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/facebook-callback" 
+        element={
+          <ProtectedRoute>
+            <FacebookCallback />
           </ProtectedRoute>
         } 
       />

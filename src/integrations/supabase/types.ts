@@ -98,6 +98,42 @@ export type Database = {
         }
         Relationships: []
       }
+      facebook_connections: {
+        Row: {
+          access_token: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          page_access_token: string
+          page_id: string
+          page_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          page_access_token: string
+          page_id: string
+          page_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          page_access_token?: string
+          page_id?: string
+          page_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       maintenance_settings: {
         Row: {
           created_at: string

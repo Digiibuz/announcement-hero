@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import BasicInfoTab from "./userEditForm/BasicInfoTab";
 import WordPressConfigTab from "./userEditForm/WordPressConfigTab";
-
+import FacebookConnectionTab from "./FacebookConnectionTab";
 import PublicationLimitsTab from "./userEditForm/PublicationLimitsTab";
 import AILimitsTab from "./userEditForm/AILimitsTab";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -79,10 +79,13 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
         
         <ScrollArea className="flex-1 pr-4">
           <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 flex-shrink-0">
+            <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
               <TabsTrigger value="basic">Informations</TabsTrigger>
               <TabsTrigger value="wordpress" disabled={role !== "client" && role !== "commercial"}>
                 WordPress
+              </TabsTrigger>
+              <TabsTrigger value="facebook">
+                Facebook
               </TabsTrigger>
               <TabsTrigger value="objectives" disabled={role !== "client" && role !== "commercial"}>
                 Objectifs
@@ -119,6 +122,10 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
                   userId={user.id}
                   userRole={user.role}
                 />
+              </TabsContent>
+              
+              <TabsContent value="facebook" className="mt-0">
+                <FacebookConnectionTab />
               </TabsContent>
               
               <TabsContent value="objectives" className="mt-0">

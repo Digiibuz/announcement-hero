@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Calendar, Clock, Hash, Sparkles, Image as ImageIcon, Share2, Zap, Heart, MessageCircle, Share, MoreHorizontal } from "lucide-react";
+import { Calendar, Clock, Hash, Sparkles, Image as ImageIcon, Share2, Zap, Heart, MessageCircle, Share, MoreHorizontal, Facebook, AlertCircle } from "lucide-react";
 import { AnnouncementFormData } from "../AnnouncementForm";
 import { useAuth } from "@/context/AuthContext";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
@@ -14,7 +14,10 @@ import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import SocialMediaImageSelector from "../SocialMediaImageSelector";
+import { useFacebookConnection } from "@/hooks/useFacebookConnection";
 
 interface SocialStepProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -24,7 +27,9 @@ interface SocialStepProps {
 
 export default function SocialStep({ form, onSkip, className }: SocialStepProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { optimizeContent, isOptimizing } = useContentOptimization();
+  const { hasActiveConnection, isLoading: isLoadingConnection } = useFacebookConnection();
   const [socialContent, setSocialContent] = useState("");
   const [publishDate, setPublishDate] = useState("");
   const [publishTime, setPublishTime] = useState("");
@@ -206,6 +211,24 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
 
   return (
     <div className={cn("space-y-6", className)}>
+      {/* Alerte de connexion Facebook */}
+      {!isLoadingConnection && !hasActiveConnection && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>Connectez votre page Facebook pour publier vos annonces automatiquement.</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/profile')}
+            >
+              <Facebook className="mr-2 h-4 w-4" />
+              Connecter Facebook
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* En-tête */}
       <Card>
         <CardHeader>
