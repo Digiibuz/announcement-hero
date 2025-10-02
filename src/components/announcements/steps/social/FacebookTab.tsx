@@ -47,11 +47,20 @@ export const FacebookTab = ({ form }: FacebookTabProps) => {
 
   const contentLength = form.watch("facebook_content")?.length || 0;
   const hashtagCount = hashtags.length;
+  const allMedias = [...images, ...additionalMedias];
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-8">
       <AILoadingOverlay isVisible={isOptimizing.generateSocialContent} />
       <SparklingStars />
+
+      {/* Sélecteur d'images */}
+      <SocialMediaImageSelector
+        form={form}
+        fieldName="facebook_images"
+        label="Sélectionner des images pour Facebook"
+        maxImages={10}
+      />
 
       {/* Images */}
       <div className="relative">

@@ -2,12 +2,15 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Image as ImageIcon, GripVertical } from "lucide-react";
+import { Image as ImageIcon, GripVertical, Check } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { AnnouncementFormData } from "./AnnouncementForm";
 
 interface SocialMediaImageSelectorProps {
-  form: UseFormReturn<AnnouncementFormData>;
+  form: UseFormReturn<any>;
+  fieldName: string;
+  label?: string;
+  maxImages?: number;
 }
 
 interface ImageItem {
@@ -16,124 +19,36 @@ interface ImageItem {
   id: string; // Utiliser un ID unique au lieu de l'index
 }
 
-export default function SocialMediaImageSelector({ form }: SocialMediaImageSelectorProps) {
-  const [imageItems, setImageItems] = useState<ImageItem[]>([]);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
-
+export default function SocialMediaImageSelector({ 
+  form, 
+  fieldName, 
+  label = "Sélectionner des images",
+  maxImages = 10 
+}: SocialMediaImageSelectorProps) {
   const watchedValues = form.watch();
   const { images = [], additionalMedias = [] } = watchedValues;
+  const selectedImages = form.watch(fieldName) || [];
 
-  // Combiner toutes les images
+  // Combiner toutes les images disponibles
   const allImages = [...(images || []), ...(additionalMedias || [])];
 
-  // Initialiser les items d'images
-  useEffect(() => {
-    if (allImages.length > 0) {
-      setImageItems(prevItems => {
-        // Si on a déjà des items avec les mêmes URLs, ne pas réinitialiser
-        if (prevItems.length === allImages.length && 
-            prevItems.every(item => allImages.includes(item.url))) {
-          return prevItems;
-        }
-        
-        // Créer un map des items existants pour préserver l'état
-        const existingItemsMap = new Map(prevItems.map(item => [item.url, item]));
-        
-        return allImages.map((url, index) => {
-          const existingItem = existingItemsMap.get(url);
-          return existingItem || {
-            url,
-            selected: true, // Par défaut, toutes les images sont sélectionnées
-            id: `img-${index}-${url.substring(url.length - 10)}` // ID unique
-          };
-        });
-      });
-    }
-  }, [allImages.join(',')]); // Utiliser join pour éviter les re-renders inutiles
-
-  const handleCheckboxChange = (imageUrl: string, checked: boolean) => {
-    setImageItems(prev => 
-      prev.map(item => 
-        item.url === imageUrl ? { ...item, selected: checked } : item
-      )
-    );
-  };
-
-  const handleDragStart = (e: React.DragEvent, itemId: string) => {
-    setDraggedId(itemId);
-    setDragOverId(null);
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", itemId);
-    console.log("Drag start:", itemId);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedId(null);
-    setDragOverId(null);
-    console.log("Drag end");
-  };
-
-  const handleDragOver = (e: React.DragEvent, itemId: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
+  const toggleImage = (imageUrl: string) => {
+    const currentSelected = selectedImages as string[];
     
-    if (draggedId && draggedId !== itemId) {
-      setDragOverId(itemId);
-    }
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const x = e.clientX;
-    const y = e.clientY;
-    
-    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-      setDragOverId(null);
-    }
-  };
-
-  const moveItem = (draggedId: string, targetId: string) => {
-    console.log("Moving item from", draggedId, "to", targetId);
-    
-    setImageItems(prev => {
-      const draggedIndex = prev.findIndex(item => item.id === draggedId);
-      const targetIndex = prev.findIndex(item => item.id === targetId);
-      
-      console.log("Indices:", { draggedIndex, targetIndex });
-      
-      if (draggedIndex === -1 || targetIndex === -1 || draggedIndex === targetIndex) {
-        console.log("Invalid indices or same position");
-        return prev;
+    if (currentSelected.includes(imageUrl)) {
+      // Retirer l'image
+      form.setValue(fieldName, currentSelected.filter((url: string) => url !== imageUrl));
+    } else {
+      // Ajouter l'image (si limite non atteinte)
+      if (currentSelected.length < maxImages) {
+        form.setValue(fieldName, [...currentSelected, imageUrl]);
       }
-      
-      const newItems = [...prev];
-      const [draggedItem] = newItems.splice(draggedIndex, 1);
-      newItems.splice(targetIndex, 0, draggedItem);
-      
-      console.log("New order:", newItems.map(item => item.url));
-      return newItems;
-    });
-  };
-
-  const handleDrop = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    
-    console.log("Drop event:", { draggedId, targetId });
-    
-    if (!draggedId || draggedId === targetId) {
-      console.log("Drop cancelled");
-      setDraggedId(null);
-      setDragOverId(null);
-      return;
     }
-
-    moveItem(draggedId, targetId);
-    setDraggedId(null);
-    setDragOverId(null);
   };
 
-  const selectedImages = imageItems.filter(item => item.selected);
+  const isSelected = (imageUrl: string) => {
+    return (selectedImages as string[]).includes(imageUrl);
+  };
 
   if (allImages.length === 0) {
     return null;
@@ -142,109 +57,72 @@ export default function SocialMediaImageSelector({ form }: SocialMediaImageSelec
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <ImageIcon className="h-5 w-5" />
-          Images sélectionnées ({selectedImages.length})
+        <CardTitle className="text-base flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ImageIcon className="h-5 w-5" />
+            {label}
+          </div>
+          <Badge variant="secondary">
+            {selectedImages.length}/{maxImages}
+          </Badge>
         </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Glissez-déposez pour réorganiser. La première image sera l'image de couverture.
-        </p>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {/* Grille des images */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {imageItems.map((item, index) => (
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+          {allImages.map((imageUrl, index) => {
+            const selected = isSelected(imageUrl);
+            const canSelect = selectedImages.length < maxImages || selected;
+            
+            return (
               <div
-                key={item.id}
-                draggable
-                onDragStart={(e) => handleDragStart(e, item.id)}
-                onDragEnd={handleDragEnd}
-                onDragOver={(e) => handleDragOver(e, item.id)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, item.id)}
+                key={index}
+                onClick={() => canSelect && toggleImage(imageUrl)}
                 className={`
-                  relative group cursor-move border-2 rounded-lg overflow-hidden transition-all duration-200
-                  ${item.selected ? 'border-primary' : 'border-muted'}
-                  ${draggedId === item.id ? 'opacity-50 scale-95' : ''}
-                  ${dragOverId === item.id ? 'border-blue-500 border-dashed scale-105' : ''}
-                  hover:shadow-md
+                  relative aspect-square rounded-lg overflow-hidden cursor-pointer
+                  border-2 transition-all duration-200
+                  ${selected ? 'border-primary ring-2 ring-primary/20' : 'border-transparent hover:border-muted-foreground/30'}
+                  ${!canSelect ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}
                 `}
               >
+                <img
+                  src={imageUrl}
+                  alt={`Image ${index + 1}`}
+                  className="w-full h-full object-cover"
+                />
+                
+                {/* Overlay de sélection */}
+                {selected && (
+                  <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                    <div className="bg-primary rounded-full p-1">
+                      <Check className="h-4 w-4 text-primary-foreground" />
+                    </div>
+                  </div>
+                )}
+                
                 {/* Numéro d'ordre */}
-                {item.selected && (
-                  <div className="absolute top-2 left-2" style={{ zIndex: 0 }}>
-                    <Badge 
-                      variant={selectedImages.findIndex(si => si.id === item.id) === 0 ? "default" : "secondary"}
-                      className="text-xs"
-                    >
-                      {selectedImages.findIndex(si => si.id === item.id) + 1}
-                      {selectedImages.findIndex(si => si.id === item.id) === 0 && (
-                        <span className="ml-1">👑</span>
-                      )}
+                {selected && (
+                  <div className="absolute top-1 right-1">
+                    <Badge variant="default" className="text-xs h-5 w-5 p-0 flex items-center justify-center">
+                      {(selectedImages as string[]).indexOf(imageUrl) + 1}
                     </Badge>
                   </div>
                 )}
-
-                {/* Icône de glissement */}
-                <div className="absolute top-2 right-2" style={{ zIndex: 0 }}>
-                  <div className="bg-black/50 rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <GripVertical className="h-4 w-4 text-white" />
-                  </div>
-                </div>
-
-                {/* Checkbox */}
-                <div className="absolute bottom-2 left-2" style={{ zIndex: 0 }}>
-                  <Checkbox
-                    checked={item.selected}
-                    onCheckedChange={(checked) => 
-                      handleCheckboxChange(item.url, checked as boolean)
-                    }
-                    className="bg-white border-2"
-                  />
-                </div>
-
-                {/* Image */}
-                <div className="aspect-square bg-muted">
-                  <img
-                    src={item.url}
-                    alt={`Image ${index + 1}`}
-                    className="w-full h-full object-cover"
-                    draggable={false}
-                  />
-                </div>
-
-                {/* Overlay pour les images non sélectionnées */}
-                {!item.selected && (
-                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center pointer-events-none">
-                    <span className="text-white text-sm font-medium">
-                      Non incluse
-                    </span>
-                  </div>
-                )}
               </div>
-            ))}
-          </div>
-
-          {/* Informations sur l'image de couverture */}
-          {selectedImages.length > 0 && (
-            <div className="bg-muted/50 rounded-lg p-3">
-              <div className="flex items-center gap-2 text-sm">
-                <span className="font-medium">Image de couverture :</span>
-                <span className="text-muted-foreground">
-                  La première image sera utilisée comme image principale pour les réseaux sociaux
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Instructions */}
-          <div className="text-xs text-muted-foreground space-y-1">
-            <p>• Cochez les images que vous souhaitez inclure dans la publication</p>
-            <p>• Glissez-déposez pour changer l'ordre des images</p>
-            <p>• La première image (👑) sera l'image de couverture</p>
-          </div>
+            );
+          })}
         </div>
+        
+        {maxImages === 1 && selectedImages.length === 0 && (
+          <p className="text-sm text-muted-foreground mt-3">
+            Cliquez sur une image pour la sélectionner
+          </p>
+        )}
+        
+        {selectedImages.length >= maxImages && maxImages > 1 && (
+          <p className="text-sm text-amber-600 mt-3">
+            Limite de {maxImages} images atteinte. Désélectionnez une image pour en choisir une autre.
+          </p>
+        )}
       </CardContent>
     </Card>
   );

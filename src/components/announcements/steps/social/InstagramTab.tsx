@@ -47,11 +47,20 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
 
   const contentLength = form.watch("instagram_content")?.length || 0;
   const hashtagCount = hashtags.length;
+  const allMedias = [...images, ...additionalMedias];
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-8">
       <AILoadingOverlay isVisible={isOptimizing.generateSocialContent} />
       <SparklingStars />
+
+      {/* Sélecteur d'images */}
+      <SocialMediaImageSelector
+        form={form}
+        fieldName="instagram_images"
+        label="Sélectionner une image pour Instagram"
+        maxImages={1}
+      />
 
       {/* Image principale */}
       <div className="relative">
