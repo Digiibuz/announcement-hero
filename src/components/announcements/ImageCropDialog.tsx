@@ -44,21 +44,17 @@ const getCroppedImg = async (imageSrc: string, pixelCrop: Area): Promise<string>
   // Instagram optimal width
   const maxWidth = 1080;
   
-  // Calculate scale between displayed image and natural image size
-  const scaleX = image.naturalWidth / image.width;
-  const scaleY = image.naturalHeight / image.height;
-
   // Set canvas size (limited to Instagram's optimal width)
   canvas.width = Math.min(maxWidth, pixelCrop.width);
   canvas.height = (canvas.width * pixelCrop.height) / pixelCrop.width;
 
-  // Draw the cropped image using natural dimensions
+  // Draw the cropped image
   ctx.drawImage(
     image,
-    pixelCrop.x * scaleX,
-    pixelCrop.y * scaleY,
-    pixelCrop.width * scaleX,
-    pixelCrop.height * scaleY,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
     0,
     0,
     canvas.width,
