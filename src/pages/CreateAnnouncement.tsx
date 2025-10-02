@@ -44,8 +44,8 @@ const stepConfigs: StepConfig[] = [
   },
   {
     id: "images",
-    title: "Images",
-    description: "Les annonces avec des images de qualité attirent davantage l'attention et génèrent plus d'intérêt."
+    title: "",
+    description: ""
   },
   {
     id: "social",
