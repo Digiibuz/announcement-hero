@@ -3,7 +3,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sparkles, X, ImageIcon } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { useState } from "react";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
@@ -17,6 +18,7 @@ interface InstagramTabProps {
 
 export const InstagramTab = ({ form }: InstagramTabProps) => {
   const [newHashtag, setNewHashtag] = useState("");
+  const [showImageSelector, setShowImageSelector] = useState(false);
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const hashtags = form.watch("instagram_hashtags") || [];
   const images = form.watch("images") || [];
@@ -50,101 +52,125 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
   const allMedias = [...images, ...additionalMedias];
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-8">
+    <div className="w-full pb-8">
       <AILoadingOverlay isVisible={isOptimizing.generateSocialContent} />
       <SparklingStars />
 
-      {/* Sélecteur d'images */}
-      <SocialMediaImageSelector
-        form={form}
-        fieldName="instagram_images"
-        label="Sélectionner une image pour Instagram"
-        maxImages={1}
-      />
-
-      {/* Image principale */}
-      <div className="relative">
+      {/* Image principale pleine largeur */}
+      <div className="relative w-full bg-background">
         {selectedImages.length > 0 ? (
-          <div className="aspect-square rounded-2xl overflow-hidden bg-muted border-2 border-border">
+          <div className="aspect-square w-full overflow-hidden bg-muted relative">
             <img
               src={selectedImages[0]}
               alt="Publication Instagram"
               className="w-full h-full object-cover"
             />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowImageSelector(true)}
+              className="absolute top-4 right-4 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
+            >
+              <ImageIcon className="h-5 w-5" />
+            </Button>
           </div>
         ) : (
-          <div className="aspect-square rounded-2xl border-2 border-dashed border-muted-foreground/30 flex items-center justify-center bg-muted/20">
-            <div className="text-center text-muted-foreground">
-              <p className="text-sm">Aucune image sélectionnée</p>
-              <p className="text-xs mt-1">Sélectionnez une image dans l'étape précédente</p>
-            </div>
+          <div className="aspect-square w-full flex items-center justify-center bg-muted/20">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowImageSelector(true)}
+              className="flex-col h-auto py-6"
+            >
+              <ImageIcon className="h-8 w-8 mb-2" />
+              <span>Sélectionner une image</span>
+            </Button>
           </div>
         )}
       </div>
 
-      {/* Légende */}
-      <FormField
-        control={form.control}
-        name="instagram_content"
-        render={({ field }) => (
-          <FormItem>
-            <div className="flex items-center justify-between mb-2">
-              <FormLabel className="text-base">Légende</FormLabel>
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                <span>{contentLength}/2200</span>
-                <span># {hashtagCount}/30</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleGenerateContent}
-                  disabled={isOptimizing.generateSocialContent}
-                  className="h-8 w-8 p-0 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
-                >
-                  <Sparkles className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            <FormControl>
-              <Textarea
-                {...field}
-                placeholder="Rédigez une belle légende pour votre publication..."
-                className="min-h-[120px] resize-none"
-                maxLength={2200}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      {/* Hashtags */}
-      <FormItem>
-        <FormLabel className="text-base">Hashtags</FormLabel>
-        <div className="flex gap-2 mt-2">
-          <Input
-            placeholder="Ajouter un hashtag"
-            value={newHashtag}
-            onChange={(e) => setNewHashtag(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addHashtag())}
-            className="flex-1"
+      {/* Sélecteur d'images en dialog */}
+      <Dialog open={showImageSelector} onOpenChange={setShowImageSelector}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Sélectionner une image pour Instagram</DialogTitle>
+          </DialogHeader>
+          <SocialMediaImageSelector
+            form={form}
+            fieldName="instagram_images"
+            label=""
+            maxImages={1}
           />
-          <Button type="button" onClick={addHashtag} variant="outline" size="sm">
-            Ajouter
-          </Button>
-        </div>
-        <div className="flex flex-wrap gap-2 mt-3">
-          {hashtags.map((tag: string, index: number) => (
-            <Badge key={index} variant="secondary" className="gap-1 px-3 py-1">
-              {tag}
-              <X
-                className="h-3 w-3 cursor-pointer hover:text-destructive"
-                onClick={() => removeHashtag(index)}
-              />
-            </Badge>
-          ))}
-        </div>
-      </FormItem>
+        </DialogContent>
+      </Dialog>
+
+      {/* Contenu - pleine largeur */}
+      <div className="px-4 space-y-4 mt-4">
+        {/* Légende */}
+        <FormField
+          control={form.control}
+          name="instagram_content"
+          render={({ field }) => (
+            <FormItem>
+              <div className="flex items-center justify-between mb-2">
+                <FormLabel className="text-base">Légende</FormLabel>
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                  <span>{contentLength}/2200</span>
+                  <span># {hashtagCount}/30</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleGenerateContent}
+                    disabled={isOptimizing.generateSocialContent}
+                    className="h-8 w-8 p-0 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <FormControl>
+                <Textarea
+                  {...field}
+                  placeholder="Rédigez une belle légende pour votre publication..."
+                  className="min-h-[120px] resize-none border-0 bg-muted/30 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  maxLength={2200}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Hashtags */}
+        <FormItem>
+          <FormLabel className="text-base">Hashtags</FormLabel>
+          <div className="flex gap-2 mt-2">
+            <Input
+              placeholder="Ajouter un hashtag"
+              value={newHashtag}
+              onChange={(e) => setNewHashtag(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addHashtag())}
+              className="flex-1 border-0 bg-muted/30 focus-visible:ring-0 focus-visible:ring-offset-0"
+            />
+            <Button type="button" onClick={addHashtag} variant="ghost" size="sm">
+              Ajouter
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-3">
+            {hashtags.map((tag: string, index: number) => (
+              <Badge key={index} variant="secondary" className="gap-1 px-3 py-1">
+                {tag}
+                <X
+                  className="h-3 w-3 cursor-pointer hover:text-destructive"
+                  onClick={() => removeHashtag(index)}
+                />
+              </Badge>
+            ))}
+          </div>
+        </FormItem>
+      </div>
     </div>
   );
 };
