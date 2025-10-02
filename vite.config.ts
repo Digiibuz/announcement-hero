@@ -15,16 +15,10 @@ export default defineConfig(({ mode }) => ({
     mode === 'development' &&
     componentTagger(),
   ].filter(Boolean),
-  optimizeDeps: {
-    include: ['react-easy-crop'],
-  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "react": path.resolve(__dirname, "./node_modules/react"),
-      "react-dom": path.resolve(__dirname, "./node_modules/react-dom"),
     },
-    dedupe: ['react', 'react-dom'],
   },
   // Define for Deno global in browser builds
   define: {
