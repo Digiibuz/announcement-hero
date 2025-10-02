@@ -14,7 +14,7 @@ interface ImageCropDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   imageUrl: string;
-  onCropComplete: (croppedImageUrl: string) => void;
+  onCropComplete: (croppedImageUrl: string, aspectRatio?: number) => void;
   aspectRatios?: { label: string; value: number }[];
 }
 
@@ -127,7 +127,7 @@ export const ImageCropDialog = ({
         .from('images')
         .getPublicUrl(filePath);
       
-      onCropComplete(urlData.publicUrl);
+      onCropComplete(urlData.publicUrl, selectedAspectRatio.value);
       onOpenChange(false);
       toast.success("Image recadrée et sauvegardée avec succès !");
     } catch (e) {

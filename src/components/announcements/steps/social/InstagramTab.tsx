@@ -26,6 +26,7 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
   const images = form.watch("images") || [];
   const additionalMedias = form.watch("additionalMedias") || [];
   const selectedImages = form.watch("instagram_images") || [];
+  const imageAspectRatio = form.watch("instagram_image_aspect_ratio") || 1;
 
   // Auto-sélection de la 1ère image disponible
   useEffect(() => {
@@ -60,8 +61,11 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
   const contentLength = form.watch("instagram_content")?.length || 0;
   const hashtagCount = hashtags.length;
 
-  const handleCropComplete = (croppedImageUrl: string) => {
+  const handleCropComplete = (croppedImageUrl: string, aspectRatio?: number) => {
     form.setValue("instagram_images", [croppedImageUrl]);
+    if (aspectRatio) {
+      form.setValue("instagram_image_aspect_ratio", aspectRatio);
+    }
   };
 
   const handleDeleteImage = () => {
@@ -73,10 +77,13 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
       <AILoadingOverlay isVisible={isOptimizing.generateSocialContent} />
       <SparklingStars />
 
-      {/* Image principale pleine largeur */}
+      {/* Image principale avec aspect ratio dynamique */}
       <div className="relative w-full bg-background">
         {selectedImages.length > 0 ? (
-          <div className="aspect-square w-full overflow-hidden bg-muted relative">
+          <div 
+            className="w-full overflow-hidden bg-muted relative"
+            style={{ aspectRatio: imageAspectRatio }}
+          >
             <img
               src={selectedImages[0]}
               alt="Publication Instagram"
@@ -113,7 +120,10 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
             </div>
           </div>
         ) : (
-          <div className="aspect-square w-full flex items-center justify-center bg-muted/20">
+          <div 
+            className="w-full flex items-center justify-center bg-muted/20"
+            style={{ aspectRatio: imageAspectRatio }}
+          >
             <Button
               type="button"
               variant="outline"
