@@ -81,7 +81,7 @@ export const ImageCropDialog = ({
   ],
 }: ImageCropDialogProps) => {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(2);
+  const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [selectedAspectRatio, setSelectedAspectRatio] = useState("1");
 
@@ -115,7 +115,7 @@ export const ImageCropDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl p-0 gap-0 bg-white max-h-[95vh] overflow-y-auto sm:max-h-[90vh]">
+      <DialogContent className="max-w-5xl p-0 gap-0 bg-white max-h-[95vh] overflow-y-auto sm:max-h-[90vh] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
         {/* Header personnalisé */}
         <div className="px-4 pt-4 pb-3 border-b sm:px-8 sm:pt-8 sm:pb-6">
           <div className="space-y-1 sm:space-y-2">
@@ -171,7 +171,7 @@ export const ImageCropDialog = ({
                 onCropChange={setCrop}
                 onCropComplete={onCropCompleteCallback}
                 onZoomChange={setZoom}
-                objectFit="contain"
+                objectFit="horizontal-cover"
                 style={{
                   containerStyle: {
                     backgroundColor: '#9CA3AF',
