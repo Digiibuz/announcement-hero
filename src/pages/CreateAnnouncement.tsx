@@ -481,7 +481,7 @@ const CreateAnnouncement = () => {
         </div>
       )}
     
-      <div className={`pt-16 ${isMobile ? 'pb-24' : 'pb-20'} px-4 md:max-w-4xl md:mx-auto`}>
+      <div className={`pt-16 ${isMobile ? 'pb-24' : 'pb-20'} ${isMobile ? '' : 'px-4 md:max-w-4xl md:mx-auto'}`}>
         <Form {...form}>
           <form 
             onSubmit={(e) => {
@@ -502,8 +502,8 @@ const CreateAnnouncement = () => {
                 <p className="text-gray-600 text-base max-w-2xl mx-auto">{currentStep.description}</p>
               </div>
               
-              <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-                <div className="p-6 md:p-8">
+              <div className={`${isMobile ? '' : 'bg-white rounded-2xl shadow-xl border border-gray-100'} overflow-hidden`}>
+                <div className={`${isMobile ? '' : 'p-6 md:p-8'}`}>
                   {currentStep.id === "category" && <CategoryStep form={form} isMobile={isMobile} />}
                   
                   {currentStep.id === "description" && <DescriptionStep form={form} isMobile={isMobile} />}
