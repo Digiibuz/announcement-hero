@@ -483,7 +483,7 @@ const CreateAnnouncement = () => {
             </div>
           )}
         
-          <div className={`pt-16 ${isMobile ? 'pb-24' : 'pb-20'}`}>
+          <div className="pt-16 pb-24 px-4">
             <Form {...form}>
               <form 
                 onSubmit={(e) => {
@@ -498,7 +498,7 @@ const CreateAnnouncement = () => {
                 className="h-full"
               >
                 <div className="max-w-4xl mx-auto">
-                  <div className="my-8 text-center px-4">
+                  <div className="my-8 text-center">{/* pas de px-4 car déjà sur le parent */}
                     <h2 className="text-2xl font-bold text-gray-800 mb-2">{currentStep.title}</h2>
                     <p className="text-gray-600 text-base max-w-2xl mx-auto">{currentStep.description}</p>
                   </div>
