@@ -13,6 +13,7 @@ interface ImageCropDialogProps {
   onOpenChange: (open: boolean) => void;
   imageUrl: string;
   onCropComplete: (croppedImageUrl: string) => void;
+  onUseOriginal?: () => void;
   aspectRatios?: { label: string; value: number; icon: React.ReactNode }[];
 }
 
@@ -72,6 +73,7 @@ export const ImageCropDialog = ({
   onOpenChange,
   imageUrl,
   onCropComplete,
+  onUseOriginal,
   aspectRatios = [
     { label: "Carré (1:1)", value: 1, icon: <Square className="h-4 w-4" /> },
     { label: "Portrait (4:5)", value: 4 / 5, icon: <Maximize2 className="h-4 w-4" /> },
@@ -100,6 +102,14 @@ export const ImageCropDialog = ({
       toast.error("Erreur lors du recadrage");
     }
   }, [croppedAreaPixels, imageUrl, onCropComplete, onOpenChange]);
+
+  const handleUseOriginal = useCallback(() => {
+    if (onUseOriginal) {
+      onUseOriginal();
+      onOpenChange(false);
+      toast.success("Image originale restaurée !");
+    }
+  }, [onUseOriginal, onOpenChange]);
 
   const currentAspectRatio = aspectRatios.find(r => r.value.toString() === selectedAspectRatio)?.value || 1;
 
@@ -192,22 +202,36 @@ export const ImageCropDialog = ({
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-4 border-t bg-white flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 sm:px-8 sm:py-6">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            className="w-full sm:w-auto sm:px-6"
-          >
-            Annuler
-          </Button>
-          <Button
-            type="button"
-            onClick={handleCropConfirm}
-            className="w-full sm:w-auto sm:px-6 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-semibold"
-          >
-            Appliquer le redimensionnement
-          </Button>
+        <div className="px-4 py-4 border-t bg-white flex flex-col-reverse sm:flex-row justify-between gap-2 sm:gap-3 sm:px-8 sm:py-6">
+          <div className="flex gap-2">
+            {onUseOriginal && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleUseOriginal}
+                className="w-full sm:w-auto sm:px-6"
+              >
+                Utiliser l'image originale
+              </Button>
+            )}
+          </div>
+          <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="w-full sm:w-auto sm:px-6"
+            >
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCropConfirm}
+              className="w-full sm:w-auto sm:px-6 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-semibold"
+            >
+              Appliquer le redimensionnement
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

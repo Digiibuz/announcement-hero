@@ -64,6 +64,13 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
     form.setValue("instagram_images", [croppedImageUrl]);
   };
 
+  const handleUseOriginal = () => {
+    const allMedias = [...images, ...additionalMedias];
+    if (allMedias.length > 0) {
+      form.setValue("instagram_images", [allMedias[0]]);
+    }
+  };
+
   return (
     <div className="w-full pb-8">
       <AILoadingOverlay isVisible={isOptimizing.generateSocialContent} />
@@ -136,6 +143,7 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
           onOpenChange={setShowCropDialog}
           imageUrl={selectedImages[0]}
           onCropComplete={handleCropComplete}
+          onUseOriginal={handleUseOriginal}
         />
       )}
 
