@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Image as ImageIcon, Check, Upload } from "lucide-react";
+import { Image as ImageIcon, Check, Upload, X } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { AnnouncementFormData } from "./AnnouncementForm";
 import { supabase } from "@/integrations/supabase/client";
@@ -192,16 +192,23 @@ export default function SocialMediaImageSelector({
                   )}
                 </div>
 
-                {/* Bouton Remplacer */}
+                {/* Bouton Remplacer - Toujours visible */}
                 <Button
-                  size="sm"
+                  size="icon"
                   variant="secondary"
-                  onClick={() => handleReplaceClick(index)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleReplaceClick(index);
+                  }}
                   disabled={isUploading && replacingIndex === index}
-                  className="absolute bottom-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-xs h-7 px-2 z-10"
+                  className="absolute top-1 left-1 h-7 w-7 rounded-full shadow-md z-10"
+                  title="Remplacer l'image"
                 >
-                  <Upload className="h-3 w-3 mr-1" />
-                  {isUploading && replacingIndex === index ? "..." : "Remplacer"}
+                  {isUploading && replacingIndex === index ? (
+                    <div className="h-3 w-3 border-2 border-t-transparent border-current rounded-full animate-spin" />
+                  ) : (
+                    <Upload className="h-3.5 w-3.5" />
+                  )}
                 </Button>
               </div>
             );
