@@ -48,7 +48,7 @@ const getCroppedImg = async (imageSrc: string, pixelCrop: Area): Promise<string>
   canvas.width = Math.min(maxWidth, pixelCrop.width);
   canvas.height = (canvas.width * pixelCrop.height) / pixelCrop.width;
 
-  // Draw the cropped image
+  // Draw the cropped image (pixelCrop already contains natural image coordinates)
   ctx.drawImage(
     image,
     pixelCrop.x,
@@ -61,10 +61,11 @@ const getCroppedImg = async (imageSrc: string, pixelCrop: Area): Promise<string>
     canvas.height
   );
 
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (!blob) {
-        throw new Error("Canvas is empty");
+        reject(new Error("Canvas is empty"));
+        return;
       }
       const fileUrl = URL.createObjectURL(blob);
       resolve(fileUrl);
