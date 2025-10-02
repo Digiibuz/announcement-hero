@@ -80,23 +80,6 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
   // Vue principale avec onglets
   return (
     <div className={className}>
-      {/* Alerte de connexion Facebook */}
-      {!hasActiveConnection && (
-        <Alert className="mb-6 mx-4">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="flex items-center justify-between">
-            <span>Connectez votre page Facebook pour publier vos annonces automatiquement.</span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/profile')}
-            >
-              <FacebookIcon className="mr-2 h-4 w-4" />
-              Connecter Facebook
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
 
       {/* Header */}
       <div className="px-4 pb-4 space-y-2">
