@@ -80,15 +80,6 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
   // Vue principale avec onglets
   return (
     <div className={className}>
-
-      {/* Header */}
-      <div className="px-4 pb-4 space-y-2">
-        <h2 className="text-2xl font-bold">Réseaux sociaux</h2>
-        <p className="text-muted-foreground">
-          Adaptez votre contenu pour les réseaux sociaux et programmez votre publication.
-        </p>
-      </div>
-
       {/* Onglets - pleine largeur */}
       <Tabs defaultValue={facebookEnabled ? "facebook" : "instagram"} className="w-full">
         <TabsList className="grid w-full grid-cols-2 rounded-none">
