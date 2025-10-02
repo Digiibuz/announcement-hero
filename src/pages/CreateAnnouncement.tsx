@@ -229,8 +229,13 @@ const CreateAnnouncement = () => {
         seo_description: formData.seoDescription || null,
         seo_slug: formData.seoSlug || null,
         create_facebook_post: formData.createFacebookPost || false,
-        social_content: formData.socialContent || null,
-        social_hashtags: formData.socialHashtags || []
+        facebook_content: formData.facebookContent || null,
+        facebook_hashtags: formData.facebookHashtags || [],
+        facebook_images: formData.facebookImages || [],
+        create_instagram_post: formData.createInstagramPost || false,
+        instagram_content: formData.instagramContent || null,
+        instagram_hashtags: formData.instagramHashtags || [],
+        instagram_images: formData.instagramImages || []
       };
 
       const { data: newAnnouncement, error } = await supabase
@@ -312,8 +317,13 @@ const CreateAnnouncement = () => {
         seo_description: formData.seoDescription || null,
         seo_slug: formData.seoSlug || null,
         create_facebook_post: formData.createFacebookPost || false,
-        social_content: formData.socialContent || null,
-        social_hashtags: formData.socialHashtags || []
+        facebook_content: formData.facebookContent || null,
+        facebook_hashtags: formData.facebookHashtags || [],
+        facebook_images: formData.facebookImages || [],
+        create_instagram_post: formData.createInstagramPost || false,
+        instagram_content: formData.instagramContent || null,
+        instagram_hashtags: formData.instagramHashtags || [],
+        instagram_images: formData.instagramImages || []
       };
 
       const {
@@ -340,7 +350,7 @@ const CreateAnnouncement = () => {
           additionalMedias: formData.additionalMedias || []
         } as Announcement;
         
-        wordpressResult = await publishToWordPress(announcementWithMedias, formData.wordpressCategory, user.id, formData);
+        wordpressResult = await publishToWordPress(announcementWithMedias, formData.wordpressCategory, user.id);
         
         if (!isMobile) {
           if (wordpressResult.success) {

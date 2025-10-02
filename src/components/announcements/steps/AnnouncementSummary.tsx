@@ -236,10 +236,10 @@ const AnnouncementSummary = ({
                   {/* Contenu du post */}
                   <div className="px-4 pb-3">
                     <div className="text-gray-900 text-sm leading-relaxed whitespace-pre-wrap">
-                      {data.socialContent || data.description || "Votre contenu apparaîtra ici..."}
-                      {data.socialHashtags && data.socialHashtags.length > 0 && (
+                      {data.facebookContent || data.description || "Votre contenu apparaîtra ici..."}
+                      {data.facebookHashtags && data.facebookHashtags.length > 0 && (
                         <div className="mt-2 text-blue-600">
-                          {data.socialHashtags.map(tag => `#${tag}`).join(" ")}
+                          {data.facebookHashtags.map(tag => tag).join(" ")}
                         </div>
                       )}
                     </div>

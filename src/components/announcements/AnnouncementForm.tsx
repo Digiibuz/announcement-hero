@@ -34,9 +34,16 @@ export interface AnnouncementFormData {
   seoTitle: string;
   seoDescription: string;
   seoSlug: string;
+  // Facebook
   createFacebookPost?: boolean;
-  socialContent?: string;
-  socialHashtags?: string[];
+  facebookContent?: string;
+  facebookHashtags?: string[];
+  facebookImages?: string[];
+  // Instagram
+  createInstagramPost?: boolean;
+  instagramContent?: string;
+  instagramHashtags?: string[];
+  instagramImages?: string[];
 }
 
 const AnnouncementForm = ({

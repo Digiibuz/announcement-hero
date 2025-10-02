@@ -86,8 +86,11 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
         seoDescription: announcement.seo_description || "",
         seoSlug: announcement.seo_slug || "",
         createFacebookPost: announcement.create_facebook_post || false,
-        socialContent: announcement.social_content || "",
-        socialHashtags: announcement.social_hashtags || []
+        facebookContent: announcement.facebook_content || "",
+        facebookHashtags: announcement.facebook_hashtags || [],
+        createInstagramPost: announcement.create_instagram_post || false,
+        instagramContent: announcement.instagram_content || "",
+        instagramHashtags: announcement.instagram_hashtags || []
       });
     }
   }, [announcement, isEditing]);
@@ -121,8 +124,13 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
         seo_description: formData.seoDescription || null,
         seo_slug: formData.seoSlug || null,
         create_facebook_post: formData.createFacebookPost || false,
-        social_content: formData.socialContent || null,
-        social_hashtags: formData.socialHashtags || []
+        facebook_content: formData.facebookContent || null,
+        facebook_hashtags: formData.facebookHashtags || [],
+        facebook_images: formData.facebookImages || [],
+        create_instagram_post: formData.createInstagramPost || false,
+        instagram_content: formData.instagramContent || null,
+        instagram_hashtags: formData.instagramHashtags || [],
+        instagram_images: formData.instagramImages || []
       };
       
       // Update announcement in database
@@ -164,8 +172,7 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
             const result = await publishToWordPress(
               announcementForWordPress,
               updatedAnnouncement.wordpress_category_id,
-              announcementOwnerId, // Use the original owner's ID for WordPress config
-              formData // Pass current form data for social content
+              announcementOwnerId // Use the original owner's ID for WordPress config
             );
 
             if (result.success) {

@@ -19,8 +19,11 @@ export interface AnnouncementPreviewProps {
     seoDescription?: string;
     seoSlug?: string;
     createFacebookPost?: boolean;
-    socialContent?: string;
-    socialHashtags?: string[];
+    facebookContent?: string;
+    facebookHashtags?: string[];
+    createInstagramPost?: boolean;
+    instagramContent?: string;
+    instagramHashtags?: string[];
   };
 }
 

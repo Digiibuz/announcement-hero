@@ -1,23 +1,16 @@
 import React, { useState } from "react";
 import { UseFormReturn } from "react-hook-form";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Calendar, Clock, Hash, Sparkles, Image as ImageIcon, Share2, Zap, Heart, MessageCircle, Share, MoreHorizontal, Facebook, AlertCircle } from "lucide-react";
-import { AnnouncementFormData } from "../AnnouncementForm";
-import { useAuth } from "@/context/AuthContext";
-import { useContentOptimization } from "@/hooks/useContentOptimization";
-import { toast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import SocialMediaImageSelector from "../SocialMediaImageSelector";
+import { AlertCircle, Facebook as FacebookIcon, Instagram as InstagramIcon } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useFacebookConnection } from "@/hooks/useFacebookConnection";
+import { SocialPlatformSelector } from "./SocialPlatformSelector";
+import { FacebookTab } from "./social/FacebookTab";
+import { InstagramTab } from "./social/InstagramTab";
+import { AnnouncementFormData } from "../AnnouncementForm";
 
 interface SocialStepProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -26,194 +19,70 @@ interface SocialStepProps {
 }
 
 export default function SocialStep({ form, onSkip, className }: SocialStepProps) {
-  const { user } = useAuth();
   const navigate = useNavigate();
-  const { optimizeContent, isOptimizing } = useContentOptimization();
-  const { hasActiveConnection, isLoading: isLoadingConnection } = useFacebookConnection();
-  const [socialContent, setSocialContent] = useState("");
-  const [publishDate, setPublishDate] = useState("");
-  const [publishTime, setPublishTime] = useState("");
-  const [hashtags, setHashtags] = useState<string[]>([]);
-  const [newHashtag, setNewHashtag] = useState("");
-  const [showFacebookQuestion, setShowFacebookQuestion] = useState(true);
-
-  const watchedValues = form.watch();
-  const { title, description, images = [], additionalMedias = [], createFacebookPost } = watchedValues;
+  const { hasActiveConnection } = useFacebookConnection();
+  const [showPlatformQuestion, setShowPlatformQuestion] = useState(true);
   
-  // Combiner toutes les images disponibles
-  const allImages = [...images, ...additionalMedias].filter(Boolean);
+  const facebookEnabled = form.watch("createFacebookPost") || false;
+  const instagramEnabled = form.watch("createInstagramPost") || false;
 
-  // Vérifier si l'utilisateur a déjà fait un choix pour la création de post Facebook
-  useEffect(() => {
-    // Si createFacebookPost est false (l'utilisateur avait dit "non"), 
-    // mais qu'il revient sur cette étape, on repose la question
-    if (createFacebookPost === false) {
-      form.setValue('createFacebookPost', undefined);
-      setShowFacebookQuestion(true);
-    } else if (createFacebookPost !== undefined) {
-      setShowFacebookQuestion(false);
-    }
-    
-    // Initialiser les valeurs depuis le formulaire s'il y en a
-    if (watchedValues.socialContent) {
-      setSocialContent(watchedValues.socialContent);
-    }
-    if (watchedValues.socialHashtags) {
-      setHashtags(watchedValues.socialHashtags);
-    }
-  }, [createFacebookPost, watchedValues.socialContent, watchedValues.socialHashtags]);
-
-  const handleGenerateContent = async () => {
-    if (!title) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez d'abord saisir un titre dans l'étape précédente",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const optimizedContent = await optimizeContent(
-        "generateSocialContent",
-        title,
-        description || "",
-        {
-          tone: "engaging",
-          length: "short"
-        }
-      );
-
-      if (optimizedContent) {
-        setSocialContent(optimizedContent);
-        // Sauvegarder automatiquement dans le formulaire
-        form.setValue('socialContent', optimizedContent);
-        toast({
-          title: "Contenu généré",
-          description: "Le contenu pour les réseaux sociaux a été généré avec succès",
-        });
-      }
-    } catch (error) {
-      console.error("Erreur lors de la génération:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de générer le contenu",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const addHashtag = () => {
-    if (newHashtag && !hashtags.includes(newHashtag)) {
-      const updatedHashtags = [...hashtags, newHashtag.replace("#", "")];
-      setHashtags(updatedHashtags);
-      // Sauvegarder automatiquement dans le formulaire
-      form.setValue('socialHashtags', updatedHashtags);
-      setNewHashtag("");
-    }
-  };
-
-  const removeHashtag = (tag: string) => {
-    const updatedHashtags = hashtags.filter(h => h !== tag);
-    setHashtags(updatedHashtags);
-    // Sauvegarder automatiquement dans le formulaire
-    form.setValue('socialHashtags', updatedHashtags);
-  };
-
-  const handleCreateFacebookPost = (choice: boolean) => {
-    form.setValue('createFacebookPost', choice);
-    if (choice) {
-      // Sauvegarder les hashtags et contenu social dans le formulaire
-      form.setValue('socialContent', socialContent);
-      form.setValue('socialHashtags', hashtags);
-      setShowFacebookQuestion(false);
-    } else {
-      // Si l'utilisateur choisit "Non", passer directement à l'étape suivante
+  const handlePlatformSelection = (skipAll: boolean = false) => {
+    setShowPlatformQuestion(false);
+    if (skipAll && onSkip) {
       onSkip();
     }
   };
 
-  const getSocialMediaPreview = () => {
-    const previewText = socialContent || description || "";
-    const displayHashtags = hashtags.map(tag => `#${tag}`).join(" ");
-    return `${previewText}\n\n${displayHashtags}`.trim();
-  };
-
-
-  
-  // Afficher la question initiale si l'utilisateur n'a pas encore fait de choix
-  if (showFacebookQuestion && createFacebookPost === undefined) {
+  // Question initiale pour la sélection des plateformes
+  if (showPlatformQuestion) {
     return (
-      <div className={cn("space-y-6", className)}>
-        <Card>
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-              <Share2 className="h-6 w-6 text-white" />
+      <div className={className}>
+        <Card className="p-8">
+          <div className="space-y-6">
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-bold">Publication sur les réseaux sociaux</h2>
+              <p className="text-muted-foreground">
+                Sur quelles plateformes souhaitez-vous publier ?
+              </p>
             </div>
-            <CardTitle>Publication sur les réseaux sociaux</CardTitle>
-            <p className="text-muted-foreground mt-2">
-              Souhaitez-vous créer un post Facebook pour cette annonce ?
-            </p>
-          </CardHeader>
-          <CardContent className="text-center space-y-6">
-            <div className="bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-6">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Sparkles className="h-5 w-5 text-white" />
-                </div>
-                <div className="text-left">
-                  <h4 className="font-medium text-gray-900 mb-2">✨ Avec un post Facebook, vous obtiendrez :</h4>
-                  <div className="grid grid-cols-1 gap-2 text-sm text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                      Contenu optimisé généré par IA
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                      Prévisualisation Facebook en temps réel
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                      Gestion des hashtags
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                      Publication automatique sur Facebook
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Button 
-                onClick={() => handleCreateFacebookPost(true)}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+
+            <SocialPlatformSelector
+              facebookEnabled={facebookEnabled}
+              instagramEnabled={instagramEnabled}
+              onFacebookChange={(enabled) => form.setValue("createFacebookPost", enabled)}
+              onInstagramChange={(enabled) => form.setValue("createInstagramPost", enabled)}
+            />
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+              <Button
+                type="button"
+                onClick={() => handlePlatformSelection(false)}
                 size="lg"
+                disabled={!facebookEnabled && !instagramEnabled}
               >
-                <Sparkles className="mr-2 h-4 w-4" />
-                Oui, créer un post Facebook
+                Continuer
               </Button>
-              <Button 
-                onClick={() => handleCreateFacebookPost(false)}
+              <Button
+                type="button"
+                onClick={() => handlePlatformSelection(true)}
                 variant="outline"
                 size="lg"
               >
-                Non, passer cette étape
+                Passer cette étape
               </Button>
             </div>
-          </CardContent>
+          </div>
         </Card>
       </div>
     );
   }
 
-
+  // Vue principale avec onglets
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={className}>
       {/* Alerte de connexion Facebook */}
-      {!isLoadingConnection && !hasActiveConnection && (
-        <Alert>
+      {!hasActiveConnection && (
+        <Alert className="mb-6">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between">
             <span>Connectez votre page Facebook pour publier vos annonces automatiquement.</span>
@@ -222,290 +91,62 @@ export default function SocialStep({ form, onSkip, className }: SocialStepProps)
               size="sm"
               onClick={() => navigate('/profile')}
             >
-              <Facebook className="mr-2 h-4 w-4" />
+              <FacebookIcon className="mr-2 h-4 w-4" />
               Connecter Facebook
             </Button>
           </AlertDescription>
         </Alert>
       )}
 
-      {/* En-tête */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Share2 className="h-5 w-5" />
-            Publication sur les réseaux sociaux
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Adaptez votre contenu pour les réseaux sociaux et programmez votre publication
-          </p>
-        </CardHeader>
-      </Card>
-
-      {/* Contenu social */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Sparkles className="h-5 w-5" />
-            Contenu pour les réseaux sociaux
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Notre IA va transformer votre description en contenu optimisé pour les réseaux sociaux avec emojis et mise en forme
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Zone d'explication avant génération */}
-          {!socialContent && (
-            <div className="bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Sparkles className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-1">✨ Génération automatique par IA</h4>
-                  <p className="text-sm text-gray-600 mb-3">
-                    À partir de votre description, notre IA va créer un contenu engageant avec :
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                      Emojis appropriés
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                      Structure engageante
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                      Call-to-action
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                      Ton professionnel
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Texte de publication</label>
-              <Button
-                type="button"
-                variant="default"
-                size="sm"
-                onClick={handleGenerateContent}
-                disabled={isOptimizing.generateSocialContent}
-                className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-              >
-                <Sparkles className="h-4 w-4" />
-                {isOptimizing.generateSocialContent ? "Génération en cours..." : "🚀 Générer avec l'IA"}
-              </Button>
-            </div>
-            <Textarea
-              value={socialContent}
-              onChange={(e) => {
-                setSocialContent(e.target.value);
-                // Sauvegarder automatiquement dans le formulaire
-                form.setValue('socialContent', e.target.value);
-              }}
-              placeholder="Le contenu optimisé pour les réseaux sociaux apparaîtra ici après génération IA..."
-              className="min-h-[120px]"
-            />
-            {socialContent && (
-              <div className="text-xs text-green-600 flex items-center gap-1 mt-2">
-                <Sparkles className="h-3 w-3" />
-                Contenu généré par IA - Vous pouvez le modifier si nécessaire
-              </div>
-            )}
+      <Card className="p-6">
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-2xl font-bold">Réseaux sociaux</h2>
+            <p className="text-muted-foreground">
+              Adaptez votre contenu pour les réseaux sociaux et programmez votre publication.
+            </p>
           </div>
 
-          {/* Hashtags */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium flex items-center gap-2">
-              <Hash className="h-4 w-4" />
-              Hashtags
-            </label>
-            <div className="flex gap-2">
-              <Input
-                value={newHashtag}
-                onChange={(e) => setNewHashtag(e.target.value)}
-                placeholder="Ajouter un hashtag"
-                onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addHashtag())}
-              />
-              <Button type="button" onClick={addHashtag} size="sm">
-                Ajouter
-              </Button>
-            </div>
-            {hashtags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {hashtags.map((tag) => (
-                  <Badge
-                    key={tag}
-                    variant="secondary"
-                    className="cursor-pointer"
-                    onClick={() => removeHashtag(tag)}
-                  >
-                    #{tag} ×
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Images sélectionnées avec drag & drop */}
-      <SocialMediaImageSelector form={form} />
-
-
-      {/* Prévisualisation Facebook */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Prévisualisation Facebook</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Container Facebook avec fond gris */}
-          <div className="bg-gray-100 p-4 rounded-lg">
-            {/* Post Facebook */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-              {/* Header du post */}
-              <div className="p-4 flex items-center gap-3">
-                {/* Avatar */}
-                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
-                  {user?.email?.charAt(0).toUpperCase() || "U"}
-                </div>
-                
-                {/* Nom et timestamp */}
-                <div className="flex-1">
-                  <div className="font-semibold text-gray-900 text-sm">
-                    Votre Entreprise
-                  </div>
-                  <div className="text-xs text-gray-500 flex items-center gap-1">
-                    {publishDate && publishTime ? (
-                      <>
-                        {new Date(`${publishDate}T${publishTime}`).toLocaleDateString('fr-FR', {
-                          day: 'numeric',
-                          month: 'short'
-                        })} à {publishTime}
-                      </>
-                    ) : (
-                      "Maintenant"
-                    )}
-                    <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                    <svg className="w-3 h-3 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM4.332 8.027a6.012 6.012 0 011.912-2.706C6.512 5.73 6.974 6 7.5 6A1.5 1.5 0 019 7.5V8a2 2 0 004 0 2 2 0 011.523-1.943A5.977 5.977 0 0116 10c0 3.314-2.686 6-6 6s-6-2.686-6-6a5.977 5.977 0 01.332-2.027z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                </div>
-                
-                {/* Menu 3 points */}
-                <div className="w-5 h-5 text-gray-500 cursor-default">
-                  <MoreHorizontal className="w-5 h-5" />
-                </div>
-              </div>
-              
-              {/* Contenu du post */}
-              <div className="px-4 pb-3">
-                <div className="text-gray-900 text-sm leading-relaxed whitespace-pre-wrap">
-                  {getSocialMediaPreview() || "Votre contenu apparaîtra ici..."}
-                </div>
-              </div>
-              
-              {/* Images */}
-              {allImages && allImages.length > 0 && (
-                <div className="relative">
-                  {allImages.length === 1 ? (
-                    <div className="aspect-video bg-gray-100">
-                      <img
-                        src={allImages[0]}
-                        alt="Publication"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <div className={`grid gap-1 ${
-                      allImages.length === 2 ? 'grid-cols-2' : 
-                      allImages.length === 3 ? 'grid-cols-2' : 
-                      'grid-cols-2'
-                    }`}>
-                      {allImages.slice(0, 4).map((image, index) => (
-                        <div key={index} className="aspect-square bg-gray-100 relative">
-                          <img
-                            src={image}
-                            alt={`Image ${index + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                          {index === 3 && allImages.length > 4 && (
-                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                              <span className="text-white text-lg font-semibold">
-                                +{allImages.length - 4}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+          <Tabs defaultValue={facebookEnabled ? "facebook" : "instagram"} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              {facebookEnabled && (
+                <TabsTrigger value="facebook" className="gap-2">
+                  <FacebookIcon className="h-4 w-4" />
+                  Facebook
+                </TabsTrigger>
               )}
-              
-              {/* Stats */}
-              <div className="px-4 py-2 border-b border-gray-200">
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <div className="flex items-center gap-1">
-                    <div className="flex -space-x-1">
-                      <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                        <Heart className="w-2.5 h-2.5 text-white fill-current" />
-                      </div>
-                      <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                        <Heart className="w-2.5 h-2.5 text-white fill-current" />
-                      </div>
-                    </div>
-                    <span>12</span>
-                  </div>
-                  <div className="flex gap-3">
-                    <span>3 commentaires</span>
-                    <span>2 partages</span>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Actions */}
-              <div className="p-2">
-                <div className="grid grid-cols-3 gap-1">
-                  <div className="flex items-center justify-center gap-2 py-2 px-3 text-gray-600 cursor-default">
-                    <Heart className="w-5 h-5" />
-                    <span className="text-sm font-medium text-gray-700">J'aime</span>
-                  </div>
-                  <div className="flex items-center justify-center gap-2 py-2 px-3 text-gray-600 cursor-default">
-                    <MessageCircle className="w-5 h-5" />
-                    <span className="text-sm font-medium text-gray-700">Commenter</span>
-                  </div>
-                  <div className="flex items-center justify-center gap-2 py-2 px-3 text-gray-600 cursor-default">
-                    <Share className="w-5 h-5" />
-                    <span className="text-sm font-medium text-gray-700">Partager</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+              {instagramEnabled && (
+                <TabsTrigger value="instagram" className="gap-2">
+                  <InstagramIcon className="h-4 w-4" />
+                  Instagram
+                </TabsTrigger>
+              )}
+            </TabsList>
 
-      {/* Bouton passer l'étape */}
-      <div className="flex justify-center">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onSkip}
-          className="gap-2"
-        >
-          Passer cette étape
-        </Button>
-      </div>
+            {facebookEnabled && (
+              <TabsContent value="facebook" className="mt-6">
+                <FacebookTab form={form} />
+              </TabsContent>
+            )}
+
+            {instagramEnabled && (
+              <TabsContent value="instagram" className="mt-6">
+                <InstagramTab form={form} />
+              </TabsContent>
+            )}
+          </Tabs>
+
+          <div className="flex justify-center pt-4">
+            <Button
+              type="button"
+              onClick={onSkip}
+              variant="outline"
+            >
+              Passer cette étape
+            </Button>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }

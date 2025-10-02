@@ -18,14 +18,27 @@ export type Announcement = {
   seo_title?: string;
   seo_description?: string;
   seo_slug?: string;
-  create_facebook_post?: boolean; // Nouveau champ pour la publication Facebook
-  social_content?: string; // Contenu optimisé pour les réseaux sociaux
-  social_hashtags?: string[]; // Hashtags pour les réseaux sociaux
-  facebook_publication_status?: 'pending' | 'success' | 'error'; // Statut de publication Facebook
-  facebook_published_at?: string; // Date de publication Facebook
-  facebook_error_message?: string; // Message d'erreur Facebook
-  facebook_post_id?: string; // ID du post Facebook
-  facebook_url?: string; // URL du post Facebook
+  // Facebook
+  create_facebook_post?: boolean;
+  facebook_content?: string;
+  facebook_hashtags?: string[];
+  facebook_images?: string[];
+  facebook_publication_status?: 'pending' | 'success' | 'error';
+  facebook_published_at?: string;
+  facebook_error_message?: string;
+  facebook_post_id?: string;
+  facebook_url?: string;
+  
+  // Instagram
+  create_instagram_post?: boolean;
+  instagram_content?: string;
+  instagram_hashtags?: string[];
+  instagram_images?: string[];
+  instagram_publication_status?: 'pending' | 'success' | 'error';
+  instagram_published_at?: string;
+  instagram_error_message?: string;
+  instagram_post_id?: string;
+  instagram_url?: string;
 };
 
 // Type pour les catégories WordPress standard

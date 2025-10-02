@@ -103,8 +103,11 @@ const AnnouncementTabs: React.FC<AnnouncementTabsProps> = ({
               seoDescription: announcement.seo_description,
               seoSlug: announcement.seo_slug,
               createFacebookPost: announcement.create_facebook_post,
-              socialContent: announcement.social_content,
-              socialHashtags: announcement.social_hashtags,
+              facebookContent: announcement.facebook_content,
+              facebookHashtags: announcement.facebook_hashtags,
+              createInstagramPost: announcement.create_instagram_post,
+              instagramContent: announcement.instagram_content,
+              instagramHashtags: announcement.instagram_hashtags,
             }} />
             
             <FacebookPublicationStatus announcement={announcement} />
