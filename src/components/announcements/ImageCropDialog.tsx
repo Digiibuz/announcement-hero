@@ -3,8 +3,11 @@ import Cropper from "react-easy-crop";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Maximize2, ZoomIn, ZoomOut } from "lucide-react";
+import { Maximize2, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+
+const INITIAL_CROP = { x: 0, y: 0 };
+const INITIAL_ZOOM = 1;
 
 interface ImageCropDialogProps {
   open: boolean;
@@ -76,13 +79,19 @@ export const ImageCropDialog = ({
     { label: "Paysage 1.91:1", value: 1.91 },
   ],
 }: ImageCropDialogProps) => {
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
+  const [crop, setCrop] = useState(INITIAL_CROP);
+  const [zoom, setZoom] = useState(INITIAL_ZOOM);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [selectedAspectRatio, setSelectedAspectRatio] = useState(aspectRatios[0]);
 
   const onCropCompleteCallback = useCallback((_croppedArea: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const handleReset = useCallback(() => {
+    setCrop(INITIAL_CROP);
+    setZoom(INITIAL_ZOOM);
+    toast.info("Recadrage réinitialisé");
   }, []);
 
   const handleCropConfirm = useCallback(async () => {
@@ -161,6 +170,15 @@ export const ImageCropDialog = ({
             className="w-full sm:w-auto"
           >
             Annuler
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleReset}
+            className="w-full sm:w-auto"
+          >
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Réinitialiser
           </Button>
           <Button
             type="button"
