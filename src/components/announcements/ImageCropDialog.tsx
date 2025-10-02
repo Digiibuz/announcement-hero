@@ -3,15 +3,17 @@ import Cropper from "react-easy-crop";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Maximize2, ZoomIn, ZoomOut } from "lucide-react";
+import { Square, Maximize2, RectangleHorizontal, ZoomIn, X } from "lucide-react";
 import { toast } from "sonner";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 interface ImageCropDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   imageUrl: string;
   onCropComplete: (croppedImageUrl: string) => void;
-  aspectRatios?: { label: string; value: number }[];
+  aspectRatios?: { label: string; value: number; icon: React.ReactNode }[];
 }
 
 interface Area {
@@ -71,15 +73,15 @@ export const ImageCropDialog = ({
   imageUrl,
   onCropComplete,
   aspectRatios = [
-    { label: "Carré 1:1", value: 1 },
-    { label: "Portrait 4:5", value: 4 / 5 },
-    { label: "Paysage 1.91:1", value: 1.91 },
+    { label: "Carré (1:1)", value: 1, icon: <Square className="h-4 w-4" /> },
+    { label: "Portrait (4:5)", value: 4 / 5, icon: <Maximize2 className="h-4 w-4" /> },
+    { label: "Paysage (1.91:1)", value: 1.91, icon: <RectangleHorizontal className="h-4 w-4" /> },
   ],
 }: ImageCropDialogProps) => {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
-  const [selectedAspectRatio, setSelectedAspectRatio] = useState(aspectRatios[0]);
+  const [selectedAspectRatio, setSelectedAspectRatio] = useState(aspectRatios[0].value.toString());
 
   const onCropCompleteCallback = useCallback((_croppedArea: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);
@@ -99,73 +101,124 @@ export const ImageCropDialog = ({
     }
   }, [croppedAreaPixels, imageUrl, onCropComplete, onOpenChange]);
 
+  const currentAspectRatio = aspectRatios.find(r => r.value.toString() === selectedAspectRatio)?.value || 1;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
-        <DialogHeader>
-          <DialogTitle>Recadrer l'image pour Instagram</DialogTitle>
-        </DialogHeader>
+      <DialogContent className="max-w-5xl p-0 gap-0 bg-white">
+        {/* Header personnalisé */}
+        <div className="px-8 pt-8 pb-6 border-b">
+          <div className="flex items-start justify-between">
+            <div className="space-y-2">
+              <DialogTitle className="text-2xl font-semibold text-gray-900">
+                Redimensionner pour Instagram
+              </DialogTitle>
+              <p className="text-sm text-gray-600 font-normal">
+                Choisissez le format Instagram souhaité. L'image sera automatiquement recadrée depuis le centre.
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full hover:bg-gray-100"
+              onClick={() => onOpenChange(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
 
-        <div className="space-y-4">
+        <div className="px-8 py-6 space-y-6">
           {/* Sélection du format */}
-          <div className="flex gap-2 justify-center">
-            {aspectRatios.map((ratio) => (
-              <Button
-                key={ratio.label}
-                type="button"
-                variant={selectedAspectRatio.value === ratio.value ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedAspectRatio(ratio)}
-              >
-                <Maximize2 className="h-4 w-4 mr-2" />
-                {ratio.label}
-              </Button>
-            ))}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900">Format Instagram</h3>
+            <RadioGroup
+              value={selectedAspectRatio}
+              onValueChange={setSelectedAspectRatio}
+              className="grid grid-cols-3 gap-4"
+            >
+              {aspectRatios.map((ratio) => (
+                <div key={ratio.value}>
+                  <RadioGroupItem
+                    value={ratio.value.toString()}
+                    id={`ratio-${ratio.value}`}
+                    className="peer sr-only"
+                  />
+                  <Label
+                    htmlFor={`ratio-${ratio.value}`}
+                    className="flex items-center gap-3 rounded-lg border-2 border-gray-200 p-4 cursor-pointer hover:border-gray-300 peer-data-[state=checked]:border-yellow-500 peer-data-[state=checked]:bg-yellow-50 transition-all"
+                  >
+                    <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 border-gray-300 peer-data-[state=checked]:border-yellow-500 peer-data-[state=checked]:bg-yellow-500 relative">
+                      <div className="w-2 h-2 rounded-full bg-white opacity-0 peer-data-[state=checked]:opacity-100" />
+                    </div>
+                    {ratio.icon}
+                    <span className="text-sm font-medium text-gray-900">{ratio.label}</span>
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
           </div>
 
           {/* Zone de recadrage */}
-          <div className="relative h-[400px] bg-muted rounded-lg overflow-hidden">
-            <Cropper
-              image={imageUrl}
-              crop={crop}
-              zoom={zoom}
-              aspect={selectedAspectRatio.value}
-              onCropChange={setCrop}
-              onCropComplete={onCropCompleteCallback}
-              onZoomChange={setZoom}
-            />
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900">Recadrage interactif</h3>
+            <div className="relative h-[420px] bg-gray-400 rounded-lg overflow-hidden">
+              <Cropper
+                image={imageUrl}
+                crop={crop}
+                zoom={zoom}
+                aspect={currentAspectRatio}
+                onCropChange={setCrop}
+                onCropComplete={onCropCompleteCallback}
+                onZoomChange={setZoom}
+                objectFit="contain"
+                style={{
+                  containerStyle: {
+                    backgroundColor: '#9CA3AF',
+                  },
+                }}
+              />
+            </div>
+            <p className="text-sm text-center text-gray-600">
+              Glissez pour repositionner • Molette pour zoomer
+            </p>
           </div>
 
           {/* Contrôle du zoom */}
-          <div className="flex items-center gap-4 px-4">
-            <ZoomOut className="h-4 w-4 text-muted-foreground" />
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <ZoomIn className="h-4 w-4 text-gray-900" />
+              <span className="text-sm font-semibold text-gray-900">Zoom</span>
+            </div>
             <Slider
               value={[zoom]}
               onValueChange={([value]) => setZoom(value)}
               min={1}
               max={3}
               step={0.1}
-              className="flex-1"
+              className="w-full"
             />
-            <ZoomIn className="h-4 w-4 text-muted-foreground" />
           </div>
         </div>
 
-        <DialogFooter className="gap-2">
+        {/* Footer */}
+        <div className="px-8 py-6 border-t bg-white flex justify-end gap-3">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
+            className="px-6"
           >
             Annuler
           </Button>
           <Button
             type="button"
             onClick={handleCropConfirm}
+            className="px-6 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-semibold"
           >
-            Appliquer
+            Appliquer le redimensionnement
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
