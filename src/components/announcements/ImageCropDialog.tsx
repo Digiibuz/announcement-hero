@@ -3,8 +3,9 @@ import Cropper from "react-easy-crop";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Maximize2, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
+import { Maximize2, ZoomIn, ZoomOut, RotateCcw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const INITIAL_CROP = { x: 0, y: 0 };
 const INITIAL_ZOOM = 1;
@@ -33,7 +34,7 @@ const createImage = (url: string): Promise<HTMLImageElement> =>
     image.src = url;
   });
 
-const getCroppedImg = async (imageSrc: string, pixelCrop: Area): Promise<string> => {
+const getCroppedImg = async (imageSrc: string, pixelCrop: Area): Promise<Blob> => {
   const image = await createImage(imageSrc);
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
@@ -57,14 +58,14 @@ const getCroppedImg = async (imageSrc: string, pixelCrop: Area): Promise<string>
     pixelCrop.height
   );
 
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (!blob) {
-        throw new Error("Canvas is empty");
+        reject(new Error("Canvas is empty"));
+        return;
       }
-      const fileUrl = URL.createObjectURL(blob);
-      resolve(fileUrl);
-    }, "image/jpeg");
+      resolve(blob);
+    }, "image/jpeg", 0.9);
   });
 };
 
@@ -83,6 +84,7 @@ export const ImageCropDialog = ({
   const [zoom, setZoom] = useState(INITIAL_ZOOM);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [selectedAspectRatio, setSelectedAspectRatio] = useState(aspectRatios[0]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const onCropCompleteCallback = useCallback((_croppedArea: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);
@@ -98,13 +100,41 @@ export const ImageCropDialog = ({
     try {
       if (!croppedAreaPixels) return;
       
-      const croppedImage = await getCroppedImg(imageUrl, croppedAreaPixels);
-      onCropComplete(croppedImage);
+      setIsProcessing(true);
+      
+      // Créer l'image recadrée comme blob
+      const croppedBlob = await getCroppedImg(imageUrl, croppedAreaPixels);
+      
+      // Téléverser l'image recadrée sur Supabase
+      const fileExt = 'jpg';
+      const fileName = `${Math.random().toString(36).substring(2, 15)}_cropped.${fileExt}`;
+      const filePath = `announcements/${fileName}`;
+      
+      const { data, error } = await supabase.storage
+        .from('images')
+        .upload(filePath, croppedBlob, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: 'image/jpeg'
+        });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Obtenir l'URL publique
+      const { data: urlData } = supabase.storage
+        .from('images')
+        .getPublicUrl(filePath);
+      
+      onCropComplete(urlData.publicUrl);
       onOpenChange(false);
-      toast.success("Image recadrée avec succès !");
+      toast.success("Image recadrée et sauvegardée avec succès !");
     } catch (e) {
       console.error(e);
       toast.error("Erreur lors du recadrage");
+    } finally {
+      setIsProcessing(false);
     }
   }, [croppedAreaPixels, imageUrl, onCropComplete, onOpenChange]);
 
@@ -184,8 +214,10 @@ export const ImageCropDialog = ({
             type="button"
             onClick={handleCropConfirm}
             className="w-full sm:w-auto"
+            disabled={isProcessing}
           >
-            Appliquer
+            {isProcessing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {isProcessing ? "Sauvegarde..." : "Appliquer"}
           </Button>
         </DialogFooter>
       </DialogContent>
