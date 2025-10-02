@@ -72,11 +72,11 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
       {/* Image principale pleine largeur */}
       <div className="relative w-full bg-background">
         {selectedImages.length > 0 ? (
-          <div className="aspect-square w-full overflow-hidden bg-muted relative">
+          <div className="w-full overflow-hidden bg-muted relative">
             <img
               src={selectedImages[0]}
               alt="Publication Instagram"
-              className="w-full h-full object-cover"
+              className="w-full h-auto object-contain"
             />
             <div className="absolute top-4 right-4 flex gap-2">
               <Button
