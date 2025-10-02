@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Sparkles, X, ImageIcon, Crop } from "lucide-react";
+import { Sparkles, X, ImageIcon, Crop, Trash2 } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { useState, useEffect } from "react";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
@@ -64,6 +64,10 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
     form.setValue("instagram_images", [croppedImageUrl]);
   };
 
+  const handleDeleteImage = () => {
+    form.setValue("instagram_images", []);
+  };
+
   return (
     <div className="w-full pb-8">
       <AILoadingOverlay isVisible={isOptimizing.generateSocialContent} />
@@ -87,6 +91,15 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
                 className="h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
               >
                 <Crop className="h-5 w-5" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={handleDeleteImage}
+                className="h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background hover:text-destructive"
+              >
+                <Trash2 className="h-5 w-5" />
               </Button>
               <Button
                 type="button"
