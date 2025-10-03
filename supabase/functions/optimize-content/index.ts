@@ -42,43 +42,63 @@ serve(async (req) => {
       prompt = `Titre principal de l'annonce: "${title}".
       ${description ? `Informations complémentaires: "${description}"` : ""}
       
-      Rédige un contenu web optimisé SEO ${lengthInstructions.target} en HTML qui servira de description pour cette annonce WordPress.
+      Rédige un article web complet et optimisé SEO ${lengthInstructions.target} en HTML qui servira de contenu principal pour cette annonce WordPress.
       
       📋 STRUCTURE HTML OBLIGATOIRE:
-      - Commencer par un paragraphe d'introduction engageant
-      - Inclure 2-3 sous-titres <h2> pertinents avec mots-clés
-      - Utiliser des <h3> si nécessaire pour sous-sections
-      - Utiliser <ul> et <li> pour les listes à puces
-      - Inclure 1-2 liens externes <a href="https://..." target="_blank" rel="noopener noreferrer"> vers des sources pertinentes (sites d'autorité)
-      - Terminer par un call-to-action dans un paragraphe final
+      - Commencer par 1-2 paragraphes d'introduction engageants et détaillés
+      - Inclure 3-4 sections avec des sous-titres <h2> pertinents contenant des mots-clés
+      - Utiliser des <h3> pour les sous-sections si nécessaire
+      - Chaque section doit avoir 2-3 paragraphes <p> développés (4-5 phrases minimum par paragraphe)
+      - Utiliser <ul> et <li> pour les listes à puces (maximum 1 liste par section)
+      - Inclure 1-2 liens externes <a href="https://..." target="_blank" rel="noopener noreferrer"> vers des sources d'autorité
+      - Terminer par un paragraphe de conclusion avec call-to-action
       
-      🎯 OPTIMISATION SEO:
+      🎯 OPTIMISATION SEO ET QUALITÉ:
       - ${toneInstructions.style}
-      - Intégrer naturellement le mot-clé principal ("${title}") et ses variantes dans le texte
+      - Intégrer naturellement le mot-clé principal ("${title}") 3-5 fois dans le texte
       - ${lengthInstructions.structure}
+      - Développer chaque point avec des détails concrets, exemples et bénéfices clients
       - Utiliser des synonymes et termes connexes pour enrichir le champ sémantique
-      - Rédiger des paragraphes de 3-4 lignes maximum pour la lisibilité
-      - Les titres H2 doivent contenir des mots-clés stratégiques
+      - Les paragraphes doivent être substantiels (4-6 lignes chacun)
+      - Les titres H2 doivent être informatifs et contenir des mots-clés stratégiques
+      - Éviter les listes trop courtes - privilégier le texte développé
       
       🔗 LIENS EXTERNES:
-      - Inclure 1-2 liens vers des sites d'autorité pertinents (Wikipedia, sites gouvernementaux, médias reconnus, blogs experts)
+      - Inclure 1-2 liens vers des sites d'autorité pertinents (Wikipedia, sites gouvernementaux, médias reconnus, blogs experts du secteur)
       - Les liens doivent enrichir le contenu et apporter de la valeur
       - Format: <a href="URL" target="_blank" rel="noopener noreferrer">texte du lien</a>
       
-      ⚡ EXEMPLE DE STRUCTURE:
-      <p>Paragraphe d'introduction engageant qui présente le sujet...</p>
+      ⚡ EXEMPLE DE STRUCTURE (à adapter au sujet):
+      <p>Premier paragraphe d'introduction détaillé qui présente le contexte et capte l'attention. Ce paragraphe doit faire au moins 4-5 phrases pour bien introduire le sujet.</p>
       
-      <h2>Premier titre H2 avec mot-clé</h2>
-      <p>Paragraphe explicatif...</p>
+      <p>Deuxième paragraphe qui approfondit et pose la problématique ou les enjeux. Là encore, développer avec des détails concrets.</p>
+      
+      <h2>Premier titre de section avec mot-clé</h2>
+      <p>Paragraphe développé qui explique en détail le premier point. Apporter des informations concrètes, des chiffres si pertinent, des exemples réels. Minimum 4-5 phrases.</p>
+      
+      <p>Deuxième paragraphe de cette section qui développe un autre aspect ou approfondit. Continuer à apporter de la valeur.</p>
+      
       <ul>
-        <li>Point clé 1</li>
-        <li>Point clé 2</li>
+        <li>Point clé 1 développé avec explication</li>
+        <li>Point clé 2 développé avec explication</li>
+        <li>Point clé 3 développé avec explication</li>
       </ul>
       
-      <h2>Deuxième titre H2 pertinent</h2>
-      <p>Contenu avec <a href="https://exemple.com" target="_blank" rel="noopener noreferrer">lien externe pertinent</a>...</p>
+      <h2>Deuxième titre de section pertinent</h2>
+      <p>Paragraphe substantiel avec des détails, potentiellement un <a href="https://exemple.com" target="_blank" rel="noopener noreferrer">lien externe pertinent</a> qui enrichit le propos. Développer le sujet en profondeur.</p>
       
-      <p>Paragraphe de conclusion avec call-to-action...</p>
+      <p>Suite de l'explication avec encore plus de détails, d'exemples concrets, de bénéfices pour le lecteur.</p>
+      
+      <h2>Troisième section si nécessaire</h2>
+      <p>Continuer à développer le sujet avec des informations utiles et pertinentes...</p>
+      
+      <p>Paragraphe de conclusion engageant qui résume les points clés et contient un call-to-action clair et motivant.</p>
+      
+      IMPORTANT: 
+      - Chaque paragraphe doit faire AU MINIMUM 4-5 phrases
+      - Le contenu total doit être substantiel et informatif ${lengthInstructions.target}
+      - Éviter les phrases creuses, apporter de vraies informations utiles
+      - Ne PAS utiliser de balises <strong> ou <b> - le texte doit être en format normal
       
       Génère maintenant le contenu HTML optimisé SEO (sans balise html, head ou body, uniquement le contenu):`;
 
@@ -215,7 +235,7 @@ serve(async (req) => {
       
       // Post-traitement différent selon le type
       if (type === "generateDescription") {
-        // Pour les descriptions SEO : nettoyer les préfaces mais garder le HTML
+        // Pour les descriptions SEO : nettoyer les préfaces et supprimer les balises <strong> et <b>
         optimizedContent = optimizedContent
           // Supprime les phrases d'introduction comme "Voici" ou "Bien sûr"
           .replace(/^(Bien sûr !|Voici|Certainement|D'accord|Absolument|Voilà|Avec plaisir)[^\n]*\n+/i, '')
@@ -224,6 +244,9 @@ serve(async (req) => {
           // Supprime les blocs de code markdown si présents
           .replace(/```html\n?/g, '')
           .replace(/```\n?/g, '')
+          // Supprime les balises <strong> et <b> pour éviter le gras non voulu
+          .replace(/<strong>(.*?)<\/strong>/g, '$1')
+          .replace(/<b>(.*?)<\/b>/g, '$1')
           // Supprime les emojis mais garde le HTML
           .replace(/:[a-z_]+:|🔍|✅|⚠️|❗|📝|💡|🔑|📊|🎯|⭐|👉|✨|🚀|💪|⚡|📌|🔖|📢|🔔|📋/g, '')
           .trim();
@@ -312,19 +335,19 @@ function getLengthInstructions(length: string) {
   switch (length) {
     case "concis":
       return {
-        target: "d'environ 100 mots",
-        structure: "Aller à l'essentiel avec des phrases courtes et percutantes"
+        target: "d'environ 300-400 mots",
+        structure: "Aller à l'essentiel tout en développant suffisamment chaque point avec des phrases complètes et informatives"
       };
     case "detaille":
       return {
-        target: "d'environ 300 mots",
-        structure: "Développer en détail avec des exemples concrets et des bénéfices clients"
+        target: "d'environ 600-800 mots",
+        structure: "Développer en profondeur avec de nombreux exemples concrets, détails techniques, bénéfices clients et cas d'usage"
       };
     case "standard":
     default:
       return {
-        target: "d'environ 200 mots",
-        structure: "Équilibrer les informations importantes avec une lecture fluide"
+        target: "d'environ 450-550 mots",
+        structure: "Équilibrer les informations importantes avec une lecture fluide, en développant chaque section de manière substantielle"
       };
   }
 }
