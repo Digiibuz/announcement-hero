@@ -48,11 +48,23 @@ Deno.serve(async (req) => {
 
     if (!tokenData.access_token) {
       console.error('❌ Pas de token reçu:', tokenData);
-      throw new Error('Failed to get access token from Facebook');
+      throw new Error(`Failed to get access token: ${JSON.stringify(tokenData)}`);
     }
 
-    // Get user's pages
-    const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?access_token=${tokenData.access_token}`;
+    // Exchange short-lived token for long-lived token (60 days)
+    const longTokenUrl = `https://graph.facebook.com/v18.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${FACEBOOK_APP_ID}&client_secret=${FACEBOOK_APP_SECRET}&fb_exchange_token=${tokenData.access_token}`;
+    console.log('🔄 Exchange pour un token longue durée...');
+    
+    const longTokenResponse = await fetch(longTokenUrl);
+    const longTokenData: FacebookTokenResponse = await longTokenResponse.json();
+    
+    const finalAccessToken = longTokenData.access_token || tokenData.access_token;
+    const finalExpiresIn = longTokenData.expires_in || tokenData.expires_in;
+    
+    console.log('✅ Token final:', { hasToken: !!finalAccessToken, expiresIn: finalExpiresIn });
+
+    // Get user's pages with detailed fields
+    const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${finalAccessToken}`;
     console.log('📄 Récupération des pages Facebook...');
     const pagesResponse = await fetch(pagesUrl);
     const pagesData = await pagesResponse.json();
@@ -60,15 +72,16 @@ Deno.serve(async (req) => {
     console.log('📊 Pages response:', { 
       hasData: !!pagesData.data, 
       pagesCount: pagesData.data?.length || 0,
-      error: pagesData.error 
+      error: pagesData.error,
+      pages: pagesData.data?.map((p: any) => ({ id: p.id, name: p.name, hasInstagram: !!p.instagram_business_account }))
     });
 
     if (pagesData.error) {
-      throw new Error(`Facebook API error: ${pagesData.error.message}`);
+      throw new Error(`Facebook API error: ${pagesData.error.message} (code: ${pagesData.error.code})`);
     }
 
     if (!pagesData.data || pagesData.data.length === 0) {
-      throw new Error('Aucune page Facebook trouvée sur votre compte. Vous devez être administrateur d\'au moins une page Facebook pour utiliser cette fonctionnalité. Créez une page sur facebook.com/pages/create ou demandez à être ajouté comme administrateur d\'une page existante.');
+      throw new Error('Aucune page Facebook trouvée. Assurez-vous d\'être administrateur d\'au moins une page Facebook. Les permissions requises sont: pages_manage_metadata, pages_read_engagement, pages_manage_posts.');
     }
 
     // Initialize Supabase client
@@ -78,17 +91,20 @@ Deno.serve(async (req) => {
     );
 
     // Store each page connection
+    console.log(`💾 Sauvegarde de ${pagesData.data.length} page(s)...`);
     const connections = [];
     for (const page of pagesData.data as FacebookPageData[]) {
-      const expiresAt = tokenData.expires_in
-        ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
+      const expiresAt = finalExpiresIn
+        ? new Date(Date.now() + finalExpiresIn * 1000).toISOString()
         : null;
+
+      console.log(`  → Page: ${page.name} (ID: ${page.id})`);
 
       const { data, error } = await supabaseClient
         .from('facebook_connections')
         .upsert({
           user_id: userId,
-          access_token: tokenData.access_token,
+          access_token: finalAccessToken,
           page_id: page.id,
           page_name: page.name,
           page_access_token: page.access_token,

@@ -19,10 +19,19 @@ Deno.serve(async (req) => {
       throw new Error('FACEBOOK_APP_ID not configured in Supabase secrets');
     }
 
-    const scope = 'pages_show_list,pages_read_engagement,pages_manage_posts';
-    const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${FACEBOOK_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&response_type=code`;
+    // Permissions Facebook requises pour gérer les pages et Instagram
+    const scope = [
+      'pages_manage_metadata',      // Requis pour accéder à me/accounts
+      'pages_read_engagement',
+      'pages_manage_posts',
+      'instagram_basic',
+      'instagram_content_publish'
+    ].join(',');
+    
+    const state = Math.random().toString(36).substring(7); // Token de sécurité
+    const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${FACEBOOK_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&state=${state}&response_type=code`;
 
-    console.log('Generated Facebook auth URL for redirect:', redirectUri);
+    console.log('Generated Facebook auth URL with scopes:', scope);
 
     return new Response(
       JSON.stringify({ authUrl }),
