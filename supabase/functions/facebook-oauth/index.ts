@@ -40,20 +40,35 @@ Deno.serve(async (req) => {
     // Exchange code for access token
     const tokenUrl = `https://graph.facebook.com/v18.0/oauth/access_token?client_id=${FACEBOOK_APP_ID}&client_secret=${FACEBOOK_APP_SECRET}&code=${code}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
     
+    console.log('🔑 Échange du code pour un token...');
     const tokenResponse = await fetch(tokenUrl);
     const tokenData: FacebookTokenResponse = await tokenResponse.json();
 
+    console.log('📊 Token response:', { hasToken: !!tokenData.access_token, expiresIn: tokenData.expires_in });
+
     if (!tokenData.access_token) {
+      console.error('❌ Pas de token reçu:', tokenData);
       throw new Error('Failed to get access token from Facebook');
     }
 
     // Get user's pages
     const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?access_token=${tokenData.access_token}`;
+    console.log('📄 Récupération des pages Facebook...');
     const pagesResponse = await fetch(pagesUrl);
     const pagesData = await pagesResponse.json();
 
+    console.log('📊 Pages response:', { 
+      hasData: !!pagesData.data, 
+      pagesCount: pagesData.data?.length || 0,
+      error: pagesData.error 
+    });
+
+    if (pagesData.error) {
+      throw new Error(`Facebook API error: ${pagesData.error.message}`);
+    }
+
     if (!pagesData.data || pagesData.data.length === 0) {
-      throw new Error('No Facebook pages found');
+      throw new Error('Aucune page Facebook trouvée sur votre compte. Vous devez être administrateur d\'au moins une page Facebook pour utiliser cette fonctionnalité. Créez une page sur facebook.com/pages/create ou demandez à être ajouté comme administrateur d\'une page existante.');
     }
 
     // Initialize Supabase client
