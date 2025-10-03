@@ -467,7 +467,7 @@ const DescriptionField = ({
             </div>
             
             {/* Contenu scrollable */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-8">
               {/* Options de ton et longueur */}
               <AIGenerationOptions 
                 settings={aiSettings}
@@ -488,10 +488,8 @@ const DescriptionField = ({
                   onChange={(e) => setTempAIInstructions(e.target.value)}
                 />
               </div>
-            </div>
-            
-            {/* Footer fixe avec bouton unique - padding pour safe area iOS */}
-            <div className="flex-shrink-0 px-4 pt-2 pb-20 bg-background">
+
+              {/* Bouton de génération */}
               <Button 
                 type="button" 
                 onClick={generateNewContent}
