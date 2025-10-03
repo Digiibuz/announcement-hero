@@ -49,14 +49,14 @@ export default function SocialStep({ form, onSkip, className, onNavigationVisibi
       <div className={className}>
         <Card className={isMobile ? "p-4" : "p-8"}>
           <div className="space-y-6">
-            {!isMobile && (
-              <div className="text-center space-y-2">
-                <h2 className="text-2xl font-bold">Publication sur les réseaux sociaux</h2>
+            <div className="text-center space-y-2">
+              <h2 className={isMobile ? "text-xl font-bold" : "text-2xl font-bold"}>Publication sur les réseaux sociaux</h2>
+              {!isMobile && (
                 <p className="text-muted-foreground">
                   Sur quelles plateformes souhaitez-vous publier ?
                 </p>
-              </div>
-            )}
+              )}
+            </div>
 
             <SocialPlatformSelector
               facebookEnabled={facebookEnabled}
