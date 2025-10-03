@@ -490,23 +490,15 @@ const DescriptionField = ({
               </div>
             </div>
             
-            {/* Footer fixe avec padding bottom pour safe area */}
-            <div className="flex-shrink-0 border-t bg-background p-4 pb-8 space-y-2">
+            {/* Footer fixe avec bouton unique */}
+            <div className="flex-shrink-0 p-4 pb-8 bg-background">
               <Button 
                 type="button" 
                 onClick={generateNewContent}
-                className="bg-purple-600 hover:bg-purple-700 text-white w-full"
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white w-full h-12 text-base font-medium shadow-lg"
               >
-                <Wand2 size={16} className="mr-2" />
+                <Wand2 size={18} className="mr-2" />
                 Générer le contenu
-              </Button>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setShowAIDialog(false)}
-                className="w-full"
-              >
-                Annuler
               </Button>
             </div>
           </DialogContent>
