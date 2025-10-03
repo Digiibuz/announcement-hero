@@ -38,7 +38,7 @@ const SocialAIGenerationDialog = ({
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent 
-          className="h-screen max-h-screen w-screen max-w-full m-0 p-0 rounded-none border-0 translate-x-0 translate-y-0 top-0 left-0 right-0 bottom-0 flex flex-col"
+          className="h-screen max-h-screen w-screen max-w-full m-0 p-0 rounded-none border-0 translate-x-0 translate-y-0 top-0 left-0 right-0 bottom-0 flex flex-col [&>button]:hidden"
           style={{ animation: 'none' }}
         >
           {/* Header fixe */}
