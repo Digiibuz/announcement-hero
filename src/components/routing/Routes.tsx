@@ -134,11 +134,7 @@ const AppRoutes = () => {
       />
       <Route 
         path="/facebook-callback" 
-        element={
-          <ProtectedRoute>
-            <FacebookCallback />
-          </ProtectedRoute>
-        } 
+        element={<FacebookCallback />}
       />
       
       {/* Fallback routes */}
