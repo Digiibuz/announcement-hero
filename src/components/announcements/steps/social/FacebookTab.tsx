@@ -33,9 +33,15 @@ export const FacebookTab = ({ form }: FacebookTabProps) => {
     const title = form.getValues("title");
     const description = form.getValues("description");
     
+    console.log("Génération de contenu Facebook - Titre:", title, "Description:", description);
+    
     const optimizedContent = await optimizeContent("generateFacebookContent", title, description);
+    
+    console.log("Contenu optimisé reçu:", optimizedContent);
+    
     if (optimizedContent) {
       form.setValue("facebook_content", optimizedContent);
+      console.log("Contenu Facebook mis à jour");
     }
   };
 
@@ -43,7 +49,7 @@ export const FacebookTab = ({ form }: FacebookTabProps) => {
 
   return (
     <div className="w-full pb-8">
-      <AILoadingOverlay isVisible={isOptimizing.generateSocialContent} />
+      <AILoadingOverlay isVisible={isOptimizing.generateFacebookContent} />
       <SparklingStars />
 
       {/* Images pleine largeur */}
