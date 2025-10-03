@@ -16,6 +16,7 @@ interface StepNavigationProps {
   isSubmitting: boolean;
   isMobile?: boolean;
   className?: string;
+  hideNextButton?: boolean;
 }
 
 const StepNavigation = ({
@@ -29,7 +30,8 @@ const StepNavigation = ({
   isFirstStep,
   isSubmitting,
   isMobile,
-  className
+  className,
+  hideNextButton = false
 }: StepNavigationProps) => {
   // Gérer le clic sur "Suivant/Continuer" - vérifier si SocialStep a sa propre logique
   const handleNextClick = () => {
@@ -54,24 +56,26 @@ const StepNavigation = ({
           Retour
         </Button>
         
-        {isLastStep ? (
-          <Button 
-            type="button" 
-            onClick={onSubmit}
-            disabled={isSubmitting}
-            className="w-[130px] mobile-nav-button bg-brand-orange hover:bg-brand-orange/90 text-black"
-          >
-            {isSubmitting ? "Envoi..." : "Publier l'annonce"}
-          </Button>
-        ) : (
-          <Button 
-            type="button" 
-            onClick={handleNextClick}
-            disabled={isSubmitting}
-            className="w-[130px] mobile-nav-button bg-brand-orange hover:bg-brand-orange/90 text-black"
-          >
-            Continuer
-          </Button>
+        {!hideNextButton && (
+          isLastStep ? (
+            <Button 
+              type="button" 
+              onClick={onSubmit}
+              disabled={isSubmitting}
+              className="w-[130px] mobile-nav-button bg-brand-orange hover:bg-brand-orange/90 text-black"
+            >
+              {isSubmitting ? "Envoi..." : "Publier l'annonce"}
+            </Button>
+          ) : (
+            <Button 
+              type="button" 
+              onClick={handleNextClick}
+              disabled={isSubmitting}
+              className="w-[130px] mobile-nav-button bg-brand-orange hover:bg-brand-orange/90 text-black"
+            >
+              Continuer
+            </Button>
+          )
         )}
       </div>
     );
@@ -112,32 +116,34 @@ const StepNavigation = ({
           Étape {currentStep + 1} sur {totalSteps}
         </div>
         
-        {isLastStep ? (
-          <Button 
-            type="button" 
-            onClick={onSubmit}
-            disabled={isSubmitting}
-            className="bg-brand-orange hover:bg-brand-orange/90 text-black"
-          >
-            {isSubmitting ? (
-              <>Enregistrement...</>
-            ) : (
-              <>
-                <BookCheck className="mr-2 h-4 w-4" />
-                Publier l'annonce
-              </>
-            )}
-          </Button>
-        ) : (
-          <Button 
-            type="button" 
-            onClick={handleNextClick}
-            disabled={isSubmitting}
-            className="bg-brand-orange hover:bg-brand-orange/90 text-black"
-          >
-            Suivant
-            <ChevronRight className="ml-2 h-4 w-4" />
-          </Button>
+        {!hideNextButton && (
+          isLastStep ? (
+            <Button 
+              type="button" 
+              onClick={onSubmit}
+              disabled={isSubmitting}
+              className="bg-brand-orange hover:bg-brand-orange/90 text-black"
+            >
+              {isSubmitting ? (
+                <>Enregistrement...</>
+              ) : (
+                <>
+                  <BookCheck className="mr-2 h-4 w-4" />
+                  Publier l'annonce
+                </>
+              )}
+            </Button>
+          ) : (
+            <Button 
+              type="button" 
+              onClick={handleNextClick}
+              disabled={isSubmitting}
+              className="bg-brand-orange hover:bg-brand-orange/90 text-black"
+            >
+              Suivant
+              <ChevronRight className="ml-2 h-4 w-4" />
+            </Button>
+          )
         )}
       </div>
     </div>

@@ -19,9 +19,10 @@ interface SocialStepProps {
   className?: string;
   onNavigationVisibilityChange?: (visible: boolean) => void;
   onNext?: () => void;
+  onHideNextButton?: (hide: boolean) => void;
 }
 
-export default function SocialStep({ form, onSkip, className, onNavigationVisibilityChange, onNext }: SocialStepProps) {
+export default function SocialStep({ form, onSkip, className, onNavigationVisibilityChange, onNext, onHideNextButton }: SocialStepProps) {
   const navigate = useNavigate();
   const { hasActiveConnection } = useFacebookConnection();
   const [showPlatformQuestion, setShowPlatformQuestion] = useState(true);
@@ -67,6 +68,13 @@ export default function SocialStep({ form, onSkip, className, onNavigationVisibi
       onNavigationVisibilityChange(true);
     }
   }, [onNavigationVisibilityChange]);
+
+  // Cacher le bouton "Suivant" pendant la sélection des plateformes
+  React.useEffect(() => {
+    if (onHideNextButton) {
+      onHideNextButton(showPlatformQuestion);
+    }
+  }, [showPlatformQuestion, onHideNextButton]);
 
   const handlePlatformSelection = (skipAll: boolean = false) => {
     setShowPlatformQuestion(false);

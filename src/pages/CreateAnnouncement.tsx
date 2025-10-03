@@ -89,6 +89,7 @@ const CreateAnnouncement = () => {
   const [showPublishingOverlay, setShowPublishingOverlay] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [showStepNavigation, setShowStepNavigation] = useState(true);
+  const [hideNextButton, setHideNextButton] = useState(false);
   const { categories } = useWordPressCategories();
 
   const stepConfigs = getStepConfigs(user?.canPublishSocialMedia || false);
@@ -534,7 +535,7 @@ const CreateAnnouncement = () => {
                       
                       {currentStep.id === "images" && <ImagesStep form={form} isMobile={isMobile} />}
                       
-                      {currentStep.id === "social" && <SocialStep form={form} onSkip={handleNext} onNavigationVisibilityChange={setShowStepNavigation} onNext={handleNext} />}
+                      {currentStep.id === "social" && <SocialStep form={form} onSkip={handleNext} onNavigationVisibilityChange={setShowStepNavigation} onNext={handleNext} onHideNextButton={setHideNextButton} />}
                       
                       {currentStep.id === "publishing" && <PublishingStep form={form} isMobile={isMobile} />}
                       
@@ -556,7 +557,8 @@ const CreateAnnouncement = () => {
                       isFirstStep={currentStepIndex === 0} 
                       isSubmitting={isSubmitting || isPublishing || isSavingDraft} 
                       isMobile={isMobile} 
-                      className="bg-transparent border-none max-w-4xl mx-auto" 
+                      className="bg-transparent border-none max-w-4xl mx-auto"
+                      hideNextButton={hideNextButton}
                     />
                   </div>
                 )}
@@ -626,7 +628,7 @@ const CreateAnnouncement = () => {
                       
                       {currentStep.id === "images" && <ImagesStep form={form} isMobile={isMobile} />}
                       
-                      {currentStep.id === "social" && <SocialStep form={form} onSkip={handleNext} onNavigationVisibilityChange={setShowStepNavigation} onNext={handleNext} />}
+                      {currentStep.id === "social" && <SocialStep form={form} onSkip={handleNext} onNavigationVisibilityChange={setShowStepNavigation} onNext={handleNext} onHideNextButton={setHideNextButton} />}
                       
                       {currentStep.id === "publishing" && <PublishingStep form={form} isMobile={isMobile} />}
                       
@@ -648,7 +650,8 @@ const CreateAnnouncement = () => {
                       isFirstStep={currentStepIndex === 0} 
                       isSubmitting={isSubmitting || isPublishing || isSavingDraft} 
                       isMobile={isMobile} 
-                      className="bg-transparent border-none max-w-4xl mx-auto" 
+                      className="bg-transparent border-none max-w-4xl mx-auto"
+                      hideNextButton={hideNextButton}
                     />
                   </div>
                 )}
