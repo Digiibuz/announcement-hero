@@ -71,6 +71,10 @@ export default function SocialStep({ form, onSkip, className, onNavigationVisibi
 
   const handlePlatformSelection = (skipAll: boolean = false) => {
     setShowPlatformQuestion(false);
+    // Réafficher explicitement la navigation
+    if (onNavigationVisibilityChange) {
+      onNavigationVisibilityChange(true);
+    }
     if (skipAll && onSkip) {
       onSkip();
     }
