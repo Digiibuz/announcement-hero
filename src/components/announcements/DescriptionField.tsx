@@ -486,6 +486,7 @@ const DescriptionField = ({
                   className="min-h-[120px] resize-none"
                   value={tempAIInstructions}
                   onChange={(e) => setTempAIInstructions(e.target.value)}
+                  onFocus={(e) => e.preventDefault()}
                 />
               </div>
             </div>
