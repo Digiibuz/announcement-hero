@@ -473,9 +473,6 @@ const DescriptionField = ({
                   value={tempAIInstructions}
                   onChange={(e) => setTempAIInstructions(e.target.value)}
                 />
-                <p className="text-sm text-muted-foreground">
-                  Ajoutez des instructions pour personnaliser le contenu (ton, style, points à mettre en avant, contexte de votre entreprise, etc.)
-                </p>
               </div>
             </div>
             
@@ -531,9 +528,6 @@ const DescriptionField = ({
                   value={tempAIInstructions}
                   onChange={(e) => setTempAIInstructions(e.target.value)}
                 />
-                <p className="text-sm text-muted-foreground">
-                  Ajoutez des instructions pour personnaliser le contenu (ton, style, points à mettre en avant, contexte de votre entreprise, etc.)
-                </p>
               </div>
             </div>
             
