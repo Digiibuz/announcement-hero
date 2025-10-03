@@ -178,7 +178,7 @@ const AnnouncementSummary = ({
                 {/* Contenu */}
                 <div className="px-4 pb-3">
                   <div className="text-gray-900 text-sm leading-relaxed whitespace-pre-wrap">
-                    {data.facebookContent || data.description || "Votre contenu Facebook..."}
+                    {data.facebookContent || ""}
                     {data.facebookHashtags && data.facebookHashtags.length > 0 && (
                       <div className="mt-2 text-blue-600">
                         {data.facebookHashtags.map(tag => tag).join(" ")}
@@ -287,7 +287,7 @@ const AnnouncementSummary = ({
                     <span className="font-semibold">votre_entreprise</span>
                     {" "}
                     <span className="text-gray-900">
-                      {data.instagramContent || data.description || "Votre contenu Instagram..."}
+                      {data.instagramContent || ""}
                     </span>
                     {data.instagramHashtags && data.instagramHashtags.length > 0 && (
                       <div className="mt-1 text-blue-700">
