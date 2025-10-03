@@ -442,9 +442,9 @@ const DescriptionField = ({
       {/* Dialog de configuration IA - Plein écran sur mobile, Dialog normal sur desktop */}
       {isMobile ? (
         <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
-          <DialogContent className="h-screen max-w-full m-0 p-0 rounded-none flex flex-col">
+          <DialogContent className="h-[100dvh] max-w-full m-0 p-0 rounded-none flex flex-col fixed inset-0">
             {/* Header fixe */}
-            <div className="flex-shrink-0 border-b bg-background">
+            <div className="flex-shrink-0 border-b bg-background safe-top">
               <div className="flex items-center gap-3 p-4">
                 <Button
                   variant="ghost"
@@ -455,19 +455,16 @@ const DescriptionField = ({
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
                 <div className="flex-1">
-                  <h2 className="text-lg font-semibold flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-purple-600" />
-                    Configuration de la génération IA
+                  <h2 className="text-base font-semibold flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-purple-600" />
+                    Configuration IA
                   </h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Personnalisez le ton, la longueur et ajoutez des instructions spécifiques
-                  </p>
                 </div>
               </div>
             </div>
             
             {/* Contenu scrollable */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-6">
               {/* Options de ton et longueur */}
               <AIGenerationOptions 
                 settings={aiSettings}
@@ -486,13 +483,15 @@ const DescriptionField = ({
                   className="min-h-[120px] resize-none"
                   value={tempAIInstructions}
                   onChange={(e) => setTempAIInstructions(e.target.value)}
-                  onFocus={(e) => e.preventDefault()}
+                  onFocus={(e) => {
+                    e.target.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' });
+                  }}
                 />
               </div>
             </div>
             
             {/* Footer fixe */}
-            <div className="flex-shrink-0 border-t bg-background p-4 space-y-2">
+            <div className="flex-shrink-0 border-t bg-background p-4 space-y-2 safe-bottom">
               <Button 
                 type="button" 
                 onClick={generateNewContent}
