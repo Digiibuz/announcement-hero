@@ -277,7 +277,7 @@ const ImageUploader = ({
       if (uploadedImageUrls.length > 0) {
         setUploadedImages(prev => [...prev, ...uploadedImageUrls]);
         form.setValue('images', [...(form.getValues('images') || []), ...uploadedImageUrls]);
-        toast.success(`${uploadedImageUrls.length} image(s) téléversée(s) avec succès`);
+        // Notification removed as requested
       } else {
         setError("Aucune image n'a pu être téléversée. Veuillez réessayer.");
         toast.error("Aucune image n'a pu être téléversée");

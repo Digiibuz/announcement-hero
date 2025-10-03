@@ -438,7 +438,7 @@ export default function ImageManagement({ form, isMobile = false }: ImageManagem
             form.setValue('additionalMedias', updatedAdditional);
           }
         
-        toast.success(`${newImageUrls.length} image(s) téléversée(s) avec succès`);
+        // Notification removed as requested
       }
       
     } catch (error: any) {

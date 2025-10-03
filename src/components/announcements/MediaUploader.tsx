@@ -214,7 +214,7 @@ const MediaUploader: React.FC<MediaUploaderProps> = ({ form }) => {
           form.setValue('images', [mediaUrl]);
           
           console.log("📤 File uploaded:", mediaUrl);
-          toast.success("Image téléversée avec succès");
+          // Notification removed as requested
         } else {
           throw new Error("Échec de l'upload");
         }
