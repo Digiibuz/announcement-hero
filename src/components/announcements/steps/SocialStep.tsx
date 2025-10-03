@@ -16,15 +16,23 @@ interface SocialStepProps {
   form: UseFormReturn<AnnouncementFormData>;
   onSkip: () => void;
   className?: string;
+  onNavigationVisibilityChange?: (visible: boolean) => void;
 }
 
-export default function SocialStep({ form, onSkip, className }: SocialStepProps) {
+export default function SocialStep({ form, onSkip, className, onNavigationVisibilityChange }: SocialStepProps) {
   const navigate = useNavigate();
   const { hasActiveConnection } = useFacebookConnection();
   const [showPlatformQuestion, setShowPlatformQuestion] = useState(true);
   
   const facebookEnabled = form.watch("createFacebookPost") || false;
   const instagramEnabled = form.watch("createInstagramPost") || false;
+
+  // Masquer la navigation lors de la sélection initiale
+  React.useEffect(() => {
+    if (onNavigationVisibilityChange) {
+      onNavigationVisibilityChange(!showPlatformQuestion);
+    }
+  }, [showPlatformQuestion, onNavigationVisibilityChange]);
 
   const handlePlatformSelection = (skipAll: boolean = false) => {
     setShowPlatformQuestion(false);

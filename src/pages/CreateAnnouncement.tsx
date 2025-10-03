@@ -88,6 +88,7 @@ const CreateAnnouncement = () => {
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [showPublishingOverlay, setShowPublishingOverlay] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [showStepNavigation, setShowStepNavigation] = useState(true);
   const { categories } = useWordPressCategories();
 
   const stepConfigs = getStepConfigs(user?.canPublishSocialMedia || false);
@@ -533,7 +534,7 @@ const CreateAnnouncement = () => {
                       
                       {currentStep.id === "images" && <ImagesStep form={form} isMobile={isMobile} />}
                       
-                      {currentStep.id === "social" && <SocialStep form={form} onSkip={handleNext} />}
+                      {currentStep.id === "social" && <SocialStep form={form} onSkip={handleNext} onNavigationVisibilityChange={setShowStepNavigation} />}
                       
                       {currentStep.id === "publishing" && <PublishingStep form={form} isMobile={isMobile} />}
                       
@@ -542,21 +543,23 @@ const CreateAnnouncement = () => {
                   </div>
                 </div>
                 
-                <div className={`fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-lg`}>
-                  <StepNavigation 
-                    currentStep={currentStepIndex} 
-                    totalSteps={stepConfigs.length} 
-                    onPrevious={handlePrevious} 
-                    onNext={handleNext} 
-                    onSubmit={handleSubmit}
-                    onSaveDraft={saveAnnouncementDraft}
-                    isLastStep={currentStepIndex === stepConfigs.length - 1} 
-                    isFirstStep={currentStepIndex === 0} 
-                    isSubmitting={isSubmitting || isPublishing || isSavingDraft} 
-                    isMobile={isMobile} 
-                    className="bg-transparent border-none max-w-4xl mx-auto" 
-                  />
-                </div>
+                {showStepNavigation && (
+                  <div className={`fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-lg`}>
+                    <StepNavigation 
+                      currentStep={currentStepIndex} 
+                      totalSteps={stepConfigs.length} 
+                      onPrevious={handlePrevious} 
+                      onNext={handleNext} 
+                      onSubmit={handleSubmit}
+                      onSaveDraft={saveAnnouncementDraft}
+                      isLastStep={currentStepIndex === stepConfigs.length - 1} 
+                      isFirstStep={currentStepIndex === 0} 
+                      isSubmitting={isSubmitting || isPublishing || isSavingDraft} 
+                      isMobile={isMobile} 
+                      className="bg-transparent border-none max-w-4xl mx-auto" 
+                    />
+                  </div>
+                )}
               </form>
             </Form>
           </div>
@@ -623,7 +626,7 @@ const CreateAnnouncement = () => {
                       
                       {currentStep.id === "images" && <ImagesStep form={form} isMobile={isMobile} />}
                       
-                      {currentStep.id === "social" && <SocialStep form={form} onSkip={handleNext} />}
+                      {currentStep.id === "social" && <SocialStep form={form} onSkip={handleNext} onNavigationVisibilityChange={setShowStepNavigation} />}
                       
                       {currentStep.id === "publishing" && <PublishingStep form={form} isMobile={isMobile} />}
                       
@@ -632,21 +635,23 @@ const CreateAnnouncement = () => {
                   </div>
                 </div>
                 
-                <div className={`fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-lg`}>
-                  <StepNavigation 
-                    currentStep={currentStepIndex} 
-                    totalSteps={stepConfigs.length} 
-                    onPrevious={handlePrevious} 
-                    onNext={handleNext} 
-                    onSubmit={handleSubmit}
-                    onSaveDraft={saveAnnouncementDraft}
-                    isLastStep={currentStepIndex === stepConfigs.length - 1} 
-                    isFirstStep={currentStepIndex === 0} 
-                    isSubmitting={isSubmitting || isPublishing || isSavingDraft} 
-                    isMobile={isMobile} 
-                    className="bg-transparent border-none max-w-4xl mx-auto" 
-                  />
-                </div>
+                {showStepNavigation && (
+                  <div className={`fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-lg`}>
+                    <StepNavigation 
+                      currentStep={currentStepIndex} 
+                      totalSteps={stepConfigs.length} 
+                      onPrevious={handlePrevious} 
+                      onNext={handleNext} 
+                      onSubmit={handleSubmit}
+                      onSaveDraft={saveAnnouncementDraft}
+                      isLastStep={currentStepIndex === stepConfigs.length - 1} 
+                      isFirstStep={currentStepIndex === 0} 
+                      isSubmitting={isSubmitting || isPublishing || isSavingDraft} 
+                      isMobile={isMobile} 
+                      className="bg-transparent border-none max-w-4xl mx-auto" 
+                    />
+                  </div>
+                )}
               </form>
             </Form>
           </div>
