@@ -8,6 +8,10 @@ const FacebookCallback = () => {
   const [status, setStatus] = useState('Connexion à Facebook en cours...');
 
   useEffect(() => {
+    console.log('🔵 FacebookCallback mounted');
+    console.log('🔵 URL params:', Object.fromEntries(searchParams.entries()));
+    console.log('🔵 window.opener exists:', !!window.opener);
+    
     const handleCallback = async () => {
       const code = searchParams.get('code');
       const error = searchParams.get('error');
@@ -49,18 +53,33 @@ const FacebookCallback = () => {
       try {
         if (window.opener && !window.opener.closed) {
           console.log('🔵 Tentative postMessage vers parent');
+          
+          // Test d'accès à window.opener (détection 2FA)
+          try {
+            const test = window.opener.location.href;
+            console.log('✅ window.opener accessible');
+          } catch (e) {
+            console.log('🔒 window.opener bloqué (2FA détecté)');
+            localStorage.setItem('instagram_2fa_detected', 'true');
+          }
+          
           window.opener.postMessage({
             type: 'FACEBOOK_AUTH_SUCCESS',
             code: code
           }, window.location.origin);
           
+          console.log('✅ postMessage envoyé');
           setStatus('Fermeture de la fenêtre...');
-          setTimeout(() => window.close(), 1000);
+          setTimeout(() => {
+            console.log('🔵 Fermeture de la popup');
+            window.close();
+          }, 1000);
           return;
+        } else {
+          console.log('⚠️ window.opener non disponible');
         }
       } catch (e) {
-        // 2FA Instagram ou autre problème Same-Origin
-        console.log('🔒 2FA détecté - window.opener bloqué, utilisation localStorage');
+        console.error('❌ Erreur postMessage:', e);
         localStorage.setItem('instagram_2fa_detected', 'true');
       }
 
