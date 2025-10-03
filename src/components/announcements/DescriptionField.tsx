@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Loader2, Wand2, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Link, Mic, MicOff, Sparkles } from "lucide-react";
+import { Loader2, Wand2, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Link, Mic, MicOff, Sparkles, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
@@ -10,7 +10,6 @@ import { AnnouncementFormData } from "./AnnouncementForm";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter } from "@/components/ui/drawer";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
 import useVoiceRecognition from "@/hooks/useVoiceRecognition";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -440,21 +439,35 @@ const DescriptionField = ({
         </div>
       )}
 
-      {/* Dialog de configuration IA - Drawer sur mobile, Dialog sur desktop */}
+      {/* Dialog de configuration IA - Plein écran sur mobile, Dialog normal sur desktop */}
       {isMobile ? (
-        <Drawer open={showAIDialog} onOpenChange={setShowAIDialog}>
-          <DrawerContent className="max-h-[96vh]">
-            <DrawerHeader className="text-left">
-              <DrawerTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-purple-600" />
-                Configuration de la génération IA
-              </DrawerTitle>
-              <DrawerDescription>
-                Personnalisez le ton, la longueur et ajoutez des instructions spécifiques pour adapter le contenu généré à vos besoins.
-              </DrawerDescription>
-            </DrawerHeader>
+        <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
+          <DialogContent className="h-screen max-w-full m-0 p-0 rounded-none flex flex-col">
+            {/* Header fixe */}
+            <div className="flex-shrink-0 border-b bg-background">
+              <div className="flex items-center gap-3 p-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowAIDialog(false)}
+                  className="h-8 w-8"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <div className="flex-1">
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-purple-600" />
+                    Configuration de la génération IA
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Personnalisez le ton, la longueur et ajoutez des instructions spécifiques
+                  </p>
+                </div>
+              </div>
+            </div>
             
-            <div className="space-y-6 px-4 pb-4 overflow-y-auto">
+            {/* Contenu scrollable */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-6">
               {/* Options de ton et longueur */}
               <AIGenerationOptions 
                 settings={aiSettings}
@@ -463,11 +476,12 @@ const DescriptionField = ({
               
               {/* Instructions spécifiques */}
               <div className="space-y-2">
-                <Label className="flex items-center gap-2">
+                <Label htmlFor="ai-instructions-mobile" className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-purple-600" />
                   Instructions spécifiques (optionnel)
                 </Label>
                 <Textarea 
+                  id="ai-instructions-mobile"
                   placeholder="Donnez des instructions à l'IA pour personnaliser le contenu..."
                   className="min-h-[120px] resize-none"
                   value={tempAIInstructions}
@@ -476,7 +490,8 @@ const DescriptionField = ({
               </div>
             </div>
             
-            <DrawerFooter className="pt-2">
+            {/* Footer fixe */}
+            <div className="flex-shrink-0 border-t bg-background p-4 space-y-2">
               <Button 
                 type="button" 
                 onClick={generateNewContent}
@@ -493,9 +508,9 @@ const DescriptionField = ({
               >
                 Annuler
               </Button>
-            </DrawerFooter>
-          </DrawerContent>
-        </Drawer>
+            </div>
+          </DialogContent>
+        </Dialog>
       ) : (
         <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
           <DialogContent className="max-w-2xl">
@@ -518,11 +533,12 @@ const DescriptionField = ({
               
               {/* Instructions spécifiques */}
               <div className="space-y-2">
-                <Label className="flex items-center gap-2">
+                <Label htmlFor="ai-instructions-desktop" className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-purple-600" />
                   Instructions spécifiques (optionnel)
                 </Label>
                 <Textarea 
+                  id="ai-instructions-desktop"
                   placeholder="Donnez des instructions à l'IA pour personnaliser le contenu..."
                   className="min-h-[120px] resize-none"
                   value={tempAIInstructions}
