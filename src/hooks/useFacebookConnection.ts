@@ -45,24 +45,29 @@ export const useFacebookConnection = () => {
   }, [user?.id]);
 
   const connectFacebook = async () => {
+    console.log('🔵 Démarrage connexion Facebook...');
     setIsConnecting(true);
     try {
       const redirectUri = `${window.location.origin}/facebook-callback`;
+      console.log('🔵 Redirect URI:', redirectUri);
       
       // Get the auth URL from the edge function which has access to secrets
       const { data, error } = await supabase.functions.invoke('facebook-auth-url', {
         body: { redirectUri },
       });
 
+      console.log('🔵 Réponse edge function:', { data, error });
+
       if (error) throw error;
       
       if (data?.authUrl) {
+        console.log('🔵 Redirection vers Facebook:', data.authUrl);
         window.location.href = data.authUrl;
       } else {
         throw new Error('No auth URL returned');
       }
     } catch (error) {
-      console.error('Error connecting Facebook:', error);
+      console.error('❌ Error connecting Facebook:', error);
       toast.error('Erreur lors de la connexion à Facebook. Vérifiez que FACEBOOK_APP_ID est configuré.');
       setIsConnecting(false);
     }
