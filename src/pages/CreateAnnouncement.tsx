@@ -48,14 +48,14 @@ const stepConfigs: StepConfig[] = [
     description: ""
   },
   {
-    id: "social",
-    title: "",
-    description: ""
-  },
-  {
     id: "publishing",
     title: "Publication",
     description: "Définissez quand et comment votre annonce sera publiée."
+  },
+  {
+    id: "social",
+    title: "",
+    description: ""
   },
   {
     id: "summary",
