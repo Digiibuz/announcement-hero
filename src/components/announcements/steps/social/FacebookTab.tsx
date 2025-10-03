@@ -9,6 +9,7 @@ import { useContentOptimization } from "@/hooks/useContentOptimization";
 import AILoadingOverlay from "@/components/ui/AILoadingOverlay";
 import SparklingStars from "@/components/ui/SparklingStars";
 import SocialMediaImageSelector from "../../SocialMediaImageSelector";
+import SocialAIGenerationDialog from "../../SocialAIGenerationDialog";
 
 interface FacebookTabProps {
   form: UseFormReturn<any>;
@@ -16,6 +17,7 @@ interface FacebookTabProps {
 
 export const FacebookTab = ({ form }: FacebookTabProps) => {
   const [showImageSelector, setShowImageSelector] = useState(false);
+  const [showAIDialog, setShowAIDialog] = useState(false);
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const images = form.watch("images") || [];
   const additionalMedias = form.watch("additionalMedias") || [];
@@ -29,13 +31,22 @@ export const FacebookTab = ({ form }: FacebookTabProps) => {
     }
   }, [images, additionalMedias]);
 
-  const handleGenerateContent = async () => {
+  const handleGenerateContent = async (useAnnouncementContent: boolean, customInstructions: string) => {
     const title = form.getValues("title");
     const description = form.getValues("description");
     
     console.log("Génération de contenu Facebook - Titre:", title, "Description:", description);
+    console.log("Utiliser contenu annonce:", useAnnouncementContent);
+    console.log("Instructions personnalisées:", customInstructions);
     
-    const optimizedContent = await optimizeContent("generateFacebookContent", title, description);
+    const baseContent = useAnnouncementContent ? description : "";
+    const optimizedContent = await optimizeContent(
+      "generateFacebookContent", 
+      title, 
+      baseContent,
+      { tone: "convivial", length: "standard" },
+      customInstructions
+    );
     
     console.log("Contenu optimisé reçu:", optimizedContent);
     
@@ -122,7 +133,7 @@ export const FacebookTab = ({ form }: FacebookTabProps) => {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={handleGenerateContent}
+                    onClick={() => setShowAIDialog(true)}
                     disabled={isOptimizing.generateFacebookContent}
                     className="h-8 w-8 p-0 rounded-full bg-blue-500 hover:bg-blue-600 text-white"
                   >
@@ -143,6 +154,15 @@ export const FacebookTab = ({ form }: FacebookTabProps) => {
           )}
         />
       </div>
+
+      {/* Dialog de configuration IA */}
+      <SocialAIGenerationDialog
+        open={showAIDialog}
+        onOpenChange={setShowAIDialog}
+        onGenerate={handleGenerateContent}
+        platform="facebook"
+        isGenerating={isOptimizing.generateFacebookContent}
+      />
     </div>
   );
 };

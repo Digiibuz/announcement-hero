@@ -12,6 +12,7 @@ import AILoadingOverlay from "@/components/ui/AILoadingOverlay";
 import SparklingStars from "@/components/ui/SparklingStars";
 import SocialMediaImageSelector from "../../SocialMediaImageSelector";
 import { ImageCropDialog } from "../../ImageCropDialog";
+import SocialAIGenerationDialog from "../../SocialAIGenerationDialog";
 
 interface InstagramTabProps {
   form: UseFormReturn<any>;
@@ -23,6 +24,7 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
   const [showCropDialog, setShowCropDialog] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [cropImageIndex, setCropImageIndex] = useState<number | null>(null);
+  const [showAIDialog, setShowAIDialog] = useState(false);
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const hashtags = form.watch("instagram_hashtags") || [];
   const images = form.watch("images") || [];
@@ -39,11 +41,19 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
     }
   }, [images, additionalMedias]);
 
-  const handleGenerateContent = async () => {
+  const handleGenerateContent = async (useAnnouncementContent: boolean, customInstructions: string) => {
     const title = form.getValues("title");
     const description = form.getValues("description");
     
-    const optimizedContent = await optimizeContent("generateSocialContent", title, description);
+    const baseContent = useAnnouncementContent ? description : "";
+    const optimizedContent = await optimizeContent(
+      "generateSocialContent", 
+      title, 
+      baseContent,
+      { tone: "convivial", length: "standard" },
+      customInstructions
+    );
+    
     if (optimizedContent) {
       form.setValue("instagram_content", optimizedContent);
     }
@@ -266,7 +276,7 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={handleGenerateContent}
+                    onClick={() => setShowAIDialog(true)}
                     disabled={isOptimizing.generateSocialContent}
                     className="h-8 w-8 p-0 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
                   >
@@ -315,6 +325,15 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
           </div>
         </FormItem>
       </div>
+
+      {/* Dialog de configuration IA */}
+      <SocialAIGenerationDialog
+        open={showAIDialog}
+        onOpenChange={setShowAIDialog}
+        onGenerate={handleGenerateContent}
+        platform="instagram"
+        isGenerating={isOptimizing.generateSocialContent}
+      />
     </div>
   );
 };
