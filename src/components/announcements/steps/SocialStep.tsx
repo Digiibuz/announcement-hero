@@ -61,12 +61,21 @@ export default function SocialStep({ form, onSkip, className, onNavigationVisibi
               onInstagramChange={(enabled) => form.setValue("createInstagramPost", enabled)}
             />
 
-            <div className="flex justify-center pt-4">
+            <div className="flex justify-center gap-3 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handlePlatformSelection(true)}
+                size="lg"
+              >
+                Passer cette étape
+              </Button>
               <Button
                 type="button"
                 onClick={() => handlePlatformSelection(false)}
                 size="lg"
                 disabled={!facebookEnabled && !instagramEnabled}
+                className="bg-brand-orange hover:bg-brand-orange/90 text-black"
               >
                 Continuer
               </Button>
