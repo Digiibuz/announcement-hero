@@ -38,6 +38,29 @@ export default function SocialStep({ form, onSkip, className, onNavigationVisibi
     }
   }, [facebookEnabled, instagramEnabled, showPlatformQuestion, activeTab]);
 
+  // Gérer le passage à l'étape suivante ou changement d'onglet
+  const handleNextClick = () => {
+    if (facebookEnabled && instagramEnabled && activeTab === "facebook") {
+      // Si les deux plateformes sont activées et on est sur Facebook, basculer vers Instagram
+      setActiveTab("instagram");
+    } else {
+      // Sinon, passer à l'étape suivante
+      if (onNext) {
+        onNext();
+      }
+    }
+  };
+
+  // Exposer la fonction handleNextClick via un effet pour que le parent puisse l'appeler
+  React.useEffect(() => {
+    if (onNavigationVisibilityChange) {
+      (window as any).socialStepHandleNext = handleNextClick;
+    }
+    return () => {
+      delete (window as any).socialStepHandleNext;
+    };
+  }, [activeTab, facebookEnabled, instagramEnabled, onNext, onNavigationVisibilityChange]);
+
   // Masquer la navigation lors de la sélection initiale
   React.useEffect(() => {
     if (onNavigationVisibilityChange) {
@@ -99,29 +122,6 @@ export default function SocialStep({ form, onSkip, className, onNavigationVisibi
       </div>
     );
   }
-
-  // Gérer le passage à l'étape suivante ou changement d'onglet
-  const handleNextClick = () => {
-    if (facebookEnabled && instagramEnabled && activeTab === "facebook") {
-      // Si les deux plateformes sont activées et on est sur Facebook, basculer vers Instagram
-      setActiveTab("instagram");
-    } else {
-      // Sinon, passer à l'étape suivante
-      if (onNext) {
-        onNext();
-      }
-    }
-  };
-
-  // Exposer la fonction handleNextClick via un effet pour que le parent puisse l'appeler
-  React.useEffect(() => {
-    if (onNavigationVisibilityChange) {
-      (window as any).socialStepHandleNext = handleNextClick;
-    }
-    return () => {
-      delete (window as any).socialStepHandleNext;
-    };
-  }, [activeTab, facebookEnabled, instagramEnabled, onNext]);
 
   // Vue principale avec onglets
   return (
