@@ -33,24 +33,54 @@ serve(async (req) => {
     
     // Différencier entre génération de description et contenu social
     if (type === "generateDescription") {
-      // Génération de description classique (sans emojis)
+      // Génération de description optimisée SEO avec structure HTML
       const toneInstructions = getToneInstructions(aiSettings?.tone || "convivial");
       const lengthInstructions = getLengthInstructions(aiSettings?.length || "standard");
       
-      systemMessage = `Tu es un rédacteur professionnel spécialisé dans la création de contenu pour des annonces. Rédige un texte informatif, structuré et engageant ${lengthInstructions.target} basé sur le titre fourni. ${toneInstructions.system} IMPORTANT: Fournis UNIQUEMENT le texte généré, sans préface ni commentaire.`;
+      systemMessage = `Tu es un rédacteur web SEO expert spécialisé dans la création de contenu optimisé pour les moteurs de recherche. Tu dois rédiger un contenu structuré avec des balises HTML (h2, h3, p, ul, li, a) qui sera publié sur un site WordPress. ${toneInstructions.system} IMPORTANT: Fournis UNIQUEMENT le HTML généré, sans préface ni commentaire.`;
       
-      prompt = `Titre de l'annonce: "${title}".
-      ${description ? `Voici un exemple de contenu ou notes: "${description}"` : ""}
+      prompt = `Titre principal de l'annonce: "${title}".
+      ${description ? `Informations complémentaires: "${description}"` : ""}
       
-      Rédige un texte structuré, informatif et engageant ${lengthInstructions.target} qui servira de description pour cette annonce. 
-      Ton texte doit:
-      - Avoir une structure claire avec des paragraphes
+      Rédige un contenu web optimisé SEO ${lengthInstructions.target} en HTML qui servira de description pour cette annonce WordPress.
+      
+      📋 STRUCTURE HTML OBLIGATOIRE:
+      - Commencer par un paragraphe d'introduction engageant
+      - Inclure 2-3 sous-titres <h2> pertinents avec mots-clés
+      - Utiliser des <h3> si nécessaire pour sous-sections
+      - Utiliser <ul> et <li> pour les listes à puces
+      - Inclure 1-2 liens externes <a href="https://..." target="_blank" rel="noopener noreferrer"> vers des sources pertinentes (sites d'autorité)
+      - Terminer par un call-to-action dans un paragraphe final
+      
+      🎯 OPTIMISATION SEO:
       - ${toneInstructions.style}
+      - Intégrer naturellement le mot-clé principal ("${title}") et ses variantes dans le texte
       - ${lengthInstructions.structure}
-      - Ne pas contenir de titre ni sous-titres
-      - Ne pas inclure de formatage spécial (pas de gras, italique...)
+      - Utiliser des synonymes et termes connexes pour enrichir le champ sémantique
+      - Rédiger des paragraphes de 3-4 lignes maximum pour la lisibilité
+      - Les titres H2 doivent contenir des mots-clés stratégiques
       
-      Renvoie uniquement le texte généré sans aucune introduction ou commentaire supplémentaire.`;
+      🔗 LIENS EXTERNES:
+      - Inclure 1-2 liens vers des sites d'autorité pertinents (Wikipedia, sites gouvernementaux, médias reconnus, blogs experts)
+      - Les liens doivent enrichir le contenu et apporter de la valeur
+      - Format: <a href="URL" target="_blank" rel="noopener noreferrer">texte du lien</a>
+      
+      ⚡ EXEMPLE DE STRUCTURE:
+      <p>Paragraphe d'introduction engageant qui présente le sujet...</p>
+      
+      <h2>Premier titre H2 avec mot-clé</h2>
+      <p>Paragraphe explicatif...</p>
+      <ul>
+        <li>Point clé 1</li>
+        <li>Point clé 2</li>
+      </ul>
+      
+      <h2>Deuxième titre H2 pertinent</h2>
+      <p>Contenu avec <a href="https://exemple.com" target="_blank" rel="noopener noreferrer">lien externe pertinent</a>...</p>
+      
+      <p>Paragraphe de conclusion avec call-to-action...</p>
+      
+      Génère maintenant le contenu HTML optimisé SEO (sans balise html, head ou body, uniquement le contenu):`;
 
     } else if (type === "generateSocialContent") {
       // Génération de contenu spécialement pour Instagram avec emojis
@@ -185,22 +215,17 @@ serve(async (req) => {
       
       // Post-traitement différent selon le type
       if (type === "generateDescription") {
-        // Pour les descriptions classiques : supprimer emojis et formatage
+        // Pour les descriptions SEO : nettoyer les préfaces mais garder le HTML
         optimizedContent = optimizedContent
           // Supprime les phrases d'introduction comme "Voici" ou "Bien sûr"
           .replace(/^(Bien sûr !|Voici|Certainement|D'accord|Absolument|Voilà|Avec plaisir)[^\n]*\n+/i, '')
           // Supprime les commentaires finaux commençant par des tirets ou des remarques
-          .replace(/\n+(-{2,}|Remarque|Note|Cette version)[^\n]*$/i, '')
-          // Supprime les guillemets qui pourraient entourer la réponse
-          .replace(/^["\s]+|["\s]+$/g, '')
-          // Supprime les titres (lignes suivies de ':' ou lignes avec # au début)
-          .replace(/^#+\s+.*$|^\s*[\w\s]+\s*:\s*$/gm, '')
-          // Supprime les exemples entre parenthèses ou qui commencent par "Exemple :"
-          .replace(/\(exemple.*?\)|exemple\s*:.*?(\n|$)/gi, '')
-          // Supprime toutes les mises en gras (balises Markdown ** ou __)
-          .replace(/(\*\*|__)(.*?)(\*\*|__)/g, "$2")
-          // Supprime les marqueurs d'icônes et symboles courants
-          .replace(/:[a-z_]+:|🔍|✅|⚠️|❗|📝|💡|🔑|📊|🎯|⭐|👉|✨|🚀|💪|⚡|📌|🔖|📢|🔔/g, '')
+          .replace(/\n+(-{2,}|Remarque|Note|Cette version|N'oubliez)[^\n]*$/i, '')
+          // Supprime les blocs de code markdown si présents
+          .replace(/```html\n?/g, '')
+          .replace(/```\n?/g, '')
+          // Supprime les emojis mais garde le HTML
+          .replace(/:[a-z_]+:|🔍|✅|⚠️|❗|📝|💡|🔑|📊|🎯|⭐|👉|✨|🚀|💪|⚡|📌|🔖|📢|🔔|📋/g, '')
           .trim();
       } else if (type === "generateSocialContent" || type === "generateFacebookContent") {
         // Pour le contenu social : garder les emojis et hashtags mais nettoyer les commentaires
