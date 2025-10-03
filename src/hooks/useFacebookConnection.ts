@@ -47,21 +47,23 @@ export const useFacebookConnection = () => {
   const connectFacebook = async () => {
     setIsConnecting(true);
     try {
-      // Note: Facebook App ID doit être configuré via les secrets Supabase
-      // Pour l'instant, nous utilisons une valeur temporaire
       const redirectUri = `${window.location.origin}/facebook-callback`;
-      const scope = 'pages_show_list,pages_read_engagement,pages_manage_posts';
       
-      // Le client ID sera passé depuis l'edge function qui a accès aux secrets
-      const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=YOUR_FACEBOOK_APP_ID&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&response_type=code`;
+      // Get the auth URL from the edge function which has access to secrets
+      const { data, error } = await supabase.functions.invoke('facebook-auth-url', {
+        body: { redirectUri },
+      });
+
+      if (error) throw error;
       
-      toast.info('Configuration Facebook requise. Contactez l\'administrateur pour configurer FACEBOOK_APP_ID.');
-      setIsConnecting(false);
-      
-      // window.location.href = authUrl;
+      if (data?.authUrl) {
+        window.location.href = data.authUrl;
+      } else {
+        throw new Error('No auth URL returned');
+      }
     } catch (error) {
       console.error('Error connecting Facebook:', error);
-      toast.error('Erreur lors de la connexion à Facebook');
+      toast.error('Erreur lors de la connexion à Facebook. Vérifiez que FACEBOOK_APP_ID est configuré.');
       setIsConnecting(false);
     }
   };
