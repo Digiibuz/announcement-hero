@@ -53,12 +53,10 @@ const AIGenerationOptions = ({ settings, onSettingsChange }: AIGenerationOptions
                   <SelectItem 
                     key={option.value} 
                     value={option.value} 
-                    className="cursor-pointer focus:bg-accent py-3"
+                    className="cursor-pointer focus:bg-accent py-2"
                   >
-                    <div className="flex flex-col gap-0.5">
-                      <span className="font-medium text-sm">{option.label}</span>
-                      <span className="text-xs text-muted-foreground">{option.description}</span>
-                    </div>
+                    <span className="font-medium text-sm block">{option.label}</span>
+                    <span className="text-xs text-muted-foreground block">{option.description}</span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -78,12 +76,10 @@ const AIGenerationOptions = ({ settings, onSettingsChange }: AIGenerationOptions
                   <SelectItem 
                     key={option.value} 
                     value={option.value}
-                    className="cursor-pointer focus:bg-accent py-3"
+                    className="cursor-pointer focus:bg-accent py-2"
                   >
-                    <div className="flex flex-col gap-0.5">
-                      <span className="font-medium text-sm">{option.label}</span>
-                      <span className="text-xs text-muted-foreground">{option.description}</span>
-                    </div>
+                    <span className="font-medium text-sm block">{option.label}</span>
+                    <span className="text-xs text-muted-foreground block">{option.description}</span>
                   </SelectItem>
                 ))}
               </SelectContent>
