@@ -32,12 +32,14 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
   const selectedImages = form.watch("instagramImages") || [];
   const imageAspectRatios = form.watch("instagram_image_aspect_ratios") || [];
 
-  // Auto-sélection de la 1ère image disponible
+  // Auto-sélection de toutes les images disponibles (max 10)
   useEffect(() => {
     const allMedias = [...images, ...additionalMedias];
     if (allMedias.length > 0 && selectedImages.length === 0) {
-      form.setValue("instagramImages", [allMedias[0]]);
-      form.setValue("instagram_image_aspect_ratios", [1]);
+      const imagesToSelect = allMedias.slice(0, 10);
+      const aspectRatios = imagesToSelect.map(() => 1);
+      form.setValue("instagramImages", imagesToSelect);
+      form.setValue("instagram_image_aspect_ratios", aspectRatios);
     }
   }, [images, additionalMedias]);
 
