@@ -246,19 +246,21 @@ const UserProfile = () => {
           </Card>
         </AnimatedContainer>
 
-        <AnimatedContainer delay={175}>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                <Facebook className="h-6 w-6" />
-                Connexion Facebook
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <FacebookConnectionTab />
-            </CardContent>
-          </Card>
-        </AnimatedContainer>
+        {user.canPublishSocialMedia && (
+          <AnimatedContainer delay={175}>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-2xl font-bold flex items-center gap-2">
+                  <Facebook className="h-6 w-6" />
+                  Connexion Facebook
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <FacebookConnectionTab />
+              </CardContent>
+            </Card>
+          </AnimatedContainer>
+        )}
 
         <AnimatedContainer delay={200}>
           <Card>

@@ -79,14 +79,16 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
         
         <ScrollArea className="flex-1 pr-4">
           <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
+            <TabsList className={`grid w-full ${user.canPublishSocialMedia ? 'grid-cols-5' : 'grid-cols-4'} flex-shrink-0`}>
               <TabsTrigger value="basic">Informations</TabsTrigger>
               <TabsTrigger value="wordpress" disabled={role !== "client" && role !== "commercial"}>
                 WordPress
               </TabsTrigger>
-              <TabsTrigger value="facebook">
-                Facebook
-              </TabsTrigger>
+              {user.canPublishSocialMedia && (
+                <TabsTrigger value="facebook">
+                  Facebook
+                </TabsTrigger>
+              )}
               <TabsTrigger value="objectives" disabled={role !== "client" && role !== "commercial"}>
                 Objectifs
               </TabsTrigger>
@@ -124,9 +126,11 @@ const UserEditForm: React.FC<UserEditFormProps> = ({
                 />
               </TabsContent>
               
-              <TabsContent value="facebook" className="mt-0">
-                <FacebookConnectionTab />
-              </TabsContent>
+              {user.canPublishSocialMedia && (
+                <TabsContent value="facebook" className="mt-0">
+                  <FacebookConnectionTab />
+                </TabsContent>
+              )}
               
               <TabsContent value="objectives" className="mt-0">
                 <PublicationLimitsTab 
