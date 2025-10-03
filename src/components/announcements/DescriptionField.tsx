@@ -2,18 +2,20 @@ import { useRef, useState, useEffect } from "react";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Loader2, Wand2, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Link, Mic, MicOff, Settings } from "lucide-react";
+import { Loader2, Wand2, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Link, Mic, MicOff, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
 import { AnnouncementFormData } from "./AnnouncementForm";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
 import useVoiceRecognition from "@/hooks/useVoiceRecognition";
 import SparklingStars from "@/components/ui/SparklingStars";
 import AILoadingOverlay from "@/components/ui/AILoadingOverlay";
 import AIGenerationOptions, { AIGenerationSettings } from "./AIGenerationOptions";
+import { Textarea } from "@/components/ui/textarea";
 import "@/styles/editor.css";
 import "@/styles/sparkles.css";
 
@@ -28,11 +30,12 @@ const DescriptionField = ({
   const [linkUrl, setLinkUrl] = useState("");
   const [linkText, setLinkText] = useState("");
   const [isHoveringGenerate, setIsHoveringGenerate] = useState(false);
-  const [showAIOptions, setShowAIOptions] = useState(false);
+  const [showAIDialog, setShowAIDialog] = useState(false);
   const [aiSettings, setAISettings] = useState<AIGenerationSettings>({
     tone: "convivial",
     length: "standard"
   });
+  const [tempAIInstructions, setTempAIInstructions] = useState("");
   const editorRef = useRef<HTMLDivElement>(null);
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const initialRenderRef = useRef(true);
@@ -66,15 +69,26 @@ const DescriptionField = ({
     updateFormValue();
   };
 
-  const generateNewContent = async () => {
+  const openAIDialog = () => {
     const currentTitle = form.getValues('title');
-    const currentDescription = form.getValues('description') || "";
-    const aiInstructions = form.getValues('aiInstructions') || "";
     
     if (!currentTitle) {
       toast.warning("Veuillez d'abord saisir un titre pour générer du contenu");
       return;
     }
+    
+    // Charger les instructions actuelles depuis le formulaire
+    const currentInstructions = form.getValues('aiInstructions') || "";
+    setTempAIInstructions(currentInstructions);
+    setShowAIDialog(true);
+  };
+
+  const generateNewContent = async () => {
+    const currentTitle = form.getValues('title');
+    const currentDescription = form.getValues('description') || "";
+    
+    // Fermer la modale
+    setShowAIDialog(false);
 
     try {
       const generatedContent = await optimizeContent(
@@ -82,7 +96,7 @@ const DescriptionField = ({
         currentTitle, 
         currentDescription,
         aiSettings,
-        aiInstructions
+        tempAIInstructions
       );
       
       if (generatedContent && editorRef.current) {
@@ -91,6 +105,9 @@ const DescriptionField = ({
         // Insérer le contenu HTML optimisé SEO directement
         editorRef.current.innerHTML = generatedContent;
         updateFormValue();
+        
+        // Sauvegarder les instructions dans le formulaire
+        form.setValue('aiInstructions', tempAIInstructions);
       }
     } catch (error: any) {
       console.error("Error generating content:", error);
@@ -197,7 +214,7 @@ const DescriptionField = ({
               size="sm" 
               variant="outline" 
               className="flex items-center gap-1 relative overflow-hidden transition-all duration-300 bg-white text-purple-600 border-purple-600 hover:bg-purple-600 hover:text-white hover:border-purple-600" 
-              onClick={generateNewContent} 
+              onClick={openAIDialog} 
               disabled={isOptimizing.generateDescription}
             >
               <SparklingStars isVisible={isHoveringGenerate && !isOptimizing.generateDescription} />
@@ -214,40 +231,6 @@ const DescriptionField = ({
               )}
             </Button>
           </div>
-
-          <Popover open={showAIOptions} onOpenChange={setShowAIOptions}>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <PopoverTrigger asChild>
-                    <Button 
-                      type="button" 
-                      size="sm" 
-                      variant="outline"
-                      className="flex items-center gap-1"
-                    >
-                      <Settings size={16} />
-                    </Button>
-                  </PopoverTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Options de génération IA</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <PopoverContent className="w-[500px]" align="end">
-              <div className="space-y-3">
-                <h4 className="font-medium leading-none">Personnaliser la génération IA</h4>
-                <p className="text-sm text-muted-foreground">
-                  Ajustez le ton et la longueur du contenu généré selon vos besoins.
-                </p>
-                <AIGenerationOptions 
-                  settings={aiSettings}
-                  onSettingsChange={setAISettings}
-                />
-              </div>
-            </PopoverContent>
-          </Popover>
         </div>
       </div>
       
@@ -453,6 +436,64 @@ const DescriptionField = ({
           </ul>
         </div>
       )}
+
+      {/* Dialog de configuration IA */}
+      <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-600" />
+              Configuration de la génération IA
+            </DialogTitle>
+            <DialogDescription>
+              Personnalisez le ton, la longueur et ajoutez des instructions spécifiques pour adapter le contenu généré à vos besoins.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Options de ton et longueur */}
+            <AIGenerationOptions 
+              settings={aiSettings}
+              onSettingsChange={setAISettings}
+            />
+            
+            {/* Instructions spécifiques */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-purple-600" />
+                Instructions spécifiques (optionnel)
+              </Label>
+              <Textarea 
+                placeholder="Ex: Mettre en avant le côté haut de gamme, insister sur la discrétion et le confort. Nous sommes spécialisés dans le transport de personnalités et d'artistes internationaux..."
+                className="min-h-[120px] resize-none"
+                value={tempAIInstructions}
+                onChange={(e) => setTempAIInstructions(e.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">
+                Ajoutez des instructions pour personnaliser le contenu (ton, style, points à mettre en avant, contexte de votre entreprise, etc.)
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setShowAIDialog(false)}
+            >
+              Annuler
+            </Button>
+            <Button 
+              type="button" 
+              onClick={generateNewContent}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              <Wand2 size={16} className="mr-2" />
+              Générer le contenu
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
