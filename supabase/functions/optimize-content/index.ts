@@ -247,6 +247,20 @@ serve(async (req) => {
           // Supprime les balises <strong> et <b> pour éviter le gras non voulu
           .replace(/<strong>(.*?)<\/strong>/g, '$1')
           .replace(/<b>(.*?)<\/b>/g, '$1')
+          // Supprime les doubles <br> consécutifs
+          .replace(/(<br\s*\/?>){2,}/gi, '')
+          // Supprime les <br> inutiles avant ou après les balises de bloc
+          .replace(/<br\s*\/?>\s*(<h[23]>)/gi, '$1')
+          .replace(/(<\/h[23]>)\s*<br\s*\/?>/gi, '$1')
+          .replace(/<br\s*\/?>\s*(<p>)/gi, '$1')
+          .replace(/(<\/p>)\s*<br\s*\/?>/gi, '$1')
+          .replace(/(<\/ul>)\s*<br\s*\/?>/gi, '$1')
+          .replace(/<br\s*\/?>\s*(<ul>)/gi, '$1')
+          // Supprime les multiples espaces blancs
+          .replace(/\n{3,}/g, '\n\n')
+          // Supprime les espaces au début et fin des paragraphes
+          .replace(/<p>\s+/g, '<p>')
+          .replace(/\s+<\/p>/g, '</p>')
           // Supprime les emojis mais garde le HTML
           .replace(/:[a-z_]+:|🔍|✅|⚠️|❗|📝|💡|🔑|📊|🎯|⭐|👉|✨|🚀|💪|⚡|📌|🔖|📢|🔔|📋/g, '')
           .trim();
