@@ -468,7 +468,7 @@ const DescriptionField = ({
                   Instructions spécifiques (optionnel)
                 </Label>
                 <Textarea 
-                  placeholder="Ex: Mettre en avant le côté haut de gamme, insister sur la discrétion et le confort. Nous sommes spécialisés dans le transport de personnalités et d'artistes internationaux..."
+                  placeholder="Donnez des instructions à l'IA pour personnaliser le contenu..."
                   className="min-h-[120px] resize-none"
                   value={tempAIInstructions}
                   onChange={(e) => setTempAIInstructions(e.target.value)}
@@ -480,7 +480,7 @@ const DescriptionField = ({
               <Button 
                 type="button" 
                 onClick={generateNewContent}
-                className="bg-purple-600 hover:bg-purple-700 w-full"
+                className="bg-purple-600 hover:bg-purple-700 text-white w-full"
               >
                 <Wand2 size={16} className="mr-2" />
                 Générer le contenu
@@ -523,7 +523,7 @@ const DescriptionField = ({
                   Instructions spécifiques (optionnel)
                 </Label>
                 <Textarea 
-                  placeholder="Ex: Mettre en avant le côté haut de gamme, insister sur la discrétion et le confort. Nous sommes spécialisés dans le transport de personnalités et d'artistes internationaux..."
+                  placeholder="Donnez des instructions à l'IA pour personnaliser le contenu..."
                   className="min-h-[120px] resize-none"
                   value={tempAIInstructions}
                   onChange={(e) => setTempAIInstructions(e.target.value)}
@@ -542,7 +542,7 @@ const DescriptionField = ({
               <Button 
                 type="button" 
                 onClick={generateNewContent}
-                className="bg-purple-600 hover:bg-purple-700"
+                className="bg-purple-600 hover:bg-purple-700 text-white"
               >
                 <Wand2 size={16} className="mr-2" />
                 Générer le contenu
