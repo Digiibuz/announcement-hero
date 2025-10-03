@@ -53,7 +53,7 @@ const AIGenerationOptions = ({ settings, onSettingsChange }: AIGenerationOptions
                   <SelectItem 
                     key={option.value} 
                     value={option.value} 
-                    className="cursor-pointer focus:bg-accent py-3 pl-2"
+                    className="cursor-pointer focus:bg-accent py-3"
                   >
                     <div className="flex flex-col gap-0.5">
                       <span className="font-medium text-sm">{option.label}</span>
@@ -78,7 +78,7 @@ const AIGenerationOptions = ({ settings, onSettingsChange }: AIGenerationOptions
                   <SelectItem 
                     key={option.value} 
                     value={option.value}
-                    className="cursor-pointer focus:bg-accent py-3 pl-2"
+                    className="cursor-pointer focus:bg-accent py-3"
                   >
                     <div className="flex flex-col gap-0.5">
                       <span className="font-medium text-sm">{option.label}</span>
