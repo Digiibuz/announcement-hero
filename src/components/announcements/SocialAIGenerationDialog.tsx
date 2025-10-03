@@ -1,10 +1,9 @@
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, Wand2 } from "lucide-react";
+import { Sparkles, Wand2, ArrowLeft } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Switch } from "@/components/ui/switch";
 
@@ -75,23 +74,35 @@ const SocialAIGenerationDialog = ({
 
   if (isMobile) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange} shouldScaleBackground={false}>
-        <DrawerContent className="max-h-[85vh] flex flex-col">
-          <DrawerHeader className="text-left flex-shrink-0">
-            <DrawerTitle className="flex items-center gap-2">
-              <Sparkles className={`h-5 w-5 text-${platformColor}-600`} />
-              Générer du contenu pour {platformName}
-            </DrawerTitle>
-            <DrawerDescription>
-              Configurez les options de génération pour adapter le contenu à votre publication {platformName}.
-            </DrawerDescription>
-          </DrawerHeader>
-          
-          <div className="px-4 pb-4 overflow-y-auto flex-1 overscroll-contain">
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="h-screen max-w-full m-0 p-0 rounded-none flex flex-col">
+          {/* Header fixe */}
+          <div className="flex-shrink-0 border-b bg-background">
+            <div className="flex items-center gap-3 p-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onOpenChange(false)}
+                className="h-8 w-8"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <Sparkles className={`h-5 w-5 text-${platformColor}-600`} />
+                  Générer du contenu pour {platformName}
+                </h2>
+              </div>
+            </div>
+          </div>
+
+          {/* Contenu scrollable */}
+          <div className="flex-1 overflow-y-auto p-4">
             {content}
           </div>
-          
-          <DrawerFooter className="pt-2 flex-shrink-0">
+
+          {/* Footer fixe */}
+          <div className="flex-shrink-0 border-t bg-background p-4 space-y-2">
             <Button 
               type="button" 
               onClick={handleGenerate}
@@ -113,9 +124,9 @@ const SocialAIGenerationDialog = ({
             >
               Annuler
             </Button>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
+          </div>
+        </DialogContent>
+      </Dialog>
     );
   }
 
