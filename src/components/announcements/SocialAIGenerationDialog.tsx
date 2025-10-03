@@ -75,7 +75,7 @@ const SocialAIGenerationDialog = ({
 
   if (isMobile) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
+      <Drawer open={open} onOpenChange={onOpenChange} shouldScaleBackground={false}>
         <DrawerContent className="max-h-[85vh] flex flex-col">
           <DrawerHeader className="text-left flex-shrink-0">
             <DrawerTitle className="flex items-center gap-2">
@@ -87,11 +87,11 @@ const SocialAIGenerationDialog = ({
             </DrawerDescription>
           </DrawerHeader>
           
-          <div className="px-4 pb-4 overflow-y-auto flex-1">
+          <div className="px-4 pb-4 overflow-y-auto flex-1 overscroll-contain">
             {content}
           </div>
           
-          <DrawerFooter className="pt-2">
+          <DrawerFooter className="pt-2 flex-shrink-0">
             <Button 
               type="button" 
               onClick={handleGenerate}
