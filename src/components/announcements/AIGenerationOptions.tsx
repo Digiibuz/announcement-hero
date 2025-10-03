@@ -46,7 +46,18 @@ const AIGenerationOptions = ({ settings, onSettingsChange }: AIGenerationOptions
             </Label>
             <Select value={settings.tone} onValueChange={handleToneChange}>
               <SelectTrigger id="tone-select" className="h-11">
-                <SelectValue placeholder="Sélectionner un ton" />
+                <SelectValue placeholder="Sélectionner un ton">
+                  {settings.tone && (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-medium text-sm">
+                        {toneOptions.find(opt => opt.value === settings.tone)?.label}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {toneOptions.find(opt => opt.value === settings.tone)?.description}
+                      </span>
+                    </div>
+                  )}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent className="bg-background z-50">
                 {toneOptions.map((option) => (
@@ -69,7 +80,18 @@ const AIGenerationOptions = ({ settings, onSettingsChange }: AIGenerationOptions
             </Label>
             <Select value={settings.length} onValueChange={handleLengthChange}>
               <SelectTrigger id="length-select" className="h-11">
-                <SelectValue placeholder="Sélectionner la longueur" />
+                <SelectValue placeholder="Sélectionner la longueur">
+                  {settings.length && (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-medium text-sm">
+                        {lengthOptions.find(opt => opt.value === settings.length)?.label}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {lengthOptions.find(opt => opt.value === settings.length)?.description}
+                      </span>
+                    </div>
+                  )}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent className="bg-background z-50">
                 {lengthOptions.map((option) => (
