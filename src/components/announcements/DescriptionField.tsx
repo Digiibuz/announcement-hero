@@ -10,8 +10,10 @@ import { AnnouncementFormData } from "./AnnouncementForm";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter } from "@/components/ui/drawer";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
 import useVoiceRecognition from "@/hooks/useVoiceRecognition";
+import { useIsMobile } from "@/hooks/use-mobile";
 import SparklingStars from "@/components/ui/SparklingStars";
 import AILoadingOverlay from "@/components/ui/AILoadingOverlay";
 import AIGenerationOptions, { AIGenerationSettings } from "./AIGenerationOptions";
@@ -39,6 +41,7 @@ const DescriptionField = ({
   const editorRef = useRef<HTMLDivElement>(null);
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const initialRenderRef = useRef(true);
+  const isMobile = useIsMobile();
   
   // Add voice recognition integration
   const { isRecording, isListening, toggleVoiceRecording, isSupported } = useVoiceRecognition({
@@ -437,63 +440,123 @@ const DescriptionField = ({
         </div>
       )}
 
-      {/* Dialog de configuration IA */}
-      <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-purple-600" />
-              Configuration de la génération IA
-            </DialogTitle>
-            <DialogDescription>
-              Personnalisez le ton, la longueur et ajoutez des instructions spécifiques pour adapter le contenu généré à vos besoins.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-6 py-4">
-            {/* Options de ton et longueur */}
-            <AIGenerationOptions 
-              settings={aiSettings}
-              onSettingsChange={setAISettings}
-            />
+      {/* Dialog de configuration IA - Drawer sur mobile, Dialog sur desktop */}
+      {isMobile ? (
+        <Drawer open={showAIDialog} onOpenChange={setShowAIDialog}>
+          <DrawerContent className="max-h-[96vh]">
+            <DrawerHeader className="text-left">
+              <DrawerTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-purple-600" />
+                Configuration de la génération IA
+              </DrawerTitle>
+              <DrawerDescription>
+                Personnalisez le ton, la longueur et ajoutez des instructions spécifiques pour adapter le contenu généré à vos besoins.
+              </DrawerDescription>
+            </DrawerHeader>
             
-            {/* Instructions spécifiques */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-purple-600" />
-                Instructions spécifiques (optionnel)
-              </Label>
-              <Textarea 
-                placeholder="Ex: Mettre en avant le côté haut de gamme, insister sur la discrétion et le confort. Nous sommes spécialisés dans le transport de personnalités et d'artistes internationaux..."
-                className="min-h-[120px] resize-none"
-                value={tempAIInstructions}
-                onChange={(e) => setTempAIInstructions(e.target.value)}
+            <div className="space-y-6 px-4 pb-4 overflow-y-auto">
+              {/* Options de ton et longueur */}
+              <AIGenerationOptions 
+                settings={aiSettings}
+                onSettingsChange={setAISettings}
               />
-              <p className="text-sm text-muted-foreground">
-                Ajoutez des instructions pour personnaliser le contenu (ton, style, points à mettre en avant, contexte de votre entreprise, etc.)
-              </p>
+              
+              {/* Instructions spécifiques */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-purple-600" />
+                  Instructions spécifiques (optionnel)
+                </Label>
+                <Textarea 
+                  placeholder="Ex: Mettre en avant le côté haut de gamme, insister sur la discrétion et le confort. Nous sommes spécialisés dans le transport de personnalités et d'artistes internationaux..."
+                  className="min-h-[120px] resize-none"
+                  value={tempAIInstructions}
+                  onChange={(e) => setTempAIInstructions(e.target.value)}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Ajoutez des instructions pour personnaliser le contenu (ton, style, points à mettre en avant, contexte de votre entreprise, etc.)
+                </p>
+              </div>
             </div>
-          </div>
-          
-          <DialogFooter>
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => setShowAIDialog(false)}
-            >
-              Annuler
-            </Button>
-            <Button 
-              type="button" 
-              onClick={generateNewContent}
-              className="bg-purple-600 hover:bg-purple-700"
-            >
-              <Wand2 size={16} className="mr-2" />
-              Générer le contenu
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            
+            <DrawerFooter className="pt-2">
+              <Button 
+                type="button" 
+                onClick={generateNewContent}
+                className="bg-purple-600 hover:bg-purple-700 w-full"
+              >
+                <Wand2 size={16} className="mr-2" />
+                Générer le contenu
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setShowAIDialog(false)}
+                className="w-full"
+              >
+                Annuler
+              </Button>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-purple-600" />
+                Configuration de la génération IA
+              </DialogTitle>
+              <DialogDescription>
+                Personnalisez le ton, la longueur et ajoutez des instructions spécifiques pour adapter le contenu généré à vos besoins.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-6 py-4">
+              {/* Options de ton et longueur */}
+              <AIGenerationOptions 
+                settings={aiSettings}
+                onSettingsChange={setAISettings}
+              />
+              
+              {/* Instructions spécifiques */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-purple-600" />
+                  Instructions spécifiques (optionnel)
+                </Label>
+                <Textarea 
+                  placeholder="Ex: Mettre en avant le côté haut de gamme, insister sur la discrétion et le confort. Nous sommes spécialisés dans le transport de personnalités et d'artistes internationaux..."
+                  className="min-h-[120px] resize-none"
+                  value={tempAIInstructions}
+                  onChange={(e) => setTempAIInstructions(e.target.value)}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Ajoutez des instructions pour personnaliser le contenu (ton, style, points à mettre en avant, contexte de votre entreprise, etc.)
+                </p>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setShowAIDialog(false)}
+              >
+                Annuler
+              </Button>
+              <Button 
+                type="button" 
+                onClick={generateNewContent}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                <Wand2 size={16} className="mr-2" />
+                Générer le contenu
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };
