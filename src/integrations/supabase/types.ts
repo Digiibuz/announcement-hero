@@ -19,6 +19,7 @@ export type Database = {
           additional_medias: string[] | null
           ai_instructions: string | null
           create_facebook_post: boolean | null
+          create_instagram_post: boolean | null
           created_at: string
           description: string | null
           facebook_error_message: string | null
@@ -28,6 +29,14 @@ export type Database = {
           facebook_url: string | null
           id: string
           images: string[] | null
+          instagram_content: string | null
+          instagram_error_message: string | null
+          instagram_hashtags: string[] | null
+          instagram_images: string[] | null
+          instagram_post_id: string | null
+          instagram_publication_status: string | null
+          instagram_published_at: string | null
+          instagram_url: string | null
           is_divipixel: boolean | null
           publish_date: string | null
           seo_description: string | null
@@ -47,6 +56,7 @@ export type Database = {
           additional_medias?: string[] | null
           ai_instructions?: string | null
           create_facebook_post?: boolean | null
+          create_instagram_post?: boolean | null
           created_at?: string
           description?: string | null
           facebook_error_message?: string | null
@@ -56,6 +66,14 @@ export type Database = {
           facebook_url?: string | null
           id?: string
           images?: string[] | null
+          instagram_content?: string | null
+          instagram_error_message?: string | null
+          instagram_hashtags?: string[] | null
+          instagram_images?: string[] | null
+          instagram_post_id?: string | null
+          instagram_publication_status?: string | null
+          instagram_published_at?: string | null
+          instagram_url?: string | null
           is_divipixel?: boolean | null
           publish_date?: string | null
           seo_description?: string | null
@@ -75,6 +93,7 @@ export type Database = {
           additional_medias?: string[] | null
           ai_instructions?: string | null
           create_facebook_post?: boolean | null
+          create_instagram_post?: boolean | null
           created_at?: string
           description?: string | null
           facebook_error_message?: string | null
@@ -84,6 +103,14 @@ export type Database = {
           facebook_url?: string | null
           id?: string
           images?: string[] | null
+          instagram_content?: string | null
+          instagram_error_message?: string | null
+          instagram_hashtags?: string[] | null
+          instagram_images?: string[] | null
+          instagram_post_id?: string | null
+          instagram_publication_status?: string | null
+          instagram_published_at?: string | null
+          instagram_url?: string | null
           is_divipixel?: boolean | null
           publish_date?: string | null
           seo_description?: string | null
