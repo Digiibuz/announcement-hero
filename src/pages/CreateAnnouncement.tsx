@@ -50,7 +50,7 @@ const stepConfigs: StepConfig[] = [
   {
     id: "publishing",
     title: "Publication",
-    description: "Définissez quand et comment votre annonce sera publiée."
+    description: "Définissez quand et comment votre annonce sera publiée sur votre site web."
   },
   {
     id: "social",
