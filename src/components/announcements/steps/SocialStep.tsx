@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Facebook as FacebookIcon, Instagram as InstagramIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useFacebookConnection } from "@/hooks/useFacebookConnection";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { SocialPlatformSelector } from "./SocialPlatformSelector";
 import { FacebookTab } from "./social/FacebookTab";
 import { InstagramTab } from "./social/InstagramTab";
@@ -23,6 +24,7 @@ export default function SocialStep({ form, onSkip, className, onNavigationVisibi
   const navigate = useNavigate();
   const { hasActiveConnection } = useFacebookConnection();
   const [showPlatformQuestion, setShowPlatformQuestion] = useState(true);
+  const isMobile = useMediaQuery("(max-width: 767px)");
   
   const facebookEnabled = form.watch("createFacebookPost") || false;
   const instagramEnabled = form.watch("createInstagramPost") || false;
@@ -45,20 +47,23 @@ export default function SocialStep({ form, onSkip, className, onNavigationVisibi
   if (showPlatformQuestion) {
     return (
       <div className={className}>
-        <Card className="p-8">
+        <Card className={isMobile ? "p-4" : "p-8"}>
           <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold">Publication sur les réseaux sociaux</h2>
-              <p className="text-muted-foreground">
-                Sur quelles plateformes souhaitez-vous publier ?
-              </p>
-            </div>
+            {!isMobile && (
+              <div className="text-center space-y-2">
+                <h2 className="text-2xl font-bold">Publication sur les réseaux sociaux</h2>
+                <p className="text-muted-foreground">
+                  Sur quelles plateformes souhaitez-vous publier ?
+                </p>
+              </div>
+            )}
 
             <SocialPlatformSelector
               facebookEnabled={facebookEnabled}
               instagramEnabled={instagramEnabled}
               onFacebookChange={(enabled) => form.setValue("createFacebookPost", enabled)}
               onInstagramChange={(enabled) => form.setValue("createInstagramPost", enabled)}
+              isMobile={isMobile}
             />
 
             <div className="flex justify-center gap-3 pt-4">
