@@ -61,20 +61,15 @@ export default function SocialStep({ form, onSkip, className, onNavigationVisibi
     };
   }, [activeTab, facebookEnabled, instagramEnabled, onNext, onNavigationVisibilityChange]);
 
-  // Garder la navigation visible, mais masquer uniquement lors de la sélection initiale
+  // Garder la navigation toujours visible sur l'étape sociale
   React.useEffect(() => {
-    if (onNavigationVisibilityChange) {
-      // Navigation cachée seulement pendant la question de sélection des plateformes
-      onNavigationVisibilityChange(!showPlatformQuestion);
-    }
-  }, [showPlatformQuestion, onNavigationVisibilityChange]);
-
-  const handlePlatformSelection = (skipAll: boolean = false) => {
-    setShowPlatformQuestion(false);
-    // Réafficher explicitement la navigation
     if (onNavigationVisibilityChange) {
       onNavigationVisibilityChange(true);
     }
+  }, [onNavigationVisibilityChange]);
+
+  const handlePlatformSelection = (skipAll: boolean = false) => {
+    setShowPlatformQuestion(false);
     if (skipAll && onSkip) {
       onSkip();
     }
