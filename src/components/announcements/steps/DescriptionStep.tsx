@@ -55,7 +55,7 @@ const DescriptionStep = ({ form, isMobile }: DescriptionStepProps) => {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <Card className={getCardStyles()}>
-        <CardContent className={`space-y-4 ${isMobile ? "px-0 py-4" : "p-6"}`}>
+        <CardContent className={`space-y-4 ${isMobile ? "px-4 py-4" : "p-6"}`}>
           <div className="flex items-center justify-between">
             <FormLabel>Titre et Description</FormLabel>
             <Dialog>
