@@ -45,14 +45,18 @@ const AIGenerationOptions = ({ settings, onSettingsChange }: AIGenerationOptions
               Ton de rédaction
             </Label>
             <Select value={settings.tone} onValueChange={handleToneChange}>
-              <SelectTrigger id="tone-select" className="h-9">
+              <SelectTrigger id="tone-select" className="h-11">
                 <SelectValue placeholder="Sélectionner un ton" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-background z-50">
                 {toneOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value} className="px-2 py-3">
-                    <div className="w-full">
-                      <div className="font-medium">{option.label}</div>
+                  <SelectItem 
+                    key={option.value} 
+                    value={option.value} 
+                    className="cursor-pointer focus:bg-accent"
+                  >
+                    <div className="flex flex-col gap-0.5 py-1">
+                      <div className="font-medium text-sm">{option.label}</div>
                       <div className="text-xs text-muted-foreground">{option.description}</div>
                     </div>
                   </SelectItem>
@@ -66,14 +70,18 @@ const AIGenerationOptions = ({ settings, onSettingsChange }: AIGenerationOptions
               Longueur du contenu
             </Label>
             <Select value={settings.length} onValueChange={handleLengthChange}>
-              <SelectTrigger id="length-select" className="h-9">
+              <SelectTrigger id="length-select" className="h-11">
                 <SelectValue placeholder="Sélectionner la longueur" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-background z-50">
                 {lengthOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value} className="px-2 py-3">
-                    <div className="w-full">
-                      <div className="font-medium">{option.label}</div>
+                  <SelectItem 
+                    key={option.value} 
+                    value={option.value}
+                    className="cursor-pointer focus:bg-accent"
+                  >
+                    <div className="flex flex-col gap-0.5 py-1">
+                      <div className="font-medium text-sm">{option.label}</div>
                       <div className="text-xs text-muted-foreground">{option.description}</div>
                     </div>
                   </SelectItem>
