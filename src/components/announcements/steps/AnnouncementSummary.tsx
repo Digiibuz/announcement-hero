@@ -95,10 +95,14 @@ const AnnouncementSummary = ({
               </div>
             )}
             
-            <div className="text-sm text-muted-foreground whitespace-pre-line">
+            <div className="text-sm text-muted-foreground prose prose-sm max-w-none">
               {data.description ? (
                 <>
-                  {isDescriptionExpanded ? data.description : truncateText(data.description, 200)}
+                  <div 
+                    dangerouslySetInnerHTML={{ 
+                      __html: isDescriptionExpanded ? data.description : truncateText(data.description, 200)
+                    }} 
+                  />
                   {shouldShowReadMore(data.description) && (
                     <Button
                       type="button"
