@@ -534,7 +534,7 @@ const CreateAnnouncement = () => {
                       
                       {currentStep.id === "images" && <ImagesStep form={form} isMobile={isMobile} />}
                       
-                      {currentStep.id === "social" && <SocialStep form={form} onSkip={handleNext} onNavigationVisibilityChange={setShowStepNavigation} />}
+                      {currentStep.id === "social" && <SocialStep form={form} onSkip={handleNext} onNavigationVisibilityChange={setShowStepNavigation} onNext={handleNext} />}
                       
                       {currentStep.id === "publishing" && <PublishingStep form={form} isMobile={isMobile} />}
                       
@@ -626,7 +626,7 @@ const CreateAnnouncement = () => {
                       
                       {currentStep.id === "images" && <ImagesStep form={form} isMobile={isMobile} />}
                       
-                      {currentStep.id === "social" && <SocialStep form={form} onSkip={handleNext} onNavigationVisibilityChange={setShowStepNavigation} />}
+                      {currentStep.id === "social" && <SocialStep form={form} onSkip={handleNext} onNavigationVisibilityChange={setShowStepNavigation} onNext={handleNext} />}
                       
                       {currentStep.id === "publishing" && <PublishingStep form={form} isMobile={isMobile} />}
                       

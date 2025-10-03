@@ -18,16 +18,25 @@ interface SocialStepProps {
   onSkip: () => void;
   className?: string;
   onNavigationVisibilityChange?: (visible: boolean) => void;
+  onNext?: () => void;
 }
 
-export default function SocialStep({ form, onSkip, className, onNavigationVisibilityChange }: SocialStepProps) {
+export default function SocialStep({ form, onSkip, className, onNavigationVisibilityChange, onNext }: SocialStepProps) {
   const navigate = useNavigate();
   const { hasActiveConnection } = useFacebookConnection();
   const [showPlatformQuestion, setShowPlatformQuestion] = useState(true);
+  const [activeTab, setActiveTab] = useState<string>("");
   const isMobile = useMediaQuery("(max-width: 767px)");
   
   const facebookEnabled = form.watch("createFacebookPost") || false;
   const instagramEnabled = form.watch("createInstagramPost") || false;
+
+  // Initialiser l'onglet actif
+  React.useEffect(() => {
+    if (!activeTab && !showPlatformQuestion) {
+      setActiveTab(facebookEnabled ? "facebook" : "instagram");
+    }
+  }, [facebookEnabled, instagramEnabled, showPlatformQuestion, activeTab]);
 
   // Masquer la navigation lors de la sélection initiale
   React.useEffect(() => {
@@ -91,11 +100,34 @@ export default function SocialStep({ form, onSkip, className, onNavigationVisibi
     );
   }
 
+  // Gérer le passage à l'étape suivante ou changement d'onglet
+  const handleNextClick = () => {
+    if (facebookEnabled && instagramEnabled && activeTab === "facebook") {
+      // Si les deux plateformes sont activées et on est sur Facebook, basculer vers Instagram
+      setActiveTab("instagram");
+    } else {
+      // Sinon, passer à l'étape suivante
+      if (onNext) {
+        onNext();
+      }
+    }
+  };
+
+  // Exposer la fonction handleNextClick via un effet pour que le parent puisse l'appeler
+  React.useEffect(() => {
+    if (onNavigationVisibilityChange) {
+      (window as any).socialStepHandleNext = handleNextClick;
+    }
+    return () => {
+      delete (window as any).socialStepHandleNext;
+    };
+  }, [activeTab, facebookEnabled, instagramEnabled, onNext]);
+
   // Vue principale avec onglets
   return (
     <div className={className}>
       {/* Onglets - pleine largeur */}
-      <Tabs defaultValue={facebookEnabled ? "facebook" : "instagram"} className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2 rounded-none bg-background">
           {facebookEnabled && (
             <TabsTrigger 

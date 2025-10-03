@@ -31,6 +31,16 @@ const StepNavigation = ({
   isMobile,
   className
 }: StepNavigationProps) => {
+  // Gérer le clic sur "Suivant/Continuer" - vérifier si SocialStep a sa propre logique
+  const handleNextClick = () => {
+    // Si on est sur l'étape social et que SocialStep a exposé sa propre fonction
+    if ((window as any).socialStepHandleNext) {
+      (window as any).socialStepHandleNext();
+    } else {
+      onNext();
+    }
+  };
+
   if (isMobile) {
     return (
       <div className={cn("flex justify-between items-center w-full", className)}>
@@ -56,7 +66,7 @@ const StepNavigation = ({
         ) : (
           <Button 
             type="button" 
-            onClick={onNext}
+            onClick={handleNextClick}
             disabled={isSubmitting}
             className="w-[130px] mobile-nav-button bg-brand-orange hover:bg-brand-orange/90 text-black"
           >
@@ -121,7 +131,7 @@ const StepNavigation = ({
         ) : (
           <Button 
             type="button" 
-            onClick={onNext}
+            onClick={handleNextClick}
             disabled={isSubmitting}
             className="bg-brand-orange hover:bg-brand-orange/90 text-black"
           >
