@@ -64,6 +64,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip non-HTTP(S) requests (chrome-extension, etc.)
+  if (!request.url.startsWith('http://') && !request.url.startsWith('https://')) {
+    return;
+  }
+
   // API calls - always try network first
   if (url.pathname.includes('/api/') || url.hostname.includes('supabase')) {
     event.respondWith(
