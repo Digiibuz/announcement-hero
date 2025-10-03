@@ -106,38 +106,34 @@ serve(async (req) => {
       Génère maintenant le contenu HTML optimisé SEO (sans balise html, head ou body, uniquement le contenu):`;
 
     } else if (type === "generateSocialContent") {
-      // Génération de contenu spécialement pour Instagram avec emojis
-      systemMessage = `Tu es un expert en création de contenu pour Instagram. Tu dois transformer le contenu fourni en une publication engageante avec des emojis, des bullet points et une structure optimisée pour Instagram. IMPORTANT: Fournis UNIQUEMENT le contenu Instagram généré, sans préface ni commentaire.`;
+      // Génération de contenu spécialement pour Instagram - ULTRA CONCIS (3-4 lignes max)
+      systemMessage = `Tu es un expert en création de contenu pour Instagram. Tu dois transformer le contenu fourni en une publication ULTRA COURTE et percutante (3-4 lignes maximum) avec quelques emojis. IMPORTANT: Fournis UNIQUEMENT le contenu Instagram généré, sans préface ni commentaire.`;
       
       prompt = `Titre: "${title}"
       ${description ? `Description: "${description}"` : ""}
       
-      Transforme ce contenu en une publication optimisée pour Instagram en respectant ces règles:
+      Transforme ce contenu en une publication ULTRA CONCISE pour Instagram (3-4 lignes MAXIMUM):
       
-      🎯 STRUCTURE OBLIGATOIRE:
-      - Commencer par un emoji et un titre accrocheur
-      - Utiliser des bullet points avec emojis appropriés (❌, ✅, 👉, 💡, 🚀, etc.)
-      - Inclure un call-to-action à la fin avec emoji
-      - Maximum 300 mots pour garder l'engagement
+      🎯 RÈGLES STRICTES:
+      - MAXIMUM 3-4 LIGNES de texte (environ 50-80 mots)
+      - 1 emoji pour le début et 1-2 dans le texte
+      - Phrases ultra courtes et percutantes
+      - Aller directement à l'essentiel
+      - Pas de bullet points, juste du texte fluide
       
       📝 STYLE:
-      - Ton engageant et professionnel
-      - Emojis pertinents pour illustrer chaque point
-      - Phrases courtes et percutantes
-      - Interpeller directement le lecteur
+      - Ton direct et impactant
+      - Message clair en quelques mots
+      - Interpellation rapide du lecteur
       
-      ⚡ EXEMPLE DE FORMAT:
-      "🌟 [Titre accrocheur]
+      ⚡ EXEMPLE DE FORMAT (à respecter):
+      "🌟 [Titre accrocheur en 3-5 mots]
       
-      [Phrase d'accroche engageante] 😊
+      [Phrase d'accroche percutante] ✨ [Bénéfice clé en une phrase courte]
       
-      ✅ Point clé 1
-      👉 Bénéfice ou explication
+      [Call-to-action court avec emoji] 🚀"
       
-      ✅ Point clé 2  
-      👉 Bénéfice ou explication
-      
-      🚀 [Call-to-action avec emoji]"
+      CRITIQUE: Le texte doit tenir en 3-4 lignes MAXIMUM. Reste ultra concis !
       
       Génère maintenant la publication pour Instagram:`;
 
