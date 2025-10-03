@@ -490,8 +490,8 @@ const DescriptionField = ({
               </div>
             </div>
             
-            {/* Footer fixe avec bouton unique */}
-            <div className="flex-shrink-0 px-4 pt-2 pb-6 bg-background">
+            {/* Footer fixe avec bouton unique - padding pour safe area iOS */}
+            <div className="flex-shrink-0 px-4 pt-2 pb-20 bg-background">
               <Button 
                 type="button" 
                 onClick={generateNewContent}
