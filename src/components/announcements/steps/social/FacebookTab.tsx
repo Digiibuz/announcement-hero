@@ -21,13 +21,13 @@ export const FacebookTab = ({ form }: FacebookTabProps) => {
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const images = form.watch("images") || [];
   const additionalMedias = form.watch("additionalMedias") || [];
-  const selectedImages = form.watch("facebook_images") || [];
+  const selectedImages = form.watch("facebookImages") || [];
 
   // Auto-sélection de toutes les images disponibles (max 10)
   useEffect(() => {
     const allMedias = [...images, ...additionalMedias];
     if (allMedias.length > 0 && selectedImages.length === 0) {
-      form.setValue("facebook_images", allMedias.slice(0, 10));
+      form.setValue("facebookImages", allMedias.slice(0, 10));
     }
   }, [images, additionalMedias]);
 
@@ -51,12 +51,12 @@ export const FacebookTab = ({ form }: FacebookTabProps) => {
     console.log("Contenu optimisé reçu:", optimizedContent);
     
     if (optimizedContent) {
-      form.setValue("facebook_content", optimizedContent);
+      form.setValue("facebookContent", optimizedContent);
       console.log("Contenu Facebook mis à jour");
     }
   };
 
-  const contentLength = form.watch("facebook_content")?.length || 0;
+  const contentLength = form.watch("facebookContent")?.length || 0;
 
   return (
     <div className="w-full pb-8">
@@ -110,7 +110,7 @@ export const FacebookTab = ({ form }: FacebookTabProps) => {
           </DialogHeader>
           <SocialMediaImageSelector
             form={form}
-            fieldName="facebook_images"
+            fieldName="facebookImages"
             label=""
             maxImages={10}
           />
@@ -122,7 +122,7 @@ export const FacebookTab = ({ form }: FacebookTabProps) => {
         {/* Texte de publication */}
         <FormField
           control={form.control}
-          name="facebook_content"
+          name="facebookContent"
           render={({ field }) => (
             <FormItem>
               <div className="flex items-center justify-between mb-2">

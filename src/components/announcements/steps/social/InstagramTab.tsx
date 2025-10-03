@@ -26,17 +26,17 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
   const [cropImageIndex, setCropImageIndex] = useState<number | null>(null);
   const [showAIDialog, setShowAIDialog] = useState(false);
   const { optimizeContent, isOptimizing } = useContentOptimization();
-  const hashtags = form.watch("instagram_hashtags") || [];
+  const hashtags = form.watch("instagramHashtags") || [];
   const images = form.watch("images") || [];
   const additionalMedias = form.watch("additionalMedias") || [];
-  const selectedImages = form.watch("instagram_images") || [];
+  const selectedImages = form.watch("instagramImages") || [];
   const imageAspectRatios = form.watch("instagram_image_aspect_ratios") || [];
 
   // Auto-sélection de la 1ère image disponible
   useEffect(() => {
     const allMedias = [...images, ...additionalMedias];
     if (allMedias.length > 0 && selectedImages.length === 0) {
-      form.setValue("instagram_images", [allMedias[0]]);
+      form.setValue("instagramImages", [allMedias[0]]);
       form.setValue("instagram_image_aspect_ratios", [1]);
     }
   }, [images, additionalMedias]);
@@ -55,30 +55,30 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
     );
     
     if (optimizedContent) {
-      form.setValue("instagram_content", optimizedContent);
+      form.setValue("instagramContent", optimizedContent);
     }
   };
 
   const addHashtag = () => {
     if (newHashtag.trim()) {
       const tag = newHashtag.startsWith("#") ? newHashtag : `#${newHashtag}`;
-      form.setValue("instagram_hashtags", [...hashtags, tag]);
+      form.setValue("instagramHashtags", [...hashtags, tag]);
       setNewHashtag("");
     }
   };
 
   const removeHashtag = (index: number) => {
-    form.setValue("instagram_hashtags", hashtags.filter((_: string, i: number) => i !== index));
+    form.setValue("instagramHashtags", hashtags.filter((_: string, i: number) => i !== index));
   };
 
-  const contentLength = form.watch("instagram_content")?.length || 0;
+  const contentLength = form.watch("instagramContent")?.length || 0;
   const hashtagCount = hashtags.length;
 
   const handleCropComplete = (croppedImageUrl: string, aspectRatio?: number) => {
     if (cropImageIndex !== null) {
       const updatedImages = [...selectedImages];
       updatedImages[cropImageIndex] = croppedImageUrl;
-      form.setValue("instagram_images", updatedImages);
+      form.setValue("instagramImages", updatedImages);
       
       if (aspectRatio) {
         const updatedRatios = [...imageAspectRatios];
@@ -92,7 +92,7 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
   const handleDeleteImage = (index: number) => {
     const updatedImages = selectedImages.filter((_: string, i: number) => i !== index);
     const updatedRatios = imageAspectRatios.filter((_: number, i: number) => i !== index);
-    form.setValue("instagram_images", updatedImages);
+    form.setValue("instagramImages", updatedImages);
     form.setValue("instagram_image_aspect_ratios", updatedRatios);
     if (currentImageIndex >= updatedImages.length && currentImageIndex > 0) {
       setCurrentImageIndex(currentImageIndex - 1);
@@ -239,7 +239,7 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
           </DialogHeader>
           <SocialMediaImageSelector
             form={form}
-            fieldName="instagram_images"
+            fieldName="instagramImages"
             label=""
             maxImages={10}
           />
@@ -264,7 +264,7 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
         {/* Légende */}
         <FormField
           control={form.control}
-          name="instagram_content"
+          name="instagramContent"
           render={({ field }) => (
             <FormItem>
               <div className="flex items-center justify-between mb-2">
