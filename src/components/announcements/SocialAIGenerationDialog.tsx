@@ -57,11 +57,12 @@ const SocialAIGenerationDialog = ({
 
         {/* Instructions personnalisées */}
         <div className="space-y-2">
-          <Label className="flex items-center gap-2">
+          <Label htmlFor="custom-instructions" className="flex items-center gap-2">
             <Sparkles className={`h-4 w-4 text-${platformColor}-600`} />
             Instructions spécifiques (optionnel)
           </Label>
           <Textarea 
+            id="custom-instructions"
             placeholder="Donnez des instructions à l'IA pour personnaliser le contenu..."
             className="min-h-[120px] resize-none"
             value={customInstructions}
@@ -75,8 +76,8 @@ const SocialAIGenerationDialog = ({
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[96vh]">
-          <DrawerHeader className="text-left">
+        <DrawerContent className="max-h-[85vh] flex flex-col">
+          <DrawerHeader className="text-left flex-shrink-0">
             <DrawerTitle className="flex items-center gap-2">
               <Sparkles className={`h-5 w-5 text-${platformColor}-600`} />
               Générer du contenu pour {platformName}
@@ -86,7 +87,7 @@ const SocialAIGenerationDialog = ({
             </DrawerDescription>
           </DrawerHeader>
           
-          <div className="px-4 pb-4 overflow-y-auto">
+          <div className="px-4 pb-4 overflow-y-auto flex-1">
             {content}
           </div>
           
