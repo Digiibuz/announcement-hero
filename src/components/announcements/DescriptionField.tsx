@@ -84,16 +84,10 @@ const DescriptionField = ({
       );
       
       if (generatedContent && editorRef.current) {
-        // Nettoyer le contenu généré de tout formatage HTML
-        const cleanContent = generatedContent
-          .replace(/<[^>]*>/g, '') // Supprimer toutes les balises HTML
-          .trim();
+        console.log("Generated content (HTML):", generatedContent);
         
-        console.log("Generated content (raw):", generatedContent);
-        console.log("Generated content (clean):", cleanContent);
-        
-        // Insérer le contenu propre
-        editorRef.current.innerHTML = cleanContent;
+        // Insérer le contenu HTML optimisé SEO directement
+        editorRef.current.innerHTML = generatedContent;
         updateFormValue();
       }
     } catch (error: any) {
