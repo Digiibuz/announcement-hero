@@ -17,6 +17,7 @@ export type Database = {
       announcements: {
         Row: {
           additional_medias: string[] | null
+          ai_instructions: string | null
           create_facebook_post: boolean | null
           created_at: string
           description: string | null
@@ -44,6 +45,7 @@ export type Database = {
         }
         Insert: {
           additional_medias?: string[] | null
+          ai_instructions?: string | null
           create_facebook_post?: boolean | null
           created_at?: string
           description?: string | null
@@ -71,6 +73,7 @@ export type Database = {
         }
         Update: {
           additional_medias?: string[] | null
+          ai_instructions?: string | null
           create_facebook_post?: boolean | null
           created_at?: string
           description?: string | null

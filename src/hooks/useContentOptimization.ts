@@ -22,7 +22,8 @@ export const useContentOptimization = () => {
     type: OptimizationType,
     title: string,
     description: string,
-    aiSettings?: AIGenerationSettings
+    aiSettings?: AIGenerationSettings,
+    aiInstructions?: string
   ): Promise<string | null> => {
     // Vérifier les limites IA avant de commencer
     if (!canGenerate()) {
@@ -42,7 +43,7 @@ export const useContentOptimization = () => {
       }
       
       const { data, error } = await supabase.functions.invoke("optimize-content", {
-        body: { type, title, description, aiSettings }
+        body: { type, title, description, aiSettings, aiInstructions }
       });
       
       console.log("Réponse de la fonction optimize-content:", data, error);

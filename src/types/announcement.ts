@@ -39,6 +39,9 @@ export type Announcement = {
   instagram_error_message?: string;
   instagram_post_id?: string;
   instagram_url?: string;
+  
+  // AI Instructions
+  ai_instructions?: string;
 };
 
 // Type pour les catégories WordPress standard

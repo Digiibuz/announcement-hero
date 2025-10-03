@@ -18,7 +18,7 @@ serve(async (req) => {
   try {
     console.log("Fonction optimize-content appelée");
     
-    const { type, title, description, aiSettings } = await req.json();
+    const { type, title, description, aiSettings, aiInstructions } = await req.json();
     
     console.log(`Paramètres reçus - Type: ${type}, Titre: "${title.substring(0, 20)}..."`);
     if (description) {
@@ -26,6 +26,9 @@ serve(async (req) => {
     }
     if (aiSettings) {
       console.log(`Options IA: Ton=${aiSettings.tone}, Longueur=${aiSettings.length}`);
+    }
+    if (aiInstructions) {
+      console.log(`Instructions personnalisées: "${aiInstructions.substring(0, 50)}..."`);
     }
     
     let systemMessage: string;
@@ -37,10 +40,15 @@ serve(async (req) => {
       const toneInstructions = getToneInstructions(aiSettings?.tone || "convivial");
       const lengthInstructions = getLengthInstructions(aiSettings?.length || "standard");
       
+      // Construire le contexte personnalisé si des instructions sont fournies
+      const customContext = aiInstructions 
+        ? `\n\n📋 CONTEXTE ET INSTRUCTIONS SPÉCIFIQUES:\n${aiInstructions}\n\nAdapte le contenu en tenant compte de ces instructions tout en respectant les autres consignes de structure et de SEO.\n`
+        : '';
+      
       systemMessage = `Tu es un rédacteur web SEO expert spécialisé dans la création de contenu optimisé pour les moteurs de recherche. Tu dois rédiger un contenu structuré avec des balises HTML (h2, h3, p, ul, li, a) qui sera publié sur un site WordPress. ${toneInstructions.system} IMPORTANT: Fournis UNIQUEMENT le HTML généré, sans préface ni commentaire.`;
       
       prompt = `Titre principal de l'annonce: "${title}".
-      ${description ? `Informations complémentaires: "${description}"` : ""}
+      ${description ? `Informations complémentaires: "${description}"` : ""}${customContext}
       
       Rédige un article web complet et optimisé SEO ${lengthInstructions.target} en HTML qui servira de contenu principal pour cette annonce WordPress.
       

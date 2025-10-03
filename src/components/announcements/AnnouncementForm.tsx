@@ -44,6 +44,8 @@ export interface AnnouncementFormData {
   instagramContent?: string;
   instagramHashtags?: string[];
   instagramImages?: string[];
+  // AI Instructions
+  aiInstructions?: string;
 }
 
 const AnnouncementForm = ({

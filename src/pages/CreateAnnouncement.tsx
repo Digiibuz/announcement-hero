@@ -95,7 +95,8 @@ const CreateAnnouncement = () => {
       additionalMedias: [], // NEW FIELD
       seoTitle: "",
       seoDescription: "",
-      seoSlug: ""
+      seoSlug: "",
+      aiInstructions: ""
     }
   });
 
@@ -112,7 +113,8 @@ const CreateAnnouncement = () => {
       additionalMedias: [], // NEW FIELD
       seoTitle: "",
       seoDescription: "",
-      seoSlug: ""
+      seoSlug: "",
+      aiInstructions: ""
     });
   }, [form]);
 
@@ -235,7 +237,8 @@ const CreateAnnouncement = () => {
         create_instagram_post: formData.createInstagramPost || false,
         instagram_content: formData.instagramContent || null,
         instagram_hashtags: formData.instagramHashtags || [],
-        instagram_images: formData.instagramImages || []
+        instagram_images: formData.instagramImages || [],
+        ai_instructions: formData.aiInstructions || null
       };
 
       const { data: newAnnouncement, error } = await supabase
@@ -323,7 +326,8 @@ const CreateAnnouncement = () => {
         create_instagram_post: formData.createInstagramPost || false,
         instagram_content: formData.instagramContent || null,
         instagram_hashtags: formData.instagramHashtags || [],
-        instagram_images: formData.instagramImages || []
+        instagram_images: formData.instagramImages || [],
+        ai_instructions: formData.aiInstructions || null
       };
 
       const {
@@ -385,7 +389,8 @@ const CreateAnnouncement = () => {
         additionalMedias: [], // NEW FIELD
         seoTitle: "",
         seoDescription: "",
-        seoSlug: ""
+        seoSlug: "",
+        aiInstructions: ""
       });
 
       setTimeout(() => {

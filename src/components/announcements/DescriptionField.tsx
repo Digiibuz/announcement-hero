@@ -69,6 +69,7 @@ const DescriptionField = ({
   const generateNewContent = async () => {
     const currentTitle = form.getValues('title');
     const currentDescription = form.getValues('description') || "";
+    const aiInstructions = form.getValues('aiInstructions') || "";
     
     if (!currentTitle) {
       toast.warning("Veuillez d'abord saisir un titre pour générer du contenu");
@@ -80,7 +81,8 @@ const DescriptionField = ({
         "generateDescription", 
         currentTitle, 
         currentDescription,
-        aiSettings
+        aiSettings,
+        aiInstructions
       );
       
       if (generatedContent && editorRef.current) {
