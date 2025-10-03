@@ -442,9 +442,12 @@ const DescriptionField = ({
       {/* Dialog de configuration IA - Plein écran sur mobile, Dialog normal sur desktop */}
       {isMobile ? (
         <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
-          <DialogContent className="h-[100dvh] max-w-full m-0 p-0 rounded-none flex flex-col fixed inset-0">
+          <DialogContent 
+            className="h-screen max-h-screen w-screen max-w-full m-0 p-0 rounded-none border-0 translate-x-0 translate-y-0 top-0 left-0 right-0 bottom-0 flex flex-col"
+            style={{ animation: 'none' }}
+          >
             {/* Header fixe */}
-            <div className="flex-shrink-0 border-b bg-background safe-top">
+            <div className="flex-shrink-0 border-b bg-background">
               <div className="flex items-center gap-3 p-4">
                 <Button
                   variant="ghost"
@@ -464,7 +467,7 @@ const DescriptionField = ({
             </div>
             
             {/* Contenu scrollable */}
-            <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-6">
+            <div className="flex-1 overflow-y-auto p-4 space-y-6">
               {/* Options de ton et longueur */}
               <AIGenerationOptions 
                 settings={aiSettings}
@@ -483,15 +486,12 @@ const DescriptionField = ({
                   className="min-h-[120px] resize-none"
                   value={tempAIInstructions}
                   onChange={(e) => setTempAIInstructions(e.target.value)}
-                  onFocus={(e) => {
-                    e.target.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' });
-                  }}
                 />
               </div>
             </div>
             
-            {/* Footer fixe */}
-            <div className="flex-shrink-0 border-t bg-background p-4 space-y-2 safe-bottom">
+            {/* Footer fixe avec padding bottom pour safe area */}
+            <div className="flex-shrink-0 border-t bg-background p-4 pb-8 space-y-2">
               <Button 
                 type="button" 
                 onClick={generateNewContent}
