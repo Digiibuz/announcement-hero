@@ -182,35 +182,6 @@ const DescriptionStep = ({ form, isMobile }: DescriptionStepProps) => {
           </FormItem>
         </CardContent>
       </Card>
-
-      <Card className={getCardStyles()}>
-        <CardContent className={`space-y-4 ${isMobile ? "px-0 py-4" : "p-6"}`}>
-          <FormField 
-            control={form.control} 
-            name="aiInstructions" 
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-purple-600" />
-                  Instructions pour l'IA (optionnel)
-                </FormLabel>
-                <FormControl>
-                  <Textarea 
-                    placeholder="Ex: Mettre en avant le côté haut de gamme, insister sur la discrétion et le confort. Nous sommes spécialisés dans le transport de personnalités et d'artistes internationaux..."
-                    className="min-h-[100px] resize-none"
-                    {...field}
-                    value={field.value || ""}
-                  />
-                </FormControl>
-                <p className="text-sm text-muted-foreground">
-                  Ajoutez des instructions spécifiques pour personnaliser le contenu généré par l'IA (ton, style, points à mettre en avant, etc.)
-                </p>
-                <FormMessage />
-              </FormItem>
-            )} 
-          />
-        </CardContent>
-      </Card>
     </div>
   );
 };
