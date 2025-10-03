@@ -10,6 +10,7 @@ export interface UserProfile {
   clientId?: string | null;
   wordpressConfigId?: string | null;
   lastLogin?: string | null;
+  canPublishSocialMedia?: boolean | null;
   wordpressConfig?: {
     name: string;
     site_url: string;

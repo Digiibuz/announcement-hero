@@ -12,7 +12,7 @@ const userEditSchema = z.object({
   email: z.string().email("Email invalide"),
   role: z.enum(["admin", "client", "editor", "commercial"]),
   wpConfigIds: z.array(z.string()).optional(),
-  
+  canPublishSocialMedia: z.boolean().optional()
 });
 
 type UserEditFormData = z.infer<typeof userEditSchema>;
@@ -34,7 +34,7 @@ export const useUserEditForm = (
       email: user.email,
       role: user.role,
       wpConfigIds: [],
-      
+      canPublishSocialMedia: user.canPublishSocialMedia || false
     },
   });
 
@@ -66,7 +66,7 @@ export const useUserEditForm = (
         role: data.role,
         clientId: user.clientId,
         wordpressConfigId: (data.role === "client" || data.role === "commercial") ? data.wpConfigIds?.[0] : null,
-        
+        canPublishSocialMedia: data.canPublishSocialMedia || false
       });
       setIsDialogOpen(false);
     } catch (error) {

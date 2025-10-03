@@ -274,6 +274,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          can_publish_social_media: boolean | null
           client_id: string | null
           created_at: string
           email: string
@@ -284,6 +285,7 @@ export type Database = {
           wordpress_config_id: string | null
         }
         Insert: {
+          can_publish_social_media?: boolean | null
           client_id?: string | null
           created_at?: string
           email: string
@@ -294,6 +296,7 @@ export type Database = {
           wordpress_config_id?: string | null
         }
         Update: {
+          can_publish_social_media?: boolean | null
           client_id?: string | null
           created_at?: string
           email?: string

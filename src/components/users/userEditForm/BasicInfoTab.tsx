@@ -100,6 +100,29 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="canPublishSocialMedia"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">Publication sur les réseaux sociaux</FormLabel>
+                        <div className="text-sm text-muted-foreground">
+                          Autoriser l'utilisateur à publier sur Facebook et Instagram
+                        </div>
+                      </div>
+                      <FormControl>
+                        <input
+                          type="checkbox"
+                          checked={field.value || false}
+                          onChange={field.onChange}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
               </div>
 
               {/* Actions administratives */}

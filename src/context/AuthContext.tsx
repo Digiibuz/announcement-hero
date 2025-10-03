@@ -11,6 +11,7 @@ interface Profile {
   role: string;
   wordpress_config_id: string | null;
   client_id: string | null;
+  can_publish_social_media: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -20,6 +21,7 @@ interface AuthUser extends User {
   role?: string;
   profile?: Profile;
   name?: string;
+  canPublishSocialMedia?: boolean | null;
   wordpressConfig?: {
     name: string;
     site_url: string;
@@ -124,6 +126,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             wordpressConfigId: profile.wordpress_config_id,
             role: profile.role,
             name: profile.name,
+            canPublishSocialMedia: profile.can_publish_social_media,
             profile,
             wordpressConfig
           };
@@ -245,6 +248,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         name: userToImpersonate.name,
         role: userToImpersonate.role,
         wordpressConfigId: userToImpersonate.wordpressConfigId,
+        canPublishSocialMedia: userToImpersonate.canPublishSocialMedia,
         wordpressConfig: userToImpersonate.wordpressConfig
       } as AuthUser);
     }

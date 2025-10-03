@@ -31,38 +31,46 @@ import DynamicBackground from "@/components/ui/DynamicBackground";
 
 const FORM_STORAGE_KEY = "announcement-form-draft";
 
-const stepConfigs: StepConfig[] = [
-  {
-    id: "category",
-    title: "Catégorie",
-    description: "Dans quelle page souhaitez-vous faire apparaître votre annonce ?"
-  },
-  {
-    id: "description",
-    title: "Description",
-    description: "Donnez un titre accrocheur et une description détaillée pour attirer l'attention des lecteurs."
-  },
-  {
-    id: "images",
-    title: "",
-    description: ""
-  },
-  {
-    id: "publishing",
-    title: "Publication",
-    description: "Définissez quand et comment votre annonce sera publiée sur votre site web."
-  },
-  {
-    id: "social",
-    title: "",
-    description: ""
-  },
-  {
+const getStepConfigs = (canPublishSocialMedia: boolean): StepConfig[] => {
+  const baseSteps: StepConfig[] = [
+    {
+      id: "category",
+      title: "Catégorie",
+      description: "Dans quelle page souhaitez-vous faire apparaître votre annonce ?"
+    },
+    {
+      id: "description",
+      title: "Description",
+      description: "Donnez un titre accrocheur et une description détaillée pour attirer l'attention des lecteurs."
+    },
+    {
+      id: "images",
+      title: "",
+      description: ""
+    },
+    {
+      id: "publishing",
+      title: "Publication",
+      description: "Définissez quand et comment votre annonce sera publiée sur votre site web."
+    }
+  ];
+
+  if (canPublishSocialMedia) {
+    baseSteps.push({
+      id: "social",
+      title: "",
+      description: ""
+    });
+  }
+
+  baseSteps.push({
     id: "summary",
     title: "Résumé",
     description: "Vérifiez les informations de votre annonce avant de la publier."
-  }
-];
+  });
+
+  return baseSteps;
+};
 
 const CreateAnnouncement = () => {
   const navigate = useNavigate();
@@ -82,6 +90,7 @@ const CreateAnnouncement = () => {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const { categories } = useWordPressCategories();
 
+  const stepConfigs = getStepConfigs(user?.canPublishSocialMedia || false);
   const currentStep = stepConfigs[currentStepIndex];
 
   const form = useForm<AnnouncementFormData>({

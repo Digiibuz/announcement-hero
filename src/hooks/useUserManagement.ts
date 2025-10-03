@@ -46,7 +46,7 @@ export const useUserManagement = () => {
           role: profile.role as Role,
           clientId: profile.client_id,
           wordpressConfigId: profile.wordpress_config_id || null,
-          
+          canPublishSocialMedia: profile.can_publish_social_media || false,
           wordpressConfig: profile.wordpress_configs ? {
             name: profile.wordpress_configs.name,
             site_url: profile.wordpress_configs.site_url
@@ -94,7 +94,7 @@ export const useUserManagement = () => {
           email: userData.email,
           role: userData.role,
           wordpress_config_id: (userData.role === 'client' || userData.role === 'commercial') ? userData.wordpressConfigId : null,
-          
+          can_publish_social_media: userData.canPublishSocialMedia || false
         })
         .eq('id', userId);
       
