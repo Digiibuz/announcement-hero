@@ -426,6 +426,10 @@ const CreateAnnouncement = () => {
   const handlePrevious = () => {
     if (currentStepIndex > 0) {
       setCurrentStepIndex(current => current - 1);
+      // Remettre le scroll en haut sur mobile
+      if (isMobile) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
   };
 
@@ -452,6 +456,10 @@ const CreateAnnouncement = () => {
     }
     if (currentStepIndex < stepConfigs.length - 1) {
       setCurrentStepIndex(current => current + 1);
+      // Remettre le scroll en haut sur mobile
+      if (isMobile) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
   };
 
