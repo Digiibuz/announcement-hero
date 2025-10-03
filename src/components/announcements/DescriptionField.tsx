@@ -491,7 +491,7 @@ const DescriptionField = ({
             </div>
             
             {/* Footer fixe avec bouton unique */}
-            <div className="flex-shrink-0 p-4 pb-8 bg-background">
+            <div className="flex-shrink-0 px-4 pt-2 pb-6 bg-background">
               <Button 
                 type="button" 
                 onClick={generateNewContent}
