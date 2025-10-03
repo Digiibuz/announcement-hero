@@ -50,8 +50,8 @@ serve(async (req) => {
       - Utiliser des <h3> pour les sous-sections si nécessaire
       - Chaque section doit avoir 2-3 paragraphes <p> développés (4-5 phrases minimum par paragraphe)
       - Utiliser <ul> et <li> pour les listes à puces (maximum 1 liste par section)
-      - Inclure 1-2 liens externes <a href="https://..." target="_blank" rel="noopener noreferrer"> vers des sources d'autorité
       - Terminer par un paragraphe de conclusion avec call-to-action
+      - NE PAS inclure de liens externes
       
       🎯 OPTIMISATION SEO ET QUALITÉ:
       - ${toneInstructions.style}
@@ -62,11 +62,6 @@ serve(async (req) => {
       - Les paragraphes doivent être substantiels (4-6 lignes chacun)
       - Les titres H2 doivent être informatifs et contenir des mots-clés stratégiques
       - Éviter les listes trop courtes - privilégier le texte développé
-      
-      🔗 LIENS EXTERNES:
-      - Inclure 1-2 liens vers des sites d'autorité pertinents (Wikipedia, sites gouvernementaux, médias reconnus, blogs experts du secteur)
-      - Les liens doivent enrichir le contenu et apporter de la valeur
-      - Format: <a href="URL" target="_blank" rel="noopener noreferrer">texte du lien</a>
       
       ⚡ EXEMPLE DE STRUCTURE (à adapter au sujet):
       <p>Premier paragraphe d'introduction détaillé qui présente le contexte et capte l'attention. Ce paragraphe doit faire au moins 4-5 phrases pour bien introduire le sujet.</p>
@@ -85,7 +80,7 @@ serve(async (req) => {
       </ul>
       
       <h2>Deuxième titre de section pertinent</h2>
-      <p>Paragraphe substantiel avec des détails, potentiellement un <a href="https://exemple.com" target="_blank" rel="noopener noreferrer">lien externe pertinent</a> qui enrichit le propos. Développer le sujet en profondeur.</p>
+      <p>Paragraphe substantiel avec des détails et des informations concrètes. Développer le sujet en profondeur.</p>
       
       <p>Suite de l'explication avec encore plus de détails, d'exemples concrets, de bénéfices pour le lecteur.</p>
       
@@ -98,7 +93,7 @@ serve(async (req) => {
       - Chaque paragraphe doit faire AU MINIMUM 4-5 phrases
       - Le contenu total doit être substantiel et informatif ${lengthInstructions.target}
       - Éviter les phrases creuses, apporter de vraies informations utiles
-      - Ne PAS utiliser de balises <strong> ou <b> - le texte doit être en format normal
+      - Ne PAS utiliser de balises <strong>, <b> ou <a> - le texte doit être en format normal sans liens
       
       Génère maintenant le contenu HTML optimisé SEO (sans balise html, head ou body, uniquement le contenu):`;
 
@@ -235,7 +230,7 @@ serve(async (req) => {
       
       // Post-traitement différent selon le type
       if (type === "generateDescription") {
-        // Pour les descriptions SEO : nettoyer les préfaces et supprimer les balises <strong> et <b>
+        // Pour les descriptions SEO : nettoyer les préfaces et supprimer les balises <strong>, <b> et <a>
         optimizedContent = optimizedContent
           // Supprime les phrases d'introduction comme "Voici" ou "Bien sûr"
           .replace(/^(Bien sûr !|Voici|Certainement|D'accord|Absolument|Voilà|Avec plaisir)[^\n]*\n+/i, '')
@@ -247,6 +242,8 @@ serve(async (req) => {
           // Supprime les balises <strong> et <b> pour éviter le gras non voulu
           .replace(/<strong>(.*?)<\/strong>/g, '$1')
           .replace(/<b>(.*?)<\/b>/g, '$1')
+          // Supprime les liens externes <a> en gardant uniquement le texte
+          .replace(/<a[^>]*>(.*?)<\/a>/g, '$1')
           // Supprime les doubles <br> consécutifs
           .replace(/(<br\s*\/?>){2,}/gi, '')
           // Supprime les <br> inutiles avant ou après les balises de bloc
