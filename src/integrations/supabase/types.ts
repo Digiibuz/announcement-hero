@@ -22,7 +22,10 @@ export type Database = {
           create_instagram_post: boolean | null
           created_at: string
           description: string | null
+          facebook_content: string | null
           facebook_error_message: string | null
+          facebook_hashtags: string[] | null
+          facebook_images: string[] | null
           facebook_post_id: string | null
           facebook_publication_status: string | null
           facebook_published_at: string | null
@@ -59,7 +62,10 @@ export type Database = {
           create_instagram_post?: boolean | null
           created_at?: string
           description?: string | null
+          facebook_content?: string | null
           facebook_error_message?: string | null
+          facebook_hashtags?: string[] | null
+          facebook_images?: string[] | null
           facebook_post_id?: string | null
           facebook_publication_status?: string | null
           facebook_published_at?: string | null
@@ -96,7 +102,10 @@ export type Database = {
           create_instagram_post?: boolean | null
           created_at?: string
           description?: string | null
+          facebook_content?: string | null
           facebook_error_message?: string | null
+          facebook_hashtags?: string[] | null
+          facebook_images?: string[] | null
           facebook_post_id?: string | null
           facebook_publication_status?: string | null
           facebook_published_at?: string | null
