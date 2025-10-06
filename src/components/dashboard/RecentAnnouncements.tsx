@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileText, Calendar, ImageIcon } from "lucide-react";
+import { FileText, Calendar, ImageIcon, Share2 } from "lucide-react";
 import { useRecentAnnouncements } from "@/hooks/useRecentAnnouncements";
 
 const RecentAnnouncements = () => {
@@ -81,9 +81,23 @@ const RecentAnnouncements = () => {
             <h4 className="font-medium text-sm truncate">
               {announcement.title}
             </h4>
-            <div className="flex items-center text-xs text-muted-foreground mt-1">
-              <Calendar className="h-3 w-3 mr-1" />
-              {format(new Date(announcement.created_at), "dd MMM", { locale: fr })}
+            <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center text-xs text-muted-foreground">
+                <Calendar className="h-3 w-3 mr-1" />
+                {format(new Date(announcement.created_at), "dd MMM", { locale: fr })}
+              </div>
+              {announcement.create_facebook_post && announcement.status === 'published' && (
+                <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200 text-xs h-5 px-1.5">
+                  <Share2 className="h-2.5 w-2.5 mr-0.5" />
+                  FB
+                </Badge>
+              )}
+              {announcement.create_instagram_post && announcement.status === 'published' && (
+                <Badge variant="secondary" className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 border-purple-200 text-xs h-5 px-1.5">
+                  <Share2 className="h-2.5 w-2.5 mr-0.5" />
+                  IG
+                </Badge>
+              )}
             </div>
           </div>
           
