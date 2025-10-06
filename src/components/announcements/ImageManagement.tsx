@@ -38,41 +38,52 @@ export default function ImageManagement({ form, isMobile = false }: ImageManagem
   // Combiner toutes les images du formulaire
   const allImages = [...(images || []), ...(additionalMedias || [])];
 
-  // Synchroniser allUploadedImages avec les images du formulaire au premier chargement
+  // Synchroniser allUploadedImages avec les images du formulaire
   useEffect(() => {
-    if (allImages.length > 0 && allUploadedImages.length === 0) {
+    const currentUrls = allUploadedImages.join(',');
+    const newUrls = allImages.join(',');
+    
+    // Mettre à jour si les images ont changé ou si allUploadedImages est vide
+    if (allImages.length > 0 && (allUploadedImages.length === 0 || currentUrls !== newUrls)) {
+      console.log('🔄 Synchronisation des images uploadées:', {
+        previous: allUploadedImages,
+        new: allImages
+      });
       setAllUploadedImages(allImages);
     }
-  }, [allImages.length]);
+  }, [allImages.join(',')]);
 
   // Initialiser les items d'images basé sur TOUTES les images téléchargées
   useEffect(() => {
     if (allUploadedImages.length > 0) {
+      console.log('🖼️ Initialisation des imageItems:', {
+        allUploadedImages,
+        allImages,
+        images,
+        additionalMedias
+      });
+      
       setImageItems(prevItems => {
-        // Si on a déjà des items avec les mêmes URLs, ne pas réinitialiser
-        if (prevItems.length === allUploadedImages.length && 
-            prevItems.every(item => allUploadedImages.includes(item.url))) {
-          return prevItems.map(item => ({
-            ...item,
-            selected: allImages.includes(item.url), // Mettre à jour le statut de sélection
-            type: images.includes(item.url) ? 'main' : 'additional' as 'main' | 'additional'
-          }));
-        }
-        
-        // Créer un map des items existants pour préserver l'état
+        // Créer un map des items existants pour préserver l'ordre et l'ID
         const existingItemsMap = new Map(prevItems.map(item => [item.url, item]));
         
-        return allUploadedImages.map((url, index) => {
+        const newItems = allUploadedImages.map((url, index) => {
           const existingItem = existingItemsMap.get(url);
           const isSelected = allImages.includes(url);
           const isMainImage = images.includes(url);
-          return existingItem || {
+          
+          console.log(`📸 Image ${url.substring(url.length - 20)}: selected=${isSelected}, main=${isMainImage}`);
+          
+          return {
             url,
             selected: isSelected,
-            id: `img-${index}-${url.substring(url.length - 10)}`,
+            id: existingItem?.id || `img-${index}-${url.substring(url.length - 10)}`,
             type: isMainImage ? 'main' : 'additional' as 'main' | 'additional'
           };
         });
+        
+        console.log('✅ ImageItems mis à jour:', newItems);
+        return newItems;
       });
     }
   }, [allUploadedImages.join(','), allImages.join(','), images.join(',')]);
@@ -122,11 +133,6 @@ export default function ImageManagement({ form, isMobile = false }: ImageManagem
       form.setValue('additionalMedias', []);
     }
   };
-
-  // Déclencher la mise à jour quand les images changent
-  useEffect(() => {
-    updateFormFields();
-  }, [imageItems]);
 
   const handleDragStart = (e: React.DragEvent, itemId: string) => {
     setDraggedId(itemId);
