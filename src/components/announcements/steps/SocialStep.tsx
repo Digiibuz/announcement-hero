@@ -116,7 +116,11 @@ export default function SocialStep({ form, onSkip, className, onNavigationVisibi
                 <Button
                   type="button"
                   size="lg"
-                  onClick={() => connectFacebook()}
+                  onClick={() => {
+                    // Sauvegarder l'index de l'étape actuelle (4 = étape sociale)
+                    localStorage.setItem('facebook_return_step', '4');
+                    connectFacebook();
+                  }}
                   disabled={isConnecting}
                   className="bg-[#1877F2] hover:bg-[#1877F2]/90 text-white gap-2"
                 >

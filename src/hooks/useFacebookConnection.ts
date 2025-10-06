@@ -139,6 +139,15 @@ export const useFacebookConnection = () => {
         localStorage.setItem('facebook_auth_redirect', 'true');
         localStorage.setItem('facebook_auth_state', data.state); // Stocker le state
         localStorage.setItem('facebook_return_url', window.location.pathname + window.location.search); // Sauvegarder l'URL de retour
+        
+        // Sauvegarder l'étape actuelle si on est sur /create
+        if (window.location.pathname === '/create') {
+          const currentStep = new URLSearchParams(window.location.search).get('step');
+          if (currentStep) {
+            localStorage.setItem('facebook_return_step', currentStep);
+          }
+        }
+        
         window.location.href = data.authUrl;
         return;
       }
