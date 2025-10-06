@@ -291,57 +291,51 @@ export const useWordPressPublishing = () => {
       // WordPress publication
       updatePublishingStep("wordpress", "loading", `${actionText} sur WordPress`, 70);
       
-      // Determine endpoints
+      // Determine endpoints - silently check for custom post type
       let useCustomTaxonomy = false;
       let postEndpoint = `${siteUrl}/wp-json/wp/v2/pages`;
       
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        
-        const response = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt_category`, {
-          method: 'HEAD',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal
-        }).catch(() => ({ status: 404 }));
-        
-        clearTimeout(timeoutId);
-        
-        if (response && response.status !== 404) {
-          useCustomTaxonomy = true;
+      // Helper function to silently check if an endpoint exists
+      const checkEndpoint = async (url: string): Promise<boolean> => {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000);
           
-          const dipiController = new AbortController();
-          const dipiTimeoutId = setTimeout(() => dipiController.abort(), 5000);
-          
-          const dipiResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt`, {
+          const response = await fetch(url, {
             method: 'HEAD',
             headers: { 'Content-Type': 'application/json' },
-            signal: dipiController.signal
-          }).catch(() => ({ status: 404 }));
+            signal: controller.signal
+          });
           
-          clearTimeout(dipiTimeoutId);
+          clearTimeout(timeoutId);
+          return response.status !== 404;
+        } catch (error) {
+          // Silently return false for any error (404, timeout, network error, etc.)
+          return false;
+        }
+      };
+      
+      try {
+        // Check if custom taxonomy exists
+        const hasTaxonomy = await checkEndpoint(`${siteUrl}/wp-json/wp/v2/dipi_cpt_category`);
+        
+        if (hasTaxonomy) {
+          useCustomTaxonomy = true;
           
-          if (dipiResponse && dipiResponse.status !== 404) {
+          // Check for custom post type endpoints in order of preference
+          const hasMainCPT = await checkEndpoint(`${siteUrl}/wp-json/wp/v2/dipi_cpt`);
+          if (hasMainCPT) {
             postEndpoint = `${siteUrl}/wp-json/wp/v2/dipi_cpt`;
           } else {
-            const altController = new AbortController();
-            const altTimeoutId = setTimeout(() => altController.abort(), 5000);
-            
-            const altResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipicpt`, {
-              method: 'HEAD',
-              headers: { 'Content-Type': 'application/json' },
-              signal: altController.signal
-            }).catch(() => ({ status: 404 }));
-            
-            clearTimeout(altTimeoutId);
-            
-            if (altResponse && altResponse.status !== 404) {
+            const hasAltCPT = await checkEndpoint(`${siteUrl}/wp-json/wp/v2/dipicpt`);
+            if (hasAltCPT) {
               postEndpoint = `${siteUrl}/wp-json/wp/v2/dipicpt`;
             }
           }
         }
       } catch (error) {
-        console.log("Error checking endpoints:", error);
+        // Fallback to default pages endpoint
+        console.log("Using default WordPress pages endpoint");
       }
       
       console.log("Using WordPress endpoint:", postEndpoint, "with custom taxonomy:", useCustomTaxonomy);
