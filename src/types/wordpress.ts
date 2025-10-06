@@ -10,6 +10,8 @@ export interface WordPressConfig {
   password: string | null;
   created_at: string;
   updated_at: string;
+  endpoint_type?: string;
+  endpoint_checked_at?: string;
 }
 
 // Statuts de publication WordPress

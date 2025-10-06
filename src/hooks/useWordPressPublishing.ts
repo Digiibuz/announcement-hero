@@ -291,52 +291,66 @@ export const useWordPressPublishing = () => {
       // WordPress publication
       updatePublishingStep("wordpress", "loading", `${actionText} sur WordPress`, 70);
       
-      // Determine endpoints - silently check for custom post type
-      let useCustomTaxonomy = false;
+      // Determine endpoint from config or detect it once
       let postEndpoint = `${siteUrl}/wp-json/wp/v2/pages`;
+      let useCustomTaxonomy = false;
       
-      // Helper function to silently check if an endpoint exists
-      const checkEndpoint = async (url: string): Promise<boolean> => {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3000);
-          
-          const response = await fetch(url, {
-            method: 'HEAD',
-            headers: { 'Content-Type': 'application/json' },
-            signal: controller.signal
-          });
-          
-          clearTimeout(timeoutId);
-          return response.status !== 404;
-        } catch (error) {
-          // Silently return false for any error (404, timeout, network error, etc.)
-          return false;
-        }
-      };
+      // Check if we need to detect the endpoint type
+      const needsDetection = !wpConfig.endpoint_type || !wpConfig.endpoint_checked_at;
       
-      try {
-        // Check if custom taxonomy exists
+      if (needsDetection) {
+        // Detect endpoint type once and save it
+        console.log("🔍 Detecting WordPress endpoint type (first time only)...");
+        
+        const checkEndpoint = async (url: string): Promise<boolean> => {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
+            
+            const response = await fetch(url, {
+              method: 'HEAD',
+              headers: { 'Content-Type': 'application/json' },
+              signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            return response.status !== 404;
+          } catch {
+            return false;
+          }
+        };
+        
+        let detectedEndpoint = 'pages';
         const hasTaxonomy = await checkEndpoint(`${siteUrl}/wp-json/wp/v2/dipi_cpt_category`);
         
         if (hasTaxonomy) {
-          useCustomTaxonomy = true;
-          
-          // Check for custom post type endpoints in order of preference
           const hasMainCPT = await checkEndpoint(`${siteUrl}/wp-json/wp/v2/dipi_cpt`);
           if (hasMainCPT) {
-            postEndpoint = `${siteUrl}/wp-json/wp/v2/dipi_cpt`;
+            detectedEndpoint = 'dipi_cpt';
           } else {
             const hasAltCPT = await checkEndpoint(`${siteUrl}/wp-json/wp/v2/dipicpt`);
             if (hasAltCPT) {
-              postEndpoint = `${siteUrl}/wp-json/wp/v2/dipicpt`;
+              detectedEndpoint = 'dipicpt';
             }
           }
         }
-      } catch (error) {
-        // Fallback to default pages endpoint
-        console.log("Using default WordPress pages endpoint");
+        
+        // Save the detected endpoint to database
+        await supabase
+          .from('wordpress_configs')
+          .update({
+            endpoint_type: detectedEndpoint,
+            endpoint_checked_at: new Date().toISOString()
+          })
+          .eq('id', wpConfig.id);
+        
+        console.log(`✅ Endpoint detected and saved: ${detectedEndpoint}`);
+        wpConfig.endpoint_type = detectedEndpoint;
       }
+      
+      // Use the endpoint type from config (no more HEAD requests after first detection)
+      useCustomTaxonomy = wpConfig.endpoint_type !== 'pages';
+      postEndpoint = `${siteUrl}/wp-json/wp/v2/${wpConfig.endpoint_type || 'pages'}`;
       
       console.log("Using WordPress endpoint:", postEndpoint, "with custom taxonomy:", useCustomTaxonomy);
       
