@@ -28,6 +28,7 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
   const [cropImageIndex, setCropImageIndex] = useState<number | null>(null);
   const [showAIDialog, setShowAIDialog] = useState(false);
   const [imageCompatibility, setImageCompatibility] = useState<Record<number, boolean>>({});
+  const [croppedImages, setCroppedImages] = useState<Record<number, boolean>>({});
   
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const { checkImageCompatibility, autoCropImage, isProcessing } = useInstagramAutoCrop();
@@ -114,6 +115,13 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
         updatedRatios[cropImageIndex] = aspectRatio;
         form.setValue("instagram_image_aspect_ratios", updatedRatios);
       }
+      
+      // Marquer l'image comme recadrée
+      setCroppedImages(prev => ({
+        ...prev,
+        [cropImageIndex]: true
+      }));
+      
       setCropImageIndex(null);
     }
   };
@@ -138,7 +146,10 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
 
   const currentAspectRatio = imageAspectRatios[currentImageIndex] || 1;
   const isCurrentImageCompatible = imageCompatibility[currentImageIndex] ?? true;
-  const hasIncompatibleImages = Object.values(imageCompatibility).some(compatible => !compatible);
+  const isCurrentImageCropped = croppedImages[currentImageIndex] ?? false;
+  const hasIncompatibleImages = selectedImages.some((_, index) => 
+    !imageCompatibility[index] && !croppedImages[index]
+  );
 
   // Exposer l'état de compatibilité pour que le bouton "Suivant" puisse être désactivé
   useEffect(() => {
@@ -181,7 +192,12 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
               
               {/* Badge de compatibilité */}
               <div className="absolute top-4 left-4">
-                {isCurrentImageCompatible ? (
+                {isCurrentImageCropped ? (
+                  <Badge className="bg-green-500/90 hover:bg-green-500 text-white gap-1.5">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Image recadrée
+                  </Badge>
+                ) : isCurrentImageCompatible ? (
                   <Badge className="bg-green-500/90 hover:bg-green-500 text-white gap-1.5">
                     <CheckCircle2 className="h-3.5 w-3.5" />
                     Prêt pour Instagram
