@@ -24,7 +24,7 @@ interface SocialStepProps {
 
 export default function SocialStep({ form, onSkip, className, onNavigationVisibilityChange, onNext, onHideNextButton }: SocialStepProps) {
   const navigate = useNavigate();
-  const { hasActiveConnection } = useFacebookConnection();
+  const { hasActiveConnection, connectFacebook, isConnecting } = useFacebookConnection();
   const [showPlatformQuestion, setShowPlatformQuestion] = useState(true);
   const [activeTab, setActiveTab] = useState<string>("");
   const isMobile = useMediaQuery("(max-width: 767px)");
@@ -111,11 +111,12 @@ export default function SocialStep({ form, onSkip, className, onNavigationVisibi
                 <Button
                   type="button"
                   size="lg"
-                  onClick={() => navigate("/profile")}
+                  onClick={() => connectFacebook()}
+                  disabled={isConnecting}
                   className="bg-[#1877F2] hover:bg-[#1877F2]/90 text-white gap-2"
                 >
                   <FacebookIcon className="h-5 w-5" />
-                  Connecter Facebook
+                  {isConnecting ? "Connexion en cours..." : "Connecter Facebook"}
                 </Button>
                 
                 <Button
