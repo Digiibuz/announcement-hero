@@ -83,6 +83,12 @@ export default function SocialStep({ form, onSkip, className, onNavigationVisibi
 
   const handlePlatformSelection = (skipAll: boolean = false) => {
     setShowPlatformQuestion(false);
+    
+    // Réafficher le bouton "Suivant" quand on passe l'étape
+    if (onHideNextButton) {
+      onHideNextButton(false);
+    }
+    
     if (skipAll && onSkip) {
       onSkip();
     }
