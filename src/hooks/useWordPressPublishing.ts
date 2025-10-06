@@ -151,13 +151,16 @@ export const useWordPressPublishing = () => {
           
           if (mediaResponse.ok) {
             const mediaData = await mediaResponse.json();
+            console.log("✅ Media upload successful:", mediaData);
             if (mediaData && mediaData.id) {
               featuredMediaId = mediaData.id;
               updatePublishingStep("compress", "success", "Image principale téléversée", 45);
             }
           } else {
-            console.error("Featured image upload failed");
-            updatePublishingStep("compress", "error", "Échec du téléversement de l'image principale");
+            const errorText = await mediaResponse.text();
+            console.error("❌ Featured image upload failed:", mediaResponse.status, errorText);
+            updatePublishingStep("compress", "error", `Échec du téléversement de l'image: ${mediaResponse.status}`);
+            toast.error(`Échec du téléversement de l'image principale: ${mediaResponse.status}`);
           }
           
           // Clean up blob URL
@@ -390,6 +393,9 @@ export const useWordPressPublishing = () => {
       // Set featured image (including removal for updates)
       if (featuredMediaId !== null) {
         wpPostData.featured_media = featuredMediaId;
+        console.log(`📷 Setting featured_media ID: ${featuredMediaId}`);
+      } else {
+        console.warn("⚠️ No featured media ID available - post will be created without featured image");
       }
       
       // Add date for scheduled posts
