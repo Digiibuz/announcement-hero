@@ -137,6 +137,30 @@ export type Database = {
         }
         Relationships: []
       }
+      facebook_auth_states: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          state: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          state: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          state?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       facebook_connections: {
         Row: {
           access_token: string
@@ -461,6 +485,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_facebook_auth_states: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       get_maintenance_message: {
         Args: Record<PropertyKey, never>
         Returns: string
