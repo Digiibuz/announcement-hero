@@ -23,15 +23,16 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { code, userId, state } = await req.json();
+    const { code, userId, state, redirectUri } = await req.json();
 
-    if (!code || !userId) {
-      throw new Error('Missing code or userId');
+    if (!code || !userId || !redirectUri) {
+      throw new Error('Missing code, userId or redirectUri');
     }
 
     const FACEBOOK_APP_ID = Deno.env.get('FACEBOOK_APP_ID');
     const FACEBOOK_APP_SECRET = Deno.env.get('FACEBOOK_APP_SECRET');
-    const REDIRECT_URI = `${req.headers.get('origin')}/facebook-callback`;
+
+    console.log('🔑 Redirect URI utilisé:', redirectUri);
 
     if (!FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET) {
       throw new Error('Facebook credentials not configured');
@@ -68,7 +69,8 @@ Deno.serve(async (req) => {
     }
 
     // Exchange code for access token (recommandation Meta)
-    const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${FACEBOOK_APP_ID}&client_secret=${FACEBOOK_APP_SECRET}&code=${code}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+    // ⚠️ CRITIQUE: Le redirect_uri DOIT être exactement le même que celui utilisé pour obtenir le code
+    const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${FACEBOOK_APP_ID}&client_secret=${FACEBOOK_APP_SECRET}&code=${code}&redirect_uri=${encodeURIComponent(redirectUri)}`;
     
     console.log('🔑 Échange du code pour un token...');
     const tokenResponse = await fetch(tokenUrl);
