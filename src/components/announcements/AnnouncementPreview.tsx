@@ -90,6 +90,12 @@ const AnnouncementPreview = ({ data }: AnnouncementPreviewProps) => {
                   Facebook
                 </Badge>
               )}
+              {data.createInstagramPost && data.status === 'published' && (
+                <Badge variant="secondary" className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 border-purple-200">
+                  <Share2 className="h-3 w-3 mr-1" />
+                  Instagram
+                </Badge>
+              )}
             </div>
           </div>
 
