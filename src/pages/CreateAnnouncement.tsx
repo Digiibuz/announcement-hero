@@ -124,23 +124,8 @@ const CreateAnnouncement = () => {
     }
   });
 
-  // Clear form data when component mounts
-  useEffect(() => {
-    localStorage.removeItem(FORM_STORAGE_KEY);
-    form.reset({
-      title: "",
-      description: "",
-      wordpressCategory: "",
-      publishDate: undefined,
-      status: "published",
-      images: [],
-      additionalMedias: [], // NEW FIELD
-      seoTitle: "",
-      seoDescription: "",
-      seoSlug: "",
-      aiInstructions: ""
-    });
-  }, [form]);
+  // Ne pas effacer les données au montage pour permettre la restauration après retour Facebook
+  // Le hook useFormPersistence gère déjà la restauration des données
 
   const {
     clearSavedData,
