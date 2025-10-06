@@ -240,11 +240,18 @@ Deno.serve(async (req) => {
         });
 
         const containerData = await containerResponse.json();
-        console.log('📷 Réponse container:', containerData);
+        console.log('📷 Réponse container complète:', JSON.stringify(containerData, null, 2));
 
-        if (!containerResponse.ok) {
-          throw new Error(containerData.error?.message || 'Erreur lors de la création du container Instagram');
+        if (!containerResponse.ok || !containerData.id) {
+          const errorMsg = containerData.error?.message || 'Erreur lors de la création du container Instagram';
+          console.error('❌ Détails erreur container:', containerData);
+          throw new Error(errorMsg);
         }
+
+        // Attendre que le container soit prêt (Instagram peut prendre du temps)
+        console.log('📷 Container créé avec ID:', containerData.id);
+        console.log('📷 Attente de 5 secondes pour que l\'image soit traitée...');
+        await new Promise(resolve => setTimeout(resolve, 5000));
 
         // Étape 2: Publier le container
         const publishUrl = `https://graph.facebook.com/v21.0/${instagramAccountId}/media_publish`;
