@@ -79,23 +79,10 @@ export default function SocialStep({ form, onSkip, className, onNavigationVisibi
     if (onHideNextButton) {
       onHideNextButton(showPlatformQuestion);
     }
-    
-    // Cleanup: réafficher le bouton "Suivant" quand on quitte l'étape
-    return () => {
-      if (onHideNextButton) {
-        onHideNextButton(false);
-      }
-    };
   }, [showPlatformQuestion, onHideNextButton]);
 
   const handlePlatformSelection = (skipAll: boolean = false) => {
     setShowPlatformQuestion(false);
-    
-    // Réafficher le bouton "Suivant" quand on passe l'étape
-    if (onHideNextButton) {
-      onHideNextButton(false);
-    }
-    
     if (skipAll && onSkip) {
       onSkip();
     }
@@ -129,11 +116,7 @@ export default function SocialStep({ form, onSkip, className, onNavigationVisibi
                 <Button
                   type="button"
                   size="lg"
-                  onClick={() => {
-                    // Sauvegarder l'index de l'étape actuelle (4 = étape sociale)
-                    localStorage.setItem('facebook_return_step', '4');
-                    connectFacebook();
-                  }}
+                  onClick={() => connectFacebook()}
                   disabled={isConnecting}
                   className="bg-[#1877F2] hover:bg-[#1877F2]/90 text-white gap-2"
                 >

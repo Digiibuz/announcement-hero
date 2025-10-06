@@ -95,19 +95,6 @@ const CreateAnnouncement = () => {
   const stepConfigs = getStepConfigs(user?.canPublishSocialMedia || false);
   const currentStep = stepConfigs[currentStepIndex];
 
-  // Restaurer l'étape après retour de connexion Facebook
-  useEffect(() => {
-    const savedStep = localStorage.getItem('facebook_return_step');
-    if (savedStep) {
-      const stepIndex = parseInt(savedStep, 10);
-      if (!isNaN(stepIndex) && stepIndex >= 0 && stepIndex < stepConfigs.length) {
-        console.log('🔄 Restauration de l\'étape:', stepIndex);
-        setCurrentStepIndex(stepIndex);
-      }
-      localStorage.removeItem('facebook_return_step');
-    }
-  }, [stepConfigs.length]);
-
   const form = useForm<AnnouncementFormData>({
     defaultValues: {
       title: "",
@@ -124,8 +111,23 @@ const CreateAnnouncement = () => {
     }
   });
 
-  // Ne pas effacer les données au montage pour permettre la restauration après retour Facebook
-  // Le hook useFormPersistence gère déjà la restauration des données
+  // Clear form data when component mounts
+  useEffect(() => {
+    localStorage.removeItem(FORM_STORAGE_KEY);
+    form.reset({
+      title: "",
+      description: "",
+      wordpressCategory: "",
+      publishDate: undefined,
+      status: "published",
+      images: [],
+      additionalMedias: [], // NEW FIELD
+      seoTitle: "",
+      seoDescription: "",
+      seoSlug: "",
+      aiInstructions: ""
+    });
+  }, [form]);
 
   const {
     clearSavedData,
@@ -423,8 +425,6 @@ const CreateAnnouncement = () => {
           });
       }
 
-      // Effacer les données du localStorage et du formulaire
-      localStorage.removeItem(FORM_STORAGE_KEY);
       form.reset({
         title: "",
         description: "",
@@ -432,19 +432,11 @@ const CreateAnnouncement = () => {
         publishDate: undefined,
         status: "published",
         images: [],
-        additionalMedias: [],
+        additionalMedias: [], // NEW FIELD
         seoTitle: "",
         seoDescription: "",
         seoSlug: "",
-        aiInstructions: "",
-        createFacebookPost: false,
-        facebookContent: "",
-        facebookHashtags: [],
-        facebookImages: [],
-        createInstagramPost: false,
-        instagramContent: "",
-        instagramHashtags: [],
-        instagramImages: []
+        aiInstructions: ""
       });
 
       setTimeout(() => {

@@ -443,8 +443,6 @@ export type Database = {
           app_password: string | null
           app_username: string | null
           created_at: string
-          endpoint_checked_at: string | null
-          endpoint_type: string | null
           id: string
           name: string
           password: string | null
@@ -458,8 +456,6 @@ export type Database = {
           app_password?: string | null
           app_username?: string | null
           created_at?: string
-          endpoint_checked_at?: string | null
-          endpoint_type?: string | null
           id?: string
           name: string
           password?: string | null
@@ -473,8 +469,6 @@ export type Database = {
           app_password?: string | null
           app_username?: string | null
           created_at?: string
-          endpoint_checked_at?: string | null
-          endpoint_type?: string | null
           id?: string
           name?: string
           password?: string | null
