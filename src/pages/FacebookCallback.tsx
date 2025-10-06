@@ -43,9 +43,11 @@ const FacebookCallback = () => {
       
       if (isMobileRedirect) {
         console.log('📱 Redirection mobile détectée');
+        const returnUrl = localStorage.getItem('facebook_return_url') || '/profile';
         localStorage.removeItem('facebook_auth_redirect');
+        localStorage.removeItem('facebook_return_url');
         setStatus('Redirection...');
-        navigate('/profile');
+        navigate(returnUrl);
         return;
       }
 

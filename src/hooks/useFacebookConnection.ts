@@ -117,6 +117,7 @@ export const useFacebookConnection = () => {
         console.log('📱 Appareil mobile détecté - redirection complète');
         localStorage.setItem('facebook_auth_redirect', 'true');
         localStorage.setItem('facebook_auth_state', data.state); // Stocker le state
+        localStorage.setItem('facebook_return_url', window.location.pathname + window.location.search); // Sauvegarder l'URL de retour
         window.location.href = data.authUrl;
         return;
       }
