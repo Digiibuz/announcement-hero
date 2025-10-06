@@ -66,8 +66,21 @@ Deno.serve(async (req) => {
     // Get user's pages with detailed fields
     const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${finalAccessToken}`;
     console.log('📄 Récupération des pages Facebook...');
+    console.log('🔗 URL:', pagesUrl.replace(finalAccessToken, 'TOKEN_HIDDEN'));
+    
     const pagesResponse = await fetch(pagesUrl);
-    const pagesData = await pagesResponse.json();
+    const pagesResponseText = await pagesResponse.text();
+    
+    console.log('📡 Facebook API status:', pagesResponse.status);
+    console.log('📡 Facebook API response:', pagesResponseText);
+    
+    let pagesData;
+    try {
+      pagesData = JSON.parse(pagesResponseText);
+    } catch (e) {
+      console.error('❌ Erreur parsing JSON:', e);
+      throw new Error(`Invalid JSON response from Facebook: ${pagesResponseText.substring(0, 200)}`);
+    }
 
     console.log('📊 Pages response:', { 
       hasData: !!pagesData.data, 
@@ -77,11 +90,23 @@ Deno.serve(async (req) => {
     });
 
     if (pagesData.error) {
-      throw new Error(`Facebook API error: ${pagesData.error.message} (code: ${pagesData.error.code})`);
+      const errorDetails = `${pagesData.error.message} (code: ${pagesData.error.code}, type: ${pagesData.error.type || 'unknown'})`;
+      console.error('❌ Erreur Facebook API:', errorDetails);
+      
+      if (pagesData.error.code === 190) {
+        throw new Error(`Token invalide ou expiré. Veuillez réessayer la connexion. Détails: ${errorDetails}`);
+      }
+      
+      if (pagesData.error.code === 200 || pagesData.error.message.includes('permissions')) {
+        throw new Error(`Permissions manquantes. Assurez-vous d'accorder toutes les permissions demandées lors de la connexion Facebook. Détails: ${errorDetails}`);
+      }
+      
+      throw new Error(`Erreur Facebook API: ${errorDetails}`);
     }
 
     if (!pagesData.data || pagesData.data.length === 0) {
-      throw new Error('Aucune page Facebook trouvée. Assurez-vous d\'être administrateur d\'au moins une page Facebook. Les permissions requises sont: pages_manage_metadata, pages_read_engagement, pages_manage_posts.');
+      console.error('❌ Aucune page trouvée. Full response:', pagesResponseText);
+      throw new Error('Aucune page Facebook trouvée. Vérifiez que: 1) Vous êtes administrateur d\'au moins une page Facebook, 2) Vous avez accordé les permissions "pages_manage_metadata", "pages_read_engagement", "pages_manage_posts" lors de l\'autorisation, 3) Vous avez bien sélectionné votre page dans la popup de sélection Facebook.');
     }
 
     // Initialize Supabase client
