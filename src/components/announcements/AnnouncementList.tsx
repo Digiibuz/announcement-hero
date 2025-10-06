@@ -79,6 +79,18 @@ const AnnouncementList = ({
     return null;
   };
 
+  const getInstagramBadge = (announcement: Announcement) => {
+    if (announcement.create_instagram_post && announcement.status === 'published') {
+      return (
+        <Badge variant="secondary" className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 border-purple-200">
+          <Share2 className="h-3 w-3 mr-1" />
+          Instagram
+        </Badge>
+      );
+    }
+    return null;
+  };
+
   // Function to get the public URL for an image
   const getImageUrl = (imagePath: string) => {
     if (!imagePath) return null;
@@ -188,6 +200,7 @@ const AnnouncementList = ({
                   <div className="flex gap-2">
                     {getStatusBadge(announcement.status)}
                     {getFacebookBadge(announcement)}
+                    {getInstagramBadge(announcement)}
                   </div>
                 </TableCell>
                 <TableCell>
@@ -294,6 +307,7 @@ const AnnouncementList = ({
               <div className="flex flex-col gap-2">
                 {getStatusBadge(announcement.status)}
                 {getFacebookBadge(announcement)}
+                {getInstagramBadge(announcement)}
               </div>
             </div>
           </CardHeader>
