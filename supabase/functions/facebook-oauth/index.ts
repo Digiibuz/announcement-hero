@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { code, userId } = await req.json();
+    const { code, userId, state } = await req.json();
 
     if (!code || !userId) {
       throw new Error('Missing code or userId');
@@ -37,11 +37,48 @@ Deno.serve(async (req) => {
       throw new Error('Facebook credentials not configured');
     }
 
-    // Exchange code for access token
-    const tokenUrl = `https://graph.facebook.com/v18.0/oauth/access_token?client_id=${FACEBOOK_APP_ID}&client_secret=${FACEBOOK_APP_SECRET}&code=${code}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+    // Initialize Supabase client
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // 🔐 VALIDATION DU STATE (Protection CSRF - Recommandation Meta)
+    if (state) {
+      const { data: stateData, error: stateError } = await supabaseClient
+        .from('facebook_auth_states')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('state', state)
+        .gt('expires_at', new Date().toISOString())
+        .single();
+
+      if (stateError || !stateData) {
+        console.error('❌ Invalid or expired state parameter');
+        throw new Error('Invalid or expired authentication request. Please try again.');
+      }
+
+      // Supprimer le state utilisé
+      await supabaseClient
+        .from('facebook_auth_states')
+        .delete()
+        .eq('id', stateData.id);
+
+      console.log('✅ State validated successfully');
+    }
+
+    // Exchange code for access token (recommandation Meta)
+    const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${FACEBOOK_APP_ID}&client_secret=${FACEBOOK_APP_SECRET}&code=${code}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
     
     console.log('🔑 Échange du code pour un token...');
     const tokenResponse = await fetch(tokenUrl);
+    
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      console.error('❌ Token exchange failed:', errorText);
+      throw new Error(`Token exchange failed: ${errorText}`);
+    }
+    
     const tokenData: FacebookTokenResponse = await tokenResponse.json();
 
     console.log('📊 Token response:', { hasToken: !!tokenData.access_token, expiresIn: tokenData.expires_in });
@@ -51,8 +88,28 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to get access token: ${JSON.stringify(tokenData)}`);
     }
 
+    // 🔐 INSPECTION DU TOKEN (Recommandation Meta pour sécurité)
+    const appAccessToken = `${FACEBOOK_APP_ID}|${FACEBOOK_APP_SECRET}`;
+    const debugTokenUrl = `https://graph.facebook.com/v21.0/debug_token?input_token=${tokenData.access_token}&access_token=${appAccessToken}`;
+    
+    console.log('🔍 Inspection du token...');
+    const debugResponse = await fetch(debugTokenUrl);
+    const debugData = await debugResponse.json();
+    
+    if (debugData.data?.is_valid !== true) {
+      console.error('❌ Token invalide:', debugData);
+      throw new Error('Invalid access token received from Facebook');
+    }
+    
+    console.log('✅ Token validé:', {
+      app_id: debugData.data.app_id,
+      user_id: debugData.data.user_id,
+      expires_at: debugData.data.expires_at,
+      scopes: debugData.data.scopes
+    });
+
     // Exchange short-lived token for long-lived token (60 days)
-    const longTokenUrl = `https://graph.facebook.com/v18.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${FACEBOOK_APP_ID}&client_secret=${FACEBOOK_APP_SECRET}&fb_exchange_token=${tokenData.access_token}`;
+    const longTokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${FACEBOOK_APP_ID}&client_secret=${FACEBOOK_APP_SECRET}&fb_exchange_token=${tokenData.access_token}`;
     console.log('🔄 Exchange pour un token longue durée...');
     
     const longTokenResponse = await fetch(longTokenUrl);
@@ -64,9 +121,8 @@ Deno.serve(async (req) => {
     console.log('✅ Token final:', { hasToken: !!finalAccessToken, expiresIn: finalExpiresIn });
 
     // Get user's pages with detailed fields
-    const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${finalAccessToken}`;
+    const pagesUrl = `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,username}&access_token=${finalAccessToken}`;
     console.log('📄 Récupération des pages Facebook...');
-    console.log('🔗 URL:', pagesUrl.replace(finalAccessToken, 'TOKEN_HIDDEN'));
     
     const pagesResponse = await fetch(pagesUrl);
     const pagesResponseText = await pagesResponse.text();
@@ -97,8 +153,8 @@ Deno.serve(async (req) => {
         throw new Error(`Token invalide ou expiré. Veuillez réessayer la connexion. Détails: ${errorDetails}`);
       }
       
-      if (pagesData.error.code === 200 || pagesData.error.message.includes('permissions')) {
-        throw new Error(`Permissions manquantes. Assurez-vous d'accorder toutes les permissions demandées lors de la connexion Facebook. Détails: ${errorDetails}`);
+      if (pagesData.error.code === 200 || pagesData.error.code === 10 || pagesData.error.message.includes('permissions')) {
+        throw new Error(`❌ Permissions manquantes. Lors de la connexion Facebook, vous devez:\n1. Accepter TOUTES les permissions demandées\n2. Sélectionner les pages que vous souhaitez connecter\n3. Cliquer sur "Continuer" ou "OK"\n\nDétails: ${errorDetails}`);
       }
       
       throw new Error(`Erreur Facebook API: ${errorDetails}`);
@@ -106,14 +162,8 @@ Deno.serve(async (req) => {
 
     if (!pagesData.data || pagesData.data.length === 0) {
       console.error('❌ Aucune page trouvée. Full response:', pagesResponseText);
-      throw new Error('Aucune page Facebook trouvée. Vérifiez que: 1) Vous êtes administrateur d\'au moins une page Facebook, 2) Vous avez accordé les permissions "pages_manage_metadata", "pages_read_engagement", "pages_manage_posts" lors de l\'autorisation, 3) Vous avez bien sélectionné votre page dans la popup de sélection Facebook.');
+      throw new Error(`❌ Aucune page Facebook trouvée.\n\nVérifiez que:\n1. Vous êtes administrateur d'au moins une page Facebook\n2. Lors de l'autorisation, vous avez SÉLECTIONNÉ vos pages dans la popup\n3. Vous avez accordé TOUTES les permissions demandées\n4. Votre page n'est pas restreinte ou supprimée\n\nSi le problème persiste, essayez de révoquer l'accès à l'application dans vos paramètres Facebook, puis reconnectez-vous.`);
     }
-
-    // Initialize Supabase client
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
 
     // Store each page connection
     console.log(`💾 Sauvegarde de ${pagesData.data.length} page(s)...`);
@@ -147,6 +197,8 @@ Deno.serve(async (req) => {
 
       connections.push(data);
     }
+
+    console.log(`✅ ${connections.length} page(s) connectée(s) avec succès`);
 
     return new Response(
       JSON.stringify({ success: true, connections }),

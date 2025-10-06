@@ -47,7 +47,7 @@ export const useFacebookConnection = () => {
     fetchConnections();
   }, [fetchConnections]);
 
-  const exchangeCodeForToken = useCallback(async (code: string) => {
+  const exchangeCodeForToken = useCallback(async (code: string, state?: string) => {
     try {
       console.log('🔑 Échange du code pour un token...');
       const { data: { user } } = await supabase.auth.getUser();
@@ -55,7 +55,12 @@ export const useFacebookConnection = () => {
 
       const redirectUri = `${window.location.origin}/facebook-callback`;
       const { data, error } = await supabase.functions.invoke('facebook-oauth', {
-        body: { code, userId: user.id, redirectUri },
+        body: { 
+          code, 
+          userId: user.id, 
+          redirectUri,
+          state: state || localStorage.getItem('facebook_auth_state') // Inclure le state
+        },
       });
 
       if (error) throw error;
@@ -69,6 +74,7 @@ export const useFacebookConnection = () => {
         localStorage.removeItem('facebook_auth_code');
         localStorage.removeItem('facebook_auth_timestamp');
         localStorage.removeItem('instagram_2fa_detected');
+        localStorage.removeItem('facebook_auth_state'); // Nettoyer le state
       } else {
         throw new Error(data?.error || 'Échec de la connexion Facebook');
       }
@@ -85,12 +91,15 @@ export const useFacebookConnection = () => {
     setIsConnecting(true);
     
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Non authentifié');
+
       const redirectUri = `${window.location.origin}/facebook-callback`;
       console.log('🔵 Redirect URI:', redirectUri);
       
-      // Get the auth URL from the edge function
+      // Get the auth URL from the edge function with userId for state generation
       const { data, error } = await supabase.functions.invoke('facebook-auth-url', {
-        body: { redirectUri },
+        body: { redirectUri, userId: user.id },
       });
 
       console.log('🔵 Réponse edge function:', { data, error });
@@ -104,9 +113,10 @@ export const useFacebookConnection = () => {
       const isMobile = isMobileDevice();
       
       if (isMobile) {
-        // Mobile: redirection complète
+        // Mobile: redirection complète avec state
         console.log('📱 Appareil mobile détecté - redirection complète');
         localStorage.setItem('facebook_auth_redirect', 'true');
+        localStorage.setItem('facebook_auth_state', data.state); // Stocker le state
         window.location.href = data.authUrl;
         return;
       }
@@ -114,10 +124,11 @@ export const useFacebookConnection = () => {
       // Desktop: popup
       console.log('🖥️ Desktop détecté - ouverture popup');
       
-      // Nettoyer les anciennes données
+      // Nettoyer les anciennes données et stocker le state
       localStorage.removeItem('facebook_auth_code');
       localStorage.removeItem('facebook_auth_error');
       localStorage.removeItem('instagram_2fa_detected');
+      localStorage.setItem('facebook_auth_state', data.state); // Stocker le state pour validation
       
       const width = 600;
       const height = 700;
