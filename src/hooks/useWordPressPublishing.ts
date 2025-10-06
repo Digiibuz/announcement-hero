@@ -106,12 +106,16 @@ export const useWordPressPublishing = () => {
       
       updatePublishingStep("prepare", "success", "Préparation terminée", 25);
       
-      // Process main featured image
+      // Process main featured image - only upload to WordPress on first publish
       let featuredMediaId = null;
       
-      if (announcement.images && announcement.images.length > 0) {
+      // Si c'est une mise à jour ET que l'annonce a déjà une image WordPress, on ne re-upload pas
+      const shouldUploadImage = announcement.images && announcement.images.length > 0 && !isUpdate;
+      
+      if (shouldUploadImage) {
         try {
           updatePublishingStep("compress", "loading", "Compression de l'image principale", 35);
+          console.log("📤 Uploading new featured image to WordPress");
           
           // Compression légère WebP vers JPEG pour WordPress
           const compressedImageUrl = await compressImage(announcement.images[0], {
@@ -129,7 +133,6 @@ export const useWordPressPublishing = () => {
           });
           
           // Upload to WordPress media library
-          console.log("Uploading featured image to WordPress");
           const mediaFormData = new FormData();
           mediaFormData.append('file', imageFile);
           mediaFormData.append('title', `${announcement.title} - Image principale`);
