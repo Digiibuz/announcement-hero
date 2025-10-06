@@ -106,13 +106,11 @@ export const useWordPressPublishing = () => {
       
       updatePublishingStep("prepare", "success", "Préparation terminée", 25);
       
-      // Process main featured image - only upload to WordPress on first publish
+      // Process main featured image - upload to WordPress on first publish AND on updates
       let featuredMediaId = null;
       
-      // Si c'est une mise à jour ET que l'annonce a déjà une image WordPress, on ne re-upload pas
-      const shouldUploadImage = announcement.images && announcement.images.length > 0 && !isUpdate;
-      
-      if (shouldUploadImage) {
+      // Always upload the image to WordPress (both new posts and updates)
+      if (announcement.images && announcement.images.length > 0) {
         try {
           updatePublishingStep("compress", "loading", "Compression de l'image principale", 35);
           console.log("📤 Uploading new featured image to WordPress");
