@@ -114,21 +114,30 @@ export const useWordPressPublishing = () => {
         try {
           updatePublishingStep("compress", "loading", "Compression de l'image principale", 35);
           console.log("📤 Uploading new featured image to WordPress");
+          console.log("🔍 Image source URL:", announcement.images[0]);
           
           // Compression légère WebP vers JPEG pour WordPress
+          console.log("⏳ Compressing image...");
           const compressedImageUrl = await compressImage(announcement.images[0], {
             maxWidth: 1200,
             maxHeight: 1200,
             quality: 0.9,
             format: 'jpeg'
           });
+          console.log("✅ Image compressed successfully:", compressedImageUrl.substring(0, 50));
           
           // Convert blob URL to file for WordPress upload
+          console.log("⏳ Fetching compressed blob...");
           const response = await fetch(compressedImageUrl);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch compressed image: ${response.status} ${response.statusText}`);
+          }
           const blob = await response.blob();
+          console.log("✅ Blob fetched:", blob.size, "bytes, type:", blob.type);
           const imageFile = new File([blob], `${announcement.title}-featured.jpg`, { 
             type: 'image/jpeg' 
           });
+          console.log("✅ File created:", imageFile.name, imageFile.size, "bytes");
           
           // Upload to WordPress media library
           const mediaFormData = new FormData();
@@ -137,11 +146,13 @@ export const useWordPressPublishing = () => {
           mediaFormData.append('alt_text', announcement.title);
           
           const mediaEndpoint = `${siteUrl}/wp-json/wp/v2/media`;
+          console.log("⏳ Uploading to WordPress:", mediaEndpoint);
           
           const mediaHeaders = new Headers();
           if (wpConfig.app_username && wpConfig.app_password) {
             const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
             mediaHeaders.append('Authorization', `Basic ${basicAuth}`);
+            console.log("🔐 Using Application Password authentication");
           }
           
           const mediaResponse = await fetch(mediaEndpoint, {
@@ -149,13 +160,17 @@ export const useWordPressPublishing = () => {
             headers: mediaHeaders,
             body: mediaFormData
           });
+          console.log("📥 WordPress media response status:", mediaResponse.status);
           
           if (mediaResponse.ok) {
             const mediaData = await mediaResponse.json();
             console.log("✅ Media upload successful:", mediaData);
             if (mediaData && mediaData.id) {
               featuredMediaId = mediaData.id;
+              console.log("🎯 Featured media ID set to:", featuredMediaId);
               updatePublishingStep("compress", "success", "Image principale téléversée", 45);
+            } else {
+              console.warn("⚠️ Media uploaded but no ID returned:", mediaData);
             }
           } else {
             const errorText = await mediaResponse.text();
@@ -168,9 +183,16 @@ export const useWordPressPublishing = () => {
           URL.revokeObjectURL(compressedImageUrl);
           
         } catch (error) {
-          console.error("Error processing featured image:", error);
+          console.error("❌ Error processing featured image:", error);
+          console.error("Error details:", {
+            message: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+          });
           updatePublishingStep("compress", "error", "Erreur lors du traitement de l'image principale");
+          toast.error(`Erreur lors du traitement de l'image: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
         }
+      } else {
+        console.warn("⚠️ No images to upload - announcement.images is empty");
       }
 
       // Process additional medias with improved styling
