@@ -43,6 +43,9 @@ const StepNavigation = ({
     }
   };
 
+  // Vérifier si le bouton "Suivant" doit être désactivé (Instagram non prêt)
+  const isNextDisabled = isSubmitting || (!(window as any).instagramImagesReady && (window as any).instagramImagesReady !== undefined);
+
   if (isMobile) {
     return (
       <div className={cn("flex justify-between items-center w-full", className)}>
@@ -70,7 +73,7 @@ const StepNavigation = ({
             <Button 
               type="button" 
               onClick={handleNextClick}
-              disabled={isSubmitting}
+              disabled={isNextDisabled}
               className="w-[130px] mobile-nav-button bg-brand-orange hover:bg-brand-orange/90 text-black"
             >
               Continuer
@@ -137,7 +140,7 @@ const StepNavigation = ({
             <Button 
               type="button" 
               onClick={handleNextClick}
-              disabled={isSubmitting}
+              disabled={isNextDisabled}
               className="bg-brand-orange hover:bg-brand-orange/90 text-black"
             >
               Suivant

@@ -41,6 +41,11 @@ export default function SocialStep({ form, onSkip, className, onNavigationVisibi
 
   // Gérer le passage à l'étape suivante ou changement d'onglet
   const handleNextClick = () => {
+    // Vérifier si on est sur Instagram et que les images ne sont pas prêtes
+    if (activeTab === "instagram" && !(window as any).instagramImagesReady) {
+      return; // Empêcher la navigation
+    }
+
     if (facebookEnabled && instagramEnabled && activeTab === "facebook") {
       // Si les deux plateformes sont activées et on est sur Facebook, basculer vers Instagram
       setActiveTab("instagram");
