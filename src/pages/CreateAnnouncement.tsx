@@ -423,6 +423,8 @@ const CreateAnnouncement = () => {
           });
       }
 
+      // Effacer les données du localStorage et du formulaire
+      localStorage.removeItem(FORM_STORAGE_KEY);
       form.reset({
         title: "",
         description: "",
@@ -430,11 +432,19 @@ const CreateAnnouncement = () => {
         publishDate: undefined,
         status: "published",
         images: [],
-        additionalMedias: [], // NEW FIELD
+        additionalMedias: [],
         seoTitle: "",
         seoDescription: "",
         seoSlug: "",
-        aiInstructions: ""
+        aiInstructions: "",
+        createFacebookPost: false,
+        facebookContent: "",
+        facebookHashtags: [],
+        facebookImages: [],
+        createInstagramPost: false,
+        instagramContent: "",
+        instagramHashtags: [],
+        instagramImages: []
       });
 
       setTimeout(() => {
