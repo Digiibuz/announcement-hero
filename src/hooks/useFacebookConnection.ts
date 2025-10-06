@@ -86,6 +86,27 @@ export const useFacebookConnection = () => {
     }
   }, [fetchConnections]);
 
+  // Vérifier s'il y a un code Facebook en attente (mobile redirect)
+  useEffect(() => {
+    const pendingCode = localStorage.getItem('facebook_auth_code');
+    const pendingTimestamp = localStorage.getItem('facebook_auth_timestamp');
+    
+    if (pendingCode && pendingTimestamp) {
+      const age = Date.now() - parseInt(pendingTimestamp);
+      // Traiter le code s'il a moins de 30 secondes
+      if (age < 30000) {
+        console.log('🔄 Code Facebook en attente détecté, traitement...');
+        setIsConnecting(true);
+        exchangeCodeForToken(pendingCode);
+      } else {
+        // Code trop ancien, le nettoyer
+        console.log('⏱️ Code Facebook expiré, nettoyage...');
+        localStorage.removeItem('facebook_auth_code');
+        localStorage.removeItem('facebook_auth_timestamp');
+      }
+    }
+  }, [exchangeCodeForToken]);
+
   const connectFacebook = async () => {
     console.log('🔵 Démarrage connexion Facebook...');
     setIsConnecting(true);
@@ -118,6 +139,15 @@ export const useFacebookConnection = () => {
         localStorage.setItem('facebook_auth_redirect', 'true');
         localStorage.setItem('facebook_auth_state', data.state); // Stocker le state
         localStorage.setItem('facebook_return_url', window.location.pathname + window.location.search); // Sauvegarder l'URL de retour
+        
+        // Sauvegarder l'étape actuelle si on est sur /create
+        if (window.location.pathname === '/create') {
+          const currentStep = new URLSearchParams(window.location.search).get('step');
+          if (currentStep) {
+            localStorage.setItem('facebook_return_step', currentStep);
+          }
+        }
+        
         window.location.href = data.authUrl;
         return;
       }

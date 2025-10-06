@@ -95,6 +95,19 @@ const CreateAnnouncement = () => {
   const stepConfigs = getStepConfigs(user?.canPublishSocialMedia || false);
   const currentStep = stepConfigs[currentStepIndex];
 
+  // Restaurer l'étape après retour de connexion Facebook
+  useEffect(() => {
+    const savedStep = localStorage.getItem('facebook_return_step');
+    if (savedStep) {
+      const stepIndex = parseInt(savedStep, 10);
+      if (!isNaN(stepIndex) && stepIndex >= 0 && stepIndex < stepConfigs.length) {
+        console.log('🔄 Restauration de l\'étape:', stepIndex);
+        setCurrentStepIndex(stepIndex);
+      }
+      localStorage.removeItem('facebook_return_step');
+    }
+  }, [stepConfigs.length]);
+
   const form = useForm<AnnouncementFormData>({
     defaultValues: {
       title: "",
