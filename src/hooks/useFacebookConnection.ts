@@ -150,7 +150,7 @@ export const useFacebookConnection = () => {
 
       // Méthode 2: Polling localStorage (2FA ou fallback)
       let attempts = 0;
-      const maxAttempts = 60; // 30 secondes max
+      const maxAttempts = 240; // 2 minutes max (pour laisser le temps à la 2FA)
       
       const pollInterval = setInterval(() => {
         attempts++;
