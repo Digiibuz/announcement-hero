@@ -171,15 +171,58 @@ Deno.serve(async (req) => {
     }
 
     if (!pagesData.data || pagesData.data.length === 0) {
-      console.error('❌ Aucune page trouvée avec /me/accounts. Tentative avec /me/businesses...');
+      console.error('❌ Aucune page personnelle trouvée. Recherche dans Business Manager...');
       
-      // Essayer l'endpoint businesses (pour les pages gérées via Business Manager)
+      // Pour les pages Business Manager : récupérer les businesses puis leurs pages
       const businessUrl = `https://graph.facebook.com/v21.0/me/businesses?fields=id,name&access_token=${finalAccessToken}`;
       const businessResponse = await fetch(businessUrl);
       const businessData = await businessResponse.json();
-      console.log('📊 Business response:', businessData);
       
-      throw new Error(`❌ Aucune page Facebook trouvée.\n\n**Vérifications nécessaires :**\n\n1. ✅ Votre compte est bien Admin de l'app Facebook ? OUI (confirmé)\n2. ❓ Combien de pages Facebook possédez-vous ? (vérifiez sur facebook.com/pages)\n3. ❓ Ces pages sont-elles des pages personnelles ou gérées via Business Manager ?\n4. ❓ Lors de la popup de connexion, avez-vous vu un écran "Sélectionner les pages" ?\n\n**Réponse API :** ${pagesResponseText}\n**Business data :** ${JSON.stringify(businessData)}\n\n**Solution :**\n- Si vous n'avez PAS vu l'écran de sélection des pages, révoquez l'app dans vos paramètres Facebook et reconnectez-vous\n- Si vos pages sont gérées via Business Manager, contactez-moi pour adapter le code`);
+      console.log('📊 Businesses trouvés:', businessData);
+      
+      if (businessData.error) {
+        throw new Error(`Erreur lors de la récupération des businesses: ${businessData.error.message}`);
+      }
+      
+      if (!businessData.data || businessData.data.length === 0) {
+        throw new Error(`❌ Aucune page trouvée.\n\n**Diagnostic:**\n- Pages personnelles: 0\n- Business Manager: 0\n\nVérifiez que:\n1. Vous avez bien des pages Facebook associées à votre compte\n2. Vous avez accepté toutes les permissions lors de la connexion\n3. Votre app Facebook est en mode Live (ou utilisez un test user)`);
+      }
+      
+      // Récupérer les pages de chaque business
+      const allBusinessPages: FacebookPageData[] = [];
+      
+      for (const business of businessData.data) {
+        console.log(`🏢 Récupération des pages du business: ${business.name} (${business.id})`);
+        
+        // Essayer d'abord owned_pages puis client_pages
+        const ownedPagesUrl = `https://graph.facebook.com/v21.0/${business.id}/owned_pages?fields=id,name,access_token,tasks,instagram_business_account{id,username}&access_token=${finalAccessToken}`;
+        const ownedPagesResponse = await fetch(ownedPagesUrl);
+        const ownedPagesData = await ownedPagesResponse.json();
+        
+        console.log(`  → Owned pages:`, ownedPagesData);
+        
+        if (ownedPagesData.data && ownedPagesData.data.length > 0) {
+          allBusinessPages.push(...ownedPagesData.data);
+        }
+        
+        // Essayer aussi client_pages
+        const clientPagesUrl = `https://graph.facebook.com/v21.0/${business.id}/client_pages?fields=id,name,access_token,tasks,instagram_business_account{id,username}&access_token=${finalAccessToken}`;
+        const clientPagesResponse = await fetch(clientPagesUrl);
+        const clientPagesData = await clientPagesResponse.json();
+        
+        console.log(`  → Client pages:`, clientPagesData);
+        
+        if (clientPagesData.data && clientPagesData.data.length > 0) {
+          allBusinessPages.push(...clientPagesData.data);
+        }
+      }
+      
+      if (allBusinessPages.length === 0) {
+        throw new Error(`❌ Aucune page trouvée dans Business Manager.\n\nBusinesses détectés: ${businessData.data.length}\nPages trouvées: 0\n\nAssurez-vous que les pages sont bien liées au Business Manager.`);
+      }
+      
+      console.log(`✅ ${allBusinessPages.length} page(s) trouvée(s) dans Business Manager`);
+      pagesData.data = allBusinessPages;
     }
 
     // Store each page connection

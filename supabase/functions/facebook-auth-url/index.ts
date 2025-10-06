@@ -24,13 +24,14 @@ Deno.serve(async (req) => {
     }
 
     // Permissions Facebook GRANULAIRES (Graph API v17+)
-    // Ces scopes fonctionnent en mode développement contrairement aux anciens scopes legacy
+    // Scopes pour pages personnelles ET Business Manager
     const scope = [
       'public_profile',              // Profil de base
       'email',                       // Email de l'utilisateur
-      'pages_show_list',             // ✅ NOUVEAU scope granulaire - liste TOUTES les pages (fonctionne en dev mode)
+      'pages_show_list',             // ✅ Liste les pages personnelles
       'pages_read_engagement',       // Lire les métriques des pages
       'pages_manage_posts',          // Publier sur les pages
+      'business_management',         // ✅ CRITIQUE pour Business Manager - accès aux pages business
       'instagram_basic',             // Accès Instagram de base
       'instagram_content_publish',   // Publier sur Instagram
       'pages_read_user_content',     // Lire le contenu utilisateur des pages
