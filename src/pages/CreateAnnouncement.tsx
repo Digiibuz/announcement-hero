@@ -390,6 +390,41 @@ const CreateAnnouncement = () => {
         }
       }
 
+      // Publication sur les réseaux sociaux si activée
+      if ((formData.createFacebookPost || formData.createInstagramPost) && user?.id) {
+        console.log('🚀 Lancement publication réseaux sociaux...');
+        
+        // Mettre le statut en pending
+        if (formData.createFacebookPost) {
+          await supabase
+            .from('announcements')
+            .update({ facebook_publication_status: 'pending' })
+            .eq('id', newAnnouncement.id);
+        }
+        if (formData.createInstagramPost) {
+          await supabase
+            .from('announcements')
+            .update({ instagram_publication_status: 'pending' })
+            .eq('id', newAnnouncement.id);
+        }
+
+        // Appeler l'edge function pour publier
+        supabase.functions
+          .invoke('publish-social-media', {
+            body: {
+              announcementId: newAnnouncement.id,
+              userId: user.id,
+            },
+          })
+          .then(({ data, error }) => {
+            if (error) {
+              console.error('❌ Erreur publication réseaux sociaux:', error);
+            } else {
+              console.log('✅ Publication réseaux sociaux lancée:', data);
+            }
+          });
+      }
+
       form.reset({
         title: "",
         description: "",
