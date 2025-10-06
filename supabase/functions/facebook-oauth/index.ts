@@ -120,9 +120,17 @@ Deno.serve(async (req) => {
     
     console.log('✅ Token final:', { hasToken: !!finalAccessToken, expiresIn: finalExpiresIn });
 
+    // Vérifier d'abord les informations de base de l'utilisateur
+    const meUrl = `https://graph.facebook.com/v21.0/me?fields=id,name,email&access_token=${finalAccessToken}`;
+    console.log('👤 Récupération des infos utilisateur...');
+    const meResponse = await fetch(meUrl);
+    const meData = await meResponse.json();
+    console.log('👤 User data:', meData);
+
     // Get user's pages with detailed fields
-    const pagesUrl = `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,username}&access_token=${finalAccessToken}`;
+    const pagesUrl = `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,tasks,instagram_business_account{id,username}&access_token=${finalAccessToken}`;
     console.log('📄 Récupération des pages Facebook...');
+    console.log('🔗 URL appelée:', pagesUrl.replace(finalAccessToken, 'TOKEN_HIDDEN'));
     
     const pagesResponse = await fetch(pagesUrl);
     const pagesResponseText = await pagesResponse.text();
@@ -142,7 +150,7 @@ Deno.serve(async (req) => {
       hasData: !!pagesData.data, 
       pagesCount: pagesData.data?.length || 0,
       error: pagesData.error,
-      pages: pagesData.data?.map((p: any) => ({ id: p.id, name: p.name, hasInstagram: !!p.instagram_business_account }))
+      pages: pagesData.data?.map((p: any) => ({ id: p.id, name: p.name, hasInstagram: !!p.instagram_business_account, tasks: p.tasks }))
     });
 
     if (pagesData.error) {
@@ -161,8 +169,15 @@ Deno.serve(async (req) => {
     }
 
     if (!pagesData.data || pagesData.data.length === 0) {
-      console.error('❌ Aucune page trouvée. Full response:', pagesResponseText);
-      throw new Error(`❌ Aucune page Facebook trouvée.\n\nVérifiez que:\n1. Vous êtes administrateur d'au moins une page Facebook\n2. Lors de l'autorisation, vous avez SÉLECTIONNÉ vos pages dans la popup\n3. Vous avez accordé TOUTES les permissions demandées\n4. Votre page n'est pas restreinte ou supprimée\n\nSi le problème persiste, essayez de révoquer l'accès à l'application dans vos paramètres Facebook, puis reconnectez-vous.`);
+      console.error('❌ Aucune page trouvée avec /me/accounts. Tentative avec /me/businesses...');
+      
+      // Essayer l'endpoint businesses (pour les pages gérées via Business Manager)
+      const businessUrl = `https://graph.facebook.com/v21.0/me/businesses?fields=id,name&access_token=${finalAccessToken}`;
+      const businessResponse = await fetch(businessUrl);
+      const businessData = await businessResponse.json();
+      console.log('📊 Business response:', businessData);
+      
+      throw new Error(`❌ Aucune page Facebook trouvée.\n\n**Vérifications nécessaires :**\n\n1. ✅ Votre compte est bien Admin de l'app Facebook ? OUI (confirmé)\n2. ❓ Combien de pages Facebook possédez-vous ? (vérifiez sur facebook.com/pages)\n3. ❓ Ces pages sont-elles des pages personnelles ou gérées via Business Manager ?\n4. ❓ Lors de la popup de connexion, avez-vous vu un écran "Sélectionner les pages" ?\n\n**Réponse API :** ${pagesResponseText}\n**Business data :** ${JSON.stringify(businessData)}\n\n**Solution :**\n- Si vous n'avez PAS vu l'écran de sélection des pages, révoquez l'app dans vos paramètres Facebook et reconnectez-vous\n- Si vos pages sont gérées via Business Manager, contactez-moi pour adapter le code`);
     }
 
     // Store each page connection
