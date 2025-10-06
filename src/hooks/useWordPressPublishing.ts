@@ -346,6 +346,7 @@ export const useWordPressPublishing = () => {
         
         console.log(`✅ Endpoint detected and saved: ${detectedEndpoint}`);
         wpConfig.endpoint_type = detectedEndpoint;
+        wpConfig.endpoint_checked_at = new Date().toISOString();
       }
       
       // Use the endpoint type from config (no more HEAD requests after first detection)
