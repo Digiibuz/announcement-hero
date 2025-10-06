@@ -222,41 +222,102 @@ Deno.serve(async (req) => {
           caption += '\n\n' + announcement.wordpress_url;
         }
 
-        // Étape 1: Créer le container média
         const createContainerUrl = `https://graph.facebook.com/v21.0/${instagramAccountId}/media`;
-        const containerBody: any = {
-          image_url: announcement.instagram_images[0],
-          caption: caption,
-          access_token: fbConnection.page_access_token,
-        };
+        let containerId: string;
 
-        console.log('📷 URL de l\'image:', announcement.instagram_images[0]);
+        // Si plusieurs images, créer un carrousel
+        if (announcement.instagram_images.length > 1) {
+          console.log(`📷 Création d'un carrousel Instagram avec ${announcement.instagram_images.length} images...`);
+          
+          // Étape 1: Créer un container pour chaque image
+          const childContainerIds: string[] = [];
+          
+          for (let i = 0; i < announcement.instagram_images.length; i++) {
+            const imageUrl = announcement.instagram_images[i];
+            console.log(`📷 Création du container ${i + 1}/${announcement.instagram_images.length}: ${imageUrl}`);
+            
+            const childContainerResponse = await fetch(createContainerUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                image_url: imageUrl,
+                is_carousel_item: true,
+                access_token: fbConnection.page_access_token,
+              }),
+            });
 
-        console.log('📷 Création du container Instagram...');
-        const containerResponse = await fetch(createContainerUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(containerBody),
-        });
+            const childContainerData = await childContainerResponse.json();
+            console.log(`📷 Container ${i + 1} créé:`, JSON.stringify(childContainerData, null, 2));
 
-        const containerData = await containerResponse.json();
-        console.log('📷 Réponse container complète:', JSON.stringify(containerData, null, 2));
+            if (!childContainerResponse.ok || !childContainerData.id) {
+              const errorMsg = childContainerData.error?.message || `Erreur lors de la création du container ${i + 1}`;
+              console.error('❌ Détails erreur container:', childContainerData);
+              throw new Error(errorMsg);
+            }
 
-        if (!containerResponse.ok || !containerData.id) {
-          const errorMsg = containerData.error?.message || 'Erreur lors de la création du container Instagram';
-          console.error('❌ Détails erreur container:', containerData);
-          throw new Error(errorMsg);
+            childContainerIds.push(childContainerData.id);
+          }
+
+          // Étape 2: Créer le container carrousel principal
+          console.log('📷 Création du container carrousel principal...');
+          const carouselContainerResponse = await fetch(createContainerUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              media_type: 'CAROUSEL',
+              children: childContainerIds,
+              caption: caption,
+              access_token: fbConnection.page_access_token,
+            }),
+          });
+
+          const carouselContainerData = await carouselContainerResponse.json();
+          console.log('📷 Container carrousel créé:', JSON.stringify(carouselContainerData, null, 2));
+
+          if (!carouselContainerResponse.ok || !carouselContainerData.id) {
+            const errorMsg = carouselContainerData.error?.message || 'Erreur lors de la création du carrousel';
+            console.error('❌ Détails erreur carrousel:', carouselContainerData);
+            throw new Error(errorMsg);
+          }
+
+          containerId = carouselContainerData.id;
+          console.log('📷 Attente de 5 secondes pour que le carrousel soit traité...');
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          
+        } else {
+          // Une seule image - publication simple
+          console.log('📷 Création du container Instagram (image simple)...');
+          console.log('📷 URL de l\'image:', announcement.instagram_images[0]);
+          
+          const containerResponse = await fetch(createContainerUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              image_url: announcement.instagram_images[0],
+              caption: caption,
+              access_token: fbConnection.page_access_token,
+            }),
+          });
+
+          const containerData = await containerResponse.json();
+          console.log('📷 Réponse container complète:', JSON.stringify(containerData, null, 2));
+
+          if (!containerResponse.ok || !containerData.id) {
+            const errorMsg = containerData.error?.message || 'Erreur lors de la création du container Instagram';
+            console.error('❌ Détails erreur container:', containerData);
+            throw new Error(errorMsg);
+          }
+
+          containerId = containerData.id;
+          console.log('📷 Container créé avec ID:', containerId);
+          console.log('📷 Attente de 5 secondes pour que l\'image soit traitée...');
+          await new Promise(resolve => setTimeout(resolve, 5000));
         }
 
-        // Attendre que le container soit prêt (Instagram peut prendre du temps)
-        console.log('📷 Container créé avec ID:', containerData.id);
-        console.log('📷 Attente de 5 secondes pour que l\'image soit traitée...');
-        await new Promise(resolve => setTimeout(resolve, 5000));
-
-        // Étape 2: Publier le container
+        // Étape finale: Publier le container
         const publishUrl = `https://graph.facebook.com/v21.0/${instagramAccountId}/media_publish`;
         const publishBody = {
-          creation_id: containerData.id,
+          creation_id: containerId,
           access_token: fbConnection.page_access_token,
         };
 
