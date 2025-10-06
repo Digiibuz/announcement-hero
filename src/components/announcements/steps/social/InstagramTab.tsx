@@ -4,15 +4,17 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Sparkles, X, ImageIcon, Crop, Trash2, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Sparkles, X, ImageIcon, Crop, Trash2, ChevronLeft, ChevronRight, Plus, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { useState, useEffect } from "react";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
+import { useInstagramAutoCrop } from "@/hooks/useInstagramAutoCrop";
 import AILoadingOverlay from "@/components/ui/AILoadingOverlay";
 import SparklingStars from "@/components/ui/SparklingStars";
 import SocialMediaImageSelector from "../../SocialMediaImageSelector";
 import { ImageCropDialog } from "../../ImageCropDialog";
 import SocialAIGenerationDialog from "../../SocialAIGenerationDialog";
+import { toast } from "sonner";
 
 interface InstagramTabProps {
   form: UseFormReturn<any>;
@@ -25,22 +27,75 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [cropImageIndex, setCropImageIndex] = useState<number | null>(null);
   const [showAIDialog, setShowAIDialog] = useState(false);
+  const [imageCompatibility, setImageCompatibility] = useState<Record<number, boolean>>({});
+  const [isAutoProcessing, setIsAutoProcessing] = useState(false);
+  
   const { optimizeContent, isOptimizing } = useContentOptimization();
+  const { checkImageCompatibility, autoCropImage, isProcessing } = useInstagramAutoCrop();
+  
   const hashtags = form.watch("instagramHashtags") || [];
   const images = form.watch("images") || [];
   const additionalMedias = form.watch("additionalMedias") || [];
   const selectedImages = form.watch("instagramImages") || [];
   const imageAspectRatios = form.watch("instagram_image_aspect_ratios") || [];
 
-  // Auto-sélection de toutes les images disponibles (max 10)
+  // Vérifier la compatibilité de toutes les images
   useEffect(() => {
-    const allMedias = [...images, ...additionalMedias];
-    if (allMedias.length > 0 && selectedImages.length === 0) {
-      const imagesToSelect = allMedias.slice(0, 10);
-      const aspectRatios = imagesToSelect.map(() => 1);
-      form.setValue("instagramImages", imagesToSelect);
-      form.setValue("instagram_image_aspect_ratios", aspectRatios);
-    }
+    const checkAllImages = async () => {
+      if (selectedImages.length === 0) return;
+      
+      const compatibility: Record<number, boolean> = {};
+      for (let i = 0; i < selectedImages.length; i++) {
+        const result = await checkImageCompatibility(selectedImages[i]);
+        compatibility[i] = result.isCompatible;
+      }
+      setImageCompatibility(compatibility);
+    };
+    
+    checkAllImages();
+  }, [selectedImages.length]);
+
+  // Auto-sélection de toutes les images disponibles (max 10) et recadrage automatique
+  useEffect(() => {
+    const processImages = async () => {
+      const allMedias = [...images, ...additionalMedias];
+      if (allMedias.length > 0 && selectedImages.length === 0) {
+        setIsAutoProcessing(true);
+        const imagesToSelect = allMedias.slice(0, 10);
+        const processedImages: string[] = [];
+        const aspectRatios: number[] = [];
+
+        for (const imageUrl of imagesToSelect) {
+          const { isCompatible } = await checkImageCompatibility(imageUrl);
+          
+          if (!isCompatible) {
+            // Recadrer automatiquement
+            const result = await autoCropImage(imageUrl);
+            if (result) {
+              processedImages.push(result.croppedUrl);
+              aspectRatios.push(result.aspectRatio);
+            } else {
+              processedImages.push(imageUrl);
+              aspectRatios.push(1);
+            }
+          } else {
+            processedImages.push(imageUrl);
+            aspectRatios.push(1);
+          }
+        }
+
+        form.setValue("instagramImages", processedImages);
+        form.setValue("instagram_image_aspect_ratios", aspectRatios);
+        
+        if (processedImages.length !== imagesToSelect.length) {
+          toast.success(`${processedImages.length - imagesToSelect.length} image(s) recadrée(s) automatiquement en format carré`);
+        }
+        
+        setIsAutoProcessing(false);
+      }
+    };
+    
+    processImages();
   }, [images, additionalMedias]);
 
   const handleGenerateContent = async (useAnnouncementContent: boolean, customInstructions: string) => {
@@ -110,11 +165,28 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
   };
 
   const currentAspectRatio = imageAspectRatios[currentImageIndex] || 1;
+  const isCurrentImageCompatible = imageCompatibility[currentImageIndex] ?? true;
+  const hasIncompatibleImages = Object.values(imageCompatibility).some(compatible => !compatible);
 
   return (
     <div className="w-full pb-8">
-      <AILoadingOverlay isVisible={isOptimizing.generateSocialContent} />
+      <AILoadingOverlay isVisible={isOptimizing.generateSocialContent || isAutoProcessing} />
       <SparklingStars />
+
+      {/* Alerte si images incompatibles */}
+      {hasIncompatibleImages && (
+        <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+              Certaines images nécessitent un recadrage
+            </p>
+            <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+              Instagram accepte uniquement les ratios 1:1 (carré), 4:5 (portrait) ou 1.91:1 (paysage).
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Carrousel d'images avec aspect ratio dynamique */}
       <div className="relative w-full bg-background">
@@ -129,6 +201,21 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
                 alt={`Publication Instagram ${currentImageIndex + 1}`}
                 className="w-full h-full object-cover"
               />
+              
+              {/* Badge de compatibilité */}
+              <div className="absolute top-4 left-4">
+                {isCurrentImageCompatible ? (
+                  <Badge className="bg-green-500/90 hover:bg-green-500 text-white gap-1.5">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Prêt pour Instagram
+                  </Badge>
+                ) : (
+                  <Badge variant="destructive" className="gap-1.5 bg-amber-500/90 hover:bg-amber-500">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    Recadrage requis
+                  </Badge>
+                )}
+              </div>
               
               {/* Contrôles d'image */}
               <div className="absolute top-4 right-4 flex gap-2">
