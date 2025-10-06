@@ -85,6 +85,54 @@ export default function SocialStep({ form, onSkip, className, onNavigationVisibi
 
   // Question initiale pour la sélection des plateformes
   if (showPlatformQuestion) {
+    // Si pas de connexion Facebook active, afficher le bouton de connexion
+    if (!hasActiveConnection) {
+      return (
+        <div className={className}>
+          <Card className={isMobile ? "p-4" : "p-8"}>
+            <div className="space-y-6">
+              <div className="text-center space-y-2">
+                <h2 className={isMobile ? "text-xl font-bold" : "text-2xl font-bold"}>Publication sur les réseaux sociaux</h2>
+                {!isMobile && (
+                  <p className="text-muted-foreground">
+                    Connectez votre compte Facebook pour publier sur vos réseaux sociaux
+                  </p>
+                )}
+              </div>
+
+              <Alert className="bg-blue-50 border-blue-200">
+                <AlertCircle className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-900">
+                  Pour publier automatiquement vos annonces sur Facebook et Instagram, vous devez d'abord connecter votre page Facebook.
+                </AlertDescription>
+              </Alert>
+
+              <div className="flex flex-col items-center gap-4 py-6">
+                <Button
+                  type="button"
+                  size="lg"
+                  onClick={() => navigate("/profile")}
+                  className="bg-[#1877F2] hover:bg-[#1877F2]/90 text-white gap-2"
+                >
+                  <FacebookIcon className="h-5 w-5" />
+                  Connecter Facebook
+                </Button>
+                
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => handlePlatformSelection(true)}
+                >
+                  Passer cette étape
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    // Si connexion active, afficher le sélecteur de plateformes
     return (
       <div className={className}>
         <Card className={isMobile ? "p-4" : "p-8"}>
