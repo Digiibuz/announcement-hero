@@ -57,41 +57,96 @@ Deno.serve(async (req) => {
 
         console.log('📘 Connexion Facebook trouvée:', fbConnection.page_name);
 
-        // Préparer le message avec hashtags
+        // Préparer le message avec hashtags et lien WordPress
         let message = announcement.facebook_content;
         if (announcement.facebook_hashtags && announcement.facebook_hashtags.length > 0) {
           message += '\n\n' + announcement.facebook_hashtags.join(' ');
         }
-
-        // Publier sur Facebook
-        const fbApiUrl = `https://graph.facebook.com/v21.0/${fbConnection.page_id}/feed`;
-        
-        const fbBody: any = {
-          message: message,
-          access_token: fbConnection.page_access_token,
-        };
-
-        // Ajouter l'image si disponible
-        if (announcement.facebook_images && announcement.facebook_images.length > 0) {
-          // Pour Facebook, on peut utiliser une image via l'URL
-          fbBody.link = announcement.facebook_images[0];
+        // Ajouter le lien WordPress à la fin
+        if (announcement.wordpress_url) {
+          message += '\n\n' + announcement.wordpress_url;
         }
 
-        console.log('📘 Appel API Facebook:', fbApiUrl);
-        
-        const fbResponse = await fetch(fbApiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(fbBody),
-        });
+        let fbPostId = null;
 
-        const fbData = await fbResponse.json();
-        console.log('📘 Réponse Facebook:', fbData);
+        // Si on a des images, publier d'abord les photos
+        if (announcement.facebook_images && announcement.facebook_images.length > 0) {
+          const photoIds: string[] = [];
+          
+          // Uploader chaque photo sur Facebook
+          for (const imageUrl of announcement.facebook_images) {
+            const photoApiUrl = `https://graph.facebook.com/v21.0/${fbConnection.page_id}/photos`;
+            const photoBody = {
+              url: imageUrl,
+              published: false, // Ne pas publier directement
+              access_token: fbConnection.page_access_token,
+            };
 
-        if (!fbResponse.ok) {
-          throw new Error(fbData.error?.message || 'Erreur lors de la publication Facebook');
+            const photoResponse = await fetch(photoApiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(photoBody),
+            });
+
+            const photoData = await photoResponse.json();
+            if (photoResponse.ok && photoData.id) {
+              photoIds.push(photoData.id);
+              console.log('📘 Photo uploadée:', photoData.id);
+            }
+          }
+
+          // Publier le post avec toutes les photos
+          const fbApiUrl = `https://graph.facebook.com/v21.0/${fbConnection.page_id}/feed`;
+          const fbBody: any = {
+            message: message,
+            access_token: fbConnection.page_access_token,
+          };
+
+          // Ajouter les photos attachées
+          if (photoIds.length > 0) {
+            fbBody.attached_media = photoIds.map(id => ({ media_fbid: id }));
+          }
+
+          console.log('📘 Publication du post avec', photoIds.length, 'photos');
+          
+          const fbResponse = await fetch(fbApiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(fbBody),
+          });
+
+          const fbData = await fbResponse.json();
+          console.log('📘 Réponse Facebook:', fbData);
+
+          if (!fbResponse.ok) {
+            throw new Error(fbData.error?.message || 'Erreur lors de la publication Facebook');
+          }
+
+          fbPostId = fbData.id;
+        } else {
+          // Publier un post texte seulement
+          const fbApiUrl = `https://graph.facebook.com/v21.0/${fbConnection.page_id}/feed`;
+          const fbBody = {
+            message: message,
+            access_token: fbConnection.page_access_token,
+          };
+
+          console.log('📘 Publication du post texte');
+          
+          const fbResponse = await fetch(fbApiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(fbBody),
+          });
+
+          const fbData = await fbResponse.json();
+          console.log('📘 Réponse Facebook:', fbData);
+
+          if (!fbResponse.ok) {
+            throw new Error(fbData.error?.message || 'Erreur lors de la publication Facebook');
+          }
+
+          fbPostId = fbData.id;
         }
 
         // Mettre à jour l'annonce avec les infos de publication Facebook
@@ -99,14 +154,14 @@ Deno.serve(async (req) => {
           .from('announcements')
           .update({
             facebook_publication_status: 'success',
-            facebook_post_id: fbData.id,
-            facebook_url: `https://www.facebook.com/${fbData.id}`,
+            facebook_post_id: fbPostId,
+            facebook_url: `https://www.facebook.com/${fbPostId}`,
             facebook_published_at: new Date().toISOString(),
           })
           .eq('id', announcementId);
 
-        results.facebook = { success: true, postId: fbData.id };
-        console.log('✅ Publication Facebook réussie:', fbData.id);
+        results.facebook = { success: true, postId: fbPostId };
+        console.log('✅ Publication Facebook réussie:', fbPostId);
 
       } catch (fbError: any) {
         console.error('❌ Erreur Facebook:', fbError);
@@ -157,19 +212,25 @@ Deno.serve(async (req) => {
           throw new Error('Une image est requise pour publier sur Instagram');
         }
 
-        // Préparer la caption avec hashtags
+        // Préparer la caption avec hashtags et lien WordPress
         let caption = announcement.instagram_content;
         if (announcement.instagram_hashtags && announcement.instagram_hashtags.length > 0) {
           caption += '\n\n' + announcement.instagram_hashtags.join(' ');
         }
+        // Ajouter le lien WordPress
+        if (announcement.wordpress_url) {
+          caption += '\n\n' + announcement.wordpress_url;
+        }
 
         // Étape 1: Créer le container média
         const createContainerUrl = `https://graph.facebook.com/v21.0/${instagramAccountId}/media`;
-        const containerBody = {
+        const containerBody: any = {
           image_url: announcement.instagram_images[0],
           caption: caption,
           access_token: fbConnection.page_access_token,
         };
+
+        console.log('📷 URL de l\'image:', announcement.instagram_images[0]);
 
         console.log('📷 Création du container Instagram...');
         const containerResponse = await fetch(createContainerUrl, {
