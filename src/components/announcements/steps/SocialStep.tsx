@@ -79,6 +79,13 @@ export default function SocialStep({ form, onSkip, className, onNavigationVisibi
     if (onHideNextButton) {
       onHideNextButton(showPlatformQuestion);
     }
+    
+    // Cleanup: réafficher le bouton "Suivant" quand on quitte l'étape
+    return () => {
+      if (onHideNextButton) {
+        onHideNextButton(false);
+      }
+    };
   }, [showPlatformQuestion, onHideNextButton]);
 
   const handlePlatformSelection = (skipAll: boolean = false) => {
