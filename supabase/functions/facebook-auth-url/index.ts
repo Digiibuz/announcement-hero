@@ -23,13 +23,13 @@ Deno.serve(async (req) => {
       throw new Error('userId is required');
     }
 
-    // Permissions Facebook requises - selon la doc Meta 2024
+    // Permissions Facebook GRANULAIRES (Graph API v17+)
+    // Ces scopes fonctionnent en mode développement contrairement aux anciens scopes legacy
     const scope = [
-      'public_profile',              // Requis - profil de base
+      'public_profile',              // Profil de base
       'email',                       // Email de l'utilisateur
-      'pages_show_list',             // Voir la liste des pages
-      'pages_read_engagement',       // Lire les données des pages
-      'pages_manage_metadata',       // Gérer les métadonnées des pages
+      'pages_show_list',             // ✅ NOUVEAU scope granulaire - liste TOUTES les pages (fonctionne en dev mode)
+      'pages_read_engagement',       // Lire les métriques des pages
       'pages_manage_posts',          // Publier sur les pages
       'instagram_basic',             // Accès Instagram de base
       'instagram_content_publish',   // Publier sur Instagram
