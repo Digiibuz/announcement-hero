@@ -156,62 +156,38 @@ serve(async (req) => {
       userId = userData.user.id;
       console.log("User created successfully:", userId);
 
-      // Check if profile already exists (should never happen at this point, but just in case)
-      const { data: existingProfile } = await supabaseAdmin
+      // Le trigger on_auth_user_created a déjà créé le profil, nous devons le supprimer et le recréer
+      // avec les bonnes données car nous ne pouvons pas le mettre à jour à cause de la RLS policy
+      console.log("Deleting auto-created profile for user:", userId);
+      await supabaseAdmin
         .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+        .delete()
+        .eq('id', userId);
 
-      if (existingProfile) {
-        // Update existing profile
-        console.log("Profile already exists for user, updating:", userId);
-        const { error: updateError } = await supabaseAdmin
-          .from('profiles')
-          .update({
-            email: email,
-            name: name,
-            role: role,
-            wordpress_config_id: sanitizedWordpressConfigId
-          })
-          .eq('id', userId);
+      // Créer le nouveau profil avec les données correctes
+      console.log("Creating profile with correct data for user:", userId);
+      const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .insert({
+          id: userId,
+          email: email,
+          name: name,
+          role: role,
+          wordpress_config_id: sanitizedWordpressConfigId
+        });
 
-        if (updateError) {
-          console.error("Error updating profile:", updateError);
-          // Rollback by deleting the auth user
-          await supabaseAdmin.auth.admin.deleteUser(userId);
-          
-          return new Response(
-            JSON.stringify({ error: "Erreur lors de la mise à jour du profil", details: updateError.message }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-          );
-        }
-      } else {
-        // Create new profile
-        console.log("Creating profile for user:", userId);
-        const { error: profileError } = await supabaseAdmin
-          .from('profiles')
-          .insert({
-            id: userId,
-            email: email,
-            name: name,
-            role: role,
-            wordpress_config_id: sanitizedWordpressConfigId
-          });
-
-        if (profileError) {
-          // If profile creation fails, delete the auth user
-          console.error("Error creating profile, rolling back user creation:", profileError);
-          await supabaseAdmin.auth.admin.deleteUser(userId);
-          
-          return new Response(
-            JSON.stringify({ error: "Erreur lors de la création du profil", details: profileError.message }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-          );
-        }
+      if (profileError) {
+        // Si la création du profil échoue, supprimer l'utilisateur auth
+        console.error("Error creating profile, rolling back user creation:", profileError);
+        await supabaseAdmin.auth.admin.deleteUser(userId);
+        
+        return new Response(
+          JSON.stringify({ error: "Erreur lors de la création du profil", details: profileError.message }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        );
       }
       
-      console.log("Profile created/updated successfully for user:", userId);
+      console.log("Profile created successfully for user:", userId);
       
       return new Response(
         JSON.stringify({ 
