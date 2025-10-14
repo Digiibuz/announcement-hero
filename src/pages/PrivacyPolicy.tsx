@@ -131,11 +131,11 @@ const PrivacyPolicy = () => {
                 Certaines de vos données personnelles sont transférées vers des pays situés en dehors de l'Union Européenne :
               </p>
               <ul className="list-disc pl-6 space-y-2 mt-4">
-                <li><strong>Supabase :</strong> les données peuvent être hébergées aux États-Unis avec des garanties de protection appropriées (clauses contractuelles types)</li>
+                <li><strong>Supabase :</strong> les données sont hébergées dans un centre de données situé aux États-Unis, avec des garanties de protection appropriées</li>
                 <li><strong>OpenAI :</strong> traitement de données aux États-Unis dans le cadre de la génération de contenu IA, avec des mesures de sécurité contractuelles</li>
               </ul>
               <p className="mt-4">
-                Ces transferts sont effectués conformément au chapitre V du RGPD, avec des garanties appropriées telles que les clauses contractuelles types approuvées par la Commission européenne.
+                Ces transferts sont fondés sur les clauses contractuelles types (CCT) adoptées par la Commission européenne, accompagnées d'évaluations de transfert (Transfer Impact Assessment) pour garantir un niveau de protection adéquat. Ces transferts sont effectués conformément au chapitre V du RGPD.
               </p>
             </section>
 
@@ -163,7 +163,7 @@ const PrivacyPolicy = () => {
                 <li><strong>Droit de rectification :</strong> corriger des données inexactes ou incomplètes</li>
                 <li><strong>Droit à l'effacement :</strong> demander la suppression de vos données dans certains cas</li>
                 <li><strong>Droit à la limitation du traitement :</strong> limiter l'utilisation de vos données</li>
-                <li><strong>Droit à la portabilité :</strong> recevoir vos données dans un format structuré</li>
+                <li><strong>Droit à la portabilité :</strong> recevoir vos données dans un format structuré, couramment utilisé et lisible par machine (JSON ou CSV)</li>
                 <li><strong>Droit d'opposition :</strong> vous opposer au traitement de vos données pour des motifs légitimes</li>
                 <li><strong>Droit de retirer votre consentement :</strong> pour les traitements basés sur le consentement</li>
               </ul>
@@ -207,6 +207,9 @@ const PrivacyPolicy = () => {
                 <li><strong>Stockage local :</strong> pour sauvegarder vos préférences et brouillons</li>
               </ul>
               <p className="mt-4">
+                Lors de l'utilisation de la version web, seuls les cookies nécessaires au fonctionnement technique sont déposés. Aucun cookie publicitaire ni traceur tiers n'est utilisé.
+              </p>
+              <p className="mt-2">
                 Les cookies essentiels ne nécessitent pas de consentement préalable car ils sont strictement nécessaires à la fourniture du service que vous avez demandé.
               </p>
             </section>
@@ -241,7 +244,42 @@ const PrivacyPolicy = () => {
             </section>
 
             <section className="mt-8">
-              <h2 className="text-2xl font-semibold mb-4">13. Modifications de la politique de confidentialité</h2>
+              <h2 className="text-2xl font-semibold mb-4">13. Données des mineurs</h2>
+              <p>
+                Notre application s'adresse exclusivement à des utilisateurs majeurs (plus de 15 ans) et professionnels. Nous ne collectons pas sciemment de données concernant des mineurs. Si nous apprenons qu'un mineur a fourni des données personnelles, nous prendrons les mesures nécessaires pour supprimer ces informations dans les plus brefs délais.
+              </p>
+            </section>
+
+            <section className="mt-8">
+              <h2 className="text-2xl font-semibold mb-4">14. Responsabilité de l'utilisateur</h2>
+              <p>
+                L'utilisateur demeure responsable du contenu qu'il publie via l'application, notamment en ce qui concerne les droits d'auteur et le respect des conditions d'utilisation des plateformes tierces (WordPress, Facebook, Instagram, Google Business Profile).
+              </p>
+              <p className="mt-4">
+                Digiibuz ne peut être tenu responsable du contenu publié par ses utilisateurs et décline toute responsabilité en cas de violation des droits de propriété intellectuelle ou des politiques des plateformes tierces.
+              </p>
+            </section>
+
+            <section className="mt-8">
+              <h2 className="text-2xl font-semibold mb-4">15. Rôle de sous-traitant</h2>
+              <p>
+                Lorsqu'un client Digiibuz utilise l'application pour publier du contenu sur son propre site WordPress ou ses comptes de réseaux sociaux, il agit en tant que responsable de traitement, et Digiibuz agit en tant que sous-traitant au sens de l'article 28 du RGPD.
+              </p>
+              <p className="mt-4">
+                Dans ce cadre, Digiibuz s'engage à :
+              </p>
+              <ul className="list-disc pl-6 space-y-2 mt-4">
+                <li>Traiter les données personnelles uniquement sur instruction documentée du client responsable de traitement</li>
+                <li>Garantir la confidentialité des personnes autorisées à traiter les données</li>
+                <li>Mettre en œuvre les mesures de sécurité appropriées</li>
+                <li>Respecter les conditions de recours à d'autres sous-traitants</li>
+                <li>Aider le client à répondre aux demandes d'exercice des droits des personnes concernées</li>
+                <li>Assister le client pour la sécurité du traitement et la notification des violations de données</li>
+              </ul>
+            </section>
+
+            <section className="mt-8">
+              <h2 className="text-2xl font-semibold mb-4">16. Modifications de la politique de confidentialité</h2>
               <p>
                 Digiibuz se réserve le droit de modifier cette politique de confidentialité à tout moment. En cas de modification substantielle, nous vous en informerons par email ou via une notification dans l'application.
               </p>
@@ -251,7 +289,7 @@ const PrivacyPolicy = () => {
             </section>
 
             <section className="mt-8">
-              <h2 className="text-2xl font-semibold mb-4">14. Contact</h2>
+              <h2 className="text-2xl font-semibold mb-4">17. Contact</h2>
               <p>
                 Pour toute question concernant cette politique de confidentialité ou le traitement de vos données personnelles, vous pouvez nous contacter :
               </p>
