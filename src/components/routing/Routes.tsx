@@ -20,6 +20,7 @@ import WebsiteManagement from "@/pages/WebsiteManagement";
 import Templates from "@/pages/Templates";
 import FacebookCallback from "@/pages/FacebookCallback";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import FacebookDataDeletion from "@/pages/FacebookDataDeletion";
 
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
@@ -46,6 +47,12 @@ const AppRoutes = () => {
       <Route 
         path="/privacy-policy" 
         element={<PrivacyPolicy />} 
+      />
+      
+      {/* Suppression des données Facebook - accessible à tous */}
+      <Route 
+        path="/facebook-data-deletion" 
+        element={<FacebookDataDeletion />} 
       />
       
       {/* Protected routes */}
