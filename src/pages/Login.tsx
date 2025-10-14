@@ -193,10 +193,16 @@ const Login = () => {
               </form>
             </CardContent>
 
-            <CardFooter className="bg-gray-50/50 border-t border-gray-100">
+            <CardFooter className="bg-gray-50/50 border-t border-gray-100 flex-col gap-2">
               <p className="text-sm text-center text-gray-600 w-full">
                 Contactez votre administrateur si vous n'avez pas de compte
               </p>
+              <Link 
+                to="/privacy-policy" 
+                className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+              >
+                Politique de confidentialité
+              </Link>
             </CardFooter>
           </Card>
         </AnimatedContainer>

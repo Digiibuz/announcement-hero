@@ -19,6 +19,7 @@ import GoogleBusinessPage from "@/pages/GoogleBusinessPage";
 import WebsiteManagement from "@/pages/WebsiteManagement";
 import Templates from "@/pages/Templates";
 import FacebookCallback from "@/pages/FacebookCallback";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
 
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
@@ -39,6 +40,12 @@ const AppRoutes = () => {
       <Route 
         path="/reset-password" 
         element={<ResetPassword />} 
+      />
+      
+      {/* Politique de confidentialité - accessible à tous */}
+      <Route 
+        path="/privacy-policy" 
+        element={<PrivacyPolicy />} 
       />
       
       {/* Protected routes */}
