@@ -62,7 +62,7 @@ serve(async (req) => {
     // Return the confirmation code and status URL as required by Meta
     return new Response(
       JSON.stringify({
-        url: `${supabaseUrl}/functions/v1/facebook-data-deletion-status?id=${confirmationCode}`,
+        url: `https://app.digiibuz.fr/facebook-data-deletion?id=${confirmationCode}`,
         confirmation_code: confirmationCode,
       }),
       {
