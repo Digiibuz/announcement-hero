@@ -152,8 +152,10 @@ export const useFacebookConnection = () => {
             ]
           });
 
+          console.log('📱 Résultat du SDK Facebook:', result);
+
           if (result.accessToken) {
-            console.log('✅ Token Facebook natif obtenu');
+            console.log('✅ Token Facebook natif obtenu:', result.accessToken.token.substring(0, 20) + '...');
             
             // Échanger le token avec notre backend
             const { data, error } = await supabase.functions.invoke('facebook-oauth', {
@@ -163,6 +165,8 @@ export const useFacebookConnection = () => {
                 isMobileSDK: true
               },
             });
+
+            console.log('📱 Réponse edge function:', { data, error });
 
             if (error) throw error;
 
@@ -178,6 +182,7 @@ export const useFacebookConnection = () => {
           }
         } catch (error) {
           console.error('❌ Erreur SDK Facebook natif:', error);
+          toast.error(error instanceof Error ? error.message : 'Erreur lors de la connexion à Facebook');
           throw error;
         } finally {
           setIsConnecting(false);
