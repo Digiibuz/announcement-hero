@@ -65,16 +65,15 @@ const UserProfile = () => {
     }
   });
 
+  // Rediriger vers le dashboard si pas d'utilisateur
+  React.useEffect(() => {
+    if (!user) {
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
+
   if (!user) {
-    return (
-      <PageLayout title="Profil">
-        <Card className="max-w-lg mx-auto">
-          <CardContent className="pt-6">
-            <p className="text-center">Vous n'êtes pas connecté</p>
-          </CardContent>
-        </Card>
-      </PageLayout>
-    );
+    return null;
   }
 
   const handleLogout = () => {
