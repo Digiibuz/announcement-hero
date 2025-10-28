@@ -103,11 +103,6 @@ const FacebookCallback = () => {
       <div className="text-center space-y-4 p-8">
         <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
         <p className="text-lg text-foreground">{status}</p>
-        <div className="text-sm text-muted-foreground space-y-1">
-          <p>URL: {window.location.href}</p>
-          <p>Code: {searchParams.get('code')?.substring(0, 20)}...</p>
-          <p>Opener: {window.opener ? 'Oui' : 'Non'}</p>
-        </div>
       </div>
     </div>
   );
