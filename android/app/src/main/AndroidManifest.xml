@@ -32,23 +32,8 @@
                       android:pathPrefix="/facebook-callback" />
             </intent-filter>
 
-            <!-- Custom URL Scheme pour Facebook -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="fb329464176919950" />
-            </intent-filter>
-
         </activity>
 
-        <!-- Facebook Configuration -->
-        <meta-data android:name="com.facebook.sdk.ApplicationId" android:value="@string/facebook_app_id"/>
-        <meta-data android:name="com.facebook.sdk.ClientToken" android:value="@string/facebook_client_token"/>
-
-        <provider android:authorities="com.facebook.app.FacebookContentProvider329464176919950"
-                  android:name="com.facebook.FacebookContentProvider"
-                  android:exported="true"/>
     </application>
 
     <!-- Permissions -->
