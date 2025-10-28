@@ -20,8 +20,8 @@ export const useDeepLinkHandler = () => {
       try {
         const url = new URL(data.url);
         
-        // Vérifier si c'est le callback Facebook
-        if (url.pathname === '/facebook-callback') {
+        // Vérifier si c'est le callback Facebook (custom scheme ou HTTP)
+        if (url.pathname === '/facebook-callback' || url.pathname === '//facebook-callback') {
           console.log('🔗 Callback Facebook détecté dans deep link');
           const code = url.searchParams.get('code');
           const error = url.searchParams.get('error');
