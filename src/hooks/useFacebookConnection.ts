@@ -137,8 +137,13 @@ export const useFacebookConnection = () => {
         console.log('📱 Utilisation du SDK Facebook natif');
         
         try {
+          // Initialiser le SDK Facebook
+          console.log('🔧 Initialisation du SDK Facebook...');
+          await FacebookLogin.initialize({ appId: '329464176919950' });
+          console.log('✅ SDK Facebook initialisé');
+          
           // Se connecter avec le SDK Facebook natif
-          const result = await FacebookLogin.login({ 
+          const result = await FacebookLogin.login({
             permissions: [
               'public_profile',
               'email',
