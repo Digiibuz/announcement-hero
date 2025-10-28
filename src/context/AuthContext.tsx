@@ -225,7 +225,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     getSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       console.log('🔄 Auth state change:', event, newSession?.user?.email);
       
       // Avoid processing events during initial load
@@ -237,19 +237,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (event === 'SIGNED_IN' && newSession?.user) {
         console.log('✅ User signed in:', newSession.user.id);
-        const profileData = await loadUserProfile(newSession.user.id);
-        if (profileData) {
-          const updatedUser: AuthUser = {
-            ...newSession.user,
-            wordpressConfigId: profileData.profile.wordpress_config_id,
-            role: profileData.profile.role,
-            name: profileData.profile.name,
-            canPublishSocialMedia: profileData.profile.can_publish_social_media,
-            profile: profileData.profile,
-            wordpressConfig: profileData.wordpressConfig
-          };
-          setUser(updatedUser);
-        }
+        // Defer profile loading to avoid deadlock
+        setTimeout(() => {
+          loadUserProfile(newSession.user.id).then(profileData => {
+            if (profileData) {
+              const updatedUser: AuthUser = {
+                ...newSession.user,
+                wordpressConfigId: profileData.profile.wordpress_config_id,
+                role: profileData.profile.role,
+                name: profileData.profile.name,
+                canPublishSocialMedia: profileData.profile.can_publish_social_media,
+                profile: profileData.profile,
+                wordpressConfig: profileData.wordpressConfig
+              };
+              setUser(updatedUser);
+            }
+          });
+        }, 0);
       } else if (event === 'SIGNED_OUT') {
         console.log('👋 User signed out');
         setUser(null);
