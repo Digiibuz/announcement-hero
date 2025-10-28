@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { UserProfile } from "@/types/auth";
 
 export const useImpersonation = (currentUser: UserProfile | null) => {
