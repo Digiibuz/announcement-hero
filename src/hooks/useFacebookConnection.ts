@@ -17,6 +17,21 @@ const isMobileDevice = () => {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 };
 
+const isCapacitorApp = () => {
+  return window.location.protocol === 'capacitor:' || 
+         window.location.protocol === 'ionic:' ||
+         (window as any).Capacitor !== undefined;
+};
+
+const getRedirectUri = () => {
+  // Pour les apps Capacitor/Android, utiliser l'App Link
+  if (isCapacitorApp()) {
+    return 'https://app.digiibuz.fr/facebook-callback';
+  }
+  // Pour le web, utiliser l'origine actuelle
+  return `${window.location.origin}/facebook-callback`;
+};
+
 export const useFacebookConnection = () => {
   const [connections, setConnections] = useState<FacebookConnection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,7 +68,7 @@ export const useFacebookConnection = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Non authentifié');
 
-      const redirectUri = `${window.location.origin}/facebook-callback`;
+      const redirectUri = getRedirectUri();
       const { data, error } = await supabase.functions.invoke('facebook-oauth', {
         body: { 
           code, 
@@ -115,8 +130,9 @@ export const useFacebookConnection = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Non authentifié');
 
-      const redirectUri = `${window.location.origin}/facebook-callback`;
+      const redirectUri = getRedirectUri();
       console.log('🔵 Redirect URI:', redirectUri);
+      console.log('🔵 Is Capacitor App:', isCapacitorApp());
       
       // Get the auth URL from the edge function with userId for state generation
       const { data, error } = await supabase.functions.invoke('facebook-auth-url', {

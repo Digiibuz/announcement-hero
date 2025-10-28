@@ -19,6 +19,12 @@ const config: CapacitorConfig = {
     StatusBar: {
       style: 'dark',
       backgroundColor: '#1a1f3a'
+    },
+    App: {
+      // Configuration des App Links pour Android
+      appUrlOpen: {
+        enabled: true
+      }
     }
   }
 };
