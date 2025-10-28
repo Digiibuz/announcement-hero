@@ -148,15 +148,71 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Use standard useEffect hook
   useEffect(() => {
+    let isInitialized = false;
+
+    const loadUserProfile = async (userId: string) => {
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+
+        if (error) {
+          console.error('❌ Error fetching profile:', error);
+          return null;
+        }
+
+        if (profile) {
+          // Fetch WordPress config if user has one
+          let wordpressConfig = null;
+          if (profile.wordpress_config_id) {
+            const { data: wpConfig } = await supabase
+              .from('wordpress_configs')
+              .select('name, site_url')
+              .eq('id', profile.wordpress_config_id)
+              .single();
+            
+            if (wpConfig) {
+              wordpressConfig = wpConfig;
+            }
+          }
+
+          return {
+            profile,
+            wordpressConfig
+          };
+        }
+        return null;
+      } catch (error) {
+        console.error('❌ Error loading profile:', error);
+        return null;
+      }
+    };
+
     const getSession = async () => {
       try {
         console.log('🔄 Getting initial session...');
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         
-        if (currentSession) {
+        if (currentSession?.user) {
           console.log('📱 Initial session found:', currentSession.user.id);
           setSession(currentSession);
-          await refreshUser();
+          
+          const profileData = await loadUserProfile(currentSession.user.id);
+          if (profileData) {
+            const updatedUser: AuthUser = {
+              ...currentSession.user,
+              wordpressConfigId: profileData.profile.wordpress_config_id,
+              role: profileData.profile.role,
+              name: profileData.profile.name,
+              canPublishSocialMedia: profileData.profile.can_publish_social_media,
+              profile: profileData.profile,
+              wordpressConfig: profileData.wordpressConfig
+            };
+            setUser(updatedUser);
+          }
+          isInitialized = true;
         } else {
           console.log('❌ No initial session found');
         }
@@ -169,25 +225,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     getSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔄 Auth state change:', event, session?.user?.email);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      console.log('🔄 Auth state change:', event, newSession?.user?.email);
       
-      setSession(session);
+      // Avoid processing events during initial load
+      if (!isInitialized && event === 'INITIAL_SESSION') {
+        return;
+      }
       
-      if (event === 'SIGNED_IN' && session?.user) {
-        console.log('✅ User signed in:', session.user.id);
-        // Defer profile loading to avoid potential deadlocks
-        setTimeout(async () => {
-          await refreshUser();
-        }, 0);
+      setSession(newSession);
+      
+      if (event === 'SIGNED_IN' && newSession?.user) {
+        console.log('✅ User signed in:', newSession.user.id);
+        const profileData = await loadUserProfile(newSession.user.id);
+        if (profileData) {
+          const updatedUser: AuthUser = {
+            ...newSession.user,
+            wordpressConfigId: profileData.profile.wordpress_config_id,
+            role: profileData.profile.role,
+            name: profileData.profile.name,
+            canPublishSocialMedia: profileData.profile.can_publish_social_media,
+            profile: profileData.profile,
+            wordpressConfig: profileData.wordpressConfig
+          };
+          setUser(updatedUser);
+        }
       } else if (event === 'SIGNED_OUT') {
         console.log('👋 User signed out');
         setUser(null);
-      } else if (event === 'INITIAL_SESSION' && session?.user) {
-        console.log('🎯 Initial session established:', session.user.id);
-        setTimeout(async () => {
-          await refreshUser();
-        }, 0);
       }
       
       setIsLoading(false);
