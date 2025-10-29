@@ -21,7 +21,7 @@ const config: CapacitorConfig = {
       backgroundColor: '#1a1f3a'
     },
     App: {
-      // Configuration pour gérer les custom URL schemes et deep links
+      // Configuration des App Links pour Android
       appUrlOpen: {
         enabled: true
       }

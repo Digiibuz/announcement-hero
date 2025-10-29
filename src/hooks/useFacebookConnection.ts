@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { FacebookLogin } from '@capacitor-community/facebook-login';
 
 export interface FacebookConnection {
   id: string;
@@ -25,10 +24,9 @@ const isCapacitorApp = () => {
 };
 
 const getRedirectUri = () => {
-  // Pour les apps Capacitor/Android, utiliser un custom URL scheme
-  // qui sera intercepté directement par l'application
+  // Pour les apps Capacitor/Android, utiliser l'App Link
   if (isCapacitorApp()) {
-    return 'digiibuz://facebook-callback';
+    return 'https://app.digiibuz.fr/facebook-callback';
   }
   // Pour le web, utiliser l'origine actuelle
   return `${window.location.origin}/facebook-callback`;
@@ -132,68 +130,9 @@ export const useFacebookConnection = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Non authentifié');
 
-      // Sur mobile Capacitor : utiliser le SDK natif
-      if (isCapacitorApp()) {
-        console.log('📱 Utilisation du SDK Facebook natif');
-        
-        try {
-          // Se connecter avec le SDK Facebook natif
-          const result = await FacebookLogin.login({ 
-            permissions: [
-              'public_profile',
-              'email',
-              'pages_show_list',
-              'pages_read_engagement', 
-              'pages_manage_posts',
-              'business_management',
-              'instagram_basic',
-              'instagram_content_publish',
-              'pages_read_user_content'
-            ]
-          });
-
-          console.log('📱 Résultat du SDK Facebook:', result);
-
-          if (result.accessToken) {
-            console.log('✅ Token Facebook natif obtenu:', result.accessToken.token.substring(0, 20) + '...');
-            
-            // Échanger le token avec notre backend
-            const { data, error } = await supabase.functions.invoke('facebook-oauth', {
-              body: { 
-                accessToken: result.accessToken.token,
-                userId: user.id,
-                isMobileSDK: true
-              },
-            });
-
-            console.log('📱 Réponse edge function:', { data, error });
-
-            if (error) throw error;
-
-            if (data?.success) {
-              console.log('✅ Connexion Facebook réussie');
-              toast.success('Page(s) Facebook connectée(s) avec succès !');
-              await fetchConnections();
-            } else {
-              throw new Error(data?.error || 'Échec de la connexion Facebook');
-            }
-          } else {
-            throw new Error('Aucun token reçu de Facebook');
-          }
-        } catch (error) {
-          console.error('❌ Erreur SDK Facebook natif:', error);
-          toast.error(error instanceof Error ? error.message : 'Erreur lors de la connexion à Facebook');
-          throw error;
-        } finally {
-          setIsConnecting(false);
-        }
-        return;
-      }
-
-      // Sur web : utiliser le flux OAuth classique
       const redirectUri = getRedirectUri();
-      console.log('🖥️ Utilisation du flux OAuth web');
       console.log('🔵 Redirect URI:', redirectUri);
+      console.log('🔵 Is Capacitor App:', isCapacitorApp());
       
       // Get the auth URL from the edge function with userId for state generation
       const { data, error } = await supabase.functions.invoke('facebook-auth-url', {
@@ -211,12 +150,13 @@ export const useFacebookConnection = () => {
       const isMobile = isMobileDevice();
       
       if (isMobile) {
-        // Mobile web: redirection complète avec state
-        console.log('📱 Appareil mobile web détecté - redirection complète');
+        // Mobile: redirection complète avec state
+        console.log('📱 Appareil mobile détecté - redirection complète');
         localStorage.setItem('facebook_auth_redirect', 'true');
-        localStorage.setItem('facebook_auth_state', data.state);
-        localStorage.setItem('facebook_return_url', window.location.pathname + window.location.search);
+        localStorage.setItem('facebook_auth_state', data.state); // Stocker le state
+        localStorage.setItem('facebook_return_url', window.location.pathname + window.location.search); // Sauvegarder l'URL de retour
         
+        // Sauvegarder l'étape actuelle si on est sur /create
         if (window.location.pathname === '/create') {
           const currentStep = new URLSearchParams(window.location.search).get('step');
           if (currentStep) {
@@ -231,10 +171,11 @@ export const useFacebookConnection = () => {
       // Desktop: popup
       console.log('🖥️ Desktop détecté - ouverture popup');
       
+      // Nettoyer les anciennes données et stocker le state
       localStorage.removeItem('facebook_auth_code');
       localStorage.removeItem('facebook_auth_error');
       localStorage.removeItem('instagram_2fa_detected');
-      localStorage.setItem('facebook_auth_state', data.state);
+      localStorage.setItem('facebook_auth_state', data.state); // Stocker le state pour validation
       
       const width = 600;
       const height = 700;
@@ -251,6 +192,7 @@ export const useFacebookConnection = () => {
         throw new Error('Popup bloquée par le navigateur. Veuillez autoriser les popups pour ce site.');
       }
 
+      // Méthode 1: PostMessage (cas normal)
       const messageHandler = (event: MessageEvent) => {
         if (event.origin !== window.location.origin) return;
         
@@ -264,17 +206,20 @@ export const useFacebookConnection = () => {
       
       window.addEventListener('message', messageHandler);
 
+      // Méthode 2: Polling localStorage (2FA ou fallback)
       let attempts = 0;
-      const maxAttempts = 240;
+      const maxAttempts = 240; // 2 minutes max (pour laisser le temps à la 2FA)
       
       const pollInterval = setInterval(() => {
         attempts++;
         
+        // Vérifier si popup fermée
         if (popup.closed) {
           console.log('🔵 Popup fermée');
           clearInterval(pollInterval);
           window.removeEventListener('message', messageHandler);
           
+          // Vérifier une dernière fois le localStorage
           const code = localStorage.getItem('facebook_auth_code');
           const error = localStorage.getItem('facebook_auth_error');
           
@@ -292,12 +237,13 @@ export const useFacebookConnection = () => {
           return;
         }
 
+        // Polling localStorage (cas 2FA)
         const code = localStorage.getItem('facebook_auth_code');
         const timestamp = localStorage.getItem('facebook_auth_timestamp');
         
         if (code && timestamp) {
           const age = Date.now() - parseInt(timestamp);
-          if (age < 10000) {
+          if (age < 10000) { // Code de moins de 10 secondes
             console.log('✅ Code trouvé dans localStorage (2FA détecté)');
             clearInterval(pollInterval);
             window.removeEventListener('message', messageHandler);
@@ -306,6 +252,7 @@ export const useFacebookConnection = () => {
           }
         }
 
+        // Timeout
         if (attempts >= maxAttempts) {
           console.log('⏱️ Timeout atteint');
           clearInterval(pollInterval);
@@ -318,7 +265,7 @@ export const useFacebookConnection = () => {
 
     } catch (error) {
       console.error('❌ Error connecting Facebook:', error);
-      toast.error(error instanceof Error ? error.message : 'Erreur lors de la connexion à Facebook');
+      toast.error(error instanceof Error ? error.message : 'Erreur lors de la connexion à Facebook. Vérifiez que FACEBOOK_APP_ID est configuré.');
       setIsConnecting(false);
     }
   };
