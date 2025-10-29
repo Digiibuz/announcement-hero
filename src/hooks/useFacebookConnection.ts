@@ -161,37 +161,46 @@ export const useFacebookConnection = () => {
 
           console.log('📱 Résultat du SDK Facebook:', JSON.stringify(result, null, 2));
 
-          if (result.accessToken) {
-            console.log('✅ Token Facebook natif obtenu:', result.accessToken.token.substring(0, 20) + '...');
-            console.log('🔄 Envoi du token à l\'edge function...');
+          // Vérifier que le token est présent et valide
+          if (!result.accessToken || !result.accessToken.token) {
+            console.error('❌ Token Facebook null ou invalide');
+            console.error('📋 Résultat complet:', result);
             
-            // Échanger le token avec notre backend
-            const { data, error } = await supabase.functions.invoke('facebook-oauth', {
-              body: { 
-                accessToken: result.accessToken.token,
-                userId: user.id,
-                isMobileSDK: true
-              },
-            });
+            throw new Error(
+              'Impossible de se connecter à Facebook. Vérifiez que :\n' +
+              '1. L\'App ID Facebook (329464176919950) existe et est actif\n' +
+              '2. L\'application Facebook est en mode "Live" (pas "Development")\n' +
+              '3. Le package Android (com.digiibuz.app) est configuré dans Facebook\n' +
+              '4. Le Key Hash est correctement ajouté dans les paramètres Facebook'
+            );
+          }
 
-            console.log('📱 Réponse edge function:', { data, error });
+          console.log('✅ Token Facebook natif obtenu:', result.accessToken.token.substring(0, 20) + '...');
+          console.log('🔄 Envoi du token à l\'edge function...');
+          
+          // Échanger le token avec notre backend
+          const { data, error } = await supabase.functions.invoke('facebook-oauth', {
+            body: { 
+              accessToken: result.accessToken.token,
+              userId: user.id,
+              isMobileSDK: true
+            },
+          });
 
-            if (error) {
-              console.error('❌ Erreur edge function:', error);
-              throw error;
-            }
+          console.log('📱 Réponse edge function:', { data, error });
 
-            if (data?.success) {
-              console.log('✅ Connexion Facebook réussie');
-              toast.success('Page(s) Facebook connectée(s) avec succès !');
-              await fetchConnections();
-            } else {
-              console.error('❌ Échec de la connexion:', data?.error);
-              throw new Error(data?.error || 'Échec de la connexion Facebook');
-            }
+          if (error) {
+            console.error('❌ Erreur edge function:', error);
+            throw error;
+          }
+
+          if (data?.success) {
+            console.log('✅ Connexion Facebook réussie');
+            toast.success('Page(s) Facebook connectée(s) avec succès !');
+            await fetchConnections();
           } else {
-            console.error('❌ Aucun token dans le résultat:', result);
-            throw new Error('Aucun token reçu de Facebook');
+            console.error('❌ Échec de la connexion:', data?.error);
+            throw new Error(data?.error || 'Échec de la connexion Facebook');
           }
         } catch (error) {
           console.error('❌ Erreur SDK Facebook natif:', error);
