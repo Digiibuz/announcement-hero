@@ -4,4 +4,9 @@
     <string name="title_activity_main">DigiiBuz</string>
     <string name="package_name">com.digiibuz.app</string>
     <string name="custom_url_scheme">com.digiibuz.app</string>
+    
+    <!-- Facebook Configuration -->
+    <string name="facebook_app_id">329464176919950</string>
+    <string name="fb_login_protocol_scheme">fb329464176919950</string>
+    <string name="facebook_client_token">f22cceee2ca93c8e6871b31fccc1d0d2</string>
 </resources>
