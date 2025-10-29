@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DigiiBuz</string>
+    <string name="title_activity_main">DigiiBuz</string>
+    <string name="package_name">com.digiibuz.app</string>
+    <string name="custom_url_scheme">digiibuz</string>
+    
+    <!-- Facebook OAuth callback host -->
+    <string name="facebook_callback_host">app.digiibuz.fr</string>
+</resources>
