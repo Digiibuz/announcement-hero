@@ -135,17 +135,10 @@ export const useFacebookConnection = () => {
       // Sur mobile Capacitor : utiliser le SDK natif
       if (isCapacitorApp()) {
         console.log('📱 Utilisation du SDK Facebook natif');
-        console.log('🔍 User ID:', user.id);
         
         try {
-          // Initialiser le SDK Facebook
-          console.log('🔧 Initialisation du SDK Facebook...');
-          await FacebookLogin.initialize({ appId: '329464176919950' });
-          console.log('✅ SDK Facebook initialisé');
-          
           // Se connecter avec le SDK Facebook natif
-          console.log('🔐 Demande de connexion Facebook...');
-          const result = await FacebookLogin.login({
+          const result = await FacebookLogin.login({ 
             permissions: [
               'public_profile',
               'email',
@@ -159,70 +152,37 @@ export const useFacebookConnection = () => {
             ]
           });
 
-          console.log('📱 Résultat du SDK Facebook:', JSON.stringify(result, null, 2));
+          console.log('📱 Résultat du SDK Facebook:', result);
 
-          // Vérifier que le token est présent et valide
-          if (!result.accessToken || !result.accessToken.token) {
-            console.error('❌ Token Facebook null ou invalide');
-            console.error('📋 Résultat complet:', result);
+          if (result.accessToken) {
+            console.log('✅ Token Facebook natif obtenu:', result.accessToken.token.substring(0, 20) + '...');
             
-            throw new Error(
-              'Impossible de se connecter à Facebook. Vérifiez que :\n' +
-              '1. L\'App ID Facebook (329464176919950) existe et est actif\n' +
-              '2. L\'application Facebook est en mode "Live" (pas "Development")\n' +
-              '3. Le package Android (com.digiibuz.app) est configuré dans Facebook\n' +
-              '4. Le Key Hash est correctement ajouté dans les paramètres Facebook'
-            );
-          }
+            // Échanger le token avec notre backend
+            const { data, error } = await supabase.functions.invoke('facebook-oauth', {
+              body: { 
+                accessToken: result.accessToken.token,
+                userId: user.id,
+                isMobileSDK: true
+              },
+            });
 
-          console.log('✅ Token Facebook natif obtenu:', result.accessToken.token.substring(0, 20) + '...');
-          console.log('🔄 Envoi du token à l\'edge function...');
-          
-          // Échanger le token avec notre backend
-          const { data, error } = await supabase.functions.invoke('facebook-oauth', {
-            body: { 
-              accessToken: result.accessToken.token,
-              userId: user.id,
-              isMobileSDK: true
-            },
-          });
+            console.log('📱 Réponse edge function:', { data, error });
 
-          console.log('📱 Réponse edge function:', { data, error });
+            if (error) throw error;
 
-          if (error) {
-            console.error('❌ Erreur edge function:', error);
-            throw error;
-          }
-
-          if (data?.success) {
-            console.log('✅ Connexion Facebook réussie');
-            toast.success('Page(s) Facebook connectée(s) avec succès !');
-            await fetchConnections();
+            if (data?.success) {
+              console.log('✅ Connexion Facebook réussie');
+              toast.success('Page(s) Facebook connectée(s) avec succès !');
+              await fetchConnections();
+            } else {
+              throw new Error(data?.error || 'Échec de la connexion Facebook');
+            }
           } else {
-            console.error('❌ Échec de la connexion:', data?.error);
-            throw new Error(data?.error || 'Échec de la connexion Facebook');
+            throw new Error('Aucun token reçu de Facebook');
           }
         } catch (error) {
           console.error('❌ Erreur SDK Facebook natif:', error);
-          console.error('❌ Type de l\'erreur:', typeof error);
-          console.error('❌ Erreur stringifiée:', JSON.stringify(error, null, 2));
-          console.error('❌ Stack trace:', error instanceof Error ? error.stack : 'N/A');
-          
-          // Extraire le message d'erreur selon le format
-          let errorMessage = 'Erreur lors de la connexion à Facebook';
-          if (error instanceof Error) {
-            errorMessage = error.message;
-          } else if (typeof error === 'object' && error !== null) {
-            // Si l'erreur contient un accessToken, c'est probablement une erreur de l'edge function
-            if ('accessToken' in error) {
-              console.error('❌ Erreur contient accessToken - probablement un problème avec l\'App ID Facebook');
-              errorMessage = 'L\'App ID Facebook est invalide ou l\'application n\'est pas configurée correctement';
-            } else if ('message' in error) {
-              errorMessage = String(error.message);
-            }
-          }
-          
-          toast.error(errorMessage);
+          toast.error(error instanceof Error ? error.message : 'Erreur lors de la connexion à Facebook');
           throw error;
         } finally {
           setIsConnecting(false);

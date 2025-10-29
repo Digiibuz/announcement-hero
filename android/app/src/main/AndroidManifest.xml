@@ -1,13 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Package visibility pour Facebook SDK -->
-    <queries>
-        <package android:name="com.facebook.katana" />
-        <package android:name="com.facebook.orca" />
-        <package android:name="com.facebook.lite" />
-    </queries>
-
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -15,15 +8,6 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-
-        <!-- Facebook Configuration -->
-        <meta-data 
-            android:name="com.facebook.sdk.ApplicationId" 
-            android:value="@string/facebook_app_id"/>
-        
-        <meta-data 
-            android:name="com.facebook.sdk.ClientToken" 
-            android:value="@string/facebook_client_token"/>
 
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
@@ -48,22 +32,23 @@
                       android:pathPrefix="/facebook-callback" />
             </intent-filter>
 
-            <!-- Custom URL scheme pour Facebook -->
+            <!-- Custom URL Scheme pour Facebook -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="@string/fb_login_protocol_scheme" />
+                <data android:scheme="fb329464176919950" />
             </intent-filter>
 
         </activity>
 
-        <!-- Facebook Activity -->
-        <activity 
-            android:name="com.facebook.FacebookActivity"
-            android:configChanges="keyboard|keyboardHidden|screenLayout|screenSize|orientation"
-            android:label="@string/app_name" />
+        <!-- Facebook Configuration -->
+        <meta-data android:name="com.facebook.sdk.ApplicationId" android:value="@string/facebook_app_id"/>
+        <meta-data android:name="com.facebook.sdk.ClientToken" android:value="@string/facebook_client_token"/>
 
+        <provider android:authorities="com.facebook.app.FacebookContentProvider329464176919950"
+                  android:name="com.facebook.FacebookContentProvider"
+                  android:exported="true"/>
     </application>
 
     <!-- Permissions -->
