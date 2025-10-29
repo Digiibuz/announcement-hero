@@ -25,11 +25,11 @@ let stringsContent = fs.readFileSync(stringsPath, 'utf8');
 // Vérifier si les valeurs Facebook existent déjà
 if (!stringsContent.includes('facebook_app_id')) {
   // Ajouter les valeurs Facebook avant la balise fermante </resources>
-  const facebookStrings = `    
+  const facebookStrings = `
     <!-- Facebook Configuration -->
     <string name="facebook_app_id">${FACEBOOK_APP_ID}</string>
-    <string name="facebook_client_token">${FACEBOOK_CLIENT_TOKEN}</string>
     <string name="fb_login_protocol_scheme">fb${FACEBOOK_APP_ID}</string>
+    <string name="facebook_client_token">${FACEBOOK_CLIENT_TOKEN}</string>
 </resources>`;
   
   stringsContent = stringsContent.replace('</resources>', facebookStrings);
@@ -43,42 +43,91 @@ if (!stringsContent.includes('facebook_app_id')) {
 console.log('📝 Configuration de AndroidManifest.xml...');
 let manifestContent = fs.readFileSync(manifestPath, 'utf8');
 
-// Vérifier si la config Facebook existe déjà
-if (!manifestContent.includes('com.facebook.sdk.ApplicationId')) {
-  // Ajouter les meta-data Facebook et le deep link
-  const facebookConfig = `
-        <!-- Facebook Configuration -->
-        <meta-data android:name="com.facebook.sdk.ApplicationId" android:value="@string/facebook_app_id"/>
-        <meta-data android:name="com.facebook.sdk.ClientToken" android:value="@string/facebook_client_token"/>
-    </application>`;
+// Ajouter les queries pour Facebook si nécessaire
+if (!manifestContent.includes('<queries>')) {
+  const queriesConfig = `
+    <!-- Package visibility pour Facebook SDK -->
+    <queries>
+        <package android:name="com.facebook.katana" />
+        <package android:name="com.facebook.orca" />
+        <package android:name="com.facebook.lite" />
+    </queries>
+
+    <application`;
   
-  manifestContent = manifestContent.replace('    </application>', facebookConfig);
+  manifestContent = manifestContent.replace('    <application', queriesConfig);
+  fs.writeFileSync(manifestPath, manifestContent);
+  console.log('✅ AndroidManifest.xml configuré (queries)');
+} else {
+  console.log('ℹ️  AndroidManifest.xml déjà configuré (queries)');
+}
+
+// Recharger le contenu après modification
+manifestContent = fs.readFileSync(manifestPath, 'utf8');
+
+// Ajouter les meta-data Facebook
+if (!manifestContent.includes('com.facebook.sdk.ApplicationId')) {
+  const metaDataConfig = `
+        <!-- Facebook Configuration -->
+        <meta-data 
+            android:name="com.facebook.sdk.ApplicationId" 
+            android:value="@string/facebook_app_id"/>
+        
+        <meta-data 
+            android:name="com.facebook.sdk.ClientToken" 
+            android:value="@string/facebook_client_token"/>
+
+        <activity`;
+  
+  manifestContent = manifestContent.replace(/\s+<activity/, metaDataConfig);
   fs.writeFileSync(manifestPath, manifestContent);
   console.log('✅ AndroidManifest.xml configuré (meta-data)');
 } else {
   console.log('ℹ️  AndroidManifest.xml déjà configuré (meta-data)');
 }
 
-// Ajouter le deep link pour Facebook callback
-if (!manifestContent.includes('app.digiibuz.fr')) {
-  const deepLinkConfig = `
-            <!-- Deep Links pour Facebook OAuth -->
-            <intent-filter android:autoVerify="true">
+// Recharger le contenu après modification
+manifestContent = fs.readFileSync(manifestPath, 'utf8');
+
+// Ajouter le custom URL scheme pour Facebook
+if (!manifestContent.includes('fb_login_protocol_scheme')) {
+  const customUrlSchemeConfig = `
+            <!-- Custom URL scheme pour Facebook -->
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" 
-                      android:host="app.digiibuz.fr" 
-                      android:pathPrefix="/facebook-callback" />
+                <data android:scheme="@string/fb_login_protocol_scheme" />
             </intent-filter>
 
         </activity>`;
   
-  manifestContent = manifestContent.replace('        </activity>', deepLinkConfig);
+  manifestContent = manifestContent.replace(/\s+<\/activity>/, customUrlSchemeConfig);
   fs.writeFileSync(manifestPath, manifestContent);
-  console.log('✅ AndroidManifest.xml configuré (deep links)');
+  console.log('✅ AndroidManifest.xml configuré (custom URL scheme)');
 } else {
-  console.log('ℹ️  AndroidManifest.xml déjà configuré (deep links)');
+  console.log('ℹ️  AndroidManifest.xml déjà configuré (custom URL scheme)');
+}
+
+// Recharger le contenu après modification
+manifestContent = fs.readFileSync(manifestPath, 'utf8');
+
+// Ajouter FacebookActivity
+if (!manifestContent.includes('com.facebook.FacebookActivity')) {
+  const facebookActivityConfig = `
+        <!-- Facebook Activity -->
+        <activity 
+            android:name="com.facebook.FacebookActivity"
+            android:configChanges="keyboard|keyboardHidden|screenLayout|screenSize|orientation"
+            android:label="@string/app_name" />
+
+    </application>`;
+  
+  manifestContent = manifestContent.replace('    </application>', facebookActivityConfig);
+  fs.writeFileSync(manifestPath, manifestContent);
+  console.log('✅ AndroidManifest.xml configuré (FacebookActivity)');
+} else {
+  console.log('ℹ️  AndroidManifest.xml déjà configuré (FacebookActivity)');
 }
 
 console.log('');
