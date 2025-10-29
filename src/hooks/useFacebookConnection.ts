@@ -135,6 +135,7 @@ export const useFacebookConnection = () => {
       // Sur mobile Capacitor : utiliser le SDK natif
       if (isCapacitorApp()) {
         console.log('📱 Utilisation du SDK Facebook natif');
+        console.log('🔍 User ID:', user.id);
         
         try {
           // Initialiser le SDK Facebook
@@ -143,6 +144,7 @@ export const useFacebookConnection = () => {
           console.log('✅ SDK Facebook initialisé');
           
           // Se connecter avec le SDK Facebook natif
+          console.log('🔐 Demande de connexion Facebook...');
           const result = await FacebookLogin.login({
             permissions: [
               'public_profile',
@@ -157,10 +159,11 @@ export const useFacebookConnection = () => {
             ]
           });
 
-          console.log('📱 Résultat du SDK Facebook:', result);
+          console.log('📱 Résultat du SDK Facebook:', JSON.stringify(result, null, 2));
 
           if (result.accessToken) {
             console.log('✅ Token Facebook natif obtenu:', result.accessToken.token.substring(0, 20) + '...');
+            console.log('🔄 Envoi du token à l\'edge function...');
             
             // Échanger le token avec notre backend
             const { data, error } = await supabase.functions.invoke('facebook-oauth', {
@@ -173,20 +176,26 @@ export const useFacebookConnection = () => {
 
             console.log('📱 Réponse edge function:', { data, error });
 
-            if (error) throw error;
+            if (error) {
+              console.error('❌ Erreur edge function:', error);
+              throw error;
+            }
 
             if (data?.success) {
               console.log('✅ Connexion Facebook réussie');
               toast.success('Page(s) Facebook connectée(s) avec succès !');
               await fetchConnections();
             } else {
+              console.error('❌ Échec de la connexion:', data?.error);
               throw new Error(data?.error || 'Échec de la connexion Facebook');
             }
           } else {
+            console.error('❌ Aucun token dans le résultat:', result);
             throw new Error('Aucun token reçu de Facebook');
           }
         } catch (error) {
           console.error('❌ Erreur SDK Facebook natif:', error);
+          console.error('❌ Stack trace:', error instanceof Error ? error.stack : 'N/A');
           toast.error(error instanceof Error ? error.message : 'Erreur lors de la connexion à Facebook');
           throw error;
         } finally {
