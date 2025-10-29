@@ -18,9 +18,23 @@ const isMobileDevice = () => {
 };
 
 const isCapacitorApp = () => {
-  return window.location.protocol === 'capacitor:' || 
-         window.location.protocol === 'ionic:' ||
-         (window as any).Capacitor !== undefined;
+  // Vérifier d'abord le protocole (plus fiable)
+  if (window.location.protocol === 'capacitor:' || window.location.protocol === 'ionic:') {
+    return true;
+  }
+  
+  // Si Capacitor existe, vérifier qu'on est sur une vraie plateforme native
+  if ((window as any).Capacitor !== undefined) {
+    try {
+      const platform = (window as any).Capacitor.getPlatform?.();
+      // Retourner true seulement pour les plateformes natives (pas 'web')
+      return platform === 'android' || platform === 'ios';
+    } catch {
+      return false;
+    }
+  }
+  
+  return false;
 };
 
 const getRedirectUri = () => {
