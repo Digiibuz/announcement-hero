@@ -21,10 +21,9 @@ const config: CapacitorConfig = {
       backgroundColor: '#1a1f3a'
     }
   },
-  android: {
-    // Configuration du scheme personnalisé pour les deep links
-    scheme: 'digiibuz'
-  }
+  // Configuration des App Links pour Android
+  // Android interceptera automatiquement les URLs https://app.digiibuz.fr
+  // grâce au fichier assetlinks.json hébergé sur le domaine
 };
 
 export default config;
