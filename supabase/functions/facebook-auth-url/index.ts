@@ -59,10 +59,14 @@ Deno.serve(async (req) => {
     // response_type=code pour le flux serveur-to-serveur (plus sécurisé)
     // auth_type=rerequest pour forcer la sélection des pages
     // display=popup pour une meilleure UX
+    
+    console.log('📱 Redirect URI reçu:', redirectUri);
+    console.log('🔑 Facebook App ID:', FACEBOOK_APP_ID);
+    
     const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${FACEBOOK_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&state=${state}&response_type=code&auth_type=rerequest&display=popup`;
 
-    console.log('✅ Generated Facebook auth URL with scopes:', scope);
-    console.log('🔐 State generated:', state);
+    console.log('✅ URL OAuth complète générée:', authUrl);
+    console.log('🔐 State généré:', state);
 
     return new Response(
       JSON.stringify({ authUrl, state }),
