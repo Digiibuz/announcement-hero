@@ -20,20 +20,21 @@ export const useDeepLinkHandler = () => {
       try {
         const url = new URL(data.url);
         
-        // Vérifier si c'est le callback Facebook
-        if (url.pathname === '/facebook-callback') {
+        // Vérifier si c'est le callback Facebook (scheme custom ou https)
+        if (url.pathname === '/facebook-callback' || url.host === 'facebook-callback') {
           console.log('🔗 Callback Facebook détecté dans deep link');
           const code = url.searchParams.get('code');
           const error = url.searchParams.get('error');
           
           if (code) {
-            console.log('✅ Code Facebook trouvé dans deep link');
+            console.log('✅ Code Facebook trouvé dans deep link:', code);
             localStorage.setItem('facebook_auth_code', code);
             localStorage.setItem('facebook_auth_timestamp', Date.now().toString());
             localStorage.setItem('facebook_auth_redirect', 'true');
             
             // Naviguer vers la page de profil ou de retour
             const returnUrl = localStorage.getItem('facebook_return_url') || '/profile';
+            console.log('🔗 Navigation vers:', returnUrl);
             navigate(returnUrl);
           } else if (error) {
             console.error('❌ Erreur Facebook dans deep link:', error);

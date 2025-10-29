@@ -24,9 +24,9 @@ const isCapacitorApp = () => {
 };
 
 const getRedirectUri = () => {
-  // Pour les apps Capacitor/Android, utiliser l'App Link
+  // Pour les apps Capacitor/Android, utiliser le scheme custom
   if (isCapacitorApp()) {
-    return 'https://app.digiibuz.fr/facebook-callback';
+    return 'digiibuz://facebook-callback';
   }
   // Pour le web, utiliser l'origine actuelle
   return `${window.location.origin}/facebook-callback`;
