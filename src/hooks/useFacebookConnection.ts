@@ -195,8 +195,25 @@ export const useFacebookConnection = () => {
           }
         } catch (error) {
           console.error('❌ Erreur SDK Facebook natif:', error);
+          console.error('❌ Type de l\'erreur:', typeof error);
+          console.error('❌ Erreur stringifiée:', JSON.stringify(error, null, 2));
           console.error('❌ Stack trace:', error instanceof Error ? error.stack : 'N/A');
-          toast.error(error instanceof Error ? error.message : 'Erreur lors de la connexion à Facebook');
+          
+          // Extraire le message d'erreur selon le format
+          let errorMessage = 'Erreur lors de la connexion à Facebook';
+          if (error instanceof Error) {
+            errorMessage = error.message;
+          } else if (typeof error === 'object' && error !== null) {
+            // Si l'erreur contient un accessToken, c'est probablement une erreur de l'edge function
+            if ('accessToken' in error) {
+              console.error('❌ Erreur contient accessToken - probablement un problème avec l\'App ID Facebook');
+              errorMessage = 'L\'App ID Facebook est invalide ou l\'application n\'est pas configurée correctement';
+            } else if ('message' in error) {
+              errorMessage = String(error.message);
+            }
+          }
+          
+          toast.error(errorMessage);
           throw error;
         } finally {
           setIsConnecting(false);
