@@ -25,12 +25,19 @@ export const useDeepLinkHandler = () => {
           console.log('🔗 Callback Facebook détecté dans deep link');
           const code = url.searchParams.get('code');
           const error = url.searchParams.get('error');
+          const state = url.searchParams.get('state');
           
           if (code) {
             console.log('✅ Code Facebook trouvé dans deep link:', code);
             localStorage.setItem('facebook_auth_code', code);
             localStorage.setItem('facebook_auth_timestamp', Date.now().toString());
             localStorage.setItem('facebook_auth_redirect', 'true');
+            
+            // Stocker le state si présent
+            if (state) {
+              localStorage.setItem('facebook_auth_state', state);
+              console.log('🔐 State Facebook sauvegardé:', state);
+            }
             
             // Naviguer vers la page de profil ou de retour
             const returnUrl = localStorage.getItem('facebook_return_url') || '/profile';
@@ -52,6 +59,16 @@ export const useDeepLinkHandler = () => {
 
     // S'abonner aux événements de deep link
     CapacitorApp.addListener('appUrlOpen', handleAppUrlOpen);
+
+    // Vérifier si l'app a été ouverte avec une URL (cas de redirection depuis Chrome)
+    CapacitorApp.getLaunchUrl().then((result) => {
+      if (result && result.url) {
+        console.log('🔗 App ouverte avec URL:', result.url);
+        handleAppUrlOpen({ url: result.url });
+      }
+    }).catch((err) => {
+      console.error('❌ Erreur lors de la récupération de l\'URL de lancement:', err);
+    });
 
     return () => {
       CapacitorApp.removeAllListeners();
