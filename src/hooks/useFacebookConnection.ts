@@ -19,8 +19,12 @@ const isMobileDevice = () => {
 };
 
 const isCapacitorApp = () => {
+  console.log('🔍 DEBUG - window.location.protocol:', window.location.protocol);
+  console.log('🔍 DEBUG - Capacitor object exists:', (window as any).Capacitor !== undefined);
+  
   // Vérifier d'abord le protocole (plus fiable)
   if (window.location.protocol === 'capacitor:' || window.location.protocol === 'ionic:') {
+    console.log('✅ Capacitor détecté via protocole');
     return true;
   }
   
@@ -28,13 +32,18 @@ const isCapacitorApp = () => {
   if ((window as any).Capacitor !== undefined) {
     try {
       const platform = (window as any).Capacitor.getPlatform?.();
+      console.log('🔍 DEBUG - Platform détectée:', platform);
       // Retourner true seulement pour les plateformes natives (pas 'web')
-      return platform === 'android' || platform === 'ios';
-    } catch {
+      const isNative = platform === 'android' || platform === 'ios';
+      console.log(isNative ? '✅ Capacitor détecté - plateforme native' : '❌ Capacitor détecté mais pas en natif');
+      return isNative;
+    } catch (error) {
+      console.error('❌ Erreur lors de la détection de la plateforme:', error);
       return false;
     }
   }
   
+  console.log('❌ Capacitor non détecté - mode web');
   return false;
 };
 
