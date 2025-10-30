@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { SocialLogin } from '@capgo/capacitor-social-login';
 
 export interface FacebookConnection {
   id: string;
@@ -50,6 +51,20 @@ export const useFacebookConnection = () => {
   const [connections, setConnections] = useState<FacebookConnection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
+
+  // Initialize Facebook SDK for native apps
+  useEffect(() => {
+    if (isCapacitorApp()) {
+      SocialLogin.initialize({
+        facebook: {
+          appId: '990917606233821',
+          clientToken: '97102b2b5dcd983af19b3ca5d7c91c72'
+        }
+      }).catch(err => {
+        console.error('Failed to initialize Facebook SDK:', err);
+      });
+    }
+  }, []);
 
   const fetchConnections = useCallback(async () => {
     try {
@@ -144,9 +159,55 @@ export const useFacebookConnection = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Non authentifié');
 
+      // Use native SDK for Capacitor apps
+      if (isCapacitorApp()) {
+        console.log('📱 Using native Facebook SDK');
+        
+        try {
+          const result = await SocialLogin.login({
+            provider: 'facebook',
+            options: {
+              permissions: ['email', 'public_profile', 'pages_show_list', 'pages_read_engagement', 'pages_manage_posts']
+            }
+          });
+
+          console.log('✅ Facebook native login result:', result);
+
+          if (result.result?.accessToken?.token) {
+            // Exchange token with backend
+            const { data, error } = await supabase.functions.invoke('facebook-oauth-native', {
+              body: {
+                accessToken: result.result.accessToken.token,
+                userId: user.id
+              }
+            });
+
+            if (error) {
+              console.error('❌ Error exchanging token:', error);
+              throw error;
+            }
+
+            if (data?.success) {
+              toast.success(data.message || 'Page(s) Facebook connectée(s) avec succès !');
+              await fetchConnections();
+            } else {
+              throw new Error(data?.error || 'Échec de la connexion Facebook');
+            }
+          } else {
+            throw new Error('Pas de token d\'accès reçu');
+          }
+          
+          setIsConnecting(false);
+          return;
+        } catch (err) {
+          console.error('❌ Native Facebook login error:', err);
+          throw err;
+        }
+      }
+
+      // Web flow for non-Capacitor environments
       const redirectUri = getRedirectUri();
       console.log('🔵 Redirect URI:', redirectUri);
-      console.log('🔵 Is Capacitor App:', isCapacitorApp());
       
       // Get the auth URL from the edge function with userId for state generation
       const { data, error } = await supabase.functions.invoke('facebook-auth-url', {
