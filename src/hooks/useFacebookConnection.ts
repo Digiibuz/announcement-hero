@@ -142,20 +142,22 @@ export const useFacebookConnection = () => {
   // Vérifier s'il y a un code Facebook en attente (mobile redirect)
   useEffect(() => {
     const pendingCode = localStorage.getItem('facebook_auth_code');
+    const pendingState = localStorage.getItem('facebook_auth_state');
     const pendingTimestamp = localStorage.getItem('facebook_auth_timestamp');
     
-    if (pendingCode && pendingTimestamp) {
+    if (pendingCode && pendingState && pendingTimestamp) {
       const age = Date.now() - parseInt(pendingTimestamp);
       // Traiter le code s'il a moins de 30 secondes
       if (age < 30000) {
-        console.log('🔄 Code Facebook en attente détecté, traitement...');
+        console.log('🔄 Code et state Facebook en attente détectés, traitement...');
         setIsConnecting(true);
-        exchangeCodeForToken(pendingCode);
+        exchangeCodeForToken(pendingCode, pendingState);
       } else {
         // Code trop ancien, le nettoyer
         console.log('⏱️ Code Facebook expiré, nettoyage...');
         localStorage.removeItem('facebook_auth_code');
         localStorage.removeItem('facebook_auth_timestamp');
+        localStorage.removeItem('facebook_auth_state');
       }
     }
   }, [exchangeCodeForToken]);
@@ -278,13 +280,28 @@ export const useFacebookConnection = () => {
 
       // Méthode 1: PostMessage (cas normal)
       const messageHandler = (event: MessageEvent) => {
-        if (event.origin !== window.location.origin) return;
+        // 🔐 VALIDATION ORIGIN (Protection XSS)
+        if (event.origin !== window.location.origin) {
+          console.warn('⚠️ Message reçu d\'une origine non autorisée:', event.origin);
+          return;
+        }
         
         if (event.data.type === 'FACEBOOK_AUTH_SUCCESS') {
-          console.log('✅ Code reçu via postMessage');
+          const { code, state: receivedState } = event.data;
+          
+          // 🔐 VALIDATION STATE via postMessage
+          const expectedState = localStorage.getItem('facebook_auth_state');
+          if (!receivedState || !expectedState || receivedState !== expectedState) {
+            console.error('❌ State invalide dans postMessage');
+            toast.error('Erreur de sécurité - Veuillez réessayer');
+            setIsConnecting(false);
+            return;
+          }
+          
+          console.log('✅ Code et state reçus via postMessage');
           window.removeEventListener('message', messageHandler);
           clearInterval(pollInterval);
-          exchangeCodeForToken(event.data.code);
+          exchangeCodeForToken(code, receivedState);
         }
       };
       
@@ -305,11 +322,12 @@ export const useFacebookConnection = () => {
           
           // Vérifier une dernière fois le localStorage
           const code = localStorage.getItem('facebook_auth_code');
+          const storedState = localStorage.getItem('facebook_auth_state');
           const error = localStorage.getItem('facebook_auth_error');
           
-          if (code) {
-            console.log('✅ Code trouvé dans localStorage après fermeture');
-            exchangeCodeForToken(code);
+          if (code && storedState) {
+            console.log('✅ Code et state trouvés dans localStorage après fermeture');
+            exchangeCodeForToken(code, storedState);
           } else if (error) {
             console.error('❌ Erreur trouvée:', error);
             toast.error('Erreur lors de la connexion à Facebook');
@@ -323,16 +341,17 @@ export const useFacebookConnection = () => {
 
         // Polling localStorage (cas 2FA)
         const code = localStorage.getItem('facebook_auth_code');
+        const storedState = localStorage.getItem('facebook_auth_state');
         const timestamp = localStorage.getItem('facebook_auth_timestamp');
         
-        if (code && timestamp) {
+        if (code && storedState && timestamp) {
           const age = Date.now() - parseInt(timestamp);
           if (age < 10000) { // Code de moins de 10 secondes
-            console.log('✅ Code trouvé dans localStorage (2FA détecté)');
+            console.log('✅ Code et state trouvés dans localStorage (2FA détecté)');
             clearInterval(pollInterval);
             window.removeEventListener('message', messageHandler);
             popup.close();
-            exchangeCodeForToken(code);
+            exchangeCodeForToken(code, storedState);
           }
         }
 

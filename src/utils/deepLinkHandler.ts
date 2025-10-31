@@ -27,17 +27,15 @@ export const useDeepLinkHandler = () => {
           const error = url.searchParams.get('error');
           const state = url.searchParams.get('state');
           
-          if (code) {
-            console.log('✅ Code Facebook trouvé dans deep link:', code);
+          if (code && state) {
+            console.log('✅ Code et state Facebook trouvés dans deep link');
+            console.log('  → Code:', code.substring(0, 20) + '...');
+            console.log('  → State:', state.substring(0, 20) + '...');
+            
             localStorage.setItem('facebook_auth_code', code);
+            localStorage.setItem('facebook_auth_state', state);
             localStorage.setItem('facebook_auth_timestamp', Date.now().toString());
             localStorage.setItem('facebook_auth_redirect', 'true');
-            
-            // Stocker le state si présent
-            if (state) {
-              localStorage.setItem('facebook_auth_state', state);
-              console.log('🔐 State Facebook sauvegardé:', state);
-            }
             
             // Naviguer vers la page de profil ou de retour
             const returnUrl = localStorage.getItem('facebook_return_url') || '/profile';

@@ -15,6 +15,7 @@ const FacebookCallback = () => {
     const handleCallback = async () => {
       const code = searchParams.get('code');
       const error = searchParams.get('error');
+      const state = searchParams.get('state');
 
       if (error) {
         console.error('❌ Erreur OAuth Facebook:', error);
@@ -33,6 +34,22 @@ const FacebookCallback = () => {
       }
 
       console.log('✅ Code d\'autorisation reçu:', code.substring(0, 20) + '...');
+      console.log('🔐 State reçu:', state ? state.substring(0, 20) + '...' : 'MANQUANT');
+
+      // VALIDATION DU STATE (Protection CSRF)
+      const expectedState = localStorage.getItem('facebook_auth_state');
+      if (!state || !expectedState || state !== expectedState) {
+        console.error('❌ State invalide ou manquant:', { 
+          received: state?.substring(0, 20), 
+          expected: expectedState?.substring(0, 20) 
+        });
+        localStorage.setItem('facebook_auth_error', 'invalid_state');
+        setStatus('Erreur de sécurité - Veuillez réessayer');
+        setTimeout(() => navigate('/profile'), 2000);
+        return;
+      }
+
+      console.log('✅ State validé avec succès');
 
       // TOUJOURS stocker dans localStorage (partage entre fenêtres)
       localStorage.setItem('facebook_auth_code', code);
@@ -67,7 +84,8 @@ const FacebookCallback = () => {
           
           window.opener.postMessage({
             type: 'FACEBOOK_AUTH_SUCCESS',
-            code: code
+            code: code,
+            state: state // Inclure le state dans le postMessage
           }, window.location.origin);
           
           console.log('✅ postMessage envoyé');
