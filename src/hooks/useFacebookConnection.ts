@@ -48,9 +48,10 @@ const isCapacitorApp = () => {
 };
 
 const getRedirectUri = () => {
-  // Pour les apps Capacitor/Android, utiliser l'URL HTTPS qui sera interceptée par App Links
+  // Pour les apps Capacitor/Android, utiliser le CUSTOM SCHEME (fonctionne sans certificat)
+  // Le custom scheme digiibuz:// est défini dans AndroidManifest.xml
   if (isCapacitorApp()) {
-    return 'https://app.digiibuz.fr/facebook-callback';
+    return 'digiibuz://facebook-callback';
   }
   // Pour le web, utiliser l'origine actuelle
   return `${window.location.origin}/facebook-callback`;
