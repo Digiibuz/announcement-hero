@@ -48,10 +48,10 @@ const isCapacitorApp = () => {
 };
 
 const getRedirectUri = () => {
-  // Pour les apps Capacitor/Android, utiliser le CUSTOM SCHEME (fonctionne sans certificat)
-  // Le custom scheme digiibuz:// est défini dans AndroidManifest.xml
+  // Pour les apps Capacitor/Android, utiliser l'URL HTTPS avec App Links
+  // Note: Le flux natif avec SocialLogin ne nécessite PAS de redirect URI
   if (isCapacitorApp()) {
-    return 'digiibuz://facebook-callback';
+    return 'https://app.digiibuz.fr/facebook-callback';
   }
   // Pour le web, utiliser l'origine actuelle
   return `${window.location.origin}/facebook-callback`;
@@ -67,8 +67,8 @@ export const useFacebookConnection = () => {
     if (isCapacitorApp()) {
       SocialLogin.initialize({
         facebook: {
-          appId: '990917606233821',
-          clientToken: '97102b2b5dcd983af19b3ca5d7c91c72'
+          appId: '1734533697251513',
+          clientToken: 'VOTRE_CLIENT_TOKEN_ICI'
         }
       }).catch(err => {
         console.error('Failed to initialize Facebook SDK:', err);
