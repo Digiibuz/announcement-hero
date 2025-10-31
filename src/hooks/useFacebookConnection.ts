@@ -229,9 +229,13 @@ export const useFacebookConnection = () => {
 
       if (error) throw error;
       
-      if (!data?.authUrl) {
-        throw new Error('No auth URL returned');
+      if (!data?.authUrl || !data?.state) {
+        throw new Error('No auth URL or state returned');
       }
+
+      // 🔐 CRITIQUE : Stocker le state AVANT toute redirection
+      localStorage.setItem('facebook_auth_state', data.state);
+      console.log('✅ State stocké dans localStorage:', data.state);
 
       const isMobile = isMobileDevice();
       
@@ -239,7 +243,7 @@ export const useFacebookConnection = () => {
         // Mobile: redirection complète avec state
         console.log('📱 Appareil mobile détecté - redirection complète');
         localStorage.setItem('facebook_auth_redirect', 'true');
-        localStorage.setItem('facebook_auth_state', data.state); // Stocker le state
+        // Le state est déjà stocké ci-dessus (ligne 237)
         localStorage.setItem('facebook_return_url', window.location.pathname + window.location.search); // Sauvegarder l'URL de retour
         
         // Sauvegarder l'étape actuelle si on est sur /create
@@ -257,11 +261,10 @@ export const useFacebookConnection = () => {
       // Desktop: popup
       console.log('🖥️ Desktop détecté - ouverture popup');
       
-      // Nettoyer les anciennes données et stocker le state
+      // Nettoyer les anciennes données (le state est déjà stocké ci-dessus)
       localStorage.removeItem('facebook_auth_code');
       localStorage.removeItem('facebook_auth_error');
       localStorage.removeItem('instagram_2fa_detected');
-      localStorage.setItem('facebook_auth_state', data.state); // Stocker le state pour validation
       
       const width = 600;
       const height = 700;
