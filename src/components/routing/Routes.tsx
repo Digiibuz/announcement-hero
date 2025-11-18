@@ -21,6 +21,7 @@ import Templates from "@/pages/Templates";
 import FacebookCallback from "@/pages/FacebookCallback";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import FacebookDataDeletion from "@/pages/FacebookDataDeletion";
+import AccountDeletion from "@/pages/AccountDeletion";
 
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
@@ -53,6 +54,12 @@ const AppRoutes = () => {
       <Route 
         path="/facebook-data-deletion" 
         element={<FacebookDataDeletion />} 
+      />
+      
+      {/* Suppression de compte - accessible à tous */}
+      <Route 
+        path="/account-deletion" 
+        element={<AccountDeletion />} 
       />
       
       {/* Protected routes */}
