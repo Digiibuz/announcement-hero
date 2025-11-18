@@ -443,6 +443,8 @@ export type Database = {
           app_password: string | null
           app_username: string | null
           created_at: string
+          endpoint_checked_at: string | null
+          endpoint_type: string | null
           id: string
           name: string
           password: string | null
@@ -456,6 +458,8 @@ export type Database = {
           app_password?: string | null
           app_username?: string | null
           created_at?: string
+          endpoint_checked_at?: string | null
+          endpoint_type?: string | null
           id?: string
           name: string
           password?: string | null
@@ -469,6 +473,8 @@ export type Database = {
           app_password?: string | null
           app_username?: string | null
           created_at?: string
+          endpoint_checked_at?: string | null
+          endpoint_type?: string | null
           id?: string
           name?: string
           password?: string | null
@@ -485,14 +491,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      cleanup_expired_facebook_auth_states: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      get_maintenance_message: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      cleanup_expired_facebook_auth_states: { Args: never; Returns: undefined }
+      get_maintenance_message: { Args: never; Returns: string }
       get_monthly_ai_count: {
         Args: { p_user_id: string }
         Returns: {
@@ -528,22 +528,10 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: undefined
       }
-      is_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_admin_user: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_editor: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_maintenance_active: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      is_admin: { Args: never; Returns: boolean }
+      is_admin_user: { Args: never; Returns: boolean }
+      is_editor: { Args: never; Returns: boolean }
+      is_maintenance_active: { Args: never; Returns: boolean }
     }
     Enums: {
       announcement_status: "draft" | "published" | "scheduled"
