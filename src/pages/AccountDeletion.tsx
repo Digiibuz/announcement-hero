@@ -38,7 +38,7 @@ const AccountDeletion = () => {
             <ol className="list-decimal list-inside space-y-3 text-muted-foreground ml-4">
               <li>Ouvrez l'application DigiiBuz sur votre appareil</li>
               <li>Connectez-vous à votre compte</li>
-              <li>Accédez à votre profil en cliquant sur votre nom en haut à droite</li>
+              <li>Accédez à l'espace "Profil"</li>
               <li>Faites défiler jusqu'à la section "Zone dangereuse"</li>
               <li>Cliquez sur le bouton "Supprimer mon compte"</li>
               <li>Saisissez votre adresse email pour confirmer</li>
