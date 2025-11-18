@@ -8,7 +8,14 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "cap:sync": "npx cap sync",
+    "cap:open": "npx cap open",
+    "cap:copy": "npx cap copy",
+    "android:prepare": "npm run build && npx cap sync android",
+    "android:open": "npm run android:prepare && npx cap open android",
+    "android:run": "npm run android:prepare && cd android && ./gradlew installDebug",
+    "android:dev": "echo \"Run 'npm run dev' then set 'server.url' in capacitor.config.ts to your machine IP or 10.0.2.2 for emulator and launch Android Studio.\" && exit 0"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.3",

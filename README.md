@@ -152,3 +152,73 @@ function MyComponent() {
   // ... rest of component logic
 }
 ```
+
+## Émulation Android (Capacitor)
+
+Le projet est préconfiguré avec Capacitor (`capacitor.config.ts`) et contient déjà le dossier `android/`.
+Voici des étapes rapides pour builder et lancer l'application Android (émulateur ou appareil physique).
+
+1) Installer les dépendances (si ce n'est pas déjà fait)
+
+```bash
+npm install
+```
+
+2) Mode build (production web -> intégré dans l'apk)
+
+```bash
+# construit l'app web dans /dist, synchronise avec la plateforme Android
+npm run android:prepare
+# ouvre le projet Android dans Android Studio
+npm run cap:open android
+```
+
+3) Lancer depuis Android Studio
+
+- Ouvrez le projet Android (après `npm run cap:open android`) dans Android Studio.
+- Démarrez un émulateur ou branchez un appareil physique.
+- Cliquez sur Run pour installer et lancer l'application.
+
+4) Installer l'APK depuis la ligne de commande (optionnel)
+
+```bash
+# construit puis installe l'apk debug sur l'appareil connecté
+npm run android:prepare
+cd android
+./gradlew installDebug
+```
+
+5) Développement avec live-reload (chargement depuis le serveur Vite)
+
+- Récupérez l'adresse IP locale de votre machine (macOS) :
+
+```bash
+ipconfig getifaddr en0
+# ou si vous êtes en Ethernet
+ipconfig getifaddr en1
+```
+
+- Dans `capacitor.config.ts`, remplacez temporairement `server.url` par `http://<VOTRE_IP>:5173` et conservez `cleartext: true` :
+
+```ts
+server: {
+  url: 'http://192.168.x.y:5173',
+  cleartext: true
+}
+```
+
+- Lancez le serveur de développement Vite :
+
+```bash
+npm run dev
+```
+
+- Ouvrez le projet Android dans Android Studio et lancez l'application : elle chargera le contenu depuis votre serveur local (live-reload).
+
+Remarques et dépannage
+
+- `webDir` est configuré sur `dist` (build produit par `vite build`).
+- Si vous préférez charger une URL distante (par ex. `https://app.digiibuz.fr`), ne changez pas `server.url`.
+- Assurez-vous d'avoir Android Studio, SDK, et une version Java compatible installés.
+- Si vous rencontrez des erreurs Gradle, ouvrez Android Studio et laissez-le télécharger les dépendances/SDK manquants.
+- Pour revenir à la configuration de production, remplacez `server.url` par l'URL distante ou supprimez le champ `server`.
