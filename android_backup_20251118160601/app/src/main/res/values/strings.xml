@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DigiiBuz</string>
+    <string name="title_activity_main">DigiiBuz</string>
+    <string name="package_name">com.digiibuz.app</string>
+    <string name="custom_url_scheme">digiibuz</string>
+    
+    <!-- Facebook OAuth callback host -->
+    <string name="facebook_callback_host">app.digiibuz.fr</string>
+    
+    <!-- Facebook SDK Configuration -->
+    <string name="facebook_app_id">1734533697251513</string>
+    <string name="facebook_client_token">VOTRE_CLIENT_TOKEN_ICI</string>
+    <string name="fb_login_protocol_scheme">fb1734533697251513</string>
+</resources>

@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.digiibuz.app",
+      "sha256_cert_fingerprints": [
+        "17:B3:FC:A9:7B:0C:27:55:B8:F1:91:BA:18:BC:D0:DB:0C:51:04:F8:59:7E:C8:70:22:C4:10:05:69:F7:47:A2"
+      ]
+    }
+  }
+]
