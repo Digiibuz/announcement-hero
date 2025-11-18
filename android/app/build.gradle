@@ -12,10 +12,12 @@ android {
     
     signingConfigs {
         release {
-            storeFile file(DIGIIBUZ_RELEASE_STORE_FILE)
-            storePassword DIGIIBUZ_RELEASE_STORE_PASSWORD
-            keyAlias DIGIIBUZ_RELEASE_KEY_ALIAS
-            keyPassword DIGIIBUZ_RELEASE_KEY_PASSWORD
+            if (keystorePropertiesFile.exists()) {
+                storeFile file(keystoreProperties['DIGIIBUZ_RELEASE_STORE_FILE'])
+                storePassword keystoreProperties['DIGIIBUZ_RELEASE_STORE_PASSWORD']
+                keyAlias keystoreProperties['DIGIIBUZ_RELEASE_KEY_ALIAS']
+                keyPassword keystoreProperties['DIGIIBUZ_RELEASE_KEY_PASSWORD']
+            }
         }
     }
     
