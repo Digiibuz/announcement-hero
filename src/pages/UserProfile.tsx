@@ -25,6 +25,7 @@ import { z } from "zod";
 import { useServiceWorker } from "@/hooks/useServiceWorker";
 import { Badge } from "@/components/ui/badge";
 import FacebookConnectionTab from "@/components/users/FacebookConnectionTab";
+import DeleteAccountDialog from "@/components/users/DeleteAccountDialog";
 
 // Schema de validation pour le changement de mot de passe
 const passwordSchema = z.object({
@@ -400,6 +401,26 @@ const UserProfile = () => {
                 <Button variant="destructive" onClick={handleLogout}>
                   Se déconnecter
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </AnimatedContainer>
+
+        <AnimatedContainer delay={350}>
+          <Card className="border-destructive/50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-2xl font-bold text-destructive">Zone dangereuse</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  La suppression de votre compte est définitive et irréversible. 
+                  Toutes vos données seront définitivement supprimées.
+                </p>
+                <DeleteAccountDialog 
+                  userEmail={user.email}
+                  onDeleted={() => navigate("/login")}
+                />
               </div>
             </CardContent>
           </Card>
