@@ -31,19 +31,22 @@ const AccountDeletion = () => {
           <CardContent className="space-y-6">
             {/* Steps */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-primary" />
-                Étapes à suivre
-              </h3>
-              <ol className="list-decimal list-inside space-y-3 text-muted-foreground ml-4">
-                <li>Connectez-vous à votre compte DigiiBuz</li>
-                <li>Accédez à votre profil en cliquant sur votre nom en haut à droite</li>
-                <li>Cliquez sur le bouton "Supprimer mon compte"</li>
-                <li>Confirmez la suppression dans la fenêtre de dialogue</li>
-                <li>
-                  Vous recevrez un email de confirmation une fois la suppression effectuée
-                </li>
-              </ol>
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-primary" />
+              Étapes à suivre
+            </h3>
+            <ol className="list-decimal list-inside space-y-3 text-muted-foreground ml-4">
+              <li>Ouvrez l'application DigiiBuz sur votre appareil</li>
+              <li>Connectez-vous à votre compte</li>
+              <li>Accédez à votre profil en cliquant sur votre nom en haut à droite</li>
+              <li>Faites défiler jusqu'à la section "Zone dangereuse"</li>
+              <li>Cliquez sur le bouton "Supprimer mon compte"</li>
+              <li>Saisissez votre adresse email pour confirmer</li>
+              <li>Cliquez sur "Supprimer définitivement"</li>
+              <li>
+                Votre compte sera immédiatement supprimé et vous recevrez un email de confirmation
+              </li>
+            </ol>
             </div>
 
             {/* Alternative Method */}
