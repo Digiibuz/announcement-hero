@@ -6,20 +6,25 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Lightbulb, MapPin, Target, Zap, HelpCircle, Sparkles } from "lucide-react";
+import { Lightbulb, MapPin, Target, Zap, HelpCircle, Sparkles, Edit3 } from "lucide-react";
 import { AnnouncementFormData } from "../AnnouncementForm";
 import { UseFormReturn } from "react-hook-form";
 import DescriptionField from "../DescriptionField";
+import DescriptionMobileEditor from "../DescriptionMobileEditor";
 import { Textarea } from "@/components/ui/textarea";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface DescriptionStepProps {
   form: UseFormReturn<AnnouncementFormData>;
   isMobile?: boolean;
 }
 
-const DescriptionStep = ({ form, isMobile }: DescriptionStepProps) => {
+const DescriptionStep = ({ form, isMobile: isMobileProp }: DescriptionStepProps) => {
   const [titleLength, setTitleLength] = useState(0);
   const [descriptionLength, setDescriptionLength] = useState(0);
+  const [showMobileEditor, setShowMobileEditor] = useState(false);
+  const isMobileDevice = useIsMobile();
+  const isMobile = isMobileProp ?? isMobileDevice;
 
   useEffect(() => {
     // Mettre à jour les compteurs de caractères lors de l'initialisation et des changements
@@ -177,8 +182,46 @@ const DescriptionStep = ({ form, isMobile }: DescriptionStepProps) => {
           />
 
           <FormItem>
-            <DescriptionField form={form} />
-            <div className="character-counter mt-1">{descriptionLength} caractères</div>
+            {isMobile ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowMobileEditor(true)}
+                  className="w-full justify-start text-left h-auto min-h-[100px] p-4"
+                >
+                  <div className="flex items-start gap-3 w-full">
+                    <Edit3 className="h-5 w-5 mt-0.5 text-muted-foreground flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      {form.getValues('description') ? (
+                        <div 
+                          className="prose prose-sm max-w-none line-clamp-3 text-left"
+                          dangerouslySetInnerHTML={{ 
+                            __html: form.getValues('description') 
+                          }}
+                        />
+                      ) : (
+                        <span className="text-muted-foreground">
+                          Touchez pour rédiger votre description...
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </Button>
+                <div className="character-counter mt-1">{descriptionLength} caractères</div>
+                
+                <DescriptionMobileEditor 
+                  form={form}
+                  open={showMobileEditor}
+                  onOpenChange={setShowMobileEditor}
+                />
+              </>
+            ) : (
+              <>
+                <DescriptionField form={form} />
+                <div className="character-counter mt-1">{descriptionLength} caractères</div>
+              </>
+            )}
           </FormItem>
         </CardContent>
       </Card>
