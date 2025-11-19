@@ -160,7 +160,7 @@ const DescriptionStep = ({ form, isMobile }: DescriptionStepProps) => {
                 <FormControl>
                   <div className="space-y-1">
                     <Input 
-                      placeholder="Ex: Création d'une piscine béton en carrelage bali à Perpignan" 
+                      placeholder="" 
                       className="h-11" 
                       {...field} 
                       onChange={(e) => {
