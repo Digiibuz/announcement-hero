@@ -190,20 +190,45 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
                 className="w-full h-full object-cover"
               />
               
+              {/* Overlay de recadrage requis */}
+              {!isCurrentImageCompatible && !isCurrentImageCropped && (
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex flex-col items-center justify-center gap-4 animate-in fade-in duration-300">
+                  <div className="text-center space-y-2">
+                    <Crop className="h-12 w-12 text-white mx-auto" />
+                    <p className="text-white font-semibold text-lg">Recadrage nécessaire</p>
+                    <p className="text-white/80 text-sm max-w-xs">
+                      Cette image doit être ajustée aux formats Instagram
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="lg"
+                    onClick={() => {
+                      setCropImageIndex(currentImageIndex);
+                      setShowCropDialog(true);
+                    }}
+                    className="bg-white text-black hover:bg-white/90 font-semibold shadow-lg"
+                  >
+                    <Crop className="h-5 w-5 mr-2" />
+                    Recadrer maintenant
+                  </Button>
+                </div>
+              )}
+              
               {/* Badge de compatibilité */}
               <div className="absolute top-4 left-4">
                 {isCurrentImageCropped ? (
-                  <Badge className="bg-green-500/90 hover:bg-green-500 text-white gap-1.5">
+                  <Badge className="bg-green-500/90 hover:bg-green-500 text-white gap-1.5 shadow-lg">
                     <CheckCircle2 className="h-3.5 w-3.5" />
                     Image recadrée
                   </Badge>
                 ) : isCurrentImageCompatible ? (
-                  <Badge className="bg-green-500/90 hover:bg-green-500 text-white gap-1.5">
+                  <Badge className="bg-green-500/90 hover:bg-green-500 text-white gap-1.5 shadow-lg">
                     <CheckCircle2 className="h-3.5 w-3.5" />
                     Prêt pour Instagram
                   </Badge>
                 ) : (
-                  <Badge variant="destructive" className="gap-1.5 bg-amber-500/90 hover:bg-amber-500">
+                  <Badge className="gap-1.5 bg-amber-500 text-white shadow-lg animate-pulse">
                     <AlertCircle className="h-3.5 w-3.5" />
                     Recadrage requis
                   </Badge>
