@@ -177,8 +177,8 @@ const DescriptionMobileEditor = ({ form, open, onOpenChange }: DescriptionMobile
   return (
     <>
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="min-h-[100dvh] rounded-none">
-          <div className="flex flex-col min-h-full">
+        <DrawerContent className="h-[100dvh] rounded-none">
+          <div className="flex flex-col h-full">
             {/* Header - Sticky pour rester visible */}
             <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b bg-background">
               <Button
@@ -397,15 +397,16 @@ const DescriptionMobileEditor = ({ form, open, onOpenChange }: DescriptionMobile
               </TooltipProvider>
             </div>
 
-            {/* Editor */}
-            <div className="flex-1 overflow-y-auto p-4">
-              <div
-                ref={editorRef}
-                contentEditable
-                onInput={updateTempContent}
-                onPaste={handlePaste}
-                suppressContentEditableWarning
-                className="min-h-[400px] outline-none prose prose-sm max-w-none focus:outline-none"
+            {/* Editor - flex-1 + overflow-y-auto crée un contexte de scroll isolé */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-4">
+                <div
+                  ref={editorRef}
+                  contentEditable
+                  onInput={updateTempContent}
+                  onPaste={handlePaste}
+                  suppressContentEditableWarning
+                  className="min-h-[400px] outline-none prose prose-sm max-w-none focus:outline-none"
                 style={{
                   wordWrap: 'break-word',
                   overflowWrap: 'break-word'
@@ -414,7 +415,8 @@ const DescriptionMobileEditor = ({ form, open, onOpenChange }: DescriptionMobile
                   // Empêcher le scroll automatique vers le champ
                   e.preventDefault();
                 }}
-              />
+                />
+              </div>
             </div>
 
             {/* Character counter */}
