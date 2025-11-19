@@ -6,11 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Lightbulb, MapPin, Target, Zap, HelpCircle, Sparkles } from "lucide-react";
+import { Lightbulb, MapPin, Target, Zap, HelpCircle, Edit3 } from "lucide-react";
 import { AnnouncementFormData } from "../AnnouncementForm";
 import { UseFormReturn } from "react-hook-form";
-import DescriptionField from "../DescriptionField";
-import { Textarea } from "@/components/ui/textarea";
+import DescriptionEditor from "../DescriptionEditor";
 
 interface DescriptionStepProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -20,6 +19,7 @@ interface DescriptionStepProps {
 const DescriptionStep = ({ form, isMobile }: DescriptionStepProps) => {
   const [titleLength, setTitleLength] = useState(0);
   const [descriptionLength, setDescriptionLength] = useState(0);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
 
   useEffect(() => {
     // Mettre à jour les compteurs de caractères lors de l'initialisation et des changements
@@ -176,10 +176,45 @@ const DescriptionStep = ({ form, isMobile }: DescriptionStepProps) => {
             )} 
           />
 
-          <FormItem>
-            <DescriptionField form={form} />
-            <div className="character-counter mt-1">{descriptionLength} caractères</div>
-          </FormItem>
+          {/* Description Field - Click to Open Editor */}
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Description</FormLabel>
+                <FormControl>
+                  <div
+                    onClick={() => setIsEditorOpen(true)}
+                    className="min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm cursor-pointer hover:border-primary transition-colors"
+                  >
+                    {field.value ? (
+                      <div 
+                        className="prose prose-sm max-w-none"
+                        dangerouslySetInnerHTML={{ __html: field.value }}
+                      />
+                    ) : (
+                      <div className="text-muted-foreground flex items-center gap-2">
+                        <Edit3 className="h-4 w-4" />
+                        Cliquez pour rédiger la description...
+                      </div>
+                    )}
+                  </div>
+                </FormControl>
+                <div className="text-xs text-muted-foreground text-right mt-1">
+                  {descriptionLength} caractères
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Description Editor Modal */}
+          <DescriptionEditor
+            form={form}
+            open={isEditorOpen}
+            onOpenChange={setIsEditorOpen}
+          />
         </CardContent>
       </Card>
     </div>
