@@ -44,7 +44,7 @@ const passwordSchema = z.object({
 type PasswordForm = z.infer<typeof passwordSchema>;
 
 const UserProfile = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   const navigate = useNavigate();
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
@@ -66,12 +66,12 @@ const UserProfile = () => {
     }
   });
 
-  // Rediriger vers le dashboard si pas d'utilisateur
+  // Rediriger vers le dashboard si pas d'utilisateur (mais pas pendant le chargement)
   React.useEffect(() => {
-    if (!user) {
+    if (!isLoading && !user) {
       navigate("/dashboard");
     }
-  }, [user, navigate]);
+  }, [user, navigate, isLoading]);
 
   if (!user) {
     return null;
