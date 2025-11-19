@@ -179,8 +179,8 @@ const DescriptionMobileEditor = ({ form, open, onOpenChange }: DescriptionMobile
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent className="h-[100dvh] rounded-none">
           <div className="flex flex-col h-full">
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b bg-background">
+            {/* Header - Sticky pour rester visible */}
+            <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b bg-background">
               <Button
                 type="button"
                 variant="ghost"
@@ -202,8 +202,8 @@ const DescriptionMobileEditor = ({ form, open, onOpenChange }: DescriptionMobile
               </Button>
             </div>
 
-            {/* Toolbar */}
-            <div className="flex items-center gap-1 px-2 py-2 border-b bg-muted/30 overflow-x-auto">
+            {/* Toolbar - Sticky pour rester visible même avec le clavier */}
+            <div className="sticky top-[57px] z-10 flex items-center gap-1 px-2 py-2 border-b bg-background overflow-x-auto">
               <TooltipProvider>
                 {/* AI Button */}
                 <Tooltip>
