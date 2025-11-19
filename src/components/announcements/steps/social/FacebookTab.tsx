@@ -145,7 +145,7 @@ export const FacebookTab = ({ form }: FacebookTabProps) => {
                 <Textarea
                   {...field}
                   placeholder="Rédigez votre publication Facebook avec hashtags intégrés..."
-                  className="min-h-[150px] resize-none border-0 bg-muted/30 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  className="min-h-[150px] resize-none border border-input bg-card"
                   maxLength={2200}
                 />
               </FormControl>
