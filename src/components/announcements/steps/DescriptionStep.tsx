@@ -184,24 +184,25 @@ const DescriptionStep = ({ form, isMobile: isMobileProp }: DescriptionStepProps)
           <FormItem>
             {isMobile ? (
               <>
+                <FormLabel>Description</FormLabel>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setShowMobileEditor(true)}
-                  className="w-full justify-start text-left h-auto min-h-[100px] p-4"
+                  className="w-full justify-start text-left h-auto min-h-[60px] p-3"
                 >
-                  <div className="flex items-start gap-3 w-full">
-                    <Edit3 className="h-5 w-5 mt-0.5 text-muted-foreground flex-shrink-0" />
+                  <div className="flex items-center gap-3 w-full">
+                    <Edit3 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       {form.getValues('description') ? (
                         <div 
-                          className="prose prose-sm max-w-none line-clamp-3 text-left"
+                          className="prose prose-sm max-w-none line-clamp-2 text-left text-foreground"
                           dangerouslySetInnerHTML={{ 
                             __html: form.getValues('description') 
                           }}
                         />
                       ) : (
-                        <span className="text-muted-foreground">
+                        <span className="text-muted-foreground text-sm">
                           Touchez pour rédiger votre description...
                         </span>
                       )}
