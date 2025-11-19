@@ -436,7 +436,7 @@ const DescriptionEditor = ({ form, open, onOpenChange }: DescriptionEditorProps)
       </div>
 
       {/* AI Loading Overlay */}
-      <AILoadingOverlay isVisible={isOptimizing} />
+      <AILoadingOverlay isVisible={isOptimizing.generateDescription} />
 
       {/* AI Settings Dialog - Desktop */}
       {!isMobile ? (
