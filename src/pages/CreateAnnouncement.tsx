@@ -529,6 +529,7 @@ const CreateAnnouncement = () => {
             totalSteps={stepConfigs.length} 
             onSaveDraft={saveAnnouncementDraft}
             isSavingDraft={isSavingDraft}
+            onClearData={clearSavedData}
           />
 
           {!canPublish() && (
@@ -622,6 +623,7 @@ const CreateAnnouncement = () => {
             totalSteps={stepConfigs.length} 
             onSaveDraft={saveAnnouncementDraft}
             isSavingDraft={isSavingDraft}
+            onClearData={clearSavedData}
           />
 
           {!canPublish() && (

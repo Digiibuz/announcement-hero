@@ -10,9 +10,14 @@ interface SaveDraftDialogProps {
   onSaveDraft: () => Promise<void>;
   onDiscard: () => void;
   isSaving: boolean;
+  onClearData: () => void;
 }
 
-const SaveDraftDialog = ({ onSaveDraft, onDiscard, isSaving }: SaveDraftDialogProps) => {
+const SaveDraftDialog = ({ onSaveDraft, onDiscard, isSaving, onClearData }: SaveDraftDialogProps) => {
+  const handleDiscard = () => {
+    onClearData();
+    onDiscard();
+  };
   return (
     <SheetContent side="bottom" className="p-6 rounded-t-xl bg-white">
       <div className="space-y-6">
@@ -33,7 +38,7 @@ const SaveDraftDialog = ({ onSaveDraft, onDiscard, isSaving }: SaveDraftDialogPr
           </Button>
           <Button 
             variant="outline" 
-            onClick={onDiscard} 
+            onClick={handleDiscard} 
             className="w-full"
             disabled={isSaving}
           >
@@ -50,13 +55,15 @@ interface CreateAnnouncementHeaderProps {
   totalSteps: number;
   onSaveDraft: () => Promise<void>;
   isSavingDraft: boolean;
+  onClearData: () => void;
 }
 
 const CreateAnnouncementHeader = ({ 
   currentStep, 
   totalSteps,
   onSaveDraft,
-  isSavingDraft
+  isSavingDraft,
+  onClearData
 }: CreateAnnouncementHeaderProps) => {
   const navigate = useNavigate();
   
@@ -66,7 +73,6 @@ const CreateAnnouncementHeader = ({
   };
   
   const handleDiscard = () => {
-    // On pourrait éventuellement effacer le localStorage ici
     navigate("/announcements");
   };
 
@@ -86,6 +92,7 @@ const CreateAnnouncementHeader = ({
             onSaveDraft={handleSaveDraft}
             onDiscard={handleDiscard}
             isSaving={isSavingDraft}
+            onClearData={onClearData}
           />
         </Sheet>
       </div>
