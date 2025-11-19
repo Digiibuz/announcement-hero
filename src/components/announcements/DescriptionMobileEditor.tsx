@@ -177,8 +177,8 @@ const DescriptionMobileEditor = ({ form, open, onOpenChange }: DescriptionMobile
   return (
     <>
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="h-[100dvh] rounded-none">
-          <div className="flex flex-col h-full">
+        <DrawerContent className="min-h-[100dvh] rounded-none">
+          <div className="flex flex-col min-h-full">
             {/* Header - Sticky pour rester visible */}
             <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b bg-background">
               <Button
