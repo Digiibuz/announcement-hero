@@ -63,7 +63,9 @@ const DescriptionMobileEditor = ({ form, open, onOpenChange }: DescriptionMobile
   };
 
   const handleValidate = () => {
-    form.setValue('description', tempContent, { shouldDirty: true, shouldTouch: true });
+    // Récupérer le contenu à jour directement depuis l'éditeur
+    const finalContent = editorRef.current?.innerHTML || '';
+    form.setValue('description', finalContent, { shouldDirty: true, shouldTouch: true });
     onOpenChange(false);
     toast.success("Description enregistrée");
   };
