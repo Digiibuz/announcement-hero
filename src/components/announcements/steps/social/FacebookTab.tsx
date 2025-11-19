@@ -91,7 +91,7 @@ export const FacebookTab = ({ form }: FacebookTabProps) => {
               <img
                 src={selectedImages[currentImageIndex]}
                 alt={`Publication Facebook ${currentImageIndex + 1}`}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
               />
               
               {/* Contrôles d'image */}
