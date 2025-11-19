@@ -370,7 +370,7 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
                 <Textarea
                   {...field}
                   placeholder="Rédigez une belle légende pour votre publication..."
-                  className="min-h-[120px] resize-none border-0 bg-muted/30 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  className="min-h-[120px] resize-none border border-input bg-card"
                   maxLength={2200}
                 />
               </FormControl>
@@ -388,7 +388,7 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
               value={newHashtag}
               onChange={(e) => setNewHashtag(e.target.value)}
               onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addHashtag())}
-              className="flex-1 border-0 bg-muted/30 focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="flex-1 border border-input bg-card"
             />
             <Button type="button" onClick={addHashtag} variant="ghost" size="sm">
               Ajouter
