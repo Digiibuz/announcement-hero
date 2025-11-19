@@ -2,7 +2,7 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/comp
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Sparkles, ImageIcon } from "lucide-react";
+import { Sparkles, ImageIcon, Trash2, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { useState, useEffect } from "react";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
@@ -18,6 +18,7 @@ interface FacebookTabProps {
 export const FacebookTab = ({ form }: FacebookTabProps) => {
   const [showImageSelector, setShowImageSelector] = useState(false);
   const [showAIDialog, setShowAIDialog] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const images = form.watch("images") || [];
   const additionalMedias = form.watch("additionalMedias") || [];
@@ -56,6 +57,25 @@ export const FacebookTab = ({ form }: FacebookTabProps) => {
     }
   };
 
+  const handleDeleteImage = (index: number) => {
+    const updatedImages = selectedImages.filter((_: string, i: number) => i !== index);
+    form.setValue("facebookImages", updatedImages);
+    
+    if (currentImageIndex >= updatedImages.length && updatedImages.length > 0) {
+      setCurrentImageIndex(updatedImages.length - 1);
+    } else if (updatedImages.length === 0) {
+      setCurrentImageIndex(0);
+    }
+  };
+
+  const handlePreviousImage = () => {
+    setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : selectedImages.length - 1));
+  };
+
+  const handleNextImage = () => {
+    setCurrentImageIndex((prev) => (prev < selectedImages.length - 1 ? prev + 1 : 0));
+  };
+
   const contentLength = form.watch("facebookContent")?.length || 0;
 
   return (
@@ -63,29 +83,86 @@ export const FacebookTab = ({ form }: FacebookTabProps) => {
       <AILoadingOverlay isVisible={isOptimizing.generateFacebookContent} />
       <SparklingStars />
 
-      {/* Images pleine largeur */}
+      {/* Images pleine largeur avec carrousel */}
       <div className="relative w-full bg-background">
         {selectedImages.length > 0 ? (
-          <div className={`w-full overflow-hidden bg-muted relative ${
-            selectedImages.length === 1 ? 'aspect-video' : 'grid grid-cols-2 gap-0.5'
-          }`}>
-            {selectedImages.slice(0, 4).map((img: string, idx: number) => (
+          <div className="relative">
+            <div className="w-full aspect-video overflow-hidden bg-muted relative">
               <img
-                key={idx}
-                src={img}
-                alt={`Publication ${idx + 1}`}
-                className={`w-full h-full object-cover ${selectedImages.length === 1 ? '' : 'aspect-square'}`}
+                src={selectedImages[currentImageIndex]}
+                alt={`Publication Facebook ${currentImageIndex + 1}`}
+                className="w-full h-full object-cover"
               />
-            ))}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowImageSelector(true)}
-              className="absolute top-4 right-4 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
-            >
-              <ImageIcon className="h-5 w-5" />
-            </Button>
+              
+              {/* Contrôles d'image */}
+              <div className="absolute top-4 right-4 flex gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDeleteImage(currentImageIndex)}
+                  className="h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background hover:text-destructive"
+                >
+                  <Trash2 className="h-5 w-5" />
+                </Button>
+                {selectedImages.length < 10 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowImageSelector(true)}
+                    className="h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </Button>
+                )}
+              </div>
+              
+              {/* Navigation entre images */}
+              {selectedImages.length > 1 && (
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={handlePreviousImage}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleNextImage}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </Button>
+                  
+                  {/* Indicateurs de position */}
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+                    {selectedImages.map((_: string, index: number) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => setCurrentImageIndex(index)}
+                        className={`h-1.5 rounded-full transition-all ${
+                          index === currentImageIndex 
+                            ? 'w-6 bg-white' 
+                            : 'w-1.5 bg-white/50 hover:bg-white/70'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  
+                  {/* Compteur */}
+                  <div className="absolute top-4 left-4 bg-black/60 text-white px-3 py-1 rounded-full text-sm font-medium">
+                    {currentImageIndex + 1} / {selectedImages.length}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         ) : (
           <div className="aspect-video w-full flex items-center justify-center bg-muted/20">
