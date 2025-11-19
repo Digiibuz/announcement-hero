@@ -31,6 +31,7 @@ export default function ImageManagement({ form, isMobile = false }: ImageManagem
   const [error, setError] = useState<string | null>(null);
   const [processingStatus, setProcessingStatus] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const watchedValues = form.watch();
   const { images = [], additionalMedias = [] } = watchedValues;
@@ -457,6 +458,23 @@ export default function ImageManagement({ form, isMobile = false }: ImageManagem
   const mainImage = selectedImages.find(item => item.type === 'main');
   const firstSelectedImage = selectedImages[0];
 
+  // Detect if device is Android
+  const isAndroid = () => {
+    return /Android/i.test(navigator.userAgent);
+  };
+
+  const triggerFileUpload = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const triggerCameraUpload = () => {
+    if (cameraInputRef.current) {
+      cameraInputRef.current.click();
+    }
+  };
+
   return (
     <Card className={isMobile ? "border-0 shadow-none" : ""}>
       <CardHeader className={isMobile ? "px-0 pt-0" : ""}>
@@ -473,33 +491,58 @@ export default function ImageManagement({ form, isMobile = false }: ImageManagem
       <CardContent className={isMobile ? "px-0 pb-0" : ""}>
         <div className="space-y-6">
           {/* Bouton d'ajout d'images */}
-          <div 
-            className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-8 text-center hover:border-primary/50 hover:bg-muted/20 transition-all duration-200 cursor-pointer group"
-            onClick={() => {
-              // Trigger le click sur l'input file caché
-              document.getElementById('image-upload-input')?.click();
-            }}
-          >
+          <div className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-8 text-center">
             <div className="flex flex-col items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                <Plus className="h-6 w-6 text-muted-foreground group-hover:text-primary" />
+              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                <Plus className="h-6 w-6 text-muted-foreground" />
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground group-hover:text-primary">
+                <p className="text-sm font-medium text-muted-foreground">
                   Ajouter des images
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   JPEG, PNG, WebP, HEIC - Max 10 MB par fichier
                 </p>
               </div>
+              
+              {/* Boutons pour galerie et appareil photo */}
+              <div className="flex flex-col sm:flex-row gap-2 w-full max-w-md mt-2">
+                <button 
+                  type="button"
+                  onClick={triggerFileUpload}
+                  disabled={isUploading}
+                  className="flex-1 px-4 py-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Upload className="inline-block mr-2 h-4 w-4" />
+                  {isMobile ? "Galerie" : "Sélectionner des fichiers"}
+                </button>
+                <button 
+                  type="button"
+                  onClick={triggerCameraUpload}
+                  disabled={isUploading}
+                  className="flex-1 px-4 py-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ImageIcon className="inline-block mr-2 h-4 w-4" />
+                  {isMobile ? "Appareil photo" : "Prendre une photo"}
+                </button>
+              </div>
             </div>
             
-            {/* Input file caché */}
+            {/* Input files cachés */}
             <input
-              id="image-upload-input"
+              ref={fileInputRef}
               type="file"
               multiple
-              accept="image/*"
+              accept="image/*,.heic,.heif"
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+            <input
+              ref={cameraInputRef}
+              type="file"
+              multiple
+              accept="image/*,.heic,.heif"
+              capture={isAndroid() ? "user" : "environment"}
               className="hidden"
               onChange={handleFileUpload}
             />
