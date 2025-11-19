@@ -58,7 +58,7 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
     font-family: 'Nunito', sans-serif;
-    font-weight: 700; /* Nunito Bold par défaut */
+    font-weight: 400; /* Nunito Regular par défaut */
   }
 
   h1, h2, h3, h4, h5, h6 {
