@@ -2,7 +2,7 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/comp
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Sparkles, ImageIcon, Trash2 } from "lucide-react";
+import { Sparkles, ImageIcon, Trash2, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { useState, useEffect } from "react";
 import { useContentOptimization } from "@/hooks/useContentOptimization";
@@ -18,6 +18,7 @@ interface FacebookTabProps {
 export const FacebookTab = ({ form }: FacebookTabProps) => {
   const [showImageSelector, setShowImageSelector] = useState(false);
   const [showAIDialog, setShowAIDialog] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const { optimizeContent, isOptimizing } = useContentOptimization();
   const images = form.watch("images") || [];
   const additionalMedias = form.watch("additionalMedias") || [];
@@ -59,6 +60,20 @@ export const FacebookTab = ({ form }: FacebookTabProps) => {
   const handleDeleteImage = (index: number) => {
     const updatedImages = selectedImages.filter((_: string, i: number) => i !== index);
     form.setValue("facebookImages", updatedImages);
+    
+    if (currentImageIndex >= updatedImages.length && updatedImages.length > 0) {
+      setCurrentImageIndex(updatedImages.length - 1);
+    } else if (updatedImages.length === 0) {
+      setCurrentImageIndex(0);
+    }
+  };
+
+  const handlePreviousImage = () => {
+    setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : selectedImages.length - 1));
+  };
+
+  const handleNextImage = () => {
+    setCurrentImageIndex((prev) => (prev < selectedImages.length - 1 ? prev + 1 : 0));
   };
 
   const contentLength = form.watch("facebookContent")?.length || 0;
@@ -68,130 +83,86 @@ export const FacebookTab = ({ form }: FacebookTabProps) => {
       <AILoadingOverlay isVisible={isOptimizing.generateFacebookContent} />
       <SparklingStars />
 
-      {/* Images au format Facebook */}
+      {/* Images pleine largeur avec carrousel */}
       <div className="relative w-full bg-background">
         {selectedImages.length > 0 ? (
           <div className="relative">
-            {/* Affichage style Facebook selon le nombre d'images */}
-            {selectedImages.length === 1 ? (
-              // 1 image : format paysage complet
-              <div className="relative w-full aspect-video bg-muted overflow-hidden">
-                <img
-                  src={selectedImages[0]}
-                  alt="Publication Facebook"
-                  className="w-full h-full object-cover"
-                />
+            <div className="w-full aspect-video overflow-hidden bg-muted relative">
+              <img
+                src={selectedImages[currentImageIndex]}
+                alt={`Publication Facebook ${currentImageIndex + 1}`}
+                className="w-full h-full object-cover"
+              />
+              
+              {/* Contrôles d'image */}
+              <div className="absolute top-4 right-4 flex gap-2">
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  onClick={() => handleDeleteImage(0)}
-                  className="absolute top-4 right-4 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background hover:text-destructive"
+                  onClick={() => handleDeleteImage(currentImageIndex)}
+                  className="h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background hover:text-destructive"
                 >
                   <Trash2 className="h-5 w-5" />
                 </Button>
-              </div>
-            ) : selectedImages.length === 2 ? (
-              // 2 images : côte à côte
-              <div className="grid grid-cols-2 gap-0.5 w-full">
-                {selectedImages.slice(0, 2).map((img: string, idx: number) => (
-                  <div key={idx} className="relative aspect-square bg-muted overflow-hidden">
-                    <img
-                      src={img}
-                      alt={`Image ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteImage(idx)}
-                      className="absolute top-2 right-2 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            ) : selectedImages.length === 3 ? (
-              // 3 images : 1 grande à gauche, 2 petites empilées à droite
-              <div className="grid grid-cols-2 gap-0.5 w-full">
-                <div className="relative row-span-2 aspect-square bg-muted overflow-hidden">
-                  <img
-                    src={selectedImages[0]}
-                    alt="Image 1"
-                    className="w-full h-full object-cover"
-                  />
+                {selectedImages.length < 10 && (
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleDeleteImage(0)}
-                    className="absolute top-2 right-2 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background hover:text-destructive"
+                    onClick={() => setShowImageSelector(true)}
+                    className="h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Plus className="h-5 w-5" />
                   </Button>
-                </div>
-                {selectedImages.slice(1, 3).map((img: string, idx: number) => (
-                  <div key={idx + 1} className="relative aspect-[2/1] bg-muted overflow-hidden">
-                    <img
-                      src={img}
-                      alt={`Image ${idx + 2}`}
-                      className="w-full h-full object-cover"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteImage(idx + 1)}
-                      className="absolute top-2 right-2 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
+                )}
               </div>
-            ) : (
-              // 4+ images : grille 2x2 (affiche les 4 premières)
-              <div className="grid grid-cols-2 gap-0.5 w-full">
-                {selectedImages.slice(0, 4).map((img: string, idx: number) => (
-                  <div key={idx} className="relative aspect-square bg-muted overflow-hidden">
-                    <img
-                      src={img}
-                      alt={`Image ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                    {idx === 3 && selectedImages.length > 4 && (
-                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                        <span className="text-white text-3xl font-bold">
-                          +{selectedImages.length - 4}
-                        </span>
-                      </div>
-                    )}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteImage(idx)}
-                      className="absolute top-2 right-2 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+              
+              {/* Navigation entre images */}
+              {selectedImages.length > 1 && (
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={handlePreviousImage}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleNextImage}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </Button>
+                  
+                  {/* Indicateurs de position */}
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+                    {selectedImages.map((_: string, index: number) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => setCurrentImageIndex(index)}
+                        className={`h-1.5 rounded-full transition-all ${
+                          index === currentImageIndex 
+                            ? 'w-6 bg-white' 
+                            : 'w-1.5 bg-white/50 hover:bg-white/70'
+                        }`}
+                      />
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-            
-            {/* Bouton pour gérer les images */}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowImageSelector(true)}
-              className="mt-2 w-full"
-            >
-              <ImageIcon className="h-4 w-4 mr-2" />
-              Gérer les images ({selectedImages.length}/10)
-            </Button>
+                  
+                  {/* Compteur */}
+                  <div className="absolute top-4 left-4 bg-black/60 text-white px-3 py-1 rounded-full text-sm font-medium">
+                    {currentImageIndex + 1} / {selectedImages.length}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         ) : (
           <div className="aspect-video w-full flex items-center justify-center bg-muted/20">
