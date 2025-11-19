@@ -39,6 +39,8 @@ const DescriptionMobileEditor = ({ form, open, onOpenChange }: DescriptionMobile
   const [aiInstructions, setAiInstructions] = useState("");
   const [tempContent, setTempContent] = useState("");
   const editorRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const initializedRef = useRef(false);
   const { optimizeContent, isOptimizing } = useContentOptimization();
 
@@ -70,6 +72,42 @@ const DescriptionMobileEditor = ({ form, open, onOpenChange }: DescriptionMobile
       // Reset initialization flag when drawer closes
       initializedRef.current = false;
     }
+  }, [open]);
+
+  // Fix iOS keyboard issue - adjust fixed elements position when virtual keyboard opens
+  useEffect(() => {
+    if (!open || typeof window === 'undefined' || !window.visualViewport) return;
+
+    const handleViewportChange = () => {
+      const visualViewport = window.visualViewport;
+      if (!visualViewport) return;
+
+      const offsetTop = visualViewport.offsetTop;
+      
+      // Adjust header position
+      if (headerRef.current) {
+        headerRef.current.style.transform = `translateY(${offsetTop}px)`;
+      }
+      
+      // Adjust toolbar position (header height is ~57px)
+      if (toolbarRef.current) {
+        toolbarRef.current.style.transform = `translateY(${offsetTop}px)`;
+      }
+    };
+
+    // Listen to viewport changes
+    window.visualViewport.addEventListener('resize', handleViewportChange);
+    window.visualViewport.addEventListener('scroll', handleViewportChange);
+    
+    // Initial call
+    handleViewportChange();
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleViewportChange);
+        window.visualViewport.removeEventListener('scroll', handleViewportChange);
+      }
+    };
   }, [open]);
 
   const updateTempContent = () => {
@@ -179,8 +217,12 @@ const DescriptionMobileEditor = ({ form, open, onOpenChange }: DescriptionMobile
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent className="h-[100vh] rounded-none">
           <div className="flex flex-col h-full">
-            {/* Header - Sticky pour rester visible */}
-            <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b bg-background">
+            {/* Header - Fixed pour rester visible */}
+            <div 
+              ref={headerRef}
+              className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b bg-background"
+              style={{ transition: 'transform 0.1s ease-out' }}
+            >
               <Button
                 type="button"
                 variant="ghost"
@@ -202,8 +244,12 @@ const DescriptionMobileEditor = ({ form, open, onOpenChange }: DescriptionMobile
               </Button>
             </div>
 
-            {/* Toolbar - Sticky pour rester visible même avec le clavier */}
-            <div className="sticky top-[57px] z-10 flex items-center gap-1 px-2 py-2 border-b bg-background overflow-x-auto">
+            {/* Toolbar - Fixed pour rester visible même avec le clavier */}
+            <div 
+              ref={toolbarRef}
+              className="sticky top-[57px] z-10 flex items-center gap-1 px-2 py-2 border-b bg-background overflow-x-auto"
+              style={{ transition: 'transform 0.1s ease-out' }}
+            >
               <TooltipProvider>
                 {/* AI Button */}
                 <Tooltip>
