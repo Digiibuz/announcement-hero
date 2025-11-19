@@ -49,31 +49,23 @@ const DescriptionMobileEditor = ({ form, open, onOpenChange }: DescriptionMobile
 
   // Initialize content when drawer opens - only once per opening
   useEffect(() => {
-    console.log('🔍 DescriptionMobileEditor useEffect - open:', open);
-    
     if (open) {
       // Petit délai pour attendre que le DOM soit rendu
       const timer = setTimeout(() => {
         if (editorRef.current) {
           const currentContent = form.getValues('description') || '';
-          console.log('📝 Loading description from form:', currentContent ? currentContent.substring(0, 50) + '...' : 'VIDE');
-          console.log('📝 Full content length:', currentContent.length);
-          
           editorRef.current.innerHTML = currentContent;
           setTempContent(currentContent);
           initializedRef.current = true;
-        } else {
-          console.error('❌ editorRef.current is still null after timeout!');
         }
-      }, 50); // 50ms devrait suffire
+      }, 50);
       
       return () => clearTimeout(timer);
     } else {
-      console.log('🚪 Drawer closing, resetting initialization flag');
       // Reset initialization flag when drawer closes
       initializedRef.current = false;
     }
-  }, [open]); // Ne dépend QUE de 'open', pas de 'form'
+  }, [open]);
 
   const updateTempContent = () => {
     if (editorRef.current) {
@@ -83,17 +75,8 @@ const DescriptionMobileEditor = ({ form, open, onOpenChange }: DescriptionMobile
   };
 
   const handleValidate = () => {
-    // Récupérer le contenu à jour directement depuis l'éditeur
     const finalContent = editorRef.current?.innerHTML || '';
-    console.log('✅ handleValidate - Saving description:', finalContent ? finalContent.substring(0, 50) + '...' : 'VIDE');
-    console.log('✅ Full content length:', finalContent.length);
-    
     form.setValue('description', finalContent, { shouldDirty: true, shouldTouch: true });
-    
-    // Vérifier que c'est bien sauvegardé
-    const savedContent = form.getValues('description');
-    console.log('✅ Verification - Content after save:', savedContent ? savedContent.substring(0, 50) + '...' : 'VIDE');
-    
     onOpenChange(false);
     toast.success("Description enregistrée");
   };
