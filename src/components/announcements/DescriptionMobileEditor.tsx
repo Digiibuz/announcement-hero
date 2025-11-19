@@ -57,6 +57,11 @@ const DescriptionMobileEditor = ({ form, open, onOpenChange }: DescriptionMobile
           editorRef.current.innerHTML = currentContent;
           setTempContent(currentContent);
           initializedRef.current = true;
+          
+          // Empêcher le focus automatique sur l'éditeur
+          if (document.activeElement === editorRef.current) {
+            (document.activeElement as HTMLElement).blur();
+          }
         }
       }, 50);
       
@@ -399,10 +404,15 @@ const DescriptionMobileEditor = ({ form, open, onOpenChange }: DescriptionMobile
                 contentEditable
                 onInput={updateTempContent}
                 onPaste={handlePaste}
+                suppressContentEditableWarning
                 className="min-h-[400px] outline-none prose prose-sm max-w-none focus:outline-none"
                 style={{
                   wordWrap: 'break-word',
                   overflowWrap: 'break-word'
+                }}
+                onFocus={(e) => {
+                  // Empêcher le scroll automatique vers le champ
+                  e.preventDefault();
                 }}
               />
             </div>
