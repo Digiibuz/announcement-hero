@@ -143,13 +143,11 @@ export const InstagramTab = ({ form }: InstagramTabProps) => {
         // Passer à l'image suivante à recadrer
         setCurrentImageIndex(finalNextIndex);
         setCropImageIndex(finalNextIndex);
-        toast.success("Image recadrée ! Passage à l'image suivante...");
         // Le dialog reste ouvert automatiquement car cropImageIndex est défini
       } else {
         // Plus d'images à recadrer
         setCropImageIndex(null);
         setShowCropDialog(false);
-        toast.success("Toutes les images sont prêtes pour Instagram !");
       }
     }
   };
