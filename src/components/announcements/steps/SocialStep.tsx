@@ -12,6 +12,7 @@ import { SocialPlatformSelector } from "./SocialPlatformSelector";
 import { FacebookTab } from "./social/FacebookTab";
 import { InstagramTab } from "./social/InstagramTab";
 import { AnnouncementFormData } from "../AnnouncementForm";
+import { toast } from "sonner";
 
 interface SocialStepProps {
   form: UseFormReturn<AnnouncementFormData>;
@@ -41,6 +42,15 @@ export default function SocialStep({ form, onSkip, className, onNavigationVisibi
 
   // Gérer le passage à l'étape suivante ou changement d'onglet
   const handleNextClick = () => {
+    // Vérifier si on est sur Facebook et que le contenu est vide
+    if (activeTab === "facebook" && facebookEnabled) {
+      const facebookContent = form.getValues("facebookContent");
+      if (!facebookContent || facebookContent.trim() === "") {
+        toast.error("Veuillez ajouter un texte de publication Facebook");
+        return;
+      }
+    }
+    
     // Vérifier si on est sur Instagram et que les images ne sont pas prêtes
     if (activeTab === "instagram" && !(window as any).instagramImagesReady) {
       return; // Empêcher la navigation
