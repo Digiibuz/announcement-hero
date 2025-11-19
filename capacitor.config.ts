@@ -4,10 +4,12 @@ const config: CapacitorConfig = {
   appId: 'com.digiibuz.app',
   appName: 'DigiiBuz',
   webDir: 'dist',
-  server: {
-    url: 'https://app.digiibuz.fr?forceHideBadge=true',
-    cleartext: true
-  },
+  // Commenté pour utiliser le build local sur l'émulateur
+  // Décommenter pour le développement avec hot-reload
+  // server: {
+  //   url: 'https://app.digiibuz.fr?forceHideBadge=true',
+  //   cleartext: true
+  // },
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
