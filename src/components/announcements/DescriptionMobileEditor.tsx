@@ -39,6 +39,7 @@ const DescriptionMobileEditor = ({ form, open, onOpenChange }: DescriptionMobile
   const [aiInstructions, setAiInstructions] = useState("");
   const [tempContent, setTempContent] = useState("");
   const editorRef = useRef<HTMLDivElement>(null);
+  const initializedRef = useRef(false);
   const { optimizeContent, isOptimizing } = useContentOptimization();
 
   const { isRecording, isListening, toggleVoiceRecording, isSupported } = useVoiceRecognition({
@@ -46,14 +47,18 @@ const DescriptionMobileEditor = ({ form, open, onOpenChange }: DescriptionMobile
     form
   });
 
-  // Initialize content when drawer opens
+  // Initialize content when drawer opens - only once per opening
   useEffect(() => {
     if (open && editorRef.current) {
       const currentContent = form.getValues('description') || '';
       editorRef.current.innerHTML = currentContent;
       setTempContent(currentContent);
+      initializedRef.current = true;
+    } else if (!open) {
+      // Reset initialization flag when drawer closes
+      initializedRef.current = false;
     }
-  }, [open, form]);
+  }, [open]); // Ne dépend QUE de 'open', pas de 'form'
 
   const updateTempContent = () => {
     if (editorRef.current) {
