@@ -12,7 +12,7 @@ const ImpersonationBanner = () => {
   }
 
   return (
-    <div className="fixed top-0 left-0 right-0 bg-primary p-2 text-primary-foreground text-center text-sm z-50 safe-area-pt">
+    <div className="fixed top-0 left-0 right-0 bg-primary p-2 text-primary-foreground text-center text-sm z-50 ios-safe-top">
       <div className="container flex items-center justify-between">
         <div className="flex items-center gap-2">
           <UserIcon className="h-4 w-4" />

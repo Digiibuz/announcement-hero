@@ -58,11 +58,7 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
     font-family: 'Nunito', sans-serif;
-    font-weight: 400; /* Nunito Regular par défaut */
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
+    font-weight: 400;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -150,20 +146,24 @@
     background-color: rgba(254, 196, 3, 0.9);
   }
 
-  /* Safe area utilities for iOS notch/home indicator */
-  .safe-area-pt {
-    padding-top: env(safe-area-inset-top);
+  /* iOS Safe Area - Support iOS 11.0+ and iOS 11.2+ */
+  .ios-safe-top {
+    padding-top: constant(safe-area-inset-top); /* iOS 11.0 */
+    padding-top: env(safe-area-inset-top); /* iOS 11.2+ */
   }
 
-  .safe-area-pb {
+  .ios-safe-bottom {
+    padding-bottom: constant(safe-area-inset-bottom);
     padding-bottom: env(safe-area-inset-bottom);
   }
 
-  .safe-area-pl {
+  .ios-safe-left {
+    padding-left: constant(safe-area-inset-left);
     padding-left: env(safe-area-inset-left);
   }
 
-  .safe-area-pr {
+  .ios-safe-right {
+    padding-right: constant(safe-area-inset-right);
     padding-right: env(safe-area-inset-right);
   }
 
