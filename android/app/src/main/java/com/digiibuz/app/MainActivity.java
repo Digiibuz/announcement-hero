@@ -1,4 +1,4 @@
-package com.digiibuz.app;
+package com.digiibuz.announcements;
 
 import com.getcapacitor.BridgeActivity;
 
