@@ -68,7 +68,7 @@ export const useFacebookConnection = () => {
       SocialLogin.initialize({
         facebook: {
           appId: '1734533697251513',
-          clientToken: 'VOTRE_CLIENT_TOKEN_ICI'
+          clientToken: '97102b2b5dcd983af19b3ca5d7c91c72'
         }
       }).catch(err => {
         console.error('Failed to initialize Facebook SDK:', err);
