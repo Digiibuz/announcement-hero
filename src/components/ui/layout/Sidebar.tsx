@@ -208,11 +208,16 @@ const Sidebar = () => {
     return (
       <>
         <div className={cn(
-          "fixed top-0 left-0 right-0 z-40 flex items-center justify-between h-16 px-4 transition-all duration-300 ios-safe-top",
+          "fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 transition-all duration-300",
+          "pt-safe pb-3",
           isScrolled 
-            ? "bg-white/90 backdrop-blur-md border-b border-gray-200/50 shadow-sm" 
-            : "bg-transparent"
-        )}>
+            ? "bg-white/95 backdrop-blur-md border-b border-gray-200/50 shadow-sm" 
+            : "bg-white/80 backdrop-blur-sm"
+        )}
+        style={{
+          paddingTop: 'max(0.75rem, env(safe-area-inset-top))',
+          height: 'calc(4rem + env(safe-area-inset-top))'
+        }}>
           {/* Menu hamburger à gauche */}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
@@ -252,7 +257,7 @@ const Sidebar = () => {
           <div className="w-12"></div>
         </div>
         
-        <div className="h-16" />
+        <div style={{ height: 'calc(4rem + env(safe-area-inset-top))' }} />
       </>
     );
   }
