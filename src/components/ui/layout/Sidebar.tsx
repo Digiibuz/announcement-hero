@@ -109,7 +109,7 @@ const Sidebar = () => {
 
   const SidebarContent = React.memo(() => (
     <>
-      <div className="flex h-16 items-center px-6 border-b border-gray-200/30">
+      <div className="flex items-center px-6 border-b border-gray-200/30 ios-safe-top" style={{ paddingTop: 'max(1rem, calc(env(safe-area-inset-top) + 0.5rem))', paddingBottom: '1rem' }}>
         <Link to="/dashboard" className="flex items-center gap-2">
           <img 
             src="/lovable-uploads/2c24c6a4-9faf-497a-9be8-27907f99af47.png" 
@@ -122,7 +122,7 @@ const Sidebar = () => {
         </Link>
       </div>
 
-      <div className={`h-[calc(100vh-8rem)] overflow-y-auto px-3 py-4 flex flex-col ${isMobile ? "" : "relative"}`}>
+      <div className={`h-[calc(100vh-8rem)] overflow-y-auto px-3 py-4 flex flex-col ${isMobile ? "ios-safe-bottom" : "relative"}`} style={{ height: isMobile ? 'calc(100vh - 8rem - env(safe-area-inset-top))' : 'calc(100vh-8rem)' }}>
         {/* Main navigation items */}
         <div className="flex-grow">
           <ul className="space-y-2">
