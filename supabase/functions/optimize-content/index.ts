@@ -248,8 +248,10 @@ serve(async (req) => {
           .replace(/<b>(.*?)<\/b>/g, '$1')
           // Supprime les liens externes <a> en gardant uniquement le texte
           .replace(/<a[^>]*>(.*?)<\/a>/g, '$1')
+          // Supprime les paragraphes vides (avec ou sans espaces/br)
+          .replace(/<p>(\s|&nbsp;|<br\s*\/?>)*<\/p>/gi, '')
           // Supprime les doubles <br> consécutifs
-          .replace(/(<br\s*\/?>){2,}/gi, '')
+          .replace(/(<br\s*\/?>){2,}/gi, '<br>')
           // Supprime les <br> inutiles avant ou après les balises de bloc
           .replace(/<br\s*\/?>\s*(<h[23]>)/gi, '$1')
           .replace(/(<\/h[23]>)\s*<br\s*\/?>/gi, '$1')
@@ -257,8 +259,12 @@ serve(async (req) => {
           .replace(/(<\/p>)\s*<br\s*\/?>/gi, '$1')
           .replace(/(<\/ul>)\s*<br\s*\/?>/gi, '$1')
           .replace(/<br\s*\/?>\s*(<ul>)/gi, '$1')
-          // Supprime les multiples espaces blancs
+          // Supprime les multiples espaces blancs et lignes vides
           .replace(/\n{3,}/g, '\n\n')
+          // Normalise les espaces entre les balises de bloc
+          .replace(/(<\/p>)\s+(<p>)/gi, '$1$2')
+          .replace(/(<\/h[23]>)\s+(<p>)/gi, '$1$2')
+          .replace(/(<\/ul>)\s+(<p>)/gi, '$1$2')
           // Supprime les espaces au début et fin des paragraphes
           .replace(/<p>\s+/g, '<p>')
           .replace(/\s+<\/p>/g, '</p>')
