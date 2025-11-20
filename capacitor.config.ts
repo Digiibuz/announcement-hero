@@ -1,7 +1,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.digiibuz.app',
+  appId: 'com.digiibuz.announcements',
   appName: 'DigiiBuz',
   webDir: 'dist',
   // Commenté pour utiliser le build local sur l'émulateur
