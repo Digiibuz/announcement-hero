@@ -556,7 +556,7 @@ const CreateAnnouncement = () => {
             </div>
           )}
         
-          <div className="pt-16 pb-24 px-4">
+          <div className="pb-24 px-4" style={{ paddingTop: 'calc(4.5rem + env(safe-area-inset-top))' }}>
             <Form {...form}>
               <form 
                 onSubmit={(e) => {
