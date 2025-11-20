@@ -208,7 +208,7 @@ const Sidebar = () => {
     return (
       <>
         <div className={cn(
-          "fixed top-0 left-0 right-0 z-40 flex items-center justify-between h-16 px-4 transition-all duration-300 safe-area-pt",
+          "fixed top-0 left-0 right-0 z-40 flex items-center justify-between h-16 px-4 transition-all duration-300 ios-safe-top",
           isScrolled 
             ? "bg-white/90 backdrop-blur-md border-b border-gray-200/50 shadow-sm" 
             : "bg-transparent"
