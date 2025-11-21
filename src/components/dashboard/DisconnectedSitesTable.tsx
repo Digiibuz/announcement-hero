@@ -30,14 +30,39 @@ const DisconnectedSitesTable = () => {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [disconnectedConfigs, setDisconnectedConfigs] = useState<WordPressConfig[]>([]);
 
-  // Get connection status for a site
+  // Get connection status for a site (must match useAdminAlerts logic)
   const getConnectionStatus = (config: WordPressConfig) => {
     if (config.app_username && config.app_password) {
-      return { status: "connected", label: "Connecté" };
+      return { 
+        status: "connected", 
+        label: "Connecté",
+        reason: ""
+      };
     } else if (config.rest_api_key) {
-      return { status: "partial", label: "Partiel" };
+      return { 
+        status: "partial", 
+        label: "Partiel",
+        reason: "Seule la clé API REST est configurée"
+      };
     }
-    return { status: "disconnected", label: "Déconnecté" };
+
+    // Determine the specific reason for disconnection
+    let reason = "Configuration incomplète";
+    if (!config.site_url) {
+      reason = "URL du site manquante";
+    } else if (!config.app_username && !config.app_password && !config.rest_api_key) {
+      reason = "Aucun identifiant configuré";
+    } else if (config.app_username && !config.app_password) {
+      reason = "Mot de passe d'application manquant";
+    } else if (!config.app_username && config.app_password) {
+      reason = "Nom d'utilisateur d'application manquant";
+    }
+
+    return { 
+      status: "disconnected", 
+      label: "Déconnecté",
+      reason: reason
+    };
   };
 
   // Get client for a WordPress config
