@@ -70,11 +70,11 @@ const DisconnectedSitesTable = () => {
     return users.find(user => user.wordpressConfigId === configId && user.role === 'client');
   };
 
-  // Filter disconnected configs
+  // Filter disconnected and partially connected configs
   useEffect(() => {
     const disconnected = configs.filter(config => {
       const status = getConnectionStatus(config);
-      return status.status === "disconnected";
+      return status.status === "disconnected" || status.status === "partial";
     });
     setDisconnectedConfigs(disconnected);
   }, [configs]);
@@ -138,10 +138,17 @@ const DisconnectedSitesTable = () => {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="destructive" className="flex items-center gap-1 w-fit">
-                        <XCircle className="h-3 w-3" />
-                        Déconnecté
-                      </Badge>
+                      {getConnectionStatus(config).status === "partial" ? (
+                        <Badge variant="outline" className="flex items-center gap-1 w-fit border-yellow-500 text-yellow-600 dark:text-yellow-500">
+                          <XCircle className="h-3 w-3" />
+                          Partiel
+                        </Badge>
+                      ) : (
+                        <Badge variant="destructive" className="flex items-center gap-1 w-fit">
+                          <XCircle className="h-3 w-3" />
+                          Déconnecté
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
