@@ -10,6 +10,7 @@ import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
 import DynamicBackground from "@/components/ui/DynamicBackground";
 import MobileBottomNav from "@/components/ui/layout/MobileBottomNav";
 import { useDeepLinkHandler } from "@/utils/deepLinkHandler";
+import { useActivityTracking } from "@/hooks/useActivityTracking";
 
 // Configuration React Query sans refetch automatique
 const queryClient = new QueryClient({
@@ -25,6 +26,7 @@ const queryClient = new QueryClient({
 
 function AppContent() {
   useDeepLinkHandler();
+  useActivityTracking(); // Track user activity
   
   return (
     <>

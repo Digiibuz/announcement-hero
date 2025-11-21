@@ -340,6 +340,33 @@ export type Database = {
           },
         ]
       }
+      user_activity: {
+        Row: {
+          activity_type: string
+          created_at: string
+          id: string
+          last_activity_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_type?: string
+          created_at?: string
+          id?: string
+          last_activity_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          id?: string
+          last_activity_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_google_business_profiles: {
         Row: {
           access_token: string | null
@@ -532,6 +559,7 @@ export type Database = {
       is_admin_user: { Args: never; Returns: boolean }
       is_editor: { Args: never; Returns: boolean }
       is_maintenance_active: { Args: never; Returns: boolean }
+      update_user_activity: { Args: never; Returns: undefined }
     }
     Enums: {
       announcement_status: "draft" | "published" | "scheduled"
