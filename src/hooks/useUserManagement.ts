@@ -14,7 +14,7 @@ export const useUserManagement = () => {
     try {
       setIsLoading(true);
       
-      // Fetch user profiles
+      // Fetch user profiles with user activity
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*, wordpress_configs(name, site_url)');
@@ -23,21 +23,24 @@ export const useUserManagement = () => {
         throw profilesError;
       }
       
-      // Fetch last login data from Edge function
-      let loginData: any[] = [];
+      // Fetch user activity data
+      let activityData: any[] = [];
       try {
-        const { data: loginResponse, error: loginError } = await supabase.functions.invoke('get-user-logins');
-        if (!loginError && loginResponse) {
-          loginData = loginResponse;
+        const { data, error } = await supabase
+          .from('user_activity')
+          .select('user_id, last_activity_at');
+        
+        if (!error && data) {
+          activityData = data;
         }
       } catch (error) {
-        console.warn("Could not fetch login data:", error);
-        // Continue without login data
+        console.warn("Could not fetch activity data:", error);
+        // Continue without activity data
       }
       
-      // Format user profiles with login data
+      // Format user profiles with activity data
       const processedUsers: UserProfile[] = profilesData.map(profile => {
-        const userLoginInfo = loginData.find(login => login.id === profile.id);
+        const userActivity = activityData.find(activity => activity.user_id === profile.id);
         
         return {
           id: profile.id,
@@ -51,7 +54,7 @@ export const useUserManagement = () => {
             name: profile.wordpress_configs.name,
             site_url: profile.wordpress_configs.site_url
           } : null,
-          lastLogin: userLoginInfo?.last_sign_in_at || null
+          lastLogin: userActivity?.last_activity_at || null
         };
       });
       
