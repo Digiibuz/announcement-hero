@@ -29,7 +29,10 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
   const fetchAnnouncement = useCallback(async () => {
     try {
       setIsLoading(true);
-      if (!id) return;
+      if (!id) {
+        console.warn("No announcement ID provided");
+        return;
+      }
 
       const { data, error } = await supabase
         .from("announcements")
@@ -37,24 +40,36 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
         .eq("id", id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error fetching announcement:", error);
+        throw error;
+      }
 
       if (data) {
         console.log("Loaded announcement:", data);
         console.log("WordPress post ID:", data.wordpress_post_id);
         console.log("Additional medias from DB:", data.additional_medias);
         
-        // Mapper les données de la base vers le format TypeScript
+        // Mapper les données de la base vers le format TypeScript avec des valeurs par défaut sûres
         const mappedAnnouncement = {
           ...data,
-          additionalMedias: data.additional_medias || []
+          additionalMedias: Array.isArray(data.additional_medias) ? data.additional_medias : [],
+          images: Array.isArray(data.images) ? data.images : [],
+          facebook_hashtags: Array.isArray(data.facebook_hashtags) ? data.facebook_hashtags : [],
+          facebook_images: Array.isArray(data.facebook_images) ? data.facebook_images : [],
+          instagram_hashtags: Array.isArray(data.instagram_hashtags) ? data.instagram_hashtags : [],
+          instagram_images: Array.isArray(data.instagram_images) ? data.instagram_images : []
         } as ExtendedAnnouncement;
         
         setAnnouncement(mappedAnnouncement);
+      } else {
+        console.warn("No announcement data returned");
+        toast.error("Annonce introuvable");
       }
     } catch (error: any) {
       console.error("Error fetching announcement:", error);
-      toast.error(`Erreur: ${error.message}`);
+      const errorMessage = error?.message || "Erreur inconnue lors du chargement de l'annonce";
+      toast.error(`Erreur: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
@@ -65,38 +80,49 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
   }, [fetchAnnouncement]);
 
   useEffect(() => {
-    // Automatically switch to edit mode when viewing a draft announcement
-    if (announcement && announcement.status === 'draft' && !isEditing) {
-      setIsEditing(true);
-      setActiveTab("edit");
-    }
+    try {
+      // Automatically switch to edit mode when viewing a draft announcement
+      if (announcement && announcement.status === 'draft' && !isEditing) {
+        setIsEditing(true);
+        setActiveTab("edit");
+      }
 
-    // Prepare form data from announcement
-    if (announcement) {
-      console.log("Setting form data with additional medias:", announcement.additionalMedias);
-      setFormData({
-        title: announcement.title || "",
-        description: announcement.description || "",
-        wordpressCategory: announcement.wordpress_category_id || "",
-        publishDate: announcement.publish_date ? new Date(announcement.publish_date) : undefined,
-        status: announcement.status || "draft",
-        images: announcement.images || [],
-        additionalMedias: announcement.additionalMedias || [],
-        seoTitle: announcement.seo_title || "",
-        seoDescription: announcement.seo_description || "",
-        seoSlug: announcement.seo_slug || "",
-        createFacebookPost: announcement.create_facebook_post || false,
-        facebookContent: announcement.facebook_content || "",
-        facebookHashtags: announcement.facebook_hashtags || [],
-        createInstagramPost: announcement.create_instagram_post || false,
-        instagramContent: announcement.instagram_content || "",
-        instagramHashtags: announcement.instagram_hashtags || []
-      });
+      // Prepare form data from announcement
+      if (announcement) {
+        console.log("Setting form data with additional medias:", announcement.additionalMedias);
+        setFormData({
+          title: announcement.title || "",
+          description: announcement.description || "",
+          wordpressCategory: announcement.wordpress_category_id || "",
+          publishDate: announcement.publish_date ? new Date(announcement.publish_date) : undefined,
+          status: announcement.status || "draft",
+          images: Array.isArray(announcement.images) ? announcement.images : [],
+          additionalMedias: Array.isArray(announcement.additionalMedias) ? announcement.additionalMedias : [],
+          seoTitle: announcement.seo_title || "",
+          seoDescription: announcement.seo_description || "",
+          seoSlug: announcement.seo_slug || "",
+          createFacebookPost: announcement.create_facebook_post || false,
+          facebookContent: announcement.facebook_content || "",
+          facebookHashtags: Array.isArray(announcement.facebook_hashtags) ? announcement.facebook_hashtags : [],
+          facebookImages: Array.isArray(announcement.facebook_images) ? announcement.facebook_images : [],
+          createInstagramPost: announcement.create_instagram_post || false,
+          instagramContent: announcement.instagram_content || "",
+          instagramHashtags: Array.isArray(announcement.instagram_hashtags) ? announcement.instagram_hashtags : [],
+          instagramImages: Array.isArray(announcement.instagram_images) ? announcement.instagram_images : []
+        });
+      }
+    } catch (error) {
+      console.error("Error preparing form data:", error);
+      toast.error("Erreur lors de la préparation des données du formulaire");
     }
   }, [announcement, isEditing]);
 
   const handleSubmit = async (formData: any) => {
-    if (!id || !userId) return;
+    if (!id || !userId) {
+      console.error("Missing ID or userId for announcement update");
+      toast.error("Erreur: Informations manquantes pour la mise à jour");
+      return;
+    }
     
     try {
       setIsSubmitting(true);
@@ -111,26 +137,26 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
       
       console.log("Updating announcement with additional medias:", formData.additionalMedias);
       
-      // Map form data to database column names
+      // Map form data to database column names with safe defaults
       const updateData = {
-        title: formData.title,
-        description: formData.description,
-        wordpress_category_id: formData.wordpressCategory,
+        title: formData.title || "",
+        description: formData.description || "",
+        wordpress_category_id: formData.wordpressCategory || null,
         publish_date: formData.publishDate ? new Date(formData.publishDate).toISOString() : null,
-        status: formData.status,
-        images: formData.images || [],
-        additional_medias: formData.additionalMedias || [], // Correct mapping
+        status: formData.status || "draft",
+        images: Array.isArray(formData.images) ? formData.images : [],
+        additional_medias: Array.isArray(formData.additionalMedias) ? formData.additionalMedias : [],
         seo_title: formData.seoTitle || null,
         seo_description: formData.seoDescription || null,
         seo_slug: formData.seoSlug || null,
         create_facebook_post: formData.createFacebookPost || false,
         facebook_content: formData.facebookContent || null,
-        facebook_hashtags: formData.facebookHashtags || [],
-        facebook_images: formData.facebookImages || [],
+        facebook_hashtags: Array.isArray(formData.facebookHashtags) ? formData.facebookHashtags : [],
+        facebook_images: Array.isArray(formData.facebookImages) ? formData.facebookImages : [],
         create_instagram_post: formData.createInstagramPost || false,
         instagram_content: formData.instagramContent || null,
-        instagram_hashtags: formData.instagramHashtags || [],
-        instagram_images: formData.instagramImages || []
+        instagram_hashtags: Array.isArray(formData.instagramHashtags) ? formData.instagramHashtags : [],
+        instagram_images: Array.isArray(formData.instagramImages) ? formData.instagramImages : []
       };
       
       // Update announcement in database
@@ -139,7 +165,10 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
         .update(updateData)
         .eq("id", id);
         
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase update error:", error);
+        throw error;
+      }
       
       // Improved WordPress synchronization logic - use the announcement owner's user_id
       const shouldSyncWithWordPress = announcement?.wordpress_post_id && 
