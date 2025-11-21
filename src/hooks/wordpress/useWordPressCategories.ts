@@ -268,21 +268,33 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
       
       console.error("Error fetching WordPress categories:", err);
       
-      let errorMessage = err.message || "Échec de récupération des catégories WordPress";
+      let errorMessage = "Échec de récupération des catégories WordPress";
       
-      // Améliorer les messages d'erreur
-      if (err.message.includes("Failed to fetch")) {
-        errorMessage = "Erreur réseau: impossible d'accéder au site WordPress";
-      } else if (err.message.includes("NetworkError")) {
-        errorMessage = "Erreur réseau: problème de connectivité";
-      } else if (err.message.includes("CORS")) {
-        errorMessage = "Erreur CORS: le site n'autorise pas les requêtes depuis cette origine";
+      try {
+        // Améliorer les messages d'erreur de manière sûre
+        if (err && err.message) {
+          if (err.message.includes("Failed to fetch")) {
+            errorMessage = "Erreur réseau: impossible d'accéder au site WordPress";
+          } else if (err.message.includes("NetworkError")) {
+            errorMessage = "Erreur réseau: problème de connectivité";
+          } else if (err.message.includes("CORS")) {
+            errorMessage = "Erreur CORS: le site n'autorise pas les requêtes depuis cette origine";
+          } else {
+            errorMessage = String(err.message);
+          }
+        }
+      } catch (msgError) {
+        console.error("Error processing error message:", msgError);
       }
       
       setError(errorMessage);
       // Ne pas afficher de toast lors du rechargement pour éviter le spam
-      if (!window.location.pathname.includes('/create')) {
-        toast.error("Erreur lors de la récupération des catégories");
+      try {
+        if (!window.location.pathname.includes('/create')) {
+          toast.error("Erreur lors de la récupération des catégories");
+        }
+      } catch (toastError) {
+        console.error("Error showing toast:", toastError);
       }
       setCategories([]);
     } finally {

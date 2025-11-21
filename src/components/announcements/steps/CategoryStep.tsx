@@ -21,7 +21,7 @@ const CategoryStep = ({
   const { loadForm } = useFormPersistence(form, 'announcement_category', undefined, 500);
 
   const {
-    categories,
+    categories = [],
     isLoading: isCategoriesLoading,
     error: categoriesError,
     hasCategories,
@@ -30,7 +30,11 @@ const CategoryStep = ({
 
   // Restaurer l'état du formulaire au chargement
   useEffect(() => {
-    loadForm();
+    try {
+      loadForm();
+    } catch (error) {
+      console.error("Error loading form:", error);
+    }
   }, [loadForm]);
 
   // Retry logic si erreur de récupération
@@ -38,7 +42,11 @@ const CategoryStep = ({
     if (categoriesError && !isCategoriesLoading) {
       const timer = setTimeout(() => {
         console.log("Tentative de récupération des catégories après erreur...");
-        refetch();
+        try {
+          refetch();
+        } catch (error) {
+          console.error("Error refetching categories:", error);
+        }
       }, 2000);
       
       return () => clearTimeout(timer);
@@ -74,31 +82,46 @@ const CategoryStep = ({
                 ) : categoriesError ? (
                   <div className="p-4 text-center">
                     <div className="text-sm text-red-600 mb-2">
-                      Erreur: {categoriesError}
+                      Erreur: {String(categoriesError)}
                     </div>
                     <button 
-                      onClick={() => refetch()}
+                      onClick={() => {
+                        try {
+                          refetch();
+                        } catch (error) {
+                          console.error("Error refetching:", error);
+                        }
+                      }}
                       className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center justify-center gap-1 mx-auto"
                     >
                       <RefreshCw className="h-3 w-3" />
                       Réessayer
                     </button>
                   </div>
-                ) : hasCategories ? (
-                  categories.map(category => (
-                    <SelectItem 
-                      key={category.id} 
-                      value={String(category.id)}
-                      className="py-3 px-4 hover:bg-gray-50 focus:bg-brand-orange/10 text-base"
-                    >
-                      {category.name}
-                    </SelectItem>
-                  ))
+                ) : hasCategories && Array.isArray(categories) ? (
+                  categories.map(category => {
+                    if (!category || !category.id) return null;
+                    return (
+                      <SelectItem 
+                        key={category.id} 
+                        value={String(category.id)}
+                        className="py-3 px-4 hover:bg-gray-50 focus:bg-brand-orange/10 text-base"
+                      >
+                        {category.name || 'Sans nom'}
+                      </SelectItem>
+                    );
+                  })
                 ) : (
                   <div className="p-4 text-center text-sm">
                     <p className="text-muted-foreground mb-2">Aucune catégorie disponible</p>
                     <button 
-                      onClick={() => refetch()}
+                      onClick={() => {
+                        try {
+                          refetch();
+                        } catch (error) {
+                          console.error("Error refetching:", error);
+                        }
+                      }}
                       className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center justify-center gap-1 mx-auto"
                     >
                       <RefreshCw className="h-3 w-3" />
