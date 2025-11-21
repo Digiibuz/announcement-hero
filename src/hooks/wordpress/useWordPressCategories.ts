@@ -12,9 +12,6 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
   const abortControllerRef = useRef<AbortController | null>(null);
   const isLoadingRef = useRef(false);
   const lastConfigIdRef = useRef<string | null>(null);
-  const hasRefreshedRef = useRef(false);
-  const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 2;
 
   // Détermine quel config ID utiliser : spécifique ou celui de l'utilisateur
   const configIdToUse = specificConfigId || user?.wordpressConfigId;
@@ -26,39 +23,11 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
     }
 
     // Sinon, utiliser la logique existante pour l'utilisateur connecté
-    // Si l'utilisateur n'a pas d'ID ou n'est pas connecté, ne rien faire
     if (!user?.id) {
       console.warn("No user ID found, cannot fetch categories");
       setError("Utilisateur non connecté");
       setCategories([]);
       return;
-    }
-    
-    // Si l'utilisateur n'a pas de configuration WordPress et est commercial/client,
-    // essayer de rafraîchir le profil une fois
-    if (!user?.wordpressConfigId && (user?.role === 'client' || user?.role === 'commercial') && !hasRefreshedRef.current) {
-      console.log("Commercial/Client without WordPress config, refreshing profile...");
-      hasRefreshedRef.current = true;
-      try {
-        await refreshUser();
-        
-        // Si après rafraîchissement, il n'y a toujours pas de configuration WordPress
-        if (!user.wordpressConfigId && retryCount < maxRetries) {
-          console.log(`Still no WordPress config after refresh. Retry ${retryCount + 1}/${maxRetries}`);
-          setRetryCount(prev => prev + 1);
-          setTimeout(() => fetchCategories(), 1000); // Réessayer après 1 seconde
-          return;
-        } else if (retryCount >= maxRetries) {
-          console.warn("Max retries reached, giving up on fetching WordPress config");
-          setError("Configuration WordPress non trouvée après plusieurs tentatives");
-          return;
-        }
-        return; // Le useEffect se déclenchera à nouveau après le refresh
-      } catch (refreshError) {
-        console.error("Error refreshing user profile:", refreshError);
-        setError("Erreur lors de la récupération du profil utilisateur");
-        return;
-      }
     }
 
     if (!user?.wordpressConfigId) {
@@ -69,7 +38,7 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
     }
 
     return await fetchCategoriesForConfig(user.wordpressConfigId);
-  }, [user?.wordpressConfigId, user?.id, user?.role, refreshUser, retryCount, specificConfigId]);
+  }, [user?.wordpressConfigId, user?.id, specificConfigId]);
 
   // Nouvelle fonction pour récupérer les catégories pour un config ID spécifique
   const fetchCategoriesForConfig = useCallback(async (configId: string) => {
@@ -114,6 +83,21 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
       setError(null);
       console.log("Fetching categories for WordPress config ID:", configId);
 
+      // Vérifier et rafraîchir la session si nécessaire
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !session) {
+          console.log("Session expired, refreshing...");
+          const { error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError) {
+            console.error("Failed to refresh session:", refreshError);
+            throw new Error("Session expirée. Veuillez vous reconnecter.");
+          }
+        }
+      } catch (sessionErr) {
+        console.error("Session check error:", sessionErr);
+      }
+
       // Récupérer la configuration WordPress directement
       const { data: wpConfig, error: wpConfigError } = await supabase
         .from('wordpress_configs')
@@ -126,10 +110,6 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
 
       if (wpConfigError) {
         console.error("Error fetching WordPress config:", wpConfigError);
-        console.log('🔍 DEBUG: WordPress config error details:', {
-          error: wpConfigError,
-          configId: configId
-        });
         throw wpConfigError;
       }
       
@@ -174,7 +154,7 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
         if (!signal.aborted) {
           abortControllerRef.current?.abort();
         }
-      }, 15000); // 15 secondes de timeout
+      }, 30000); // 30 secondes de timeout
       
       try {
         console.log("Fetching DipiPixel categories from:", apiUrl);
@@ -344,8 +324,9 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
   }, []);
 
   const refetch = useCallback(() => {
-    setRetryCount(0);
-    hasRefreshedRef.current = false;
+    setError(null);
+    setIsLoading(false);
+    isLoadingRef.current = false;
     if (configIdToUse) {
       fetchCategories();
     }
@@ -361,11 +342,13 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
     }
     
     if (configIdToUse) {
+      // Réinitialiser l'état avant de charger
+      setError(null);
+      
       // Si l'utilisateur existe, essayer de récupérer les catégories
-      // Ajouter un délai pour éviter les appels simultanés lors du rechargement
       const timer = setTimeout(() => {
         fetchCategories();
-      }, 200); // Augmenté à 200ms pour plus de stabilité
+      }, 100);
       
       return () => {
         clearTimeout(timer);
