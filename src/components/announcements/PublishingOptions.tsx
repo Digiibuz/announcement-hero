@@ -21,6 +21,19 @@ interface PublishingOptionsProps {
 const PublishingOptions = ({ form }: PublishingOptionsProps) => {
   const { categories, isLoading: isCategoriesLoading, error: categoriesError, hasCategories, refetch } = useWordPressCategories();
   const { canPublish, stats } = usePublicationLimits();
+  const [selectOpen, setSelectOpen] = useState(false);
+  
+  // Rafraîchir automatiquement les catégories si le select est ouvert et qu'il y a une erreur
+  useEffect(() => {
+    if (selectOpen && (categoriesError || (!isCategoriesLoading && !hasCategories))) {
+      console.log("Select opened with error or no categories, retrying...");
+      try {
+        refetch();
+      } catch (error) {
+        console.error("Error refetching on select open:", error);
+      }
+    }
+  }, [selectOpen, categoriesError, hasCategories, isCategoriesLoading, refetch]);
   
   // Calculer la date de remise à zéro (1er du mois suivant)
   const getResetDate = () => {
@@ -40,7 +53,10 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
             <Select
               onValueChange={field.onChange}
               defaultValue={field.value}
+              value={field.value}
               disabled={isCategoriesLoading}
+              open={selectOpen}
+              onOpenChange={setSelectOpen}
             >
               <FormControl>
                 <SelectTrigger>

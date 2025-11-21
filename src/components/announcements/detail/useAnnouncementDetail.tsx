@@ -34,6 +34,23 @@ export const useAnnouncementDetail = (userId: string | undefined) => {
         return;
       }
 
+      // Vérifier et rafraîchir la session si nécessaire
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error("Session error:", sessionError);
+      } else if (sessionData?.session) {
+        // Rafraîchir la session si elle approche de l'expiration (moins de 5 minutes)
+        const expiresAt = sessionData.session.expires_at;
+        if (expiresAt) {
+          const now = Math.floor(Date.now() / 1000);
+          const timeUntilExpiry = expiresAt - now;
+          if (timeUntilExpiry < 300) { // Moins de 5 minutes
+            console.log("Session about to expire, refreshing...");
+            await supabase.auth.refreshSession();
+          }
+        }
+      }
+
       const { data, error } = await supabase
         .from("announcements")
         .select("*")
