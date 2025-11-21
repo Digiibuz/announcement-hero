@@ -27,7 +27,7 @@ const UserCardsMobile: React.FC<UserCardsMobileProps> = ({
   onImpersonateUser,
   onDeleteClick
 }) => {
-  const { formatLastLogin, getWordPressConfigName, getRoleDisplayName, getRoleClass } = UserListUtils;
+  const { formatLastPublication, getWordPressConfigName, getRoleDisplayName, getRoleClass } = UserListUtils;
 
   return (
     <div className="space-y-4">
@@ -59,8 +59,8 @@ const UserCardsMobile: React.FC<UserCardsMobileProps> = ({
               
               <div className="flex items-center text-sm">
                 <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-                <span className="text-muted-foreground">Dernière connexion:</span>
-                <span className="ml-1">{formatLastLogin(user.lastLogin)}</span>
+                <span className="text-muted-foreground">Dernière publication:</span>
+                <span className="ml-1">{formatLastPublication(user.lastLogin)}</span>
               </div>
 
               <div className="pt-2 flex justify-end">

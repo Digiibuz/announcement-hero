@@ -29,10 +29,10 @@ export const UserListUtils = {
     }
   },
 
-  formatLastLogin: (lastLogin: string | null | undefined): string => {
-    if (!lastLogin) return "Jamais";
+  formatLastPublication: (lastPublication: string | null | undefined): string => {
+    if (!lastPublication) return "Aucune";
     try {
-      const date = parseISO(lastLogin);
+      const date = parseISO(lastPublication);
       return format(date, "dd MMM yyyy, HH:mm", { locale: fr });
     } catch (error) {
       console.error("Error formatting date:", error);

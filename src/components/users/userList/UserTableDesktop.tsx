@@ -34,7 +34,7 @@ const UserTableDesktop: React.FC<UserTableDesktopProps> = ({
   onImpersonateUser,
   onDeleteClick
 }) => {
-  const { formatLastLogin, getWordPressConfigName, getRoleDisplayName, getRoleClass } = UserListUtils;
+  const { formatLastPublication, getWordPressConfigName, getRoleDisplayName, getRoleClass } = UserListUtils;
 
   return (
     <div className="bg-white rounded-lg overflow-hidden">
@@ -48,7 +48,7 @@ const UserTableDesktop: React.FC<UserTableDesktopProps> = ({
             <TableHead className="text-gray-700">
               <div className="flex items-center">
                 <Clock className="h-4 w-4 mr-1" />
-                Dernière connexion
+                Dernière publication
               </div>
             </TableHead>
             <TableHead className="text-right text-gray-700">Actions</TableHead>
@@ -69,7 +69,7 @@ const UserTableDesktop: React.FC<UserTableDesktopProps> = ({
               </TableCell>
               <TableCell className="text-gray-700">{getWordPressConfigName(user)}</TableCell>
               <TableCell className="text-muted-foreground text-sm">
-                {formatLastLogin(user.lastLogin)}
+                {formatLastPublication(user.lastLogin)}
               </TableCell>
               <TableCell className="text-right">
                 <UserActionsMenu

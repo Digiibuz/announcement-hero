@@ -14,7 +14,7 @@ export const useUserManagement = () => {
     try {
       setIsLoading(true);
       
-      // Fetch user profiles with user activity
+      // Fetch user profiles with wordpress configs
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*, wordpress_configs(name, site_url)');
@@ -23,24 +23,35 @@ export const useUserManagement = () => {
         throw profilesError;
       }
       
-      // Fetch user activity data
-      let activityData: any[] = [];
+      // Fetch last publication date for each user
+      let lastPublications: any[] = [];
       try {
         const { data, error } = await supabase
-          .from('user_activity')
-          .select('user_id, last_activity_at');
+          .from('announcements')
+          .select('user_id, created_at')
+          .order('created_at', { ascending: false });
         
         if (!error && data) {
-          activityData = data;
+          // Group by user_id and keep only the most recent
+          const publicationsByUser = new Map();
+          data.forEach(announcement => {
+            if (!publicationsByUser.has(announcement.user_id)) {
+              publicationsByUser.set(announcement.user_id, announcement.created_at);
+            }
+          });
+          lastPublications = Array.from(publicationsByUser.entries()).map(([user_id, created_at]) => ({
+            user_id,
+            last_publication: created_at
+          }));
         }
       } catch (error) {
-        console.warn("Could not fetch activity data:", error);
-        // Continue without activity data
+        console.warn("Could not fetch publication data:", error);
+        // Continue without publication data
       }
       
-      // Format user profiles with activity data
+      // Format user profiles with publication data
       const processedUsers: UserProfile[] = profilesData.map(profile => {
-        const userActivity = activityData.find(activity => activity.user_id === profile.id);
+        const userPublication = lastPublications.find(pub => pub.user_id === profile.id);
         
         return {
           id: profile.id,
@@ -54,7 +65,7 @@ export const useUserManagement = () => {
             name: profile.wordpress_configs.name,
             site_url: profile.wordpress_configs.site_url
           } : null,
-          lastLogin: userActivity?.last_activity_at || null
+          lastLogin: userPublication?.last_publication || null
         };
       });
       
