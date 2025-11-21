@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
 import { useUserManagement } from "@/hooks/useUserManagement";
+import UserSearchBar from "@/components/users/UserSearchBar";
 import {
   Table,
   TableBody,
@@ -29,6 +30,7 @@ const WebsiteOverviewTable = () => {
   const { users } = useUserManagement();
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [lastPublications, setLastPublications] = useState<Record<string, string>>({});
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Get connection status for a site (simplified for now)
   const getConnectionStatus = (config: WordPressConfig) => {
@@ -87,6 +89,21 @@ const WebsiteOverviewTable = () => {
     }
   }, [configs, users]);
 
+  // Filter configurations based on search term
+  const filteredConfigs = configs.filter((config) => {
+    const client = getClientForConfig(config.id);
+    const searchLower = searchTerm.toLowerCase();
+    
+    return (
+      config.name.toLowerCase().includes(searchLower) ||
+      config.site_url.toLowerCase().includes(searchLower) ||
+      (client && (
+        client.name.toLowerCase().includes(searchLower) ||
+        client.email.toLowerCase().includes(searchLower)
+      ))
+    );
+  });
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -96,7 +113,15 @@ const WebsiteOverviewTable = () => {
   }
 
   return (
-    <>
+    <div className="space-y-4">
+      {configs.length > 0 && (
+        <UserSearchBar
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          placeholder="Rechercher par site, URL ou client..."
+        />
+      )}
+      
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -116,7 +141,7 @@ const WebsiteOverviewTable = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {configs.map((config) => {
+              {filteredConfigs.map((config) => {
                 const connectionStatus = getConnectionStatus(config);
                 const client = getClientForConfig(config.id);
                 const lastPublication = lastPublications[config.id] || "Chargement...";
@@ -196,6 +221,12 @@ const WebsiteOverviewTable = () => {
               Aucun site web configuré
             </div>
           )}
+
+          {configs.length > 0 && filteredConfigs.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              Aucun résultat trouvé pour "{searchTerm}"
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -206,7 +237,7 @@ const WebsiteOverviewTable = () => {
           onOpenChange={(open) => !open && setSelectedClient(null)}
         />
       )}
-    </>
+    </div>
   );
 };
 
