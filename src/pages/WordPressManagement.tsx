@@ -97,8 +97,10 @@ const WordPressManagement = () => {
     const matchesSearch = config.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       config.site_url.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesConnection = connectionFilter === "all" || 
-      getConnectionStatus(config) === connectionFilter;
+    const status = getConnectionStatus(config);
+    console.log(`[WordPress Filter] Site: ${config.name}, Status: ${status}, Filter: ${connectionFilter}, app_username: ${config.app_username}, app_password: ${config.app_password ? 'set' : 'not set'}, rest_api_key: ${config.rest_api_key ? 'set' : 'not set'}`);
+    
+    const matchesConnection = connectionFilter === "all" || status === connectionFilter;
     
     return matchesSearch && matchesConnection;
   });
