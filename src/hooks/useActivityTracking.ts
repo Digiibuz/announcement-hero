@@ -13,14 +13,14 @@ export const useActivityTracking = () => {
       if (!user) return;
 
       try {
-        // Update user activity
+        // Update user activity on login
         const { error } = await supabase
           .from('user_activity')
           .upsert(
             {
               user_id: user.id,
               last_activity_at: new Date().toISOString(),
-              activity_type: 'activity'
+              activity_type: 'login'
             },
             {
               onConflict: 'user_id'
@@ -28,19 +28,14 @@ export const useActivityTracking = () => {
           );
 
         if (error) {
-          console.error('Error tracking activity:', error);
+          console.error('Error tracking login activity:', error);
         }
       } catch (error) {
-        console.error('Error tracking activity:', error);
+        console.error('Error tracking login activity:', error);
       }
     };
 
-    // Track activity on mount
+    // Track activity only on login/mount
     trackActivity();
-
-    // Track activity every 5 minutes
-    const interval = setInterval(trackActivity, 5 * 60 * 1000);
-
-    return () => clearInterval(interval);
   }, [user]);
 };
