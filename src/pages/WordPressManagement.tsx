@@ -3,6 +3,7 @@ import React from "react";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import UserSearchBar from "@/components/users/UserSearchBar";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import WordPressConfigForm from "@/components/wordpress/WordPressConfigForm";
 import WordPressConfigList from "@/components/wordpress/WordPressConfigList";
@@ -34,6 +35,7 @@ const WordPressManagement = () => {
   } = useWordPressConfigs();
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [searchTerm, setSearchTerm] = React.useState("");
 
   const handleCreateConfig = async (data: any) => {
     await createConfig(data);
@@ -78,6 +80,12 @@ const WordPressManagement = () => {
   // Change page title based on user role
   const pageTitle = (isClient || isCommercial) ? "Mon site" : "Gestion WordPress";
 
+  // Filter configurations based on search term
+  const filteredConfigs = configs.filter((config) =>
+    config.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    config.site_url.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   // Message to display when client/commercial has no site assigned
   const NoSiteMessage = () => (
     <Card className="mt-4">
@@ -102,12 +110,20 @@ const WordPressManagement = () => {
         <AccessDenied />
       ) : (
         <AnimatedContainer delay={200}>
-          <div className="w-full">
+          <div className="w-full space-y-4">
+            {isAdmin && configs.length > 0 && (
+              <UserSearchBar
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                placeholder="Rechercher par nom de site ou URL..."
+              />
+            )}
+            
             {(isClient || isCommercial) && configs.length === 0 ? (
               <NoSiteMessage />
             ) : (
               <WordPressConfigList
-                configs={configs}
+                configs={filteredConfigs}
                 isLoading={isLoading}
                 isSubmitting={isSubmitting}
                 onUpdateConfig={handleUpdateConfig}
