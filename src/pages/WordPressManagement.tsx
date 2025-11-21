@@ -7,6 +7,7 @@ import UserSearchBar from "@/components/users/UserSearchBar";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import WordPressConfigForm from "@/components/wordpress/WordPressConfigForm";
 import WordPressConfigList from "@/components/wordpress/WordPressConfigList";
+import WordPressConnectionFilter from "@/components/wordpress/WordPressConnectionFilter";
 import { useWordPressConfigs } from "@/hooks/useWordPressConfigs";
 import {
   Dialog,
@@ -36,6 +37,17 @@ const WordPressManagement = () => {
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState("");
+  const [connectionFilter, setConnectionFilter] = React.useState("all");
+
+  // Get connection status for a site (same logic as DisconnectedSitesTable)
+  const getConnectionStatus = (config: WordPressConfig) => {
+    if (config.app_username && config.app_password) {
+      return "connected";
+    } else if (config.rest_api_key) {
+      return "partial";
+    }
+    return "disconnected";
+  };
 
   const handleCreateConfig = async (data: any) => {
     await createConfig(data);
@@ -80,11 +92,16 @@ const WordPressManagement = () => {
   // Change page title based on user role
   const pageTitle = (isClient || isCommercial) ? "Mon site" : "Gestion WordPress";
 
-  // Filter configurations based on search term
-  const filteredConfigs = configs.filter((config) =>
-    config.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    config.site_url.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter configurations based on search term and connection status
+  const filteredConfigs = configs.filter((config) => {
+    const matchesSearch = config.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      config.site_url.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesConnection = connectionFilter === "all" || 
+      getConnectionStatus(config) === connectionFilter;
+    
+    return matchesSearch && matchesConnection;
+  });
 
   // Message to display when client/commercial has no site assigned
   const NoSiteMessage = () => (
@@ -112,11 +129,19 @@ const WordPressManagement = () => {
         <AnimatedContainer delay={200}>
           <div className="w-full space-y-4">
             {isAdmin && configs.length > 0 && (
-              <UserSearchBar
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
-                placeholder="Rechercher par nom de site ou URL..."
-              />
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <UserSearchBar
+                    searchTerm={searchTerm}
+                    onSearchChange={setSearchTerm}
+                    placeholder="Rechercher par nom de site ou URL..."
+                  />
+                </div>
+                <WordPressConnectionFilter
+                  value={connectionFilter}
+                  onChange={setConnectionFilter}
+                />
+              </div>
             )}
             
             {(isClient || isCommercial) && configs.length === 0 ? (
