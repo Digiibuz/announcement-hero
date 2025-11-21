@@ -1,5 +1,5 @@
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,6 +27,8 @@ const CategoryStep = ({
     hasCategories,
     refetch
   } = useWordPressCategories();
+  
+  const [selectOpen, setSelectOpen] = useState(false);
 
   // Restaurer l'état du formulaire au chargement
   useEffect(() => {
@@ -37,21 +39,19 @@ const CategoryStep = ({
     }
   }, [loadForm]);
 
-  // Retry logic si erreur de récupération
+  // Recharger les catégories si le select est ouvert et qu'il y a une erreur
   useEffect(() => {
-    if (categoriesError && !isCategoriesLoading) {
-      const timer = setTimeout(() => {
-        console.log("Tentative de récupération des catégories après erreur...");
-        try {
-          refetch();
-        } catch (error) {
-          console.error("Error refetching categories:", error);
-        }
-      }, 2000);
-      
-      return () => clearTimeout(timer);
+    if (selectOpen && (categoriesError || (!isCategoriesLoading && !hasCategories))) {
+      console.log("Select opened with error or no categories, retrying...");
+      try {
+        refetch();
+      } catch (error) {
+        console.error("Error refetching on select open:", error);
+      }
     }
-  }, [categoriesError, isCategoriesLoading, refetch]);
+  }, [selectOpen, categoriesError, hasCategories, isCategoriesLoading, refetch]);
+
+  // Retry logic si erreur de récupération - supprimé car géré par useEffect au-dessus
 
   return (
     <div className="space-y-6">
@@ -67,6 +67,8 @@ const CategoryStep = ({
               defaultValue={field.value} 
               value={field.value}
               disabled={isCategoriesLoading}
+              open={selectOpen}
+              onOpenChange={setSelectOpen}
             >
               <FormControl>
                 <SelectTrigger className="h-14 text-base border-2 border-gray-200 focus:border-brand-orange rounded-xl bg-gray-50 hover:bg-white transition-all duration-200" id="category-select">
