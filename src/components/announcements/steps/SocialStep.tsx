@@ -89,6 +89,12 @@ export default function SocialStep({ form, onSkip, className, onNavigationVisibi
     if (onHideNextButton) {
       onHideNextButton(showPlatformQuestion);
     }
+    // Nettoyer l'état quand le composant se démonte
+    return () => {
+      if (onHideNextButton) {
+        onHideNextButton(false);
+      }
+    };
   }, [showPlatformQuestion, onHideNextButton]);
 
   const handlePlatformSelection = (skipAll: boolean = false) => {
