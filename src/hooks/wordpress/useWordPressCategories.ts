@@ -45,32 +45,28 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
     console.log('🔍 DEBUG: fetchCategoriesForConfig called with:', {
       configId,
       lastConfigId: lastConfigIdRef.current,
+      currentlyLoading: isLoadingRef.current,
       skipFiltering
     });
 
-    // Éviter les appels avec des IDs de configuration différents en succession rapide
-    if (lastConfigIdRef.current && lastConfigIdRef.current !== configId) {
-      console.log("WordPress config ID changed, waiting for stabilization...");
-      // Attendre un peu pour que l'ID se stabilise
-      await new Promise(resolve => setTimeout(resolve, 200));
-      // Vérifier si l'ID a encore changé
-      if (lastConfigIdRef.current && lastConfigIdRef.current !== configId) {
-        console.log("Configuration still changing, skipping fetch");
-        return;
-      }
-    }
-
     lastConfigIdRef.current = configId;
 
-    // Éviter les appels multiples simultanés
-    if (isLoadingRef.current) {
-      console.log("Fetch already in progress, skipping...");
-      return;
+    // Annuler toute requête en cours AVANT de vérifier isLoadingRef
+    if (abortControllerRef.current) {
+      console.log("Aborting previous request");
+      abortControllerRef.current.abort();
     }
 
-    // Annuler toute requête en cours
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
+    // Si déjà en cours de chargement, attendre un peu puis réessayer
+    if (isLoadingRef.current) {
+      console.log("Fetch already in progress, waiting 500ms before retry...");
+      await new Promise(resolve => setTimeout(resolve, 500));
+      // Si toujours en cours après l'attente, forcer la réinitialisation
+      if (isLoadingRef.current) {
+        console.warn("Previous fetch still loading after wait, forcing reset");
+        isLoadingRef.current = false;
+        setIsLoading(false);
+      }
     }
 
     // Créer un nouveau contrôleur d'abort
@@ -244,7 +240,10 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
         clearTimeout(timeoutId);
       }
     } catch (err: any) {
-      if (signal.aborted) return;
+      if (signal.aborted) {
+        console.log("Request was aborted, cleaning up");
+        return;
+      }
       
       console.error("Error fetching WordPress categories:", err);
       
@@ -278,10 +277,10 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
       }
       setCategories([]);
     } finally {
-      if (!signal.aborted) {
-        setIsLoading(false);
-        isLoadingRef.current = false;
-      }
+      // TOUJOURS réinitialiser l'état de chargement, même si la requête a été annulée
+      console.log("Cleaning up fetch state, signal.aborted:", signal.aborted);
+      setIsLoading(false);
+      isLoadingRef.current = false;
     }
   }, [skipFiltering]);
 
@@ -337,26 +336,28 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
     
     // Annuler toute requête en cours lors du changement des dépendances
     if (abortControllerRef.current) {
+      console.log("Aborting previous request from effect");
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
     
     if (configIdToUse) {
-      // Réinitialiser l'état avant de charger
+      // Réinitialiser complètement l'état avant de charger
       setError(null);
+      setCategories([]);
+      setIsLoading(false);
+      isLoadingRef.current = false;
       
-      // Si l'utilisateur existe, essayer de récupérer les catégories
-      const timer = setTimeout(() => {
-        fetchCategories();
-      }, 100);
+      // Démarrer immédiatement sans délai pour iPad
+      fetchCategories();
       
       return () => {
-        clearTimeout(timer);
         if (abortControllerRef.current) {
           abortControllerRef.current.abort();
         }
       };
     } else {
+      console.log("No configIdToUse, resetting state");
       setCategories([]);
       setError(null);
       setIsLoading(false);
