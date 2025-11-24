@@ -23,17 +23,40 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
   const { canPublish, stats } = usePublicationLimits();
   const [selectOpen, setSelectOpen] = useState(false);
   
+  // Retry automatique plus agressif au montage
+  useEffect(() => {
+    if (!isCategoriesLoading && !hasCategories && !categoriesError) {
+      console.log("PublishingOptions: No categories on mount, triggering initial fetch");
+      refetch();
+    }
+  }, []); // Uniquement au montage
+  
   // Rafraîchir automatiquement les catégories si le select est ouvert et qu'il y a une erreur
   useEffect(() => {
     if (selectOpen && (categoriesError || (!isCategoriesLoading && !hasCategories))) {
       console.log("Select opened with error or no categories, retrying...");
-      try {
-        refetch();
-      } catch (error) {
-        console.error("Error refetching on select open:", error);
-      }
+      const retryTimer = setTimeout(() => {
+        try {
+          refetch();
+        } catch (error) {
+          console.error("Error refetching on select open:", error);
+        }
+      }, 300);
+      return () => clearTimeout(retryTimer);
     }
   }, [selectOpen, categoriesError, hasCategories, isCategoriesLoading, refetch]);
+
+  // Retry périodique si pas de catégories
+  useEffect(() => {
+    if (!hasCategories && !isCategoriesLoading && !categoriesError) {
+      console.log("PublishingOptions: Still no categories, scheduling retry...");
+      const retryTimer = setTimeout(() => {
+        console.log("Executing scheduled retry");
+        refetch();
+      }, 2000);
+      return () => clearTimeout(retryTimer);
+    }
+  }, [hasCategories, isCategoriesLoading, categoriesError, refetch]);
   
   // Calculer la date de remise à zéro (1er du mois suivant)
   const getResetDate = () => {
@@ -60,7 +83,15 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
             >
               <FormControl>
                 <SelectTrigger>
-                  <SelectValue placeholder="Sélectionnez une catégorie" />
+                  <SelectValue placeholder={
+                    isCategoriesLoading 
+                      ? "Chargement des catégories..." 
+                      : categoriesError 
+                      ? "Erreur de chargement - Cliquez pour réessayer"
+                      : !hasCategories
+                      ? "Chargement des catégories en cours..."
+                      : "Sélectionnez une catégorie"
+                  } />
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
@@ -77,7 +108,12 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
                     <button 
                       onClick={(e) => {
                         e.preventDefault();
-                        refetch();
+                        e.stopPropagation();
+                        try {
+                          refetch();
+                        } catch (error) {
+                          console.error("Error refetching:", error);
+                        }
                       }}
                       className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center justify-center gap-1"
                     >
@@ -85,16 +121,19 @@ const PublishingOptions = ({ form }: PublishingOptionsProps) => {
                       Réessayer
                     </button>
                   </div>
-                ) : hasCategories ? (
+                ) : !hasCategories ? (
+                  <div className="p-2 text-center">
+                    <div className="flex items-center justify-center">
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      <span className="text-sm text-muted-foreground">Chargement des catégories...</span>
+                    </div>
+                  </div>
+                ) : (
                   categories.map(category => (
                     <SelectItem key={category.id} value={String(category.id)}>
                       {category.name}
                     </SelectItem>
                   ))
-                ) : (
-                  <div className="p-2 text-center text-sm text-muted-foreground">
-                    Aucune catégorie disponible
-                  </div>
                 )}
               </SelectContent>
             </Select>
