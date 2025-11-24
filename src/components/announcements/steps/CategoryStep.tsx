@@ -39,36 +39,19 @@ const CategoryStep = ({
     }
   }, [loadForm]);
 
-  // Retry automatique plus agressif au montage du composant
+  // Recharger les catégories si le select est ouvert et qu'il y a une erreur
   useEffect(() => {
-    if (!isCategoriesLoading && !hasCategories && !categoriesError) {
-      console.log("No categories on mount, triggering initial fetch");
-      refetch();
-    }
-  }, []); // Uniquement au montage
-
-  // Retry automatique si le select est ouvert sans catégories
-  useEffect(() => {
-    if (selectOpen && !isCategoriesLoading && (!hasCategories || categoriesError)) {
-      console.log("Select opened without categories or with error, retrying...");
-      const retryTimer = setTimeout(() => {
+    if (selectOpen && (categoriesError || (!isCategoriesLoading && !hasCategories))) {
+      console.log("Select opened with error or no categories, retrying...");
+      try {
         refetch();
-      }, 300);
-      return () => clearTimeout(retryTimer);
+      } catch (error) {
+        console.error("Error refetching on select open:", error);
+      }
     }
-  }, [selectOpen, hasCategories, categoriesError, isCategoriesLoading, refetch]);
+  }, [selectOpen, categoriesError, hasCategories, isCategoriesLoading, refetch]);
 
-  // Retry périodique si pas de catégories après 2 secondes
-  useEffect(() => {
-    if (!hasCategories && !isCategoriesLoading && !categoriesError) {
-      console.log("Still no categories after mount, scheduling retry...");
-      const retryTimer = setTimeout(() => {
-        console.log("Executing scheduled retry");
-        refetch();
-      }, 2000);
-      return () => clearTimeout(retryTimer);
-    }
-  }, [hasCategories, isCategoriesLoading, categoriesError, refetch]);
+  // Retry logic si erreur de récupération - supprimé car géré par useEffect au-dessus
 
   return (
     <div className="space-y-6">
@@ -89,15 +72,7 @@ const CategoryStep = ({
             >
               <FormControl>
                 <SelectTrigger className="h-14 text-base border-2 border-gray-200 focus:border-brand-orange rounded-xl bg-gray-50 hover:bg-white transition-all duration-200" id="category-select">
-                  <SelectValue placeholder={
-                    isCategoriesLoading 
-                      ? "Chargement des catégories..." 
-                      : categoriesError 
-                      ? "Erreur de chargement - Cliquez pour réessayer"
-                      : !hasCategories
-                      ? "Chargement des catégories en cours..."
-                      : "Sélectionnez une catégorie"
-                  } />
+                  <SelectValue placeholder="Sélectionnez une catégorie" />
                 </SelectTrigger>
               </FormControl>
               <SelectContent className="bg-white border-2 border-gray-200 rounded-xl shadow-xl">
@@ -112,9 +87,7 @@ const CategoryStep = ({
                       Erreur: {String(categoriesError)}
                     </div>
                     <button 
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
+                      onClick={() => {
                         try {
                           refetch();
                         } catch (error) {
@@ -126,13 +99,6 @@ const CategoryStep = ({
                       <RefreshCw className="h-3 w-3" />
                       Réessayer
                     </button>
-                  </div>
-                ) : !hasCategories ? (
-                  <div className="p-4 text-center">
-                    <div className="flex items-center justify-center mb-2">
-                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                      <span className="text-sm text-muted-foreground">Chargement des catégories...</span>
-                    </div>
                   </div>
                 ) : hasCategories && Array.isArray(categories) ? (
                   categories.map(category => {
@@ -147,7 +113,24 @@ const CategoryStep = ({
                       </SelectItem>
                     );
                   })
-                ) : null}
+                ) : (
+                  <div className="p-4 text-center text-sm">
+                    <p className="text-muted-foreground mb-2">Aucune catégorie disponible</p>
+                    <button 
+                      onClick={() => {
+                        try {
+                          refetch();
+                        } catch (error) {
+                          console.error("Error refetching:", error);
+                        }
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center justify-center gap-1 mx-auto"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      Rafraîchir
+                    </button>
+                  </div>
+                )}
               </SelectContent>
             </Select>
             <FormMessage />
