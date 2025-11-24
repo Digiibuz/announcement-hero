@@ -26,6 +26,7 @@ import CreateAnnouncementHeader from "@/components/announcements/steps/CreateAnn
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, TrendingUp } from "lucide-react";
 import DynamicBackground from "@/components/ui/DynamicBackground";
+import LoadingOverlay from "@/components/ui/LoadingOverlay";
 
 const FORM_STORAGE_KEY = "announcement-form-draft";
 
@@ -88,10 +89,23 @@ const CreateAnnouncement = () => {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [showStepNavigation, setShowStepNavigation] = useState(true);
   const [hideNextButton, setHideNextButton] = useState(false);
-  const { categories } = useWordPressCategories();
+  const { categories, isLoading: isCategoriesLoading, hasCategories } = useWordPressCategories();
+  const [showInitialLoadingOverlay, setShowInitialLoadingOverlay] = useState(true);
 
   const stepConfigs = getStepConfigs(user?.canPublishSocialMedia || false);
   const currentStep = stepConfigs[currentStepIndex];
+
+  // Gérer l'overlay de chargement initial
+  useEffect(() => {
+    // Attendre que les catégories soient chargées
+    if (!isCategoriesLoading && hasCategories) {
+      // Ajouter un délai minimum de 500ms pour éviter un flash trop rapide
+      const timer = setTimeout(() => {
+        setShowInitialLoadingOverlay(false);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isCategoriesLoading, hasCategories]);
 
   // Restaurer l'étape après retour de connexion Facebook
   useEffect(() => {
@@ -520,6 +534,14 @@ const CreateAnnouncement = () => {
 
   return (
     <>
+      {/* Overlay de chargement initial - bloque l'interface jusqu'au chargement des catégories */}
+      {showInitialLoadingOverlay && (
+        <LoadingOverlay 
+          message="Préparation de votre espace..." 
+          submessage="Chargement des catégories et des données nécessaires" 
+        />
+      )}
+
       {isMobile ? (
         <div className="min-h-screen bg-white">
           <CreateAnnouncementHeader 

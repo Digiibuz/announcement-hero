@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import PageLayout from "@/components/ui/layout/PageLayout";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
@@ -10,6 +10,9 @@ import { LoadingIndicator } from "@/components/ui/loading-indicator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
+import { useWordPressCategories } from "@/hooks/wordpress/useWordPressCategories";
+import LoadingOverlay from "@/components/ui/LoadingOverlay";
+import { useEffect } from "react";
 
 const AnnouncementDetail = () => {
   const { user } = useAuth();
@@ -29,6 +32,22 @@ const AnnouncementDetail = () => {
     publicationStats
   } = useAnnouncementDetail(user?.id);
 
+  // Charger les catégories pour l'édition
+  const { isLoading: isCategoriesLoading, hasCategories } = useWordPressCategories();
+  const [showInitialLoadingOverlay, setShowInitialLoadingOverlay] = useState(true);
+
+  // Gérer l'overlay de chargement initial
+  useEffect(() => {
+    // Attendre que l'annonce ET les catégories soient chargées
+    if (!isLoading && announcement && !isCategoriesLoading && hasCategories) {
+      // Ajouter un délai minimum de 500ms pour éviter un flash trop rapide
+      const timer = setTimeout(() => {
+        setShowInitialLoadingOverlay(false);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, announcement, isCategoriesLoading, hasCategories]);
+
   const titleAction = announcement ? (
     <AnnouncementActions
       id={announcement.id}
@@ -47,7 +66,16 @@ const AnnouncementDetail = () => {
   };
 
   return (
-    <PageLayout title={isLoading ? "Chargement..." : announcement?.title} titleAction={titleAction}>
+    <>
+      {/* Overlay de chargement initial - bloque l'interface jusqu'au chargement des catégories */}
+      {showInitialLoadingOverlay && (
+        <LoadingOverlay 
+          message="Chargement de l'annonce..." 
+          submessage="Préparation des données et des catégories" 
+        />
+      )}
+
+      <PageLayout title={isLoading ? "Chargement..." : announcement?.title} titleAction={titleAction}>
       <AnimatedContainer delay={200}>
         {/* Publication limit warning */}
         {!canPublish() && (
@@ -94,6 +122,7 @@ const AnnouncementDetail = () => {
         )}
       </AnimatedContainer>
     </PageLayout>
+    </>
   );
 };
 
