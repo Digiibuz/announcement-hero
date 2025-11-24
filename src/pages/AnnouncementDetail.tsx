@@ -68,12 +68,7 @@ const AnnouncementDetail = () => {
   return (
     <>
       {/* Overlay de chargement initial - bloque l'interface jusqu'au chargement des catégories */}
-      {showInitialLoadingOverlay && (
-        <LoadingOverlay 
-          message="Chargement de l'annonce..." 
-          submessage="Préparation des données et des catégories" 
-        />
-      )}
+      {showInitialLoadingOverlay && <LoadingOverlay />}
 
       <PageLayout title={isLoading ? "Chargement..." : announcement?.title} titleAction={titleAction}>
       <AnimatedContainer delay={200}>
