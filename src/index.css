@@ -157,6 +157,18 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 
+  /* Android Safe Area Support */
+  .pb-safe {
+    padding-bottom: max(env(safe-area-inset-bottom), 0.25rem);
+  }
+
+  /* Add bottom padding to main content when mobile nav is present */
+  @media (max-width: 767px) {
+    main {
+      padding-bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));
+    }
+  }
+
   .ios-safe-left {
     padding-left: constant(safe-area-inset-left);
     padding-left: env(safe-area-inset-left);
