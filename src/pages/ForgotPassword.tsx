@@ -51,9 +51,8 @@ const ForgotPassword = () => {
     setIsLoading(true);
     
     try {
-      // L'URL de redirection doit être une URL absolue
-      const origin = window.location.origin;
-      const redirectTo = `${origin}/reset-password`;
+      // Utiliser toujours l'URL de production pour la redirection
+      const redirectTo = "https://app.digiibuz.fr/reset-password";
       
       console.log("URL de redirection pour la réinitialisation:", redirectTo);
       
