@@ -34,19 +34,28 @@ const AnnouncementDetail = () => {
 
   // Charger les catégories pour l'édition
   const { isLoading: isCategoriesLoading, hasCategories } = useWordPressCategories();
-  const [showInitialLoadingOverlay, setShowInitialLoadingOverlay] = useState(true);
+  const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
 
-  // Gérer l'overlay de chargement initial
+  // Gérer l'overlay de chargement quand l'utilisateur clique sur "Modifier"
   useEffect(() => {
-    // Attendre que l'annonce ET les catégories soient chargées
-    if (!isLoading && announcement && !isCategoriesLoading && hasCategories) {
+    if (isEditing) {
+      // Si on passe en mode édition et que les catégories ne sont pas chargées, afficher l'overlay
+      if (isCategoriesLoading || !hasCategories) {
+        setShowLoadingOverlay(true);
+      }
+    }
+  }, [isEditing, isCategoriesLoading, hasCategories]);
+
+  // Cacher l'overlay quand les catégories sont chargées
+  useEffect(() => {
+    if (showLoadingOverlay && !isCategoriesLoading && hasCategories) {
       // Ajouter un délai minimum de 500ms pour éviter un flash trop rapide
       const timer = setTimeout(() => {
-        setShowInitialLoadingOverlay(false);
+        setShowLoadingOverlay(false);
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [isLoading, announcement, isCategoriesLoading, hasCategories]);
+  }, [showLoadingOverlay, isCategoriesLoading, hasCategories]);
 
   const titleAction = announcement ? (
     <AnnouncementActions
@@ -67,8 +76,8 @@ const AnnouncementDetail = () => {
 
   return (
     <>
-      {/* Overlay de chargement initial - bloque l'interface jusqu'au chargement des catégories */}
-      {showInitialLoadingOverlay && <LoadingOverlay />}
+      {/* Overlay de chargement - bloque l'interface jusqu'au chargement des catégories en mode édition */}
+      {showLoadingOverlay && <LoadingOverlay />}
 
       <PageLayout title={isLoading ? "Chargement..." : announcement?.title} titleAction={titleAction}>
       <AnimatedContainer delay={200}>
