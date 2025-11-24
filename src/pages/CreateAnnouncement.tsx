@@ -535,12 +535,7 @@ const CreateAnnouncement = () => {
   return (
     <>
       {/* Overlay de chargement initial - bloque l'interface jusqu'au chargement des catégories */}
-      {showInitialLoadingOverlay && (
-        <LoadingOverlay 
-          message="Préparation de votre espace..." 
-          submessage="Chargement des catégories et des données nécessaires" 
-        />
-      )}
+      {showInitialLoadingOverlay && <LoadingOverlay />}
 
       {isMobile ? (
         <div className="min-h-screen bg-white">
