@@ -36,15 +36,12 @@ const AnnouncementDetail = () => {
   const { isLoading: isCategoriesLoading, hasCategories } = useWordPressCategories();
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
 
-  // Gérer l'overlay de chargement quand l'utilisateur clique sur "Modifier"
+  // Afficher l'overlay immédiatement quand on passe en mode édition
   useEffect(() => {
     if (isEditing) {
-      // Si on passe en mode édition et que les catégories ne sont pas chargées, afficher l'overlay
-      if (isCategoriesLoading || !hasCategories) {
-        setShowLoadingOverlay(true);
-      }
+      setShowLoadingOverlay(true);
     }
-  }, [isEditing, isCategoriesLoading, hasCategories]);
+  }, [isEditing]);
 
   // Cacher l'overlay quand les catégories sont chargées
   useEffect(() => {
