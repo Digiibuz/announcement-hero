@@ -75,8 +75,6 @@ export const useWordPressPublishing = () => {
 
       // MODE DÉMO : Si l'utilisateur est testeur, simuler le succès sans appel API
       if (userProfile && isDemoMode(userProfile.role)) {
-        console.log("🎭 MODE TESTEUR: Simulation de la publication WordPress pour", userProfile.email);
-        
         updatePublishingStep("prepare", "success", "Préparation terminée (mode démo)", 25);
         updatePublishingStep("compress", "success", "Compression ignorée (mode démo)", 60);
         updatePublishingStep("wordpress", "success", "Publication simulée (mode démo)", 85);
