@@ -72,27 +72,43 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
       console.log("📡 Fetching categories via Edge Function for config:", configId);
 
       // Vérifier et rafraîchir la session si nécessaire
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !session) {
-          console.log("Session expired, refreshing...");
-          const { error: refreshError } = await supabase.auth.refreshSession();
-          if (refreshError) {
-            console.error("Failed to refresh session:", refreshError);
-            throw new Error("Session expirée. Veuillez vous reconnecter.");
-          }
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        console.log("Session expired, refreshing...");
+        const { error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError) {
+          console.error("Failed to refresh session:", refreshError);
+          throw new Error("Session expirée. Veuillez vous reconnecter.");
         }
-      } catch (sessionErr) {
-        console.error("Session check error:", sessionErr);
       }
 
       // Appeler l'edge function wordpress-proxy
-      const { data, error: functionError } = await supabase.functions.invoke('wordpress-proxy', {
+      let { data, error: functionError } = await supabase.functions.invoke('wordpress-proxy', {
         body: {
           action: 'getCategories',
           configId,
         },
       });
+
+      // Si erreur 401, rafraîchir la session et réessayer une fois
+      if (functionError && functionError.message?.includes('401')) {
+        console.log("🔄 401 detected, refreshing session and retrying...");
+        const { error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError) {
+          console.error("Failed to refresh session:", refreshError);
+          throw new Error("Session expirée. Veuillez vous reconnecter.");
+        }
+
+        // Réessayer l'appel
+        const retry = await supabase.functions.invoke('wordpress-proxy', {
+          body: {
+            action: 'getCategories',
+            configId,
+          },
+        });
+        data = retry.data;
+        functionError = retry.error;
+      }
 
       if (functionError) {
         console.error("Edge function error:", functionError);
