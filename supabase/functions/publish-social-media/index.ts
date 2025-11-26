@@ -10,11 +10,9 @@ interface PublishRequest {
   userId: string;
 }
 
-// Email de test pour le mode démo
-const DEMO_TEST_EMAIL = "apple-test@digiibuz.fr";
-
-const isDemoMode = (email: string): boolean => {
-  return email.toLowerCase() === DEMO_TEST_EMAIL.toLowerCase();
+// Vérifier si l'utilisateur est testeur (mode démo)
+const isDemoMode = (role: string): boolean => {
+  return role === 'testeur';
 };
 
 Deno.serve(async (req) => {
@@ -32,15 +30,15 @@ Deno.serve(async (req) => {
     
     console.log('📢 Publication réseaux sociaux démarrée:', { announcementId, userId });
 
-    // Vérifier si l'utilisateur est en mode démo
+    // Vérifier si l'utilisateur est testeur (mode démo)
     const { data: userProfile, error: profileError } = await supabase
       .from('profiles')
-      .select('email')
+      .select('email, role')
       .eq('id', userId)
       .single();
 
-    if (!profileError && userProfile && isDemoMode(userProfile.email)) {
-      console.log('🎭 MODE DÉMO: Simulation de la publication réseaux sociaux pour:', userProfile.email);
+    if (!profileError && userProfile && isDemoMode(userProfile.role)) {
+      console.log('🎭 MODE TESTEUR: Simulation de la publication réseaux sociaux pour:', userProfile.email);
       
       // Récupérer l'annonce pour vérifier les flags de publication
       const { data: announcement, error: announcementError } = await supabase
@@ -59,7 +57,7 @@ Deno.serve(async (req) => {
             .update({
               facebook_publication_status: 'success',
               facebook_post_id: `demo_fb_${Date.now()}`,
-              facebook_url: `https://demo.facebook.com/demo-post`,
+              facebook_url: `https://www.facebook.com/demo-post-${Date.now()}`,
               facebook_published_at: new Date().toISOString(),
             })
             .eq('id', announcementId);
@@ -75,7 +73,7 @@ Deno.serve(async (req) => {
             .update({
               instagram_publication_status: 'success',
               instagram_post_id: `demo_ig_${Date.now()}`,
-              instagram_url: `https://demo.instagram.com/p/demo-post`,
+              instagram_url: `https://www.instagram.com/p/demo-${Date.now()}`,
               instagram_published_at: new Date().toISOString(),
             })
             .eq('id', announcementId);

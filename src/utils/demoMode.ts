@@ -1,16 +1,13 @@
 /**
- * Utilitaire pour détecter et gérer le mode démo (pour les tests Apple)
+ * Utilitaire pour détecter et gérer le mode démo (pour les testeurs)
  */
-
-// Email de test utilisé par Apple
-export const DEMO_TEST_EMAIL = "apple-test@digiibuz.fr";
 
 /**
- * Vérifie si l'utilisateur est en mode démo
+ * Vérifie si l'utilisateur est en mode démo (testeur)
  */
-export const isDemoMode = (userEmail?: string | null): boolean => {
-  if (!userEmail) return false;
-  return userEmail.toLowerCase() === DEMO_TEST_EMAIL.toLowerCase();
+export const isDemoMode = (userRole?: string | null): boolean => {
+  if (!userRole) return false;
+  return userRole === 'testeur';
 };
 
 /**
@@ -41,5 +38,19 @@ export const DEMO_CATEGORIES = [
  * Génère une URL WordPress fictive pour le mode démo
  */
 export const generateDemoWordPressUrl = (announcementId: string): string => {
-  return `https://demo.digiibuz.fr/annonce/${announcementId}`;
+  return `https://demo-wordpress.digiibuz.fr/annonce/${announcementId}`;
+};
+
+/**
+ * Génère une URL Facebook fictive pour le mode démo
+ */
+export const generateDemoFacebookUrl = (): string => {
+  return `https://www.facebook.com/demo-post-${Date.now()}`;
+};
+
+/**
+ * Génère une URL Instagram fictive pour le mode démo
+ */
+export const generateDemoInstagramUrl = (): string => {
+  return `https://www.instagram.com/p/demo-${Date.now()}`;
 };

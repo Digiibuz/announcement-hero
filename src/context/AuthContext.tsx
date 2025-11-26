@@ -36,6 +36,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isClient: boolean;
   isCommercial: boolean;
+  isTester: boolean;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
@@ -341,6 +342,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isAdmin = user?.role === 'admin';
   const isClient = user?.role === 'client';
   const isCommercial = user?.role === 'commercial';
+  const isTester = user?.role === 'testeur';
 
   const value = {
     user,
@@ -350,6 +352,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isAdmin,
     isClient,
     isCommercial,
+    isTester,
     signOut,
     refreshUser,
     login,

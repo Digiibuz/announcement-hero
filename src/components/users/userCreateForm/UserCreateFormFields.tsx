@@ -26,7 +26,7 @@ export const formSchema = z.object({
   email: z.string().email({ message: "Email invalide" }),
   name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères" }),
   password: z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères" }),
-  role: z.enum(["admin", "client"], {
+  role: z.enum(["admin", "client", "testeur"], {
     required_error: "Veuillez sélectionner un rôle",
   }),
   wordpressConfigId: z.string().optional(),
@@ -106,6 +106,7 @@ const UserCreateFormFields: React.FC<UserCreateFormFieldsProps> = ({
               <SelectContent>
                 <SelectItem value="admin">Administrateur</SelectItem>
                 <SelectItem value="client">Client</SelectItem>
+                <SelectItem value="testeur">Testeur</SelectItem>
               </SelectContent>
             </Select>
             <FormMessage />
