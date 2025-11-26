@@ -18,9 +18,15 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
   const configIdToUse = specificConfigId || user?.wordpressConfigId;
 
   const fetchCategories = useCallback(async () => {
+    console.log("🔍 DEBUG fetchCategories - user:", { 
+      email: user?.email, 
+      role: user?.role, 
+      isDemoMode: isDemoMode(user?.role) 
+    });
+    
     // MODE DÉMO : Si l'utilisateur est testeur, retourner les catégories mockées
     if (isDemoMode(user?.role)) {
-      console.log("🎭 MODE TESTEUR activé pour:", user?.email);
+      console.log("🎭 MODE TESTEUR activé - Catégories mockées:", DEMO_CATEGORIES);
       setIsLoading(false);
       isLoadingRef.current = false;
       setError(null);
@@ -344,7 +350,11 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
   }, [fetchCategories, configIdToUse]);
 
   useEffect(() => {
-    console.log("useWordPressCategories effect running, configIdToUse:", configIdToUse);
+    console.log("useWordPressCategories effect running", { 
+      configIdToUse, 
+      userRole: user?.role,
+      isDemoMode: isDemoMode(user?.role)
+    });
     
     // Annuler toute requête en cours lors du changement des dépendances
     if (abortControllerRef.current) {
@@ -352,7 +362,8 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
       abortControllerRef.current = null;
     }
     
-    if (configIdToUse) {
+    // En mode testeur, appeler fetchCategories même sans configIdToUse
+    if (isDemoMode(user?.role) || configIdToUse) {
       // Réinitialiser l'état avant de charger
       setError(null);
       
@@ -374,7 +385,7 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
       isLoadingRef.current = false;
       lastConfigIdRef.current = null;
     }
-  }, [configIdToUse, fetchCategories]);
+  }, [configIdToUse, fetchCategories, user?.role]);
 
   // Nettoyer les requêtes en cours lors du démontage du composant
   useEffect(() => {
