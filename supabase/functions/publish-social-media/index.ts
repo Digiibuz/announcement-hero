@@ -10,6 +10,13 @@ interface PublishRequest {
   userId: string;
 }
 
+// Email de test pour le mode démo
+const DEMO_TEST_EMAIL = "apple-test@digiibuz.fr";
+
+const isDemoMode = (email: string): boolean => {
+  return email.toLowerCase() === DEMO_TEST_EMAIL.toLowerCase();
+};
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -24,6 +31,68 @@ Deno.serve(async (req) => {
     const { announcementId, userId }: PublishRequest = await req.json();
     
     console.log('📢 Publication réseaux sociaux démarrée:', { announcementId, userId });
+
+    // Vérifier si l'utilisateur est en mode démo
+    const { data: userProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('id', userId)
+      .single();
+
+    if (!profileError && userProfile && isDemoMode(userProfile.email)) {
+      console.log('🎭 MODE DÉMO: Simulation de la publication réseaux sociaux pour:', userProfile.email);
+      
+      // Récupérer l'annonce pour vérifier les flags de publication
+      const { data: announcement, error: announcementError } = await supabase
+        .from('announcements')
+        .select('create_facebook_post, create_instagram_post')
+        .eq('id', announcementId)
+        .single();
+
+      if (!announcementError && announcement) {
+        const results: any = { facebook: null, instagram: null };
+
+        // Simuler la publication Facebook si demandée
+        if (announcement.create_facebook_post) {
+          await supabase
+            .from('announcements')
+            .update({
+              facebook_publication_status: 'success',
+              facebook_post_id: `demo_fb_${Date.now()}`,
+              facebook_url: `https://demo.facebook.com/demo-post`,
+              facebook_published_at: new Date().toISOString(),
+            })
+            .eq('id', announcementId);
+          
+          results.facebook = { success: true, postId: `demo_fb_${Date.now()}` };
+          console.log('🎭 Publication Facebook simulée');
+        }
+
+        // Simuler la publication Instagram si demandée
+        if (announcement.create_instagram_post) {
+          await supabase
+            .from('announcements')
+            .update({
+              instagram_publication_status: 'success',
+              instagram_post_id: `demo_ig_${Date.now()}`,
+              instagram_url: `https://demo.instagram.com/p/demo-post`,
+              instagram_published_at: new Date().toISOString(),
+            })
+            .eq('id', announcementId);
+          
+          results.instagram = { success: true, postId: `demo_ig_${Date.now()}` };
+          console.log('🎭 Publication Instagram simulée');
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, results, demoMode: true }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        );
+      }
+    }
 
     // Récupérer l'annonce
     const { data: announcement, error: announcementError } = await supabase
