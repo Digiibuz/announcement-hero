@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Announcement } from "@/types/announcement";
 import { toast } from "sonner";
 import { useImageCompression } from "./useImageCompression";
+import { isDemoMode, generateDemoWordPressUrl } from "@/utils/demoMode";
 
 export type PublishingStatus = "idle" | "loading" | "success" | "error";
 
@@ -68,9 +69,55 @@ export const useWordPressPublishing = () => {
       // Get user's WordPress config
       const { data: userProfile, error: profileError } = await supabase
         .from('profiles')
-        .select('wordpress_config_id')
+        .select('wordpress_config_id, email')
         .eq('id', userId)
         .single();
+
+      // MODE DÉMO : Si l'utilisateur est en mode démo, simuler le succès sans appel API
+      if (userProfile && isDemoMode(userProfile.email)) {
+        console.log("🎭 MODE DÉMO: Simulation de la publication WordPress");
+        
+        updatePublishingStep("prepare", "success", "Préparation terminée (mode démo)", 25);
+        updatePublishingStep("compress", "success", "Compression ignorée (mode démo)", 60);
+        updatePublishingStep("wordpress", "success", "Publication simulée (mode démo)", 85);
+        
+        // Simuler un délai de publication réaliste
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        const demoPostId = Math.floor(Math.random() * 10000);
+        const demoUrl = generateDemoWordPressUrl(announcement.id);
+        
+        updatePublishingStep("database", "loading", "Sauvegarde en base de données", 90);
+        
+        // Sauvegarder uniquement en base de données
+        const { error: dbError } = await supabase
+          .from("announcements")
+          .update({
+            wordpress_post_id: demoPostId,
+            wordpress_url: demoUrl,
+            status: announcement.status,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", announcement.id);
+        
+        if (dbError) {
+          console.error("Error saving demo announcement:", dbError);
+          updatePublishingStep("database", "error", "Erreur lors de la sauvegarde");
+          return {
+            success: false,
+            message: "Erreur lors de la sauvegarde de l'annonce de test",
+            wordpressPostId: null
+          };
+        }
+        
+        updatePublishingStep("database", "success", "Sauvegarde réussie", 100);
+        
+        return {
+          success: true,
+          message: "Annonce de test enregistrée avec succès (mode démo)",
+          wordpressPostId: demoPostId
+        };
+      }
 
       if (profileError || !userProfile?.wordpress_config_id) {
         console.error("Error fetching WordPress config:", profileError || "No WordPress config ID found");

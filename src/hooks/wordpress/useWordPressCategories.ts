@@ -3,6 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { DipiCptCategory } from "@/types/announcement";
+import { isDemoMode, DEMO_CATEGORIES } from "@/utils/demoMode";
 
 export const useWordPressCategories = (specificConfigId?: string, skipFiltering = false) => {
   const [categories, setCategories] = useState<DipiCptCategory[]>([]);
@@ -17,6 +18,16 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
   const configIdToUse = specificConfigId || user?.wordpressConfigId;
 
   const fetchCategories = useCallback(async () => {
+    // MODE DÉMO : Si l'utilisateur est en mode démo, retourner les catégories mockées
+    if (isDemoMode(user?.email)) {
+      console.log("🎭 MODE DÉMO activé pour:", user?.email);
+      setIsLoading(false);
+      isLoadingRef.current = false;
+      setError(null);
+      setCategories(DEMO_CATEGORIES as DipiCptCategory[]);
+      return;
+    }
+
     // Si nous avons un configId spécifique, l'utiliser directement
     if (specificConfigId) {
       return await fetchCategoriesForConfig(specificConfigId);
@@ -38,7 +49,7 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
     }
 
     return await fetchCategoriesForConfig(user.wordpressConfigId);
-  }, [user?.wordpressConfigId, user?.id, specificConfigId]);
+  }, [user?.wordpressConfigId, user?.id, user?.email, specificConfigId]);
 
   // Nouvelle fonction pour récupérer les catégories pour un config ID spécifique
   const fetchCategoriesForConfig = useCallback(async (configId: string) => {
