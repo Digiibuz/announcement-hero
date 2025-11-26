@@ -162,37 +162,56 @@ async function fetchWordPressCategories(wpConfig: WordPressConfig): Promise<Word
   // Essayer d'abord l'endpoint custom dipi_cpt_category
   try {
     console.log('🔍 Trying custom endpoint: dipi_cpt_category');
+    console.log('URL:', `${siteUrl}/wp-json/wp/v2/dipi_cpt_category?per_page=100`);
+    
     const response = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt_category?per_page=100`, {
       headers,
-      signal: AbortSignal.timeout(10000), // 10s timeout
+      signal: AbortSignal.timeout(15000), // Augmenté à 15s
     });
 
+    console.log('Custom endpoint response status:', response.status);
+    
     if (response.ok) {
       const data = await response.json();
       console.log('✅ Fetched categories from custom endpoint:', data.length);
+      if (data.length > 0) {
+        console.log('Sample category:', data[0]);
+      }
       return data;
+    } else {
+      console.warn('⚠️ Custom endpoint returned status:', response.status, response.statusText);
     }
   } catch (error) {
-    console.warn('⚠️ Custom endpoint failed, trying standard categories:', error.message);
+    console.warn('⚠️ Custom endpoint failed:', error.name, error.message);
   }
 
   // Fallback sur l'endpoint standard
   try {
     console.log('🔍 Trying standard endpoint: categories');
+    console.log('URL:', `${siteUrl}/wp-json/wp/v2/categories?per_page=100`);
+    
     const response = await fetch(`${siteUrl}/wp-json/wp/v2/categories?per_page=100`, {
       headers,
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(15000), // Augmenté à 15s
     });
 
+    console.log('Standard endpoint response status:', response.status);
+    
     if (response.ok) {
       const data = await response.json();
       console.log('✅ Fetched categories from standard endpoint:', data.length);
+      if (data.length > 0) {
+        console.log('Sample category:', data[0]);
+      }
       return data;
+    } else {
+      console.error('❌ Standard endpoint returned status:', response.status, response.statusText);
     }
   } catch (error) {
-    console.error('❌ Failed to fetch categories:', error);
+    console.error('❌ Failed to fetch categories:', error.name, error.message);
   }
 
+  console.error('❌ Both endpoints failed - returning empty array');
   return [];
 }
 
