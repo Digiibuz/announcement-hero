@@ -291,90 +291,160 @@ export const useWordPressPublishing = () => {
       // WordPress publication
       updatePublishingStep("wordpress", "loading", `${actionText} sur WordPress`, 70);
       
-      // Prepare post data with additional medias integrated into content
-      const baseContent = announcement.description || "";
-      const fullContent = baseContent + additionalMediasContent;
+      // Determine endpoints
+      let useCustomTaxonomy = false;
+      let postEndpoint = `${siteUrl}/wp-json/wp/v2/pages`;
       
-      // Determine the correct endpoint
-      const isDiviPixel = wpConfig.endpoint_type === 'dipi_cpt';
-      const postEndpoint = isDiviPixel
-        ? `${siteUrl}/wp-json/wp/v2/dipi_cpt`
-        : `${siteUrl}/wp-json/wp/v2/pages`;
-      
-      const postData: any = {
-        title: announcement.title,
-        content: fullContent,
-        status: announcement.status === 'scheduled' ? 'future' : 'publish'
-      };
-      
-      // Add category for DiviPixel or tags for pages
-      if (isDiviPixel) {
-        postData.dipi_cpt_category = [parseInt(wordpressCategoryId)];
-      } else {
-        postData.categories = [parseInt(wordpressCategoryId)];
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
+        const response = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt_category`, {
+          method: 'HEAD',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal
+        }).catch(() => ({ status: 404 }));
+        
+        clearTimeout(timeoutId);
+        
+        if (response && response.status !== 404) {
+          useCustomTaxonomy = true;
+          
+          const dipiController = new AbortController();
+          const dipiTimeoutId = setTimeout(() => dipiController.abort(), 5000);
+          
+          const dipiResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipi_cpt`, {
+            method: 'HEAD',
+            headers: { 'Content-Type': 'application/json' },
+            signal: dipiController.signal
+          }).catch(() => ({ status: 404 }));
+          
+          clearTimeout(dipiTimeoutId);
+          
+          if (dipiResponse && dipiResponse.status !== 404) {
+            postEndpoint = `${siteUrl}/wp-json/wp/v2/dipi_cpt`;
+          } else {
+            const altController = new AbortController();
+            const altTimeoutId = setTimeout(() => altController.abort(), 5000);
+            
+            const altResponse = await fetch(`${siteUrl}/wp-json/wp/v2/dipicpt`, {
+              method: 'HEAD',
+              headers: { 'Content-Type': 'application/json' },
+              signal: altController.signal
+            }).catch(() => ({ status: 404 }));
+            
+            clearTimeout(altTimeoutId);
+            
+            if (altResponse && altResponse.status !== 404) {
+              postEndpoint = `${siteUrl}/wp-json/wp/v2/dipicpt`;
+            }
+          }
+        }
+      } catch (error) {
+        console.log("Error checking endpoints:", error);
       }
       
-      // Add featured image if available
-      if (featuredMediaId) {
-        postData.featured_media = featuredMediaId;
+      console.log("Using WordPress endpoint:", postEndpoint, "with custom taxonomy:", useCustomTaxonomy);
+      
+      if (isUpdate) {
+        postEndpoint = `${postEndpoint}/${announcement.wordpress_post_id}`;
       }
       
-      // Add SEO meta if provided
-      if (announcement.seo_title || announcement.seo_description) {
-        postData.meta = {
-          _yoast_wpseo_title: announcement.seo_title || '',
-          _yoast_wpseo_metadesc: announcement.seo_description || ''
-        };
-      }
-      
-      // Add slug if provided
-      if (announcement.seo_slug) {
-        postData.slug = announcement.seo_slug;
-      }
-      
-      // Prepare headers
-      const postHeaders: Record<string, string> = {
+      // Prepare headers with authentication
+      const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
       
+      // Check for authentication credentials
       if (wpConfig.app_username && wpConfig.app_password) {
         const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
-        postHeaders['Authorization'] = `Basic ${basicAuth}`;
-      }
-      
-      // Make the request (POST for new, PUT for update)
-      const requestUrl = isUpdate 
-        ? `${postEndpoint}/${announcement.wordpress_post_id}`
-        : postEndpoint;
-      
-      const postResponse = await fetch(requestUrl, {
-        method: isUpdate ? 'PUT' : 'POST',
-        headers: postHeaders,
-        body: JSON.stringify(postData)
-      });
-      
-      if (!postResponse.ok) {
-        const errorText = await postResponse.text();
-        console.error("WordPress publication failed:", postResponse.status, errorText);
-        updatePublishingStep("wordpress", "error", `Erreur lors du ${actionText.toLowerCase()}`);
+        headers['Authorization'] = `Basic ${basicAuth}`;
+      } else {
+        updatePublishingStep("wordpress", "error", "Aucune méthode d'authentification disponible");
         return { 
           success: false, 
-          message: `Erreur lors du ${actionText.toLowerCase()}: ${postResponse.status}`, 
+          message: "Aucune méthode d'authentification disponible", 
           wordpressPostId: null 
         };
       }
       
-      const wpResponseData = await postResponse.json();
-      console.log("WordPress response data:", wpResponseData);
-      updatePublishingStep("wordpress", "success", `${actionText} WordPress réussie`, 85);
+      // Prepare post data with additional medias integrated into content
+      const baseContent = announcement.description || "";
+      const fullContent = baseContent + additionalMediasContent;
       
-      const wordpressPostId = wpResponseData.id;
+      const wpPostData: any = {
+        title: announcement.title,
+        content: fullContent,
+        status: announcement.status === 'scheduled' ? 'future' : 'publish',
+      };
+      
+      // Set featured image (including removal for updates)
+      if (featuredMediaId !== null) {
+        wpPostData.featured_media = featuredMediaId;
+      }
+      
+      // Add date for scheduled posts
+      if (announcement.status === 'scheduled' && announcement.publish_date) {
+        wpPostData.date = new Date(announcement.publish_date).toISOString();
+      }
+      
+      // Add category based on endpoint type
+      if (useCustomTaxonomy) {
+        wpPostData.dipi_cpt_category = [parseInt(wordpressCategoryId)];
+      }
+      
+      // Add SEO metadata if available
+      if (announcement.seo_title || announcement.seo_description) {
+        wpPostData.meta = {
+          _yoast_wpseo_title: announcement.seo_title || "",
+          _yoast_wpseo_metadesc: announcement.seo_description || "",
+        };
+      }
+      
+      // Create or update post
+      const httpMethod = isUpdate ? 'PUT' : 'POST';
+      console.log(`Sending ${httpMethod} request to WordPress:`, postEndpoint);
+      console.log("WordPress post data:", wpPostData);
+      
+      const postResponse = await fetch(postEndpoint, {
+        method: httpMethod,
+        headers: headers,
+        body: JSON.stringify(wpPostData)
+      });
+      
+      if (!postResponse.ok) {
+        let errorText = await postResponse.text();
+        console.error("WordPress API error:", errorText);
+        updatePublishingStep("wordpress", "error", `Erreur lors du ${actionText.toLowerCase()}`);
+        return { 
+          success: false, 
+          message: `Erreur lors du ${actionText.toLowerCase()} WordPress (${postResponse.status}): ${errorText}`, 
+          wordpressPostId: null 
+        };
+      }
+      
+      // Parse JSON response
+      let wpResponseData;
+      try {
+        wpResponseData = await postResponse.json();
+        console.log("WordPress response data:", wpResponseData);
+        updatePublishingStep("wordpress", "success", `${actionText} WordPress réussie`, 85);
+      } catch (error) {
+        console.error("Error parsing WordPress response:", error);
+        updatePublishingStep("wordpress", "error", "Erreur d'analyse de la réponse");
+        return {
+          success: false,
+          message: "Erreur lors de l'analyse de la réponse WordPress",
+          wordpressPostId: null
+        };
+      }
       
       // Final database update
       updatePublishingStep("database", "loading", "Mise à jour de la base de données", 90);
       
       // Check if the response contains the WordPress post ID
-      if (wordpressPostId && typeof wordpressPostId === 'number') {
+      if (wpResponseData && typeof wpResponseData.id === 'number') {
+        const wordpressPostId = wpResponseData.id;
         console.log("WordPress post ID received:", wordpressPostId);
         
         // Calculate the WordPress URL
@@ -387,7 +457,7 @@ export const useWordPressPublishing = () => {
         
         // Update the announcement in Supabase with the WordPress post ID and URL
         const updateData: any = {
-          is_divipixel: isDiviPixel,
+          is_divipixel: useCustomTaxonomy,
           wordpress_url: wordpressUrl
         };
         

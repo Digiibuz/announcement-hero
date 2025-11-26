@@ -132,38 +132,95 @@ export const useWordPressConnection = () => {
         };
       }
 
-      // Try to test the WordPress connection via edge function
+      // Try to fetch the WordPress site info as a connection test
       const infoUrl = `${siteUrl}/wp-json`;
       
-      console.log("Testing WordPress connection via proxy...");
-      const { data: connectionTest, error: connectionError } = await supabase.functions.invoke('wordpress-proxy', {
-        body: {
-          action: 'testConnection',
-          configId: wordpressConfigId
-        }
+      // Préparer les en-têtes d'authentification
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      let authenticationUsed = false;
+      
+      // Utiliser Application Password si disponible
+      if (wpConfig.app_username && wpConfig.app_password) {
+        const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
+        headers['Authorization'] = `Basic ${basicAuth}`;
+        authenticationUsed = true;
+      } 
+      // Fallback sur la clé API REST si présente
+      else if (wpConfig.rest_api_key) {
+        headers['Authorization'] = `Bearer ${wpConfig.rest_api_key}`;
+        authenticationUsed = true;
+      }
+      
+      const response = await fetch(infoUrl, {
+        method: 'GET',
+        headers: headers
       });
 
-      if (connectionError || !connectionTest?.success) {
-        console.error("WordPress connection test failed:", connectionError || connectionTest?.error);
+      if (!response.ok) {
+        console.error("WordPress connection test failed:", response.statusText);
         setStatus("disconnected");
         
-        let errorMsg = connectionError?.message || connectionTest?.error || "Échec de connexion";
+        let errorMsg = `Échec de connexion: ${response.statusText}`;
         
-        // Améliorer les messages d'erreur
-        if (errorMsg.includes("401") || errorMsg.includes("403")) {
-          errorMsg = "Identifiants incorrects ou autorisations insuffisantes";
-        } else if (errorMsg.includes("404")) {
+        if (response.status === 404) {
           errorMsg = "L'API REST WordPress n'est pas accessible à cette URL";
+        } else if (response.status === 401 || response.status === 403) {
+          errorMsg = "Identifiants incorrects ou autorisations insuffisantes";
         }
         
         setErrorDetails(errorMsg);
         return { success: false, message: errorMsg };
       }
 
-      console.log("WordPress connection test successful:", connectionTest);
+      // Si l'authentification est utilisée, essayons d'accéder à un point d'extrémité
+      // qui nécessite des autorisations pour valider les identifiants
+      if (authenticationUsed) {
+        try {
+          // Essayons de récupérer les publications, ce qui nécessite généralement une authentification
+          const authTestUrl = `${siteUrl}/wp-json/wp/v2/categories`;
+          const authTest = await fetch(authTestUrl, {
+            method: 'GET',
+            headers: headers
+          });
+          
+          if (!authTest.ok) {
+            // Si cet appel échoue, les identifiants sont probablement incorrects
+            console.warn("Authentication test failed:", authTest.statusText);
+            if (authTest.status === 401 || authTest.status === 403) {
+              setStatus("disconnected");
+              const errorMsg = "Identifiants incorrects ou autorisations insuffisantes";
+              setErrorDetails(errorMsg);
+              return { 
+                success: false, 
+                message: errorMsg
+              };
+            }
+          }
+
+          // Essayons également avec les pages
+          const pagesTestUrl = `${siteUrl}/wp-json/wp/v2/pages`;
+          const pagesTest = await fetch(pagesTestUrl, {
+            method: 'GET',
+            headers: headers
+          });
+
+          if (!pagesTest.ok) {
+            console.warn("Pages test failed:", pagesTest.statusText);
+          }
+        } catch (authError) {
+          console.error("Authentication test error:", authError);
+          // Ne pas échouer complètement si ce test échoue, car cela pourrait être dû
+          // à une configuration différente sur le site WordPress
+        }
+      }
+
+      const data = await response.json();
       setStatus("connected");
       setErrorDetails(null);
-      return { success: true, message: "Connexion établie avec succès", data: connectionTest };
+      return { success: true, message: "Connexion établie avec succès", data };
 
     } catch (error: any) {
       console.error("Error checking WordPress connection:", error);
