@@ -26,7 +26,6 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
     
     // MODE DÉMO : Si l'utilisateur est testeur, retourner les catégories mockées
     if (isDemoMode(user?.role)) {
-      console.log("🎭 MODE TESTEUR activé - Catégories mockées:", DEMO_CATEGORIES);
       setIsLoading(false);
       isLoadingRef.current = false;
       setError(null);
