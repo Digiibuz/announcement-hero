@@ -7,7 +7,6 @@ import { Toaster as UIToaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import AppRoutes from "@/components/routing/Routes";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
-import { TesterModeBanner } from "@/components/ui/TesterModeBanner";
 import DynamicBackground from "@/components/ui/DynamicBackground";
 import MobileBottomNav from "@/components/ui/layout/MobileBottomNav";
 import { useDeepLinkHandler } from "@/utils/deepLinkHandler";
@@ -32,7 +31,6 @@ function AppContent() {
   return (
     <>
       <DynamicBackground className="min-h-screen">
-        <TesterModeBanner />
         <ImpersonationBanner />
         <AppRoutes />
         <MobileBottomNav />
