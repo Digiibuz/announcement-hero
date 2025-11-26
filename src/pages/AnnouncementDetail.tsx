@@ -33,26 +33,49 @@ const AnnouncementDetail = () => {
   } = useAnnouncementDetail(user?.id);
 
   // Charger les catégories pour l'édition
-  const { isLoading: isCategoriesLoading, hasCategories } = useWordPressCategories();
+  const { isLoading: isCategoriesLoading, hasCategories, error: categoriesError } = useWordPressCategories();
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
 
   // Afficher l'overlay immédiatement quand on passe en mode édition
   useEffect(() => {
     if (isEditing) {
       setShowLoadingOverlay(true);
+      setLoadingTimeout(false); // Réinitialiser le timeout
     }
   }, [isEditing]);
 
-  // Cacher l'overlay quand les catégories sont chargées
+  // Cacher l'overlay quand les catégories sont chargées, avec timeout
   useEffect(() => {
-    if (showLoadingOverlay && !isCategoriesLoading && hasCategories) {
-      // Ajouter un délai minimum de 500ms pour éviter un flash trop rapide
+    if (!showLoadingOverlay) return;
+
+    // Timeout absolu de 15 secondes pour éviter un chargement infini
+    const timeoutTimer = setTimeout(() => {
+      console.warn("⚠️ Timeout du chargement des catégories après 15 secondes (édition)");
+      setLoadingTimeout(true);
+      setShowLoadingOverlay(false);
+    }, 15000);
+
+    // Masquer l'overlay si les catégories sont chargées avec succès
+    if (!isCategoriesLoading && hasCategories) {
       const timer = setTimeout(() => {
         setShowLoadingOverlay(false);
       }, 500);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        clearTimeout(timeoutTimer);
+      };
     }
-  }, [showLoadingOverlay, isCategoriesLoading, hasCategories]);
+
+    // Masquer l'overlay si une erreur se produit
+    if (!isCategoriesLoading && categoriesError) {
+      console.error("❌ Erreur lors du chargement des catégories (édition):", categoriesError);
+      setShowLoadingOverlay(false);
+      clearTimeout(timeoutTimer);
+    }
+
+    return () => clearTimeout(timeoutTimer);
+  }, [showLoadingOverlay, isCategoriesLoading, hasCategories, categoriesError]);
 
   const titleAction = announcement ? (
     <AnnouncementActions
@@ -78,6 +101,28 @@ const AnnouncementDetail = () => {
 
       <PageLayout title={isLoading ? "Chargement..." : announcement?.title} titleAction={titleAction}>
       <AnimatedContainer delay={200}>
+        {/* Alerte si timeout du chargement des catégories en mode édition */}
+        {loadingTimeout && isEditing && (
+          <div className="mb-4">
+            <Card className="border-yellow-300 bg-yellow-50">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                  <CardTitle className="text-yellow-800 text-lg">Problème de connexion</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-yellow-700 mb-2">
+                  Impossible de charger les catégories depuis votre site WordPress.
+                </p>
+                <p className="text-yellow-600 text-sm">
+                  Cela peut être dû à un problème de connexion réseau ou à une restriction de sécurité. Vous pouvez continuer et réessayer plus tard.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Publication limit warning */}
         {!canPublish() && (
           <div className="mb-4">

@@ -89,23 +89,42 @@ const CreateAnnouncement = () => {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [showStepNavigation, setShowStepNavigation] = useState(true);
   const [hideNextButton, setHideNextButton] = useState(false);
-  const { categories, isLoading: isCategoriesLoading, hasCategories } = useWordPressCategories();
+  const { categories, isLoading: isCategoriesLoading, hasCategories, error: categoriesError } = useWordPressCategories();
   const [showInitialLoadingOverlay, setShowInitialLoadingOverlay] = useState(true);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
 
   const stepConfigs = getStepConfigs(user?.canPublishSocialMedia || false);
   const currentStep = stepConfigs[currentStepIndex];
 
-  // Gérer l'overlay de chargement initial
+  // Gérer l'overlay de chargement initial avec timeout
   useEffect(() => {
-    // Attendre que les catégories soient chargées
+    // Timeout absolu de 15 secondes pour éviter un chargement infini
+    const timeoutTimer = setTimeout(() => {
+      console.warn("⚠️ Timeout du chargement des catégories après 15 secondes");
+      setLoadingTimeout(true);
+      setShowInitialLoadingOverlay(false);
+    }, 15000);
+
+    // Masquer l'overlay si les catégories sont chargées avec succès
     if (!isCategoriesLoading && hasCategories) {
-      // Ajouter un délai minimum de 500ms pour éviter un flash trop rapide
       const timer = setTimeout(() => {
         setShowInitialLoadingOverlay(false);
       }, 500);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        clearTimeout(timeoutTimer);
+      };
     }
-  }, [isCategoriesLoading, hasCategories]);
+
+    // Masquer l'overlay si une erreur se produit
+    if (!isCategoriesLoading && categoriesError) {
+      console.error("❌ Erreur lors du chargement des catégories:", categoriesError);
+      setShowInitialLoadingOverlay(false);
+      clearTimeout(timeoutTimer);
+    }
+
+    return () => clearTimeout(timeoutTimer);
+  }, [isCategoriesLoading, hasCategories, categoriesError]);
 
   // Restaurer l'étape après retour de connexion Facebook
   useEffect(() => {
@@ -539,7 +558,7 @@ const CreateAnnouncement = () => {
 
       {isMobile ? (
         <div className="min-h-screen bg-white">
-          <CreateAnnouncementHeader 
+          <CreateAnnouncementHeader
             currentStep={currentStepIndex} 
             totalSteps={stepConfigs.length} 
             onSaveDraft={saveAnnouncementDraft}
@@ -547,8 +566,32 @@ const CreateAnnouncement = () => {
             onClearData={clearSavedData}
           />
 
-          {!canPublish() && (
+          {/* Alerte si timeout du chargement des catégories */}
+          {loadingTimeout && currentStepIndex === 0 && (
             <div className="pt-16 px-4">
+              <div className="max-w-3xl mx-auto mb-4">
+                <Card className="border-yellow-300 bg-gradient-to-r from-yellow-50 to-amber-50 shadow-lg">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                      <CardTitle className="text-yellow-800 text-lg">Problème de connexion</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-yellow-700 mb-2">
+                      Impossible de charger les catégories depuis votre site WordPress.
+                    </p>
+                    <p className="text-yellow-600 text-sm">
+                      Cela peut être dû à un problème de connexion réseau ou à une restriction de sécurité. Vous pouvez continuer et réessayer plus tard.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {!canPublish() && (
+            <div className={loadingTimeout && currentStepIndex === 0 ? "px-4" : "pt-16 px-4"}>
               <div className="max-w-3xl mx-auto mb-4">
                 <Card className="border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 shadow-lg">
                   <CardHeader className="pb-3">
@@ -641,8 +684,32 @@ const CreateAnnouncement = () => {
             onClearData={clearSavedData}
           />
 
-          {!canPublish() && (
+          {/* Alerte si timeout du chargement des catégories - Version desktop */}
+          {loadingTimeout && currentStepIndex === 0 && (
             <div className="pt-16 px-4">
+              <div className="max-w-3xl mx-auto mb-4">
+                <Card className="border-yellow-300 bg-gradient-to-r from-yellow-50 to-amber-50 shadow-lg">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                      <CardTitle className="text-yellow-800 text-lg">Problème de connexion</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-yellow-700 mb-2">
+                      Impossible de charger les catégories depuis votre site WordPress.
+                    </p>
+                    <p className="text-yellow-600 text-sm">
+                      Cela peut être dû à un problème de connexion réseau ou à une restriction de sécurité. Vous pouvez continuer et réessayer plus tard.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {!canPublish() && (
+            <div className={loadingTimeout && currentStepIndex === 0 ? "px-4" : "pt-16 px-4"}>
               <div className="max-w-3xl mx-auto mb-4">
                 <Card className="border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 shadow-lg">
                   <CardHeader className="pb-3">
