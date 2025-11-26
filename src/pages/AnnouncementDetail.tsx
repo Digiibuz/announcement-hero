@@ -39,15 +39,26 @@ const AnnouncementDetail = () => {
 
   // Afficher l'overlay immédiatement quand on passe en mode édition
   useEffect(() => {
+    // Ne pas afficher l'overlay en mode testeur (catégories mockées)
+    if (user?.role === 'testeur') {
+      return;
+    }
+    
     if (isEditing) {
       setShowLoadingOverlay(true);
       setLoadingTimeout(false); // Réinitialiser le timeout
     }
-  }, [isEditing]);
+  }, [isEditing, user?.role]);
 
   // Cacher l'overlay quand les catégories sont chargées, avec timeout
   useEffect(() => {
     if (!showLoadingOverlay) return;
+
+    // Désactiver immédiatement en mode testeur
+    if (user?.role === 'testeur') {
+      setShowLoadingOverlay(false);
+      return;
+    }
 
     // Timeout absolu de 15 secondes pour éviter un chargement infini
     const timeoutTimer = setTimeout(() => {
@@ -75,7 +86,7 @@ const AnnouncementDetail = () => {
     }
 
     return () => clearTimeout(timeoutTimer);
-  }, [showLoadingOverlay, isCategoriesLoading, hasCategories, categoriesError]);
+  }, [showLoadingOverlay, isCategoriesLoading, hasCategories, categoriesError, user?.role]);
 
   const titleAction = announcement ? (
     <AnnouncementActions

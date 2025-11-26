@@ -98,6 +98,12 @@ const CreateAnnouncement = () => {
 
   // Gérer l'overlay de chargement initial avec timeout
   useEffect(() => {
+    // Désactiver immédiatement l'overlay en mode testeur (catégories mockées)
+    if (user?.role === 'testeur') {
+      setShowInitialLoadingOverlay(false);
+      return;
+    }
+
     // Timeout absolu de 15 secondes pour éviter un chargement infini
     const timeoutTimer = setTimeout(() => {
       console.warn("⚠️ Timeout du chargement des catégories après 15 secondes");
@@ -124,7 +130,7 @@ const CreateAnnouncement = () => {
     }
 
     return () => clearTimeout(timeoutTimer);
-  }, [isCategoriesLoading, hasCategories, categoriesError]);
+  }, [isCategoriesLoading, hasCategories, categoriesError, user?.role]);
 
   // Restaurer l'étape après retour de connexion Facebook
   useEffect(() => {
