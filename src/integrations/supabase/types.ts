@@ -430,6 +430,50 @@ export type Database = {
         }
         Relationships: []
       }
+      wordpress_categories_cache: {
+        Row: {
+          category_count: number | null
+          category_id: string
+          category_name: string
+          category_slug: string | null
+          created_at: string
+          id: string
+          raw_data: Json | null
+          updated_at: string
+          wordpress_config_id: string
+        }
+        Insert: {
+          category_count?: number | null
+          category_id: string
+          category_name: string
+          category_slug?: string | null
+          created_at?: string
+          id?: string
+          raw_data?: Json | null
+          updated_at?: string
+          wordpress_config_id: string
+        }
+        Update: {
+          category_count?: number | null
+          category_id?: string
+          category_name?: string
+          category_slug?: string | null
+          created_at?: string
+          id?: string
+          raw_data?: Json | null
+          updated_at?: string
+          wordpress_config_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wordpress_categories_cache_wordpress_config_id_fkey"
+            columns: ["wordpress_config_id"]
+            isOneToOne: false
+            referencedRelation: "wordpress_configs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wordpress_config_categories: {
         Row: {
           category_id: string
