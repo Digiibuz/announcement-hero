@@ -288,46 +288,87 @@ export const useWordPressPublishing = () => {
         updatePublishingStep("compress", "success", "Aucun média additionnel à traiter", 60);
       }
       
-      // WordPress publication via edge function
+      // WordPress publication
       updatePublishingStep("wordpress", "loading", `${actionText} sur WordPress`, 70);
       
       // Prepare post data with additional medias integrated into content
       const baseContent = announcement.description || "";
       const fullContent = baseContent + additionalMediasContent;
       
-      // Call wordpress-proxy edge function
-      const { data: wpResponseData, error: wpError } = await supabase.functions.invoke('wordpress-proxy', {
-        body: {
-          action: 'publishPost',
-          configId: userProfile.wordpress_config_id,
-          title: announcement.title,
-          content: fullContent,
-          categoryId: wordpressCategoryId,
-          status: announcement.status === 'scheduled' ? 'future' : 'publish',
-          featuredMediaId: featuredMediaId,
-          seoTitle: announcement.seo_title || undefined,
-          seoDescription: announcement.seo_description || undefined,
-          seoSlug: announcement.seo_slug || undefined,
-          postId: isUpdate ? announcement.wordpress_post_id : undefined
-        }
+      // Determine the correct endpoint
+      const isDiviPixel = wpConfig.endpoint_type === 'dipi_cpt';
+      const postEndpoint = isDiviPixel
+        ? `${siteUrl}/wp-json/wp/v2/dipi_cpt`
+        : `${siteUrl}/wp-json/wp/v2/pages`;
+      
+      const postData: any = {
+        title: announcement.title,
+        content: fullContent,
+        status: announcement.status === 'scheduled' ? 'future' : 'publish'
+      };
+      
+      // Add category for DiviPixel or tags for pages
+      if (isDiviPixel) {
+        postData.dipi_cpt_category = [parseInt(wordpressCategoryId)];
+      } else {
+        postData.categories = [parseInt(wordpressCategoryId)];
+      }
+      
+      // Add featured image if available
+      if (featuredMediaId) {
+        postData.featured_media = featuredMediaId;
+      }
+      
+      // Add SEO meta if provided
+      if (announcement.seo_title || announcement.seo_description) {
+        postData.meta = {
+          _yoast_wpseo_title: announcement.seo_title || '',
+          _yoast_wpseo_metadesc: announcement.seo_description || ''
+        };
+      }
+      
+      // Add slug if provided
+      if (announcement.seo_slug) {
+        postData.slug = announcement.seo_slug;
+      }
+      
+      // Prepare headers
+      const postHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (wpConfig.app_username && wpConfig.app_password) {
+        const basicAuth = btoa(`${wpConfig.app_username}:${wpConfig.app_password}`);
+        postHeaders['Authorization'] = `Basic ${basicAuth}`;
+      }
+      
+      // Make the request (POST for new, PUT for update)
+      const requestUrl = isUpdate 
+        ? `${postEndpoint}/${announcement.wordpress_post_id}`
+        : postEndpoint;
+      
+      const postResponse = await fetch(requestUrl, {
+        method: isUpdate ? 'PUT' : 'POST',
+        headers: postHeaders,
+        body: JSON.stringify(postData)
       });
       
-      if (wpError || !wpResponseData?.success) {
-        console.error("WordPress proxy error:", wpError || wpResponseData?.error);
+      if (!postResponse.ok) {
+        const errorText = await postResponse.text();
+        console.error("WordPress publication failed:", postResponse.status, errorText);
         updatePublishingStep("wordpress", "error", `Erreur lors du ${actionText.toLowerCase()}`);
         return { 
           success: false, 
-          message: wpError?.message || wpResponseData?.error || `Erreur lors du ${actionText.toLowerCase()}`, 
+          message: `Erreur lors du ${actionText.toLowerCase()}: ${postResponse.status}`, 
           wordpressPostId: null 
         };
       }
       
-      console.log("WordPress response data:", wpResponseData.post);
+      const wpResponseData = await postResponse.json();
+      console.log("WordPress response data:", wpResponseData);
       updatePublishingStep("wordpress", "success", `${actionText} WordPress réussie`, 85);
       
-      // Extract WordPress data
-      const wordpressPostId = wpResponseData.post?.id;
-      const isDiviPixel = wpConfig.endpoint_type === 'dipi_cpt';
+      const wordpressPostId = wpResponseData.id;
       
       // Final database update
       updatePublishingStep("database", "loading", "Mise à jour de la base de données", 90);
