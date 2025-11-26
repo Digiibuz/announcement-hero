@@ -233,9 +233,10 @@ async function updateCategoriesCache(supabaseClient: any, configId: string, cate
 
 // Publier un post WordPress
 async function publishPost(supabaseClient: any, wpConfig: WordPressConfig, params: any) {
-  const { title, content, categoryId, status, featuredMediaId, seoTitle, seoDescription, seoSlug } = params;
+  const { title, content, categoryId, status, featuredMediaId, seoTitle, seoDescription, seoSlug, postId } = params;
   
-  console.log('📝 Publishing post to WordPress:', title);
+  const isUpdate = postId && postId > 0;
+  console.log(isUpdate ? `📝 Updating WordPress post ${postId}:` : '📝 Publishing post to WordPress:', title);
 
   const siteUrl = wpConfig.site_url.replace(/\/$/, '');
   const headers: Record<string, string> = {
@@ -289,11 +290,21 @@ async function publishPost(supabaseClient: any, wpConfig: WordPressConfig, param
   }
 
   try {
+    // Récupérer la config pour l'endpoint
+    const { data: config } = await supabaseClient
+      .from('wordpress_configs')
+      .select('endpoint_type')
+      .eq('site_url', wpConfig.site_url)
+      .single();
+
     // Déterminer l'endpoint à utiliser
     const endpoint = config?.endpoint_type === 'dipi_cpt' ? 'pages' : 'posts';
+    const endpointUrl = isUpdate 
+      ? `${siteUrl}/wp-json/wp/v2/${endpoint}/${postId}`
+      : `${siteUrl}/wp-json/wp/v2/${endpoint}`;
     
-    const response = await fetch(`${siteUrl}/wp-json/wp/v2/${endpoint}`, {
-      method: 'POST',
+    const response = await fetch(endpointUrl, {
+      method: isUpdate ? 'PUT' : 'POST',
       headers,
       body: JSON.stringify(postData),
       signal: AbortSignal.timeout(30000), // 30s timeout pour publication
@@ -306,7 +317,7 @@ async function publishPost(supabaseClient: any, wpConfig: WordPressConfig, param
     }
 
     const result = await response.json();
-    console.log('✅ Post published successfully:', result.id);
+    console.log(isUpdate ? '✅ Post updated successfully:' : '✅ Post published successfully:', result.id);
 
     return new Response(
       JSON.stringify({
@@ -316,7 +327,7 @@ async function publishPost(supabaseClient: any, wpConfig: WordPressConfig, param
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('❌ Failed to publish post:', error);
+    console.error(isUpdate ? '❌ Failed to update post:' : '❌ Failed to publish post:', error);
     return new Response(
       JSON.stringify({
         success: false,
