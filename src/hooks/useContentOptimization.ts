@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useAILimits } from "@/hooks/useAILimits";
 import { AIGenerationSettings } from "@/components/announcements/AIGenerationOptions";
+import { isDemoMode } from "@/utils/demoMode";
 
 export type OptimizationType = "generateDescription" | "generateSocialContent" | "generateFacebookContent";
 
@@ -25,6 +26,26 @@ export const useContentOptimization = () => {
     aiSettings?: AIGenerationSettings,
     aiInstructions?: string
   ): Promise<string | null> => {
+    // Mode testeur : simuler la génération de contenu
+    if (isDemoMode(user?.role)) {
+      setIsOptimizing(prev => ({ ...prev, [type]: true }));
+      
+      // Simuler un délai de génération
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      setIsOptimizing(prev => ({ ...prev, [type]: false }));
+      
+      // Retourner du contenu simulé selon le type
+      if (type === 'generateDescription') {
+        return `<p>Ceci est une description générée en mode test pour "${title}".</p><p>Cette description est simulée et démontre les capacités de l'application sans appeler l'API d'IA.</p><p>Vous pouvez modifier ce contenu selon vos besoins.</p>`;
+      } else if (type === 'generateSocialContent') {
+        return `🎉 ${title}\n\nContenu Instagram généré en mode test ! Cette publication est simulée pour démonstration.\n\n#test #demo #digiibuz`;
+      } else if (type === 'generateFacebookContent') {
+        return `📢 ${title}\n\nContenu Facebook généré en mode test. Cette publication démontre les fonctionnalités de l'application sans appeler l'API d'IA.\n\nParfait pour les tests et démonstrations !`;
+      }
+      return null;
+    }
+
     // Vérifier les limites IA avant de commencer
     if (!canGenerate()) {
       toast.error(`Limite de ${stats.maxLimit} générations IA atteinte ce mois-ci. Contactez votre administrateur pour augmenter votre quota.`);
