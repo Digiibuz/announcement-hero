@@ -18,9 +18,9 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
   const configIdToUse = specificConfigId || user?.wordpressConfigId;
 
   const fetchCategories = useCallback(async () => {
-    // MODE DÉMO : Si l'utilisateur est en mode démo, retourner les catégories mockées
-    if (isDemoMode(user?.email)) {
-      console.log("🎭 MODE DÉMO activé pour:", user?.email);
+    // MODE DÉMO : Si l'utilisateur est testeur, retourner les catégories mockées
+    if (isDemoMode(user?.role)) {
+      console.log("🎭 MODE TESTEUR activé pour:", user?.email);
       setIsLoading(false);
       isLoadingRef.current = false;
       setError(null);
@@ -49,7 +49,7 @@ export const useWordPressCategories = (specificConfigId?: string, skipFiltering 
     }
 
     return await fetchCategoriesForConfig(user.wordpressConfigId);
-  }, [user?.wordpressConfigId, user?.id, user?.email, specificConfigId]);
+  }, [user?.wordpressConfigId, user?.id, user?.role, user?.email, specificConfigId]);
 
   // Nouvelle fonction pour récupérer les catégories pour un config ID spécifique
   const fetchCategoriesForConfig = useCallback(async (configId: string) => {

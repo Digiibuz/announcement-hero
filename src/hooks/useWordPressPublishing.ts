@@ -69,13 +69,13 @@ export const useWordPressPublishing = () => {
       // Get user's WordPress config
       const { data: userProfile, error: profileError } = await supabase
         .from('profiles')
-        .select('wordpress_config_id, email')
+        .select('wordpress_config_id, email, role')
         .eq('id', userId)
         .single();
 
-      // MODE DÉMO : Si l'utilisateur est en mode démo, simuler le succès sans appel API
-      if (userProfile && isDemoMode(userProfile.email)) {
-        console.log("🎭 MODE DÉMO: Simulation de la publication WordPress");
+      // MODE DÉMO : Si l'utilisateur est testeur, simuler le succès sans appel API
+      if (userProfile && isDemoMode(userProfile.role)) {
+        console.log("🎭 MODE TESTEUR: Simulation de la publication WordPress pour", userProfile.email);
         
         updatePublishingStep("prepare", "success", "Préparation terminée (mode démo)", 25);
         updatePublishingStep("compress", "success", "Compression ignorée (mode démo)", 60);

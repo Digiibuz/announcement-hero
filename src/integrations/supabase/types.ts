@@ -559,6 +559,7 @@ export type Database = {
       is_admin_user: { Args: never; Returns: boolean }
       is_editor: { Args: never; Returns: boolean }
       is_maintenance_active: { Args: never; Returns: boolean }
+      is_tester: { Args: never; Returns: boolean }
       update_user_activity: { Args: never; Returns: undefined }
     }
     Enums: {
