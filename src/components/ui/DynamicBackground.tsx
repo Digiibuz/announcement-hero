@@ -9,12 +9,12 @@ interface DynamicBackgroundProps {
 
 const DynamicBackground = ({ className, children }: DynamicBackgroundProps) => {
   return (
-    <div className={cn("relative min-h-screen overflow-x-hidden", className)}>
-      {/* Gradient Background - Fixed to prevent white gaps on overscroll */}
-      <div className="fixed inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-green-50 -z-10" />
+    <div className={cn("relative overflow-hidden", className)}>
+      {/* Gradient Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-green-50" />
       
-      {/* Animated Geometric Shapes - Fixed to prevent movement on overscroll */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+      {/* Animated Geometric Shapes */}
+      <div className="absolute inset-0 overflow-hidden">
         {/* Large Circle */}
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-200/30 to-purple-200/30 rounded-full animate-pulse-subtle transform rotate-12" />
         

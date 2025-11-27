@@ -190,9 +190,6 @@ export default {
 				'none': 'none',
 				'blur': 'blur(20px)'
 			},
-			padding: {
-				'safe': 'env(safe-area-inset-bottom)',
-			}
 		}
 	},
 	plugins: [require("tailwindcss-animate")],

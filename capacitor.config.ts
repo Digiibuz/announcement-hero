@@ -10,14 +10,6 @@ const config: CapacitorConfig = {
   //   url: 'https://app.digiibuz.fr?forceHideBadge=true',
   //   cleartext: true
   // },
-  ios: {
-    contentInset: 'always',
-    infoPlist: {
-      NSCameraUsageDescription: 'DigiiBuz a besoin d\'accéder à votre appareil photo pour ajouter des photos à vos annonces.',
-      NSPhotoLibraryUsageDescription: 'DigiiBuz a besoin d\'accéder à vos photos pour sélectionner des images pour vos annonces.',
-      ITSAppUsesNonExemptEncryption: false
-    }
-  },
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
