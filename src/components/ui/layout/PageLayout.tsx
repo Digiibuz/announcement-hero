@@ -82,7 +82,7 @@ const PageLayout = ({
       {/* Only render Sidebar for authenticated users */}
       {isAuthenticated && <Sidebar />}
 
-      <main className={`${isAuthenticated ? 'pt-4 md:pt-16 md:pl-64' : 'pt-4 md:pt-16'} ${bannerPadding} ${isMobile ? 'pb-[calc(80px+env(safe-area-inset-bottom))]' : 'pb-8'}`}>
+      <main className={`${isAuthenticated ? 'pt-4 md:pt-16 md:pl-64' : 'pt-4 md:pt-16'} ${bannerPadding} ${isMobile ? 'pb-[calc(64px+env(safe-area-inset-bottom))]' : 'pb-8'}`}>
         <div className={`container ${fullWidthMobile && isMobile ? 'px-0 sm:px-4' : 'px-4'} py-0 ${isCreateAnnouncementPage && !isMobile ? 'max-w-3xl mx-auto' : ''} ${containerClassName || ''}`}>
           {(title || titleAction || showRefreshButton) && (
             <AnimatedContainer delay={100} className={containerClassName?.includes('max-w-full') ? 'w-full' : ''}>
