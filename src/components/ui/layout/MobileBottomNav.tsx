@@ -62,10 +62,9 @@ const MobileBottomNav = () => {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200">
-      <div className="pb-[env(safe-area-inset-bottom)]">
-        <div className="flex items-center justify-around px-1 py-1">
-          {navItems.map((item) => {
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 ios-safe-bottom">
+      <div className="flex items-center justify-around px-1 py-1">
+        {navItems.map((item) => {
           if (item.isCreate) {
             return (
               <AuroraButton
@@ -96,7 +95,6 @@ const MobileBottomNav = () => {
             </Button>
           );
         })}
-        </div>
       </div>
     </div>
   );
