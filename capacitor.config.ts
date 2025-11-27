@@ -10,6 +10,9 @@ const config: CapacitorConfig = {
   //   url: 'https://app.digiibuz.fr?forceHideBadge=true',
   //   cleartext: true
   // },
+  ios: {
+    contentInset: 'always'
+  },
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
