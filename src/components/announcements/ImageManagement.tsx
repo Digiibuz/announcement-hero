@@ -383,19 +383,6 @@ export default function ImageManagement({ form, isMobile = false }: ImageManagem
       setUploadProgress(5);
       setProcessingStatus("Préparation...");
       
-      // Vérifier les permissions caméra sur iOS
-      if (event.target.accept.includes('capture')) {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-          stream.getTracks().forEach(track => track.stop());
-        } catch (permError) {
-          console.error("❌ Camera permission error:", permError);
-          toast.error("Accès à la caméra refusé. Veuillez autoriser l'accès dans les paramètres de votre appareil.");
-          setIsUploading(false);
-          return;
-        }
-      }
-      
       const newImageUrls: string[] = [];
       
       for (let i = 0; i < files.length; i++) {
@@ -482,18 +469,9 @@ export default function ImageManagement({ form, isMobile = false }: ImageManagem
     }
   };
 
-  const triggerCameraUpload = async () => {
-    try {
-      // Test des permissions avant d'ouvrir la caméra
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      stream.getTracks().forEach(track => track.stop());
-      
-      if (cameraInputRef.current) {
-        cameraInputRef.current.click();
-      }
-    } catch (error) {
-      console.error("❌ Camera access error:", error);
-      toast.error("Impossible d'accéder à la caméra. Veuillez vérifier les autorisations dans les paramètres.");
+  const triggerCameraUpload = () => {
+    if (cameraInputRef.current) {
+      cameraInputRef.current.click();
     }
   };
 
