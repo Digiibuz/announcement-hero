@@ -62,7 +62,7 @@ const MobileBottomNav = () => {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 pb-[env(safe-area-inset-bottom)] before:content-[''] before:absolute before:bottom-0 before:left-0 before:right-0 before:h-[100px] before:bg-white before:-z-10">
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
       <div className="flex items-center justify-around px-1 py-1">
         {navItems.map((item) => {
           if (item.isCreate) {
