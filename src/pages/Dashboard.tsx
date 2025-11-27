@@ -33,7 +33,7 @@ const Dashboard = () => {
   };
 
   return (
-    <PageLayout>
+    <PageLayout containerClassName="pb-24 md:pb-8">
       {/* Dynamic Header */}
       <DynamicHeader />
 
