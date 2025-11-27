@@ -68,7 +68,7 @@ const MobileBottomNav = () => {
         paddingBottom: 'env(safe-area-inset-bottom)'
       }}
     >
-      <div className="flex items-center justify-around px-1 py-3">
+      <div className="flex items-center justify-around px-1 py-2">
         {navItems.map((item) => {
           if (item.isCreate) {
             return (
