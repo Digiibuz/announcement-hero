@@ -1,7 +1,7 @@
 
 import { useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { showToast } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useAILimits } from "@/hooks/useAILimits";
 import { AIGenerationSettings } from "@/components/announcements/AIGenerationOptions";
@@ -27,7 +27,7 @@ export const useContentOptimization = () => {
   ): Promise<string | null> => {
     // Vérifier les limites IA avant de commencer
     if (!canGenerate()) {
-      toast.error(`Limite de ${stats.maxLimit} générations IA atteinte ce mois-ci. Contactez votre administrateur pour augmenter votre quota.`);
+      showToast.error(`Limite de ${stats.maxLimit} générations IA atteinte ce mois-ci. Contactez votre administrateur pour augmenter votre quota.`);
       return null;
     }
 
@@ -89,9 +89,9 @@ export const useContentOptimization = () => {
           error.message.includes("OpenAI") ||
           error.message.includes("rate")
       )) {
-        toast.error("Limite d'utilisation de l'IA atteinte. Veuillez réessayer plus tard ou contacter le support pour augmenter votre quota.");
+        showToast.error("Limite d'utilisation de l'IA atteinte. Veuillez réessayer plus tard ou contacter le support pour augmenter votre quota.");
       } else {
-        toast.error(`Erreur lors de la génération: ${error.message || error}`);
+        showToast.error(`Erreur lors de la génération: ${error.message || error}`);
       }
       
       return null;
