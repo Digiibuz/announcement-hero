@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useForm } from "react-hook-form";
-import { toast } from "@/hooks/use-toast";
+import { showToast } from "@/lib/utils";
 import { Announcement } from "@/types/announcement";
 import { useWordPressPublishing } from "@/hooks/useWordPressPublishing";
 import { Button } from "@/components/ui/button";
@@ -257,7 +257,7 @@ const CreateAnnouncement = () => {
       
       if (!user?.id) {
         if (!isMobile) {
-          toast({
+          showToast({
             title: "Erreur",
             description: "Vous devez être connecté pour enregistrer un brouillon",
             variant: "destructive"
@@ -270,7 +270,7 @@ const CreateAnnouncement = () => {
 
       if (!formData.title && !formData.description && (!formData.images || formData.images.length === 0)) {
         if (!isMobile) {
-          toast({
+          showToast({
             title: "Formulaire vide",
             description: "Veuillez remplir au moins un champ avant d'enregistrer un brouillon",
             variant: "destructive"
@@ -312,7 +312,7 @@ const CreateAnnouncement = () => {
       if (error) throw error;
 
       if (!isMobile) {
-        toast({
+        showToast({
           title: "Succès",
           description: "Brouillon enregistré avec succès"
         });
@@ -337,7 +337,7 @@ const CreateAnnouncement = () => {
     } catch (error: any) {
       console.error("Error saving draft:", error);
       if (!isMobile) {
-        toast({
+        showToast({
           title: "Erreur",
           description: "Erreur lors de l'enregistrement du brouillon: " + error.message,
           variant: "destructive"
@@ -352,7 +352,7 @@ const CreateAnnouncement = () => {
     const formData = form.getValues();
     if ((formData.status === 'published' || formData.status === 'scheduled') && !canPublish()) {
       if (!isMobile) {
-        toast({
+        showToast({
           title: "Limite atteinte",
           description: `Vous avez atteint votre limite de ${stats.maxLimit} publications ce mois-ci. Votre annonce sera sauvegardée en brouillon.`,
           variant: "destructive"
@@ -420,12 +420,12 @@ const CreateAnnouncement = () => {
         
         if (!isMobile) {
           if (wordpressResult.success) {
-            toast({
+            showToast({
               title: "Succès",
               description: "Annonce publiée avec succès"
             });
           } else {
-            toast({
+            showToast({
               title: "Attention",
               description: "Annonce enregistrée, mais la publication WordPress a échoué",
               variant: "destructive"
@@ -434,7 +434,7 @@ const CreateAnnouncement = () => {
         }
       } else {
         if (!isMobile) {
-          toast({
+          showToast({
             title: "Succès",
             description: "Annonce enregistrée avec succès"
           });
@@ -498,7 +498,7 @@ const CreateAnnouncement = () => {
     } catch (error: any) {
       console.error("Error saving announcement:", error);
       if (!isMobile) {
-        toast({
+        showToast({
           title: "Erreur",
           description: "Erreur lors de l'enregistrement: " + error.message,
           variant: "destructive"
@@ -524,7 +524,7 @@ const CreateAnnouncement = () => {
   const handleNext = () => {
     if (currentStepIndex === 0 && !form.getValues().wordpressCategory) {
       if (!isMobile) {
-        toast({
+        showToast({
           title: "Champ requis",
           description: "Veuillez sélectionner une catégorie avant de continuer.",
           variant: "destructive"
@@ -534,7 +534,7 @@ const CreateAnnouncement = () => {
     }
     if (currentStepIndex === 1 && !form.getValues().title) {
       if (!isMobile) {
-        toast({
+        showToast({
           title: "Champ requis",
           description: "Veuillez saisir un titre avant de continuer.",
           variant: "destructive"

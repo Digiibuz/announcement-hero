@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import AnimatedContainer from "@/components/ui/AnimatedContainer";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { showToast } from "@/lib/utils";
 import { Eye, EyeOff, Lock, LogIn, Loader2 } from "lucide-react";
 import ImpersonationBanner from "@/components/ui/ImpersonationBanner";
 
@@ -17,7 +17,6 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { isAuthenticated, login } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -33,7 +32,7 @@ const Login = () => {
     try {
       console.log("Attempting login with email:", email);
       await login(email, password);
-      toast({
+      showToast({
         title: "Connexion réussie",
         description: "Vous êtes maintenant connecté",
         variant: "default",
@@ -45,7 +44,7 @@ const Login = () => {
       }, 300);
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
-      toast({
+      showToast({
         title: "Erreur de connexion",
         description: error.message || "Échec de la connexion",
         variant: "destructive",
