@@ -113,6 +113,7 @@ const CreateAnnouncement = () => {
 
     // Masquer l'overlay si les catégories sont chargées avec succès
     if (!isCategoriesLoading && hasCategories) {
+      clearTimeout(timeoutTimer); // Annuler le timeout immédiatement
       const timer = setTimeout(() => {
         setShowInitialLoadingOverlay(false);
       }, 500);
@@ -125,8 +126,8 @@ const CreateAnnouncement = () => {
     // Masquer l'overlay si une erreur se produit
     if (!isCategoriesLoading && categoriesError) {
       console.error("❌ Erreur lors du chargement des catégories:", categoriesError);
+      clearTimeout(timeoutTimer); // Annuler le timeout
       setShowInitialLoadingOverlay(false);
-      clearTimeout(timeoutTimer);
     }
 
     return () => clearTimeout(timeoutTimer);
